@@ -29,31 +29,33 @@ CHAT_TEMPLATE=""
 REASONING=""
 WARMUP=""
 WATCHDOG=600
+EXTRA_ARGS=""
 
 # --- Model presets (tuned for 64GB unified memory) ---
 apply_preset() {
     case "$1" in
         devstral)
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-Instruct-2512-4bit}"
+            MODEL="${MODEL:-mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit}"
             CTX=32768; MAX_RUNNING=16; CHUNKED=8192
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            WARMUP="--skip-server-warmup"
             ;;
         coder-30b)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-4bit}"
+            MODEL="${MODEL:-mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit}"
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             ;;
         coder-next)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-Next-80B-4bit}"
+            MODEL="${MODEL:-mlx-community/Qwen3-Coder-Next-4bit}"
             CTX=8192; MAX_RUNNING=1; CHUNKED=4096
             WATCHDOG=1800
             ;;
         gemma4)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-4bit}"
+            MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-4bit}"
+            MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
@@ -134,5 +136,6 @@ CMD=(python3 -m sglang.launch_server
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
+[[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
 
 exec "${CMD[@]}"

@@ -97,15 +97,14 @@ if [ "$SKIP_ENV" = false ]; then
     echo "  Upgrading pip..."
     pip install --upgrade pip setuptools wheel 2>/dev/null
 
-    echo "  Installing MLX and mlx-lm..."
-    pip install mlx mlx-lm
-
-    echo "  Installing SGLang from source..."
+    echo "  Installing SGLang from source (MPS/MLX backend)..."
+    # Use pyproject_other.toml which has the srt_mps extras (includes mlx, mlx-lm, torch)
     cd "$SGLANG_DIR/python"
-    pip install -e ".[srt]"
+    cp pyproject_other.toml pyproject.toml
+    pip install -e ".[srt_mps]"
 
     echo "  Installing additional dependencies..."
-    pip install openai requests matplotlib numpy
+    pip install openai requests matplotlib
 else
     echo "[2/3] Skipping venv creation"
     activate_venv

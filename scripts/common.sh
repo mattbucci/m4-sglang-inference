@@ -29,6 +29,11 @@ setup_mlx_env() {
     # Activate MLX backend
     export SGLANG_USE_MLX=1
 
+    # HuggingFace token (for model downloads)
+    if [ -f "$HOME/.secrets/hf-token" ]; then
+        export HF_TOKEN="$(cat "$HOME/.secrets/hf-token")"
+    fi
+
     # Silence warnings
     export TOKENIZERS_PARALLELISM=false
     export PYTHONWARNINGS="ignore::UserWarning"
