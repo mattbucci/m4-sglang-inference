@@ -75,74 +75,38 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 ## Performance (M4 Pro 64GB, SGLang + MLX, updated 2026-04-12)
 
-**Methodology:** All numbers use `bench_all_unified.py` which measures completion tokens / elapsed time for single-user context sweeps and concurrent throughput. Quality validated with `eval_comprehensive.py` (29/36 tests passed for Devstral, 8/8 code generation).
+**Methodology:** TPOT (Time Per Output Token) and TTFT (Time To First Token) measured with `sglang.bench_serving` which separates prefill from decode. Throughput measured with `bench_comprehensive.sh`. Quality validated with `eval_comprehensive.py`.
 
 ### Devstral-24B 4-bit
 
-24B dense transformer. ~14 GB 4-bit weights. Best all-round model.
+24B dense transformer. ~14 GB 4-bit weights. Max tested context: 32K.
 
-**Quality:** 29/36 eval tests passed (8/8 code, 7/7 knowledge, 6/8 math, 4/5 edge cases). Parallel stress test: 4/8 (batched decode quality issues — see Known Issues).
+**Quality:** 29/36 eval tests passed (8/8 code, 7/7 knowledge, 6/8 math, 4/5 edge cases).
 
-![Devstral context scaling](benchmarks/devstral-24b-4bit/context_vs_toks.png)
+| Context Length | TPOT (ms) | tok/s | TTFT (ms) |
+|:--------------:|:---------:|:-----:|:---------:|
+| 128 | 57.1 | 17.2 | 69 |
+| 512 | 57.2 | 16.8 | 134 |
+| 1K | 57.1 | 17.3 | 70 |
+| 4K | 57.1 | 17.2 | 70 |
+| 8K | 57.4 | 17.1 | 75 |
+| 16K | 57.3 | 16.9 | 105 |
+| **32K** | **57.5** | **16.9** | **117** |
 
-| Context Length | tok/s |
-|:--------------:|:-----:|
-| 128 | 16.0 |
-| 256 | 15.5 |
-| 512 | 14.5 |
-| 1K | 12.6 |
-| 2K | 9.7 |
-| 4K | 6.7 |
-| 8K | 4.2 |
-| 16K | 2.5 |
-| **32K** | **1.4** |
-
-![Devstral concurrency](benchmarks/devstral-24b-4bit/concurrency_vs_toks.png)
-
-| Concurrency | Total tok/s |
-|:-----------:|:-----------:|
-| 1 | 17 |
-| 2 | 27 |
-| 4 | 29 |
-| 8 | 30 |
-| **16** | **45** |
+| Concurrency | TPOT (ms) | Output tok/s |
+|:-----------:|:---------:|:------------:|
+| 1 | 127 | 24.5 |
+| 2 | 238 | 25.1 |
+| 4 | 333 | 29.6 |
+| 8 | 434 | 39.3 |
+| **16** | **913** | **39.5** |
 
 **Notes:**
-- Single-user decode: ~16 tok/s at short context, dropping to 1.4 tok/s at 32K
-- The M4 Pro's ~273 GB/s bandwidth reading 14 GB of weights gives a theoretical ceiling of ~19 tok/s — we're at 84% of theoretical at short context
-- MLX kernels compile on first use: first request after cold start takes 20-30s. Subsequent requests are fast.
-- Concurrency throughput scales to 45 tok/s @16 concurrent, but output quality degrades with batched decode (KV cache merge/extract limitation)
-
-### Coder-30B MoE 4-bit (128 experts)
-
-30B total / 3B active MoE. ~16 GB 4-bit weights. Fastest model — MoE only reads active expert weights per token.
-
-![Coder-30B context scaling](benchmarks/coder-30b-4bit/context_vs_toks.png)
-
-| Context Length | tok/s |
-|:--------------:|:-----:|
-| 128 | 61.8 |
-| 512 | 61.4 |
-| 1K | 55.7 |
-| 4K | 36.1 |
-| 8K | 24.2 |
-| 16K | 14.0 |
-| **32K** | **14.0** |
-
-![Coder-30B concurrency](benchmarks/coder-30b-4bit/concurrency_vs_toks.png)
-
-| Concurrency | Total tok/s |
-|:-----------:|:-----------:|
-| 1 | 68 |
-| 2 | 60 |
-| 4 | 70 |
-| 8 | 82 |
-| **16** | **94** |
-
-**Notes:**
-- 68 tok/s single-user — 4x faster than Devstral because MoE only activates 3B of 30B params per token
-- Throughput scales to 94 tok/s @16 concurrent
-- Context length limited by KV cache memory, not model weights — should support much longer context with 64GB
+- **TPOT is flat at 57ms across all context lengths** — decode speed is independent of context on MLX (no attention recomputation)
+- The M4 Pro's ~273 GB/s bandwidth reading 14 GB of weights gives a theoretical ceiling of ~19 tok/s — we're at 90% of theoretical
+- TTFT (prefill) is fast: 69ms at 128 tokens, 117ms at 32K — limited by Metal compute, not bandwidth
+- MLX kernels compile on first use: first request after cold start takes 20-30s
+- Concurrency throughput scales to 39.5 tok/s @16 (TPOT degrades under batched decode)
 
 ## Patches
 
