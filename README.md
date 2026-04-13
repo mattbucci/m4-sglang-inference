@@ -50,7 +50,7 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 | Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
 | Gemma 4 26B | MoE (128 experts) | ~15 GB | 60.6 | `launch.sh gemma4` | Working |
 | Qwen3.5-27B | DeltaNet hybrid | ~15 GB | 14.5 | `launch.sh qwen35` | Working (single-user only, concurrent crashes) |
-| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
+| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | 55.3 | `launch.sh coder-next` | Working (single-user) |
 
 All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. Max context is limited by available memory, not a fixed cap — 64GB unified memory supports long context for most models.
 
@@ -71,7 +71,7 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 - **Devstral-24B** — VLM (Mistral3 architecture) requires `--skip-server-warmup` to avoid image processor CUDA assertion. Vision not supported on MLX.
 - **Gemma 4 26B** — Working. Our patch disables multimodal in `_handle_mps_backends` (before TokenizerManager forks) and forces `torch_native` attention (Triton not available on macOS).
 - **Qwen3.5-27B** — Working for single-user inference. Our patch overrides `hybrid_gdn_config` to prevent MambaRadixCache creation. Concurrent requests crash with `TypeError: Unsupported cache type: ArraysCache` in the MLX batched decode merge path.
-- **Coder-Next 80B** — Tight fit in 64GB (~42 GB weights + KV cache). Same DeltaNet hybrid architecture as Qwen3.5; should work for single-user with our patches.
+- **Coder-Next 80B** — Working single-user. ~42 GB weights leaves ~12 GB for KV cache + OS. Same DeltaNet hybrid as Qwen3.5 — concurrent requests crash on `ArraysCache` merge.
 
 ## Performance (M4 Pro 64GB, SGLang + MLX, updated 2026-04-12)
 
@@ -174,6 +174,25 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 - Required three patches to work: disable multimodal in `_handle_mps_backends` (before TokenizerManager forks), force `torch_native` attention (Triton unavailable on macOS), skip server warmup
 - `sglang.bench_serving` reports 34.4 tok/s throughput (includes scheduling overhead); raw TPOT of 16.5ms = 60.6 tok/s decode
 - Context limited to 4K in current preset — needs testing at higher context
+
+### Coder-Next 80B MoE+DeltaNet 4-bit (512 experts)
+
+80B total / 3B active MoE + DeltaNet hybrid. ~42 GB 4-bit weights. Max tested context: 8K. Single-user only.
+
+| Context Length | TPOT (ms) | tok/s | TTFT (ms) |
+|:--------------:|:---------:|:-----:|:---------:|
+| 128 | 18.0 | 34.4 | 29 |
+| 512 | 18.1 | 34.4 | 50 |
+| 1K | 18.1 | 34.4 | 33 |
+| 4K | 18.1 | 34.4 | 65 |
+| **8K** | **18.1** | **34.3** | **42** |
+
+**Notes:**
+- **TPOT: 18ms flat (55.3 tok/s decode)** — 80B model running at 55 tok/s on a Mac mini
+- Only ~12 GB free after model weights — tight for KV cache at long context
+- MoE activates only ~3B of 80B params per token, making decode speed comparable to much smaller models
+- DeltaNet hybrid architecture — concurrent requests crash on `ArraysCache` merge (same as Qwen3.5)
+- `sglang.bench_serving` reports 34.4 tok/s throughput (includes overhead); raw TPOT 18ms = 55.3 tok/s
 
 ## Patches
 
