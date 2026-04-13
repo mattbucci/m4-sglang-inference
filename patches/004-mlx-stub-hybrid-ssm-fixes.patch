@@ -1,0 +1,63 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 36fca4c..ec55312 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -61,6 +61,16 @@ class _DummyKVCache(KVCache):
+         return 0, 0
+ 
+ 
++class _DummyMambaPool:
++    def __init__(self):
++        self.size = 1
++        self.free_slots = torch.tensor([], dtype=torch.long)
++    def available_size(self):
++        return self.size
++    def clear(self):
++        pass
++
++
+ class _DummyModel:
+     """Minimal stand-in so that `inspect.signature(model.forward)` and
+     `getattr(model, ...)` calls in ModelRunner.__init__ don't crash."""
+@@ -78,6 +88,18 @@ class MlxModelRunnerStub(ModelRunner):
+     the minimal bookkeeping pools needed by the scheduler are created.
+     """
+ 
++    @property
++    def hybrid_gdn_config(self):
++        return None
++
++    @property
++    def mamba2_config(self):
++        return None
++
++    @property
++    def linear_attn_model_spec(self):
++        return None
++
+     def load_model(self):
+         """Set only the metadata that downstream code needs, without
+         loading any PyTorch model weights."""
+@@ -145,6 +167,8 @@ class MlxModelRunnerStub(ModelRunner):
+             enable_memory_saver=False,
+         )
+ 
++        self.req_to_token_pool.mamba_pool = _DummyMambaPool()
++
+         dummy_kv = _DummyKVCache(
+             size=self.max_total_num_tokens,
+             dtype=self.kv_cache_dtype,
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index e753678..b00b627 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -39,6 +39,9 @@ class MlxTpModelWorker(TpModelWorker):
+             MlxModelRunnerStub,
+         )
+ 
++        self.model_config.is_multimodal = False
++        self.server_args.enable_multimodal = False
++
+         self._model_runner = MlxModelRunnerStub(
+             model_config=self.model_config,
+             mem_fraction_static=self.server_args.mem_fraction_static,

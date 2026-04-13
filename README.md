@@ -196,22 +196,15 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 ## Patches
 
-2 patches on top of SGLang `main`:
+5 patches on top of SGLang `main` (apply in order):
 
-### 001-mlx-request-cleanup (PR #22632)
-
-Fixes `KeyError` crash during concurrent multi-request decoding. The old MLX worker
-deleted request state when a request was absent from an intermediate batch, but the
-scheduler can legitimately skip a live request and include it later.
-
-**Fix:** Explicit lifecycle-based cleanup via `cleanup_requests()` hooks instead of
-implicit batch-membership inference.
-
-### 002-mlx-quantization-skip
-
-Fixes startup crash on MLX models whose `quantization_config` lacks a `quant_method`
-field. Also disables CUDA graph and piecewise CUDA graph for MPS device to prevent
-unnecessary model config loads that trigger the same error.
+| Patch | Purpose |
+|-------|---------|
+| **001-mlx-request-cleanup** | Fix `KeyError` on concurrent decode (PR #22632) |
+| **002-mps-backend-defaults** | Disable CUDA graph, force torch_native attention, disable multimodal on MPS |
+| **003-mlx-skip-quantization-check** | Skip quantization verification for MLX models (no `quant_method` field) |
+| **004-mlx-stub-hybrid-ssm-fixes** | Override hybrid SSM detection, add DummyMambaPool, disable multimodal in subprocess |
+| **005-mlx-arrayscache-batched-decode** | Add `ArraysCache` support for concurrent DeltaNet model decode |
 
 See [patches/README.md](patches/README.md) for details.
 

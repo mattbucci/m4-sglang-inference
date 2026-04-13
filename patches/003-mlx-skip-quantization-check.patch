@@ -1,0 +1,18 @@
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 67cce0e..1ec1f1b 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -230,8 +230,11 @@ class ModelConfig:
+         # Update hybrid model
+         self._derive_hybrid_model()
+ 
+-        # Verify quantization
+-        self._verify_quantization()
++        # Verify quantization (skip when MLX backend handles it)
++        from sglang.srt.utils.tensor_bridge import use_mlx
++
++        if not use_mlx():
++            self._verify_quantization()
+ 
+         self._verify_transformers_version()
+ 

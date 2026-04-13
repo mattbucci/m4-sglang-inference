@@ -1,0 +1,26 @@
+diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
+index cb549bf..cdce67f 100644
+--- a/python/sglang/srt/server_args.py
++++ b/python/sglang/srt/server_args.py
+@@ -1128,6 +1128,11 @@ class ServerArgs:
+     def _handle_mps_backends(self):
+         if self.device == "mps":
+             self.disable_overlap_schedule = True
++            self.disable_piecewise_cuda_graph = True
++            self.disable_cuda_graph = True
++            self.attention_backend = "torch_native"
++            if self.enable_multimodal is None:
++                self.enable_multimodal = False
+ 
+     def _handle_xpu_backends(self):
+         if self.device == "xpu":
+@@ -1144,6 +1149,9 @@ class ServerArgs:
+             self.disable_piecewise_cuda_graph = False
+             return
+ 
++        if self.disable_piecewise_cuda_graph:
++            return
++
+         # Disable piecewise cuda graph with following conditions:
+         # 1. Disable Model Arch
+         if self.get_model_config().is_piecewise_cuda_graph_disabled_model:

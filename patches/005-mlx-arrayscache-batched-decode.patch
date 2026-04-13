@@ -1,0 +1,31 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index d3d9569..3b5289f 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -10,6 +10,7 @@ from dataclasses import dataclass
+ import mlx.core as mx
+ from mlx_lm import load as mlx_lm_load
+ from mlx_lm.models.cache import (
++    ArraysCache,
+     BatchKVCache,
+     BatchRotatingKVCache,
+     KVCache,
+@@ -41,12 +42,17 @@ def _merge_kv_caches(
+ 
+     for layer_idx in range(num_layers):
+         layer_caches = [caches[layer_idx] for caches in caches_list]
++        cache_type = type(layer_caches[0])
+         if isinstance(layer_caches[0], KVCache):
+             batch_cache = BatchKVCache.merge(layer_caches)
+         elif isinstance(layer_caches[0], RotatingKVCache):
+             batch_cache = BatchRotatingKVCache.merge(layer_caches)
++        elif isinstance(layer_caches[0], ArraysCache):
++            batch_cache = ArraysCache.merge(layer_caches)
++        elif hasattr(cache_type, "merge"):
++            batch_cache = cache_type.merge(layer_caches)
+         else:
+-            raise TypeError(f"Unsupported cache type: {type(layer_caches[0]).__name__}")
++            raise TypeError(f"Unsupported cache type: {cache_type.__name__}")
+         merged.append(batch_cache)
+ 
+     return merged

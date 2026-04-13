@@ -64,12 +64,18 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     mkdir -p "$(dirname "$SGLANG_DIR")"
     git clone --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
 
-    # Apply patches from patches/ if any exist
+    # Apply patches in order (001 excludes test file that may conflict)
     if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
         for patch in "$REPO_DIR/patches/"*.patch; do
-            echo "  Applying $(basename "$patch")..."
-            git apply "$patch" || echo "  WARNING: $(basename "$patch") failed to apply"
+            pname=$(basename "$patch")
+            if [[ "$pname" == 001-* ]]; then
+                echo "  Applying $pname (excluding tests)..."
+                git apply --exclude='test/*' "$patch" || echo "  WARNING: $pname failed to apply"
+            else
+                echo "  Applying $pname..."
+                git apply "$patch" || echo "  WARNING: $pname failed to apply"
+            fi
         done
     else
         echo "  No patches to apply"
