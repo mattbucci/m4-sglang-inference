@@ -36,6 +36,7 @@ MODELS = {
     "gemma4-26b-4bit":     {"label": "Gemma 4 26B 4-bit (MoE)",              "color": "#d2a8ff"},
     "qwen35-27b-4bit":     {"label": "Qwen3.5-27B 4-bit",                    "color": "#f0883e"},
     "coder-next-80b-4bit": {"label": "Coder-Next 80B 4-bit (MoE+DeltaNet)",  "color": "#f778ba"},
+    "gemma4-31b-4bit":     {"label": "Gemma 4 31B 4-bit",                    "color": "#79c0ff"},
 }
 
 # Unified x-axis: 128 to 256K

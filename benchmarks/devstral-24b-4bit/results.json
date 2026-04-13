@@ -1,108 +1,108 @@
 {
-  "model": "Devstral-24B 4bit",
+  "model": "Devstral-24B 4-bit",
   "engine": "SGLang + MLX",
   "hardware": "Apple M4 Pro 64GB",
-  "timestamp": "2026-04-12 17:00:25",
+  "timestamp": "2026-04-12 21:51:36",
   "output_tokens": 100,
   "context_sweep": [
     {
       "context": 128,
       "prompt_tokens": 59,
       "completion_tokens": 100,
-      "elapsed": 6.25,
-      "tok_per_sec": 16.0
+      "elapsed": 6.56,
+      "tok_per_sec": 15.2
     },
     {
       "context": 256,
       "prompt_tokens": 123,
       "completion_tokens": 100,
-      "elapsed": 6.47,
-      "tok_per_sec": 15.5
+      "elapsed": 7.06,
+      "tok_per_sec": 14.2
     },
     {
       "context": 512,
       "prompt_tokens": 251,
       "completion_tokens": 100,
-      "elapsed": 6.9,
-      "tok_per_sec": 14.5
+      "elapsed": 7.66,
+      "tok_per_sec": 13.1
     },
     {
       "context": 1024,
       "prompt_tokens": 507,
       "completion_tokens": 100,
-      "elapsed": 7.95,
-      "tok_per_sec": 12.6
+      "elapsed": 9.87,
+      "tok_per_sec": 10.1
     },
     {
       "context": 2048,
       "prompt_tokens": 1019,
       "completion_tokens": 100,
-      "elapsed": 10.31,
-      "tok_per_sec": 9.7
+      "elapsed": 14.36,
+      "tok_per_sec": 7.0
     },
     {
       "context": 4096,
       "prompt_tokens": 2043,
       "completion_tokens": 100,
-      "elapsed": 14.94,
-      "tok_per_sec": 6.7
+      "elapsed": 23.0,
+      "tok_per_sec": 4.3
     },
     {
       "context": 8192,
       "prompt_tokens": 4091,
       "completion_tokens": 100,
-      "elapsed": 23.63,
-      "tok_per_sec": 4.2
+      "elapsed": 39.56,
+      "tok_per_sec": 2.5
     },
     {
       "context": 16384,
       "prompt_tokens": 8187,
       "completion_tokens": 100,
-      "elapsed": 39.32,
-      "tok_per_sec": 2.5
+      "elapsed": 72.67,
+      "tok_per_sec": 1.4
     },
     {
       "context": 32768,
       "prompt_tokens": 16379,
       "completion_tokens": 100,
-      "elapsed": 72.43,
-      "tok_per_sec": 1.4
+      "elapsed": 143.39,
+      "tok_per_sec": 0.7
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
       "total_tokens": 100,
-      "elapsed": 5.95,
-      "tok_per_sec": 16.8,
+      "elapsed": 6.01,
+      "tok_per_sec": 16.6,
       "errors": 0
     },
     {
       "concurrency": 2,
       "total_tokens": 200,
-      "elapsed": 7.48,
-      "tok_per_sec": 26.7,
+      "elapsed": 6.47,
+      "tok_per_sec": 30.9,
       "errors": 0
     },
     {
       "concurrency": 4,
-      "total_tokens": 398,
-      "elapsed": 13.79,
-      "tok_per_sec": 28.9,
+      "total_tokens": 329,
+      "elapsed": 9.85,
+      "tok_per_sec": 33.4,
       "errors": 0
     },
     {
       "concurrency": 8,
-      "total_tokens": 800,
-      "elapsed": 26.46,
-      "tok_per_sec": 30.2,
+      "total_tokens": 729,
+      "elapsed": 20.96,
+      "tok_per_sec": 34.8,
       "errors": 0
     },
     {
       "concurrency": 16,
-      "total_tokens": 1600,
-      "elapsed": 35.51,
-      "tok_per_sec": 45.1,
+      "total_tokens": 1458,
+      "elapsed": 29.95,
+      "tok_per_sec": 48.7,
       "errors": 0
     }
   ]

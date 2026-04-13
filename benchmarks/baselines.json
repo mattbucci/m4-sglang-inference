@@ -1,1 +1,10 @@
-{}
+{
+  "devstral": {
+    "single_tpot_ms": 56.92,
+    "single_throughput": 15.01,
+    "single_ttft_ms": 479.31,
+    "multi8_tpot_ms": 337.5,
+    "multi8_throughput": 22.52,
+    "multi8_ttft_ms": 8731.87
+  }
+}

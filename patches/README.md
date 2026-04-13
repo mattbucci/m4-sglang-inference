@@ -9,11 +9,10 @@ git apply ../../patches/001-mlx-radix-cache.patch
 git apply ../../patches/002-mps-backend-defaults.patch
 git apply ../../patches/003-mlx-skip-quantization-check.patch
 git apply ../../patches/004-mlx-lifecycle-and-hybrid-fixes.patch
+git apply ../../patches/005-mlx-attn-wrapper-varargs.patch
 ```
 
-## 001-mlx-radix-cache (PR #21509)
-
-**Source:** https://github.com/sgl-project/sglang/pull/21509
+## 001-mlx-radix-cache ([PR #21509](https://github.com/sgl-project/sglang/pull/21509))
 
 Adds radix cache support to the MLX backend. Introduces a Metal-native KV pool
 (`MlxKVPool`) that auto-sizes from available memory, zero-copy gather for
@@ -40,7 +39,7 @@ verification to fail with `Unknown quantization method: ""`.
 
 Combined fix for request lifecycle management and hybrid DeltaNet/Mamba models:
 
-**Lifecycle hooks** (from PR #22632 intent, adapted for radix cache rewrite):
+**Lifecycle hooks** (from [PR #22632](https://github.com/sgl-project/sglang/pull/22632) intent, adapted for radix cache rewrite):
 - Add `cleanup_requests()` and `clear_runtime_state()` stubs to base `TpModelWorker`
 - Implement them in `MlxTpModelWorker` to call `remove_request()`/`clear()`
 - Wire scheduler `flush_cache` → `clear_runtime_state()`
@@ -52,3 +51,14 @@ Combined fix for request lifecycle management and hybrid DeltaNet/Mamba models:
   in `MlxModelRunnerStub` to prevent scheduler from creating `MambaRadixCache`
 - Add `_DummyMambaPool` for scheduler runtime checker compatibility
 - Force `is_multimodal=False` in MLX tp_worker subprocess
+
+## 005-mlx-attn-wrapper-varargs
+
+Fix `MLXAttentionWrapper.__call__` to accept variable positional arguments.
+
+Some models (ministral3/Devstral) pass `attn_scale` as an extra positional argument
+to the attention forward method: `attn(x, attn_scale, mask, cache)`. The original
+wrapper only accepted `(x, mask, cache)`, causing a `TypeError`.
+
+- Change wrapper signature to `(x, *args, **kwargs)` for full pass-through
+- Extract `attn_scale` from extra args and apply to queries in batched decode path

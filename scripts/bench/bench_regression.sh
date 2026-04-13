@@ -32,6 +32,7 @@ get_bench_model() {
         gemma4)     echo "google/gemma-4-26B-A4B-it" ;;
         qwen35)     echo "Qwen/Qwen3.5-27B" ;;
         coder-next) echo "Qwen/Qwen3-Coder-Next" ;;
+        gemma4-31b) echo "google/gemma-4-31b" ;;
         *)          echo "$1" ;;
     esac
 }

@@ -13,6 +13,7 @@
 #   coder-30b      Qwen3-Coder-30B MoE 4-bit (32K, best throughput)
 #   coder-next     Qwen3-Coder-Next-80B MoE 4-bit (8K, largest model)
 #   gemma4         Gemma 4 26B MoE 4-bit (4K)
+#   gemma4-31b     Gemma 4 31B 4-bit (4K)
 #   qwen35         Qwen3.5-27B DeltaNet 4-bit (32K)
 
 set -euo pipefail
@@ -51,6 +52,11 @@ apply_preset() {
             ;;
         gemma4)
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
+            CTX=4096; MAX_RUNNING=4; CHUNKED=2048
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            ;;
+        gemma4-31b)
+            MODEL="${MODEL:-mlx-community/gemma-4-31b-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
@@ -130,6 +136,7 @@ CMD=(python3 -m sglang.launch_server
     --port "$PORT"
     --host 0.0.0.0
     --enable-metrics
+    --disable-radix-cache
 )
 
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)

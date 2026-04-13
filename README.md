@@ -195,14 +195,15 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 ## Patches
 
-4 patches on top of SGLang `main` at commit `1f8df9705` (apply in order):
+5 patches on top of SGLang `main` at commit `1f8df9705` (apply in order):
 
 | Patch | Purpose |
 |-------|---------|
-| **001-mlx-radix-cache** | Radix cache support for MLX (PR #21509) — 102x prefill speedup on cache hits |
+| **001-mlx-radix-cache** | Radix cache support for MLX ([PR #21509](https://github.com/sgl-project/sglang/pull/21509)) — 102x prefill speedup on cache hits |
 | **002-mps-backend-defaults** | Disable CUDA graph, force torch_native attention, disable multimodal on MPS |
 | **003-mlx-skip-quantization-check** | Skip quantization verification for MLX models (no `quant_method` field) |
 | **004-mlx-lifecycle-and-hybrid-fixes** | Request lifecycle hooks + hybrid DeltaNet/Mamba model support |
+| **005-mlx-attn-wrapper-varargs** | Fix attention wrapper for models with extra positional args (Devstral) |
 
 See [patches/README.md](patches/README.md) for details.
 

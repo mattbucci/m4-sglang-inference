@@ -1,0 +1,36 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -48,12 +48,16 @@ class MLXAttentionWrapper(nn.Module):
+         object.__setattr__(self, "_inner", inner)
+         object.__setattr__(self, "_layer_idx", layer_idx)
+
+-    def __call__(self, x: mx.array, mask: Any = None, cache: Any = None) -> mx.array:
++    def __call__(self, x: mx.array, *args, **kwargs) -> mx.array:
+         ctx = get_context()
+         if ctx is None:
+-            return self._inner(x, mask=mask, cache=cache)
+-        return self._batched_decode(x, ctx)
++            return self._inner(x, *args, **kwargs)
++        # Some models (ministral3/Devstral) pass attn_scale as first extra
++        # positional arg: attn(x, attn_scale, mask, cache).
++        attn_scale = args[0] if args else None
++        return self._batched_decode(x, ctx, attn_scale=attn_scale)
+
+-    def _batched_decode(self, x: mx.array, ctx: BatchedDecodeContext) -> mx.array:
++    def _batched_decode(self, x: mx.array, ctx: BatchedDecodeContext,
++                        attn_scale: Any = None) -> mx.array:
+         inner = self._inner
+         layer_idx = self._layer_idx
+         B = ctx.batch_size
+@@ -78,6 +82,10 @@ class MLXAttentionWrapper(nn.Module):
+         queries = inner.rope(queries, offset=offsets)
+         keys = inner.rope(keys, offset=offsets)
+
++        # Apply attn_scale if provided (ministral3/Devstral)
++        if attn_scale is not None:
++            queries = queries * attn_scale
++
+         layer_caches = ctx.layer_caches[layer_idx]
+         max_len = max(ctx.seq_lens) + 1
+
