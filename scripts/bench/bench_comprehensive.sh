@@ -1,8 +1,9 @@
 #!/bin/bash
-# Comprehensive benchmark: single, 2, 4, 8, 16 concurrent requests
+# Comprehensive benchmark: concurrency sweep with proper TPOT measurement.
+# Uses sglang.bench_serving for accurate TPOT/TTFT/throughput numbers.
 # Works with any model served on localhost:$PORT
 #
-# Usage: ./scripts/bench/bench_comprehensive.sh "Model Name" [model_path] [port]
+# Usage: ./scripts/bench/bench_comprehensive.sh "Model Name" [model_hf_id] [port]
 # Example: ./scripts/bench/bench_comprehensive.sh "Devstral-24B 4bit" "auto" 23334
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,7 +54,7 @@ CONTENT=$(echo "$SMOKE" | python3 -c "import sys,json; print(json.load(sys.stdin
 echo "  Response: $CONTENT" | tee -a "$RESULTS_FILE"
 echo "" | tee -a "$RESULTS_FILE"
 
-# Run benchmarks at each concurrency level
+# Run sglang.bench_serving at each concurrency level
 echo "--- Decode throughput (256 in / 256 out) ---" | tee -a "$RESULTS_FILE"
 printf "%-8s  %-10s  %-12s  %-10s  %-10s\n" "Conc" "TPOT(ms)" "Throughput" "TTFT(ms)" "E2E(s)" | tee -a "$RESULTS_FILE"
 echo "------------------------------------------------------------" | tee -a "$RESULTS_FILE"
@@ -83,6 +84,38 @@ for CONC in 1 2 4 8 16; do
     E2E=$(echo "$RESULT" | grep "Mean E2E" | awk '{print $NF}')
 
     printf "%-8s  %-10s  %-12s  %-10s  %-10s\n" "$CONC" "$TPOT" "$THROUGHPUT" "$TTFT" "$E2E" | tee -a "$RESULTS_FILE"
+done
+
+echo "" | tee -a "$RESULTS_FILE"
+
+# Context sweep with sglang.bench_serving
+echo "--- Context sweep (single user, 64 out) ---" | tee -a "$RESULTS_FILE"
+printf "%-10s  %-10s  %-12s  %-10s\n" "Input" "TPOT(ms)" "Throughput" "TTFT(ms)" | tee -a "$RESULTS_FILE"
+echo "----------------------------------------------------" | tee -a "$RESULTS_FILE"
+
+for INPUT_LEN in 128 512 1024 4096 8192 16384 32768 65536 131072; do
+    RESULT=$(python3 -m sglang.bench_serving \
+        --backend sglang \
+        --base-url "$BASE_URL" \
+        --model "$MODEL" \
+        --dataset-name random \
+        --random-input $INPUT_LEN \
+        --random-output 64 \
+        --num-prompts 1 \
+        --request-rate 1 2>&1)
+
+    TPOT=$(echo "$RESULT" | grep "Mean TPOT" | awk '{print $NF}')
+    THROUGHPUT=$(echo "$RESULT" | grep "Output token throughput" | awk '{print $NF}')
+    TTFT=$(echo "$RESULT" | grep "Mean TTFT" | awk '{print $NF}')
+
+    # Stop if server crashed or error
+    if [ -z "$TPOT" ] || echo "$RESULT" | grep -qi "error\|exception\|oom"; then
+        printf "%-10s  %-10s  %-12s  %-10s\n" "$INPUT_LEN" "OOM/ERR" "-" "-" | tee -a "$RESULTS_FILE"
+        echo "  (stopping context sweep — server may have crashed)" | tee -a "$RESULTS_FILE"
+        break
+    fi
+
+    printf "%-10s  %-10s  %-12s  %-10s\n" "$INPUT_LEN" "$TPOT" "$THROUGHPUT" "$TTFT" | tee -a "$RESULTS_FILE"
 done
 
 echo "" | tee -a "$RESULTS_FILE"

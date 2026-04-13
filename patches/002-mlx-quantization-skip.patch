@@ -271,6 +271,47 @@ index 67cce0e..1ec1f1b 100644
  
          self._verify_transformers_version()
  
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 36fca4c..c668d69 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -61,6 +61,24 @@ class _DummyKVCache(KVCache):
+         return 0, 0
+ 
+ 
++class _DummyMambaPool:
++    """Dummy mamba pool for hybrid DeltaNet/Mamba models.
++
++    The scheduler's runtime checker accesses req_to_token_pool.mamba_pool
++    attributes even when the MLX backend manages mamba state internally.
++    """
++
++    def __init__(self):
++        self.size = 1
++        self.free_slots = torch.tensor([], dtype=torch.long)
++
++    def available_size(self):
++        return self.size
++
++    def clear(self):
++        pass
++
++
+ class _DummyModel:
+     """Minimal stand-in so that `inspect.signature(model.forward)` and
+     `getattr(model, ...)` calls in ModelRunner.__init__ don't crash."""
+@@ -145,6 +163,11 @@ class MlxModelRunnerStub(ModelRunner):
+             enable_memory_saver=False,
+         )
+ 
++        # Add a dummy mamba_pool for hybrid DeltaNet/Mamba models (Qwen3.5, etc.)
++        # The scheduler's runtime checker accesses mamba_pool.available_size()
++        # even when the MLX backend manages state internally.
++        self.req_to_token_pool.mamba_pool = _DummyMambaPool()
++
+         dummy_kv = _DummyKVCache(
+             size=self.max_total_num_tokens,
+             dtype=self.kv_cache_dtype,
 diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
 index 6cee8a3..e753678 100644
 --- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py

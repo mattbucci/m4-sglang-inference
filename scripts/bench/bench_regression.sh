@@ -5,13 +5,12 @@
 # Compares against stored baselines and flags regressions (>10% slower).
 #
 # Usage:
-#   ./scripts/bench/bench_regression.sh              # Run current model
 #   ./scripts/bench/bench_regression.sh devstral      # Run one model
-#   BASELINE=save ./scripts/bench/bench_regression.sh # Save new baselines
+#   BASELINE=save ./scripts/bench/bench_regression.sh devstral  # Save baseline
 #
 # Baselines stored in benchmarks/baselines.json
 
-set -euo pipefail
+set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 source "$REPO_DIR/scripts/common.sh"
@@ -22,20 +21,23 @@ BASELINES="$REPO_DIR/benchmarks/baselines.json"
 PORT="${PORT:-23334}"
 BASE_URL="http://localhost:$PORT"
 THRESHOLD="${THRESHOLD:-10}"  # % regression threshold
-MODEL_FILTER="${1:-all}"
+MODEL_FILTER="${1:?Usage: $0 <model_key> (e.g. devstral, coder-30b, gemma4, qwen35, coder-next)}"
 SAVE_BASELINE="${BASELINE:-}"
 
-# Bench configs: model_key → HuggingFace model ID for sglang.bench_serving
-declare -A BENCH_MODELS=(
-    ["devstral"]="mistralai/Devstral-Small-2-24B-Instruct-2512"
-    ["coder-30b"]="Qwen/Qwen3-Coder-30B-A3B"
-    ["gemma4"]="google/gemma-4-26B-A4B-it"
-    ["qwen35"]="Qwen/Qwen3.5-27B"
-)
+# Model key → HuggingFace model ID for sglang.bench_serving
+get_bench_model() {
+    case "$1" in
+        devstral)   echo "mistralai/Devstral-Small-2-24B-Instruct-2512" ;;
+        coder-30b)  echo "Qwen/Qwen3-Coder-30B-A3B-Instruct" ;;
+        gemma4)     echo "google/gemma-4-26B-A4B-it" ;;
+        qwen35)     echo "Qwen/Qwen3.5-27B" ;;
+        coder-next) echo "Qwen/Qwen3-Coder-Next" ;;
+        *)          echo "$1" ;;
+    esac
+}
 
 bench_one() {
-    local key="$1" conc="$2" input_len="$3" output_len="$4" num_prompts="$5"
-    local model="${BENCH_MODELS[$key]:-$key}"
+    local model="$1" input_len="$2" output_len="$3" num_prompts="$4"
 
     python3 -m sglang.bench_serving \
         --backend sglang \
@@ -60,23 +62,25 @@ extract_metrics() {
 
 run_bench() {
     local key="$1"
+    local model
+    model=$(get_bench_model "$key")
     echo ""
     echo "=== $key ==="
 
     echo "  Single user (128 in, 50 out)..."
     local single_out
-    single_out=$(bench_one "$key" 1 128 50 1)
+    single_out=$(bench_one "$model" 128 50 1)
     read -r tpot1 tp1 ttft1 <<< "$(extract_metrics "$single_out")"
     echo "    TPOT: ${tpot1}ms  Throughput: ${tp1} tok/s  TTFT: ${ttft1}ms"
 
     echo "  Multi user @8 (128 in, 50 out)..."
     local multi_out
-    multi_out=$(bench_one "$key" 8 128 50 16)
+    multi_out=$(bench_one "$model" 128 50 16)
     read -r tpot8 tp8 ttft8 <<< "$(extract_metrics "$multi_out")"
     echo "    TPOT: ${tpot8}ms  Throughput: ${tp8} tok/s  TTFT: ${ttft8}ms"
 
     python3 -c "
-import json, sys
+import json
 result = {
     'single_tpot_ms': float('${tpot1}'),
     'single_throughput': float('${tp1}'),
@@ -149,17 +153,16 @@ for i in $(seq 1 30); do
 done
 echo "Server ready."
 
-# Warm up
+# Warm up MLX kernels — cold start causes massive false regression
 echo "Warming up (5 requests)..."
 for i in $(seq 1 5); do
     curl -s "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d "{\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"Warmup request $i: explain gravity briefly\"}],\"max_tokens\":50,\"temperature\":0}" > /dev/null 2>&1
 done
-echo "Cache warm."
+echo "Warm."
 
 # Run benchmarks
-RESULTS="{}"
 FAILED=0
 
 echo ""

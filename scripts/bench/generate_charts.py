@@ -2,7 +2,7 @@
 """Generate context-length vs performance charts for each model.
 
 Reads benchmark data from benchmarks/{model}/results.json and produces PNG charts.
-All context charts share a unified 32K x-axis.
+All context charts share a unified 256K x-axis for direct comparison.
 """
 import os
 import json
@@ -31,19 +31,19 @@ plt.rcParams.update({
 })
 
 MODELS = {
-    "devstral-24b-4bit":   {"label": "Devstral-24B 4-bit",         "color": "#58a6ff"},
-    "coder-30b-4bit":      {"label": "Coder-30B 4-bit (MoE)",      "color": "#3fb950"},
-    "gemma4-26b-4bit":     {"label": "Gemma 4 26B 4-bit (MoE)",    "color": "#d2a8ff"},
-    "qwen35-27b-4bit":     {"label": "Qwen3.5-27B 4-bit",          "color": "#f0883e"},
-    "coder-next-80b-4bit": {"label": "Coder-Next 80B 4-bit (MoE)", "color": "#f778ba"},
+    "devstral-24b-4bit":   {"label": "Devstral-24B 4-bit",                    "color": "#58a6ff"},
+    "coder-30b-4bit":      {"label": "Coder-30B 4-bit (MoE)",                "color": "#3fb950"},
+    "gemma4-26b-4bit":     {"label": "Gemma 4 26B 4-bit (MoE)",              "color": "#d2a8ff"},
+    "qwen35-27b-4bit":     {"label": "Qwen3.5-27B 4-bit",                    "color": "#f0883e"},
+    "coder-next-80b-4bit": {"label": "Coder-Next 80B 4-bit (MoE+DeltaNet)",  "color": "#f778ba"},
 }
 
-# Unified x-axis: 128 to 32K
-UNIFIED_XLIM = (96, 40_000)
-UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+# Unified x-axis: 128 to 256K
+UNIFIED_XLIM = (96, 300_000)
+UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
 # Standard concurrency levels for bar charts
-STD_CONC = [1, 2, 4, 8, 16]
+STD_CONC = [1, 2, 4, 8, 16, 32]
 
 
 def fmt_ctx(x, _):
@@ -59,7 +59,7 @@ def load_results(model_key):
 
 
 def make_context_chart(model_key, meta, results, out_dir):
-    """Single-user tok/s vs context length."""
+    """Single-user tok/s vs context length, unified 256K x-axis."""
     sweep = [p for p in results["context_sweep"] if "error" not in p and p.get("tok_per_sec", 0) > 0]
     if not sweep:
         print(f"  SKIP context chart (no valid data)")
@@ -133,11 +133,11 @@ def make_concurrency_chart(model_key, meta, results, out_dir):
 
 
 def make_combined_context_chart(all_data):
-    """All models on one context chart."""
+    """All models on one context chart, unified 256K x-axis."""
     fig, ax = plt.subplots(figsize=(8, 4.5))
 
     for key, (meta, results) in all_data.items():
-        sweep = results["context_sweep"]
+        sweep = [p for p in results["context_sweep"] if "error" not in p and p.get("tok_per_sec", 0) > 0]
         ctx = [p["context"] for p in sweep]
         toks = [p["tok_per_sec"] for p in sweep]
         ax.plot(ctx, toks, "o-", color=meta["color"], linewidth=2, markersize=5,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Benchmark long-context performance at various context lengths.
 
-Tests prefill speed and decode speed at different context sizes.
+Tests prefill speed and decode speed at different context sizes up to 256K.
 Adjusted for 64GB unified memory on Apple M4 Pro.
 """
 
@@ -85,7 +85,7 @@ def main():
     print(f"{'Label':30s}  {'Input':>9s}  {'Out':>5s}  {'Time':>7s}  {'TPOT':>8s}  {'Throughput':>10s}")
     print("-" * 85)
 
-    # Context lengths adjusted for 64GB unified memory
+    # Context lengths — push to the limits of 64GB unified memory
     tests = [
         (256, "256 tokens (baseline)"),
         (1024, "1K tokens"),
@@ -93,6 +93,10 @@ def main():
         (8192, "8K tokens"),
         (16384, "16K tokens"),
         (32768, "32K tokens"),
+        (65536, "64K tokens"),
+        (131072, "128K tokens"),
+        (200000, "200K tokens"),
+        (250000, "250K tokens"),
     ]
 
     results = []

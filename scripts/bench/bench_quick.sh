@@ -1,8 +1,9 @@
 #!/bin/bash
 # Quick benchmark: single, 8-concurrent, 16-concurrent
+# Uses sglang.bench_serving for proper TPOT measurement.
 # Records results to benchmarks.log
 #
-# Usage: ./scripts/bench/bench_quick.sh "patch description"
+# Usage: ./scripts/bench/bench_quick.sh "patch description" [model_hf_id] [port]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"

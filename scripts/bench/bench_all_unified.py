@@ -50,7 +50,7 @@ def bench_context_sweep(base, context_lengths, output_tokens=100):
         except Exception as e:
             print(f"  ctx={ctx:>6}: ERROR — {str(e)[:80]}")
             results.append({"context": ctx, "error": str(e)[:200]})
-            # If crash, skip larger contexts
+            # If OOM/crash, skip larger contexts
             if "Connection" in str(e):
                 print("  Server appears down, stopping context sweep")
                 break
@@ -75,7 +75,7 @@ def bench_throughput(base, concurrency_levels, output_tokens=200):
         start = time.time()
         total_toks = 0
         errors = 0
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(conc, 16)) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(conc, 32)) as pool:
             futs = [pool.submit(chat, base, p, output_tokens, 600) for p in prompts]
             for f in concurrent.futures.as_completed(futs):
                 try:
@@ -105,9 +105,9 @@ def main():
     p.add_argument("--port", type=int, default=23334)
     p.add_argument("--name", required=True, help="Model name for output")
     p.add_argument("--output", default=None)
-    p.add_argument("--context-max", type=int, default=32768)
+    p.add_argument("--context-max", type=int, default=262144)
     p.add_argument("--output-tokens", type=int, default=100)
-    p.add_argument("--concurrency-max", type=int, default=16)
+    p.add_argument("--concurrency-max", type=int, default=32)
     args = p.parse_args()
 
     base = f"http://localhost:{args.port}"
@@ -133,14 +133,14 @@ def main():
     print()
 
     # Context sweep — try from small to large
-    ctx_levels = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+    ctx_levels = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
     ctx_levels = [c for c in ctx_levels if c <= args.context_max]
 
     print(f"--- Single-user context sweep ({args.output_tokens} output tokens) ---")
     context_results = bench_context_sweep(base, ctx_levels, args.output_tokens)
 
     # Concurrency sweep
-    conc_levels = [1, 2, 4, 8, 16]
+    conc_levels = [1, 2, 4, 8, 16, 32]
     conc_levels = [c for c in conc_levels if c <= args.concurrency_max]
 
     print()
