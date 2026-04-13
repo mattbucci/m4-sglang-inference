@@ -46,8 +46,8 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 
 | Model | Type | 4-bit size | 1-user tok/s | Launch | Status |
 |-------|------|:----------:|:------------:|:------:|:------:|
-| Devstral-24B | Dense | ~14 GB | 16 | `launch.sh devstral` | Working |
-| Coder-30B | MoE (128 experts) | ~16 GB | 68 | `launch.sh coder-30b` | Working |
+| Devstral-24B | Dense | ~14 GB | 17.2 | `launch.sh devstral` | Working |
+| Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
 | Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Testing |
 | Qwen3.5-27B | DeltaNet hybrid | ~15 GB | — | `launch.sh qwen35` | Testing |
 | Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
@@ -107,6 +107,35 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 - TTFT (prefill) is fast: 69ms at 128 tokens, 117ms at 32K — limited by Metal compute, not bandwidth
 - MLX kernels compile on first use: first request after cold start takes 20-30s
 - Concurrency throughput scales to 39.5 tok/s @16 (TPOT degrades under batched decode)
+
+### Coder-30B MoE 4-bit (128 experts)
+
+30B total / 3B active MoE. ~16 GB 4-bit weights. Max tested context: 32K. Fastest model — MoE only reads active expert weights per token.
+
+| Context Length | TPOT (ms) | tok/s | TTFT (ms) |
+|:--------------:|:---------:|:-----:|:---------:|
+| 128 | 14.0 | 33.9 | 27 |
+| 512 | 14.1 | 33.8 | 194 |
+| 1K | 13.9 | 33.9 | 28 |
+| 4K | 13.9 | 33.9 | 27 |
+| 8K | 13.9 | 33.8 | 34 |
+| 16K | 14.3 | 33.8 | 153 |
+| **32K** | **13.9** | **33.9** | **56** |
+
+| Concurrency | TPOT (ms) | Output tok/s |
+|:-----------:|:---------:|:------------:|
+| 1 | 53.6 | 62.6 |
+| 2 | 86.4 | 69.4 |
+| 4 | 151.6 | 73.7 |
+| 8 | 264.5 | 81.2 |
+| **16** | **517.2** | **82.1** |
+
+**Notes:**
+- **TPOT: 14ms flat (71 tok/s decode)** — 4x faster than Devstral because MoE activates only 3B of 30B params per token
+- The `sglang.bench_serving` reports 33.9 tok/s throughput at concurrency=1 because it includes scheduling overhead; raw single-user TPOT of 14ms = 71 tok/s decode
+- Single-user with 256 in/256 out: TPOT 53.6ms, throughput 62.6 tok/s
+- Peak concurrent throughput: 82.1 tok/s @16
+- TPOT flat across all context lengths (14ms at 128 and 32K)
 
 ## Patches
 
