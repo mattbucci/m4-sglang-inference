@@ -48,8 +48,8 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 |-------|------|:----------:|:------------:|:------:|:------:|
 | Devstral-24B | Dense | ~14 GB | 17.2 | `launch.sh devstral` | Working |
 | Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
-| Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Testing |
-| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | — | `launch.sh qwen35` | Testing |
+| Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Blocked: missing preprocessor_config.json in MLX model |
+| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | — | `launch.sh qwen35` | Blocked: mamba_pool_idx not assigned by MLX stub |
 | Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
 
 All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. Max context is limited by available memory, not a fixed cap — 64GB unified memory supports long context for most models.
@@ -69,9 +69,9 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 ### Models that need special handling
 
 - **Devstral-24B** — VLM (Mistral3 architecture) requires `--skip-server-warmup` to avoid image processor CUDA assertion. Vision not supported on MLX.
-- **Qwen3.5-27B** — DeltaNet layers may degrade at 4-bit. Try 8-bit if quality is poor.
-- **Coder-Next 80B** — Tight fit in 64GB. Monitor `memory_pressure` for swapping.
-- **Gemma 4 26B** — MoE expert calibration may be uneven at 4-bit.
+- **Gemma 4 26B** — Blocked. MLX 4-bit model missing `preprocessor_config.json` for the VLM processor. SGLang auto-detects Gemma4 as multimodal but can't load the image processor.
+- **Qwen3.5-27B** — Blocked. DeltaNet hybrid model requires `mamba_pool_idx` assignment that the MLX backend stub doesn't implement. The scheduler's mamba radix cache crashes when trying to cache finished requests. Needs deeper MLX backend integration for hybrid SSM models.
+- **Coder-Next 80B** — Tight fit in 64GB (~42 GB weights + KV cache). Monitor `memory_pressure` for swapping. Also a DeltaNet hybrid — likely hits the same mamba_pool_idx issue as Qwen3.5.
 
 ## Performance (M4 Pro 64GB, SGLang + MLX, updated 2026-04-12)
 

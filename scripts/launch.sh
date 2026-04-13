@@ -47,7 +47,7 @@ apply_preset() {
         coder-next)
             MODEL="${MODEL:-mlx-community/Qwen3-Coder-Next-4bit}"
             CTX=8192; MAX_RUNNING=1; CHUNKED=4096
-            WATCHDOG=1800
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4)
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
@@ -58,6 +58,7 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
+            WARMUP="--skip-server-warmup"
             ;;
         *)
             echo "Unknown model: $1"
