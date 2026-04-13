@@ -49,8 +49,8 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 | Devstral-24B | Dense | ~14 GB | 17.2 | `launch.sh devstral` | Working |
 | Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
 | Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Blocked: missing preprocessor_config.json in MLX model |
-| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | — | `launch.sh qwen35` | Blocked: mamba_pool_idx not assigned by MLX stub |
-| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Blocked: DeltaNet hybrid (same mamba issue as Qwen3.5) |
+| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | 14.5 | `launch.sh qwen35` | Working (single-user only, concurrent crashes) |
+| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
 
 All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. Max context is limited by available memory, not a fixed cap — 64GB unified memory supports long context for most models.
 
@@ -70,8 +70,8 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 - **Devstral-24B** — VLM (Mistral3 architecture) requires `--skip-server-warmup` to avoid image processor CUDA assertion. Vision not supported on MLX.
 - **Gemma 4 26B** — Blocked. MLX 4-bit model missing `preprocessor_config.json` for the VLM processor. SGLang auto-detects Gemma4 as multimodal but can't load the image processor.
-- **Qwen3.5-27B** — Blocked. DeltaNet hybrid model requires `mamba_pool_idx` assignment that the MLX backend stub doesn't implement. The scheduler's mamba radix cache crashes when trying to cache finished requests. Needs deeper MLX backend integration for hybrid SSM models.
-- **Coder-Next 80B** — Tight fit in 64GB (~42 GB weights + KV cache). Monitor `memory_pressure` for swapping. Also a DeltaNet hybrid — likely hits the same mamba_pool_idx issue as Qwen3.5.
+- **Qwen3.5-27B** — Working for single-user inference. Our patch overrides `hybrid_gdn_config` to prevent MambaRadixCache creation. Concurrent requests crash with `TypeError: Unsupported cache type: ArraysCache` in the MLX batched decode merge path.
+- **Coder-Next 80B** — Tight fit in 64GB (~42 GB weights + KV cache). Same DeltaNet hybrid architecture as Qwen3.5; should work for single-user with our patches.
 
 ## Performance (M4 Pro 64GB, SGLang + MLX, updated 2026-04-12)
 
@@ -136,6 +136,26 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 - Single-user with 256 in/256 out: TPOT 53.6ms, throughput 62.6 tok/s
 - Peak concurrent throughput: 82.1 tok/s @16
 - TPOT flat across all context lengths (14ms at 128 and 32K)
+
+### Qwen3.5-27B DeltaNet 4-bit
+
+27B DeltaNet hybrid (linear attention + standard attention). ~15 GB 4-bit weights. Max tested context: 32K. Single-user only (concurrent crashes on batched decode).
+
+| Context Length | TPOT (ms) | tok/s | TTFT (ms) |
+|:--------------:|:---------:|:-----:|:---------:|
+| 128 | 68.5 | 14.5 | 81 |
+| 512 | 68.6 | 14.5 | 87 |
+| 1K | 68.8 | 14.5 | 86 |
+| 4K | 68.6 | 14.5 | 92 |
+| 8K | 68.9 | 14.4 | 83 |
+| 16K | 68.6 | 14.4 | 105 |
+| **32K** | **68.5** | **14.3** | **129** |
+
+**Notes:**
+- **TPOT: 68.5ms flat (14.5 tok/s)** — similar to Devstral (dense 24B), expected since both read ~14-15 GB of weights per token
+- Concurrent requests crash: MLX's `ArraysCache` type (used by DeltaNet layers) isn't supported by the batched decode `_merge_kv_caches` function
+- Our patch overrides `hybrid_gdn_config`/`mamba2_config` to prevent the scheduler from creating MambaRadixCache, which fixed the startup crash
+- Thinking model: generates `<think>` tokens before response content. Use without `--reasoning-parser` for benchmarking.
 
 ## Patches
 

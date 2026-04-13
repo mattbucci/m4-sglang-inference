@@ -272,7 +272,7 @@ index 67cce0e..1ec1f1b 100644
          self._verify_transformers_version()
  
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
-index 36fca4c..c668d69 100644
+index 36fca4c..c893c54 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
 @@ -61,6 +61,24 @@ class _DummyKVCache(KVCache):
@@ -300,7 +300,33 @@ index 36fca4c..c668d69 100644
  class _DummyModel:
      """Minimal stand-in so that `inspect.signature(model.forward)` and
      `getattr(model, ...)` calls in ModelRunner.__init__ don't crash."""
-@@ -145,6 +163,11 @@ class MlxModelRunnerStub(ModelRunner):
+@@ -78,6 +96,25 @@ class MlxModelRunnerStub(ModelRunner):
+     the minimal bookkeeping pools needed by the scheduler are created.
+     """
+ 
++    # --- Fix 1: Prevent scheduler from detecting hybrid SSM models ---
++    # MLX manages DeltaNet/Mamba state internally, so the scheduler should
++    # NOT create a MambaRadixCache or try to assign mamba_pool_idx.
++    # Without these overrides, Qwen3.5 and Coder-Next crash because the
++    # scheduler's mamba_radix_cache.cache_finished_req() tries to access
++    # req.mamba_pool_idx which is never assigned by the MLX stub.
++
++    @property
++    def hybrid_gdn_config(self):
++        return None
++
++    @property
++    def mamba2_config(self):
++        return None
++
++    @property
++    def linear_attn_model_spec(self):
++        return None
++
+     def load_model(self):
+         """Set only the metadata that downstream code needs, without
+         loading any PyTorch model weights."""
+@@ -145,6 +182,11 @@ class MlxModelRunnerStub(ModelRunner):
              enable_memory_saver=False,
          )
  
@@ -313,10 +339,25 @@ index 36fca4c..c668d69 100644
              size=self.max_total_num_tokens,
              dtype=self.kv_cache_dtype,
 diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-index 6cee8a3..e753678 100644
+index 6cee8a3..81593be 100644
 --- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
 +++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-@@ -64,12 +64,18 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -39,6 +39,14 @@ class MlxTpModelWorker(TpModelWorker):
+             MlxModelRunnerStub,
+         )
+ 
++        # --- Fix 2: Disable multimodal on MLX ---
++        # MLX backend does text-only inference. VLM processors (Pixtral,
++        # Qwen3-VL, Gemma4) call image.to(device) which triggers CUDA
++        # assertions on MPS. Force multimodal off so the scheduler never
++        # tries to load an image processor.
++        self.model_config.is_multimodal = False
++        self.server_args.enable_multimodal = False
++
+         self._model_runner = MlxModelRunnerStub(
+             model_config=self.model_config,
+             mem_fraction_static=self.server_args.mem_fraction_static,
+@@ -64,12 +72,18 @@ class MlxTpModelWorker(TpModelWorker):
              model_path=self.server_args.model_path,
              trust_remote_code=self.server_args.trust_remote_code,
          )
@@ -336,7 +377,7 @@ index 6cee8a3..e753678 100644
      def forward_batch_generation(
          self,
          model_worker_batch: ModelWorkerBatch,
-@@ -111,13 +117,9 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -111,13 +125,9 @@ class MlxTpModelWorker(TpModelWorker):
                  can_run_cuda_graph=False,
              )
  

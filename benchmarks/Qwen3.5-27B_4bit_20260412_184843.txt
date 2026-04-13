@@ -1,0 +1,30 @@
+=============================================
+BENCHMARK: Qwen3.5-27B 4bit
+Model:     mlx-community/Qwen3.5-27B-4bit
+Hardware:  Apple M4 Pro (64GB)
+Backend:   SGLang + MLX
+Date:      2026-04-12 18:48
+Server:    http://localhost:23334
+=============================================
+
+--- Smoke test ---
+  Response: Thinking Process:
+
+1.  **Analyze the Request:**
+    *   Task: Say
+
+--- Decode throughput (256 in / 256 out) ---
+Conc      TPOT(ms)    Throughput    TTFT(ms)    E2E(s)    
+------------------------------------------------------------
+1                                                         
+2                                                         
+4                                                         
+8                                                         
+16                                                        
+
+--- Context sweep (single user, 64 out) ---
+Input       TPOT(ms)    Throughput    TTFT(ms)  
+----------------------------------------------------
+128         OOM/ERR     -             -         
+  (stopping context sweep — server may have crashed)
+
