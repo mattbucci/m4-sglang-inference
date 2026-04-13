@@ -49,8 +49,8 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 | Devstral-24B | Dense | ~14 GB | 17.2 | `launch.sh devstral` | Working |
 | Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
 | Gemma 4 26B | MoE (128 experts) | ~15 GB | 60.6 | `launch.sh gemma4` | Working |
-| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | 14.5 | `launch.sh qwen35` | Working (single-user only, concurrent crashes) |
-| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | 55.3 | `launch.sh coder-next` | Working (single-user) |
+| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | 14.5 | `launch.sh qwen35` | Working |
+| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | 55.3 | `launch.sh coder-next` | Working |
 
 All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. Max context is limited by available memory, not a fixed cap — 64GB unified memory supports long context for most models.
 
@@ -70,8 +70,8 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 - **Devstral-24B** — VLM (Mistral3 architecture) requires `--skip-server-warmup` to avoid image processor CUDA assertion. Vision not supported on MLX.
 - **Gemma 4 26B** — Working. Our patch disables multimodal in `_handle_mps_backends` (before TokenizerManager forks) and forces `torch_native` attention (Triton not available on macOS).
-- **Qwen3.5-27B** — Working for single-user inference. Our patch overrides `hybrid_gdn_config` to prevent MambaRadixCache creation. Concurrent requests crash with `TypeError: Unsupported cache type: ArraysCache` in the MLX batched decode merge path.
-- **Coder-Next 80B** — Working single-user. ~42 GB weights leaves ~12 GB for KV cache + OS. Same DeltaNet hybrid as Qwen3.5 — concurrent requests crash on `ArraysCache` merge.
+- **Qwen3.5-27B** — Working including concurrent requests. Our patch overrides `hybrid_gdn_config` to prevent MambaRadixCache creation and adds `ArraysCache` support to the batched decode merge path.
+- **Coder-Next 80B** — Working including concurrent (with ArraysCache fix). ~42 GB weights leaves ~12 GB for KV cache + OS.
 
 ## Performance (M4 Pro 64GB, SGLang + MLX, updated 2026-04-12)
 
@@ -153,7 +153,7 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 **Notes:**
 - **TPOT: 68.5ms flat (14.5 tok/s)** — similar to Devstral (dense 24B), expected since both read ~14-15 GB of weights per token
-- Concurrent requests crash: MLX's `ArraysCache` type (used by DeltaNet layers) isn't supported by the batched decode `_merge_kv_caches` function
+- Concurrent requests now work — our patch adds `ArraysCache` support to `_merge_kv_caches`. 4 concurrent: 21.6 tok/s throughput, TPOT 142ms
 - Our patch overrides `hybrid_gdn_config`/`mamba2_config` to prevent the scheduler from creating MambaRadixCache, which fixed the startup crash
 - Thinking model: generates `<think>` tokens before response content. Use without `--reasoning-parser` for benchmarking.
 
@@ -191,7 +191,7 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 - **TPOT: 18ms flat (55.3 tok/s decode)** — 80B model running at 55 tok/s on a Mac mini
 - Only ~12 GB free after model weights — tight for KV cache at long context
 - MoE activates only ~3B of 80B params per token, making decode speed comparable to much smaller models
-- DeltaNet hybrid architecture — concurrent requests crash on `ArraysCache` merge (same as Qwen3.5)
+- DeltaNet hybrid — concurrent requests now work with our `ArraysCache` merge patch
 - `sglang.bench_serving` reports 34.4 tok/s throughput (includes overhead); raw TPOT 18ms = 55.3 tok/s
 
 ## Patches
