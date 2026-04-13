@@ -5,20 +5,22 @@ Apply in order with `scripts/setup.sh` or manually:
 
 ```bash
 cd components/sglang
-git apply --exclude='test/*' ../../patches/001-mlx-request-cleanup.patch
+git apply ../../patches/001-mlx-radix-cache.patch
 git apply ../../patches/002-mps-backend-defaults.patch
 git apply ../../patches/003-mlx-skip-quantization-check.patch
-git apply ../../patches/004-mlx-stub-hybrid-ssm-fixes.patch
-git apply ../../patches/005-mlx-arrayscache-batched-decode.patch
+git apply ../../patches/004-mlx-lifecycle-and-hybrid-fixes.patch
 ```
 
-## 001-mlx-request-cleanup (PR #22632)
+## 001-mlx-radix-cache (PR #21509)
 
-**Source:** https://github.com/sgl-project/sglang/pull/22632
+**Source:** https://github.com/sgl-project/sglang/pull/21509
 
-Fixes premature request-state cleanup in the MLX backend that causes `KeyError`
-during concurrent multi-request decoding. Replaces implicit batch-membership-based
-cleanup with explicit lifecycle hooks (`cleanup_requests`, `clear_runtime_state`).
+Adds radix cache support to the MLX backend. Introduces a Metal-native KV pool
+(`MlxKVPool`) that auto-sizes from available memory, zero-copy gather for
+prefix-cached prefills, and batched attention for BS>1 decode. ~102x prefill
+throughput improvement on cache hits.
+
+New files: `kv_cache/` sub-package (kv_pool, contiguous_cache, attention_wrapper, model_patching).
 
 ## 002-mps-backend-defaults
 
@@ -34,17 +36,19 @@ Skips `_verify_quantization()` when MLX backend is active. MLX models have
 `quantization_config` without a `quant_method` field, causing SGLang's
 verification to fail with `Unknown quantization method: ""`.
 
-## 004-mlx-stub-hybrid-ssm-fixes
+## 004-mlx-lifecycle-and-hybrid-fixes
 
-Fixes for hybrid DeltaNet/Mamba models (Qwen3.5, Coder-Next) on MLX:
+Combined fix for request lifecycle management and hybrid DeltaNet/Mamba models:
+
+**Lifecycle hooks** (from PR #22632 intent, adapted for radix cache rewrite):
+- Add `cleanup_requests()` and `clear_runtime_state()` stubs to base `TpModelWorker`
+- Implement them in `MlxTpModelWorker` to call `remove_request()`/`clear()`
+- Wire scheduler `flush_cache` → `clear_runtime_state()`
+- Wire `_handle_finished_req` → `cleanup_requests()`
+- Remove batch-membership-based auto-cleanup from `_forward_batch_generation_mlx`
+
+**Hybrid SSM model support** (Qwen3.5, Coder-Next):
 - Override `hybrid_gdn_config`/`mamba2_config`/`linear_attn_model_spec` → None
   in `MlxModelRunnerStub` to prevent scheduler from creating `MambaRadixCache`
 - Add `_DummyMambaPool` for scheduler runtime checker compatibility
 - Force `is_multimodal=False` in MLX tp_worker subprocess
-
-## 005-mlx-arrayscache-batched-decode
-
-Adds `ArraysCache` support to `_merge_kv_caches()` for batched decode.
-DeltaNet/linear attention layers use `ArraysCache` (not `KVCache`) for state.
-Without this, concurrent requests crash with `TypeError: Unsupported cache type: ArraysCache`.
-Also adds a generic fallback for any cache type with a `.merge()` classmethod.

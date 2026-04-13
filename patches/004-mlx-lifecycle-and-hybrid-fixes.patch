@@ -1,0 +1,144 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 3dd8520..19c7594 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -57,6 +57,16 @@ class _DummyKVCache(KVCache):
+         return 0, 0
+ 
+ 
++class _DummyMambaPool:
++    def __init__(self):
++        self.size = 1
++        self.free_slots = torch.tensor([], dtype=torch.long)
++    def available_size(self):
++        return self.size
++    def clear(self):
++        pass
++
++
+ class _DummyModel:
+     """Minimal stand-in so that `inspect.signature(model.forward)` and
+     `getattr(model, ...)` calls in ModelRunner.__init__ don't crash."""
+@@ -78,6 +88,18 @@ class MlxModelRunnerStub(ModelRunner):
+         self._mlx_pool_size = mlx_pool_size
+         super().__init__(*args, **kwargs)
+ 
++    @property
++    def hybrid_gdn_config(self):
++        return None
++
++    @property
++    def mamba2_config(self):
++        return None
++
++    @property
++    def linear_attn_model_spec(self):
++        return None
++
+     def load_model(self):
+         """Set only the metadata that downstream code needs, without
+         loading any PyTorch model weights."""
+@@ -148,6 +170,8 @@ class MlxModelRunnerStub(ModelRunner):
+             enable_memory_saver=False,
+         )
+ 
++        self.req_to_token_pool.mamba_pool = _DummyMambaPool()
++
+         dummy_kv = _DummyKVCache(
+             size=self.max_total_num_tokens,
+             dtype=self.kv_cache_dtype,
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index f73bb5d..af03362 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -34,6 +34,9 @@ class MlxTpModelWorker(TpModelWorker):
+             MlxModelRunnerStub,
+         )
+ 
++        self.model_config.is_multimodal = False
++        self.server_args.enable_multimodal = False
++
+         logger.info("Initializing MlxModelRunner for end-to-end MLX inference")
+         init_kwargs = dict(
+             model_path=self.server_args.model_path,
+@@ -65,13 +68,19 @@ class MlxTpModelWorker(TpModelWorker):
+             mlx_pool_size=self._mlx_runner.pool_size,
+         )
+ 
+-        self._mlx_active_rids: set[str] = set()
+         self._mlx_pool_initialized = False
+ 
+     def get_pad_input_ids_func(self):
+         """Override since the stub ModelRunner has no real model."""
+         return None
+ 
++    def cleanup_requests(self, req_ids: list[str]):
++        for req_id in req_ids:
++            self._mlx_runner.remove_request(req_id)
++
++    def clear_runtime_state(self):
++        self._mlx_runner.clear()
++
+     def _ensure_mlx_pool_initialized(self):
+         """Lazily initialize the MlxKVPool after the stub's pools are ready."""
+         if not self._mlx_pool_initialized:
+@@ -116,16 +125,6 @@ class MlxTpModelWorker(TpModelWorker):
+                 can_run_cuda_graph=False,
+             )
+ 
+-        # Auto-cleanup: remove MLX state for requests no longer in the batch.
+-        current_rids = {req.rid for req in reqs}
+-        stale_rids = self._mlx_active_rids - current_rids
+-        for rid in stale_rids:
+-            self._mlx_runner.remove_request(rid)
+-        if forward_mode.is_decode():
+-            self._mlx_active_rids = current_rids
+-        else:
+-            self._mlx_active_rids = (self._mlx_active_rids - stale_rids) | current_rids
+-
+         next_token_ids_list = []
+ 
+         if forward_mode.is_extend():
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+index b411877..6418831 100644
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -3134,6 +3134,7 @@ class Scheduler(
+         if self.is_fully_idle():
+             self.cur_batch = None
+             self.last_batch = None
++            self.tp_worker.clear_runtime_state()
+             self.tree_cache.reset()
+             self.req_to_token_pool.clear()
+             self.token_to_kv_pool_allocator.clear()
+diff --git a/python/sglang/srt/managers/scheduler_output_processor_mixin.py b/python/sglang/srt/managers/scheduler_output_processor_mixin.py
+index 3bbd3e5..d448f1c 100644
+--- a/python/sglang/srt/managers/scheduler_output_processor_mixin.py
++++ b/python/sglang/srt/managers/scheduler_output_processor_mixin.py
+@@ -555,6 +555,9 @@ class SchedulerOutputProcessorMixin:
+ 
+         self.maybe_collect_customized_info(i, req, logits_output)
+ 
++        if req.finished():
++            self.tp_worker.cleanup_requests([req.rid])
++
+     def _maybe_update_reasoning_tokens(
+         self: Scheduler, req: Req, next_token_id: Union[int, List[int]]
+     ):
+diff --git a/python/sglang/srt/managers/tp_worker.py b/python/sglang/srt/managers/tp_worker.py
+index 226139d..03e3710 100644
+--- a/python/sglang/srt/managers/tp_worker.py
++++ b/python/sglang/srt/managers/tp_worker.py
+@@ -426,6 +426,12 @@ class TpModelWorker(BaseTpWorker):
+             self.model_runner.token_to_kv_pool.size,
+         )
+ 
++    def cleanup_requests(self, req_ids: List[str]):
++        pass
++
++    def clear_runtime_state(self):
++        pass
++
+     def is_dllm(self):
+         return self.dllm_algorithm is not None
+ 

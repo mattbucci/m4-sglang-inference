@@ -19,6 +19,9 @@ source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_BRANCH="main"
+# Pin to a specific commit to ensure patches apply cleanly.
+# Update this hash when rebasing patches onto a newer upstream.
+SGLANG_COMMIT="1f8df9705"  # 2026-04-12: Fix broken streaming response (#22549)
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -59,23 +62,18 @@ echo "Python:  $PY_VERSION ($PYTHON_CMD)"
 # -------------------------------------------------------------------
 echo ""
 if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
-    echo "[1/3] Cloning SGLang (main branch with MLX backend)..."
+    echo "[1/3] Cloning SGLang at pinned commit ${SGLANG_COMMIT}..."
     rm -rf "$SGLANG_DIR"
     mkdir -p "$(dirname "$SGLANG_DIR")"
-    git clone --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
+    git clone "$SGLANG_REPO" "$SGLANG_DIR"
+    cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
 
-    # Apply patches in order (001 excludes test file that may conflict)
+    # Apply patches in order
     if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
         for patch in "$REPO_DIR/patches/"*.patch; do
-            pname=$(basename "$patch")
-            if [[ "$pname" == 001-* ]]; then
-                echo "  Applying $pname (excluding tests)..."
-                git apply --exclude='test/*' "$patch" || echo "  WARNING: $pname failed to apply"
-            else
-                echo "  Applying $pname..."
-                git apply "$patch" || echo "  WARNING: $pname failed to apply"
-            fi
+            echo "  Applying $(basename "$patch")..."
+            git apply "$patch" || echo "  WARNING: $(basename "$patch") failed to apply"
         done
     else
         echo "  No patches to apply"

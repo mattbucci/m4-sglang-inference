@@ -1,0 +1,1479 @@
+diff --git a/python/sglang/bench_one_batch.py b/python/sglang/bench_one_batch.py
+index b462bb7d2c26..4bf3927c2505 100644
+--- a/python/sglang/bench_one_batch.py
++++ b/python/sglang/bench_one_batch.py
+@@ -497,10 +497,18 @@ class _MlxBenchRunner:
+     def __init__(self, model_runner, server_args):
+         from sglang.srt.hardware_backend.mlx.model_runner import MlxModelRunner
+ 
+-        self.mlx_runner = MlxModelRunner(
++        # Radix cache requires the scheduler's allocator/trie; disable in
++        # standalone bench mode where no scheduler is present.
++        init_kwargs = dict(
+             model_path=server_args.model_path,
+             trust_remote_code=server_args.trust_remote_code,
++            disable_radix_cache=True,
++            mem_fraction_static=server_args.mem_fraction_static,
+         )
++        if server_args.max_total_tokens is not None:
++            init_kwargs["pool_size"] = server_args.max_total_tokens
++        self.mlx_runner = MlxModelRunner(**init_kwargs)
++        self.mlx_runner.init_kv_pool(req_to_token_pool=None)
+         self.fake_torch_runner = model_runner
+ 
+     def clear(self):
+@@ -508,9 +516,19 @@ def clear(self):
+ 
+     def extend(self, reqs):
+         req_ids = [str(req.rid) for req in reqs]
+-        token_ids_list = [[int(t) for t in req.fill_ids] for req in reqs]
+-        next_token_ids = self.mlx_runner.prefill_batch(req_ids, token_ids_list)
+-        return torch.tensor(next_token_ids), None, req_ids
++        results = []
++        for rid, req in zip(req_ids, reqs):
++            token_ids = [int(t) for t in req.fill_ids]
++            next_token = self.mlx_runner.prefill(
++                req_id=rid,
++                new_token_ids=token_ids,
++                full_token_ids=token_ids,
++                prefix_slot_ids=[],
++                new_slot_ids=[],
++                req_pool_idx=0,
++            )
++            results.append(next_token)
++        return torch.tensor(results), None, req_ids
+ 
+     def decode(self, next_token_ids, req_ids):
+         next_token_ids = self.mlx_runner.decode_batch(req_ids)
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
+new file mode 100644
+index 000000000000..208e64452b0b
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
+@@ -0,0 +1,35 @@
++"""KV cache components for the MLX backend."""
++
++from sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper import (
++    BatchedDecodeContext,
++    MLXAttentionWrapper,
++    clear_context,
++    get_context,
++    set_context,
++)
++from sglang.srt.hardware_backend.mlx.kv_cache.contiguous_cache import (
++    ContiguousKVCache,
++    OffsetCache,
++    PoolBackedCache,
++)
++from sglang.srt.hardware_backend.mlx.kv_cache.kv_pool import MlxKVPool
++from sglang.srt.hardware_backend.mlx.kv_cache.model_patching import (
++    find_attention_layers,
++    get_num_layers,
++    patch_model_attention,
++)
++
++__all__ = [
++    "BatchedDecodeContext",
++    "clear_context",
++    "ContiguousKVCache",
++    "find_attention_layers",
++    "get_context",
++    "get_num_layers",
++    "MLXAttentionWrapper",
++    "MlxKVPool",
++    "OffsetCache",
++    "patch_model_attention",
++    "PoolBackedCache",
++    "set_context",
++]
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+new file mode 100644
+index 000000000000..b3e4e2586c88
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -0,0 +1,134 @@
++"""Batched decode attention wrapper for MLX backend."""
++
++from __future__ import annotations
++
++import threading
++from dataclasses import dataclass
++from typing import Any, Optional
++
++import mlx.core as mx
++import mlx.nn as nn
++
++from sglang.srt.hardware_backend.mlx.kv_cache.contiguous_cache import ContiguousKVCache
++
++_thread_local = threading.local()
++
++
++@dataclass
++class BatchedDecodeContext:
++    """Context set before batched decode, read by attention wrappers."""
++
++    batch_size: int
++    seq_lens: list[int]  # per-request token count before the new token
++    # layer_caches[layer_idx][req_idx] = ContiguousKVCache
++    layer_caches: list[list[ContiguousKVCache]]
++
++
++def set_context(ctx: Optional[BatchedDecodeContext]) -> None:
++    _thread_local.batched_ctx = ctx
++
++
++def get_context() -> Optional[BatchedDecodeContext]:
++    return getattr(_thread_local, "batched_ctx", None)
++
++
++def clear_context() -> None:
++    _thread_local.batched_ctx = None
++
++
++class MLXAttentionWrapper(nn.Module):
++    """Wraps an mlx-lm Attention for batched decode (BS>1).
++
++    When ``BatchedDecodeContext`` is set, performs per-request RoPE,
++    cache writes, and batched SDPA.  Otherwise delegates to inner module.
++    """
++
++    def __init__(self, inner: nn.Module, layer_idx: int):
++        super().__init__()
++        object.__setattr__(self, "_inner", inner)
++        object.__setattr__(self, "_layer_idx", layer_idx)
++
++    def __call__(self, x: mx.array, mask: Any = None, cache: Any = None) -> mx.array:
++        ctx = get_context()
++        if ctx is None:
++            return self._inner(x, mask=mask, cache=cache)
++        return self._batched_decode(x, ctx)
++
++    def _batched_decode(self, x: mx.array, ctx: BatchedDecodeContext) -> mx.array:
++        inner = self._inner
++        layer_idx = self._layer_idx
++        B = ctx.batch_size
++
++        queries = inner.q_proj(x)
++        keys = inner.k_proj(x)
++        values = inner.v_proj(x)
++
++        head_dim = queries.shape[-1] // inner.n_heads
++        queries = queries.reshape(B, 1, inner.n_heads, head_dim)
++        keys = keys.reshape(B, 1, inner.n_kv_heads, head_dim)
++        values = values.reshape(B, 1, inner.n_kv_heads, head_dim)
++
++        if hasattr(inner, "q_norm"):
++            queries = inner.q_norm(queries)
++        if hasattr(inner, "k_norm"):
++            keys = inner.k_norm(keys)
++
++        queries = queries.transpose(0, 2, 1, 3)
++        keys = keys.transpose(0, 2, 1, 3)
++        values = values.transpose(0, 2, 1, 3)
++
++        # Vectorized RoPE with per-batch offsets
++        offsets = mx.array(ctx.seq_lens, dtype=mx.int32)
++        queries = inner.rope(queries, offset=offsets)
++        keys = inner.rope(keys, offset=offsets)
++
++        layer_caches = ctx.layer_caches[layer_idx]
++        max_len = max(ctx.seq_lens) + 1
++
++        # TODO: replace per-request loop with native batched/ragged
++        # attention once mx.fast.scaled_dot_product_attention supports
++        # variable-length sequences.
++        all_k = []
++        all_v = []
++
++        for i in range(B):
++            layer_caches[i].write_token(keys[i : i + 1], values[i : i + 1])
++
++            k_all, v_all = layer_caches[i].get_kv()
++            curr_len = layer_caches[i].offset
++
++            if curr_len < max_len:
++                pad = max_len - curr_len
++                k_pad = mx.zeros(
++                    (1, inner.n_kv_heads, pad, head_dim), dtype=k_all.dtype
++                )
++                v_pad = mx.zeros(
++                    (1, inner.n_kv_heads, pad, head_dim), dtype=v_all.dtype
++                )
++                k_all = mx.concatenate([k_all, k_pad], axis=2)
++                v_all = mx.concatenate([v_all, v_pad], axis=2)
++
++            all_k.append(k_all)
++            all_v.append(v_all)
++
++        keys_b = mx.concatenate(all_k, axis=0)
++        values_b = mx.concatenate(all_v, axis=0)
++
++        attn_mask = None
++        seq_lens_plus1 = [s + 1 for s in ctx.seq_lens]
++        if min(seq_lens_plus1) < max_len:
++            positions = mx.arange(max_len)
++            valid_lens = mx.array(seq_lens_plus1, dtype=mx.int32)
++            mask_bool = positions[None, :] >= valid_lens[:, None]
++            attn_mask = mx.where(
++                mask_bool[:, None, None, :],
++                mx.array(-1e9, dtype=queries.dtype),
++                mx.array(0.0, dtype=queries.dtype),
++            )
++
++        output = mx.fast.scaled_dot_product_attention(
++            queries, keys_b, values_b, scale=inner.scale, mask=attn_mask
++        )
++
++        output = output.transpose(0, 2, 1, 3).reshape(B, 1, -1)
++        return inner.o_proj(output)
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
+new file mode 100644
+index 000000000000..254d2be08f00
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
+@@ -0,0 +1,205 @@
++"""ContiguousKVCache, PoolBackedCache and OffsetCache for MLX backend."""
++
++from __future__ import annotations
++
++from typing import TYPE_CHECKING
++
++import mlx.core as mx
++
++if TYPE_CHECKING:
++    from sglang.srt.hardware_backend.mlx.kv_cache.kv_pool import MlxKVPool
++
++
++class OffsetCache:
++    """Data-free shim satisfying mlx-lm's cache protocol.
++
++    Provides ``make_mask`` and ``state`` without storing actual K/V.
++    """
++
++    def __init__(self, offset: int = 0):
++        self.offset = offset
++
++    @property
++    def state(self):
++        return ()  # Empty — safe for mx.eval unpacking
++
++    def make_mask(self, N, **kwargs):
++        return None if N == 1 else "causal"
++
++    def update_and_fetch(self, keys, values):
++        raise RuntimeError("OffsetCache should not store data")
++
++
++_DEFAULT_MAX_SEQ_LEN = 4096
++
++
++class ContiguousKVCache:
++    """Pre-allocated KV buffer for one request × one layer.
++
++    Shape ``(1, n_kv_heads, max_seq_len, head_dim)``.  Slice assignment
++    instead of ``mx.concatenate``.  Lazy-allocated on first write.
++    """
++
++    __slots__ = ("keys", "values", "offset", "max_seq_len")
++
++    def __init__(
++        self,
++        n_kv_heads: int | None = None,
++        head_dim: int | None = None,
++        max_seq_len: int = _DEFAULT_MAX_SEQ_LEN,
++        dtype: mx.Dtype | None = None,
++    ):
++        if n_kv_heads is not None and head_dim is not None and dtype is not None:
++            self.keys = mx.zeros((1, n_kv_heads, max_seq_len, head_dim), dtype=dtype)
++            self.values = mx.zeros((1, n_kv_heads, max_seq_len, head_dim), dtype=dtype)
++        else:
++            self.keys = None
++            self.values = None
++        self.offset = 0
++        self.max_seq_len = max_seq_len
++
++    def _allocate(self, keys: mx.array) -> None:
++        """Allocate buffers matching the first key tensor's shape."""
++        B, n_kv_heads, _, head_dim = keys.shape
++        self.keys = mx.zeros(
++            (B, n_kv_heads, self.max_seq_len, head_dim), dtype=keys.dtype
++        )
++        self.values = mx.zeros(
++            (B, n_kv_heads, self.max_seq_len, head_dim), dtype=keys.dtype
++        )
++
++    @property
++    def state(self):
++        """Arrays for ``mx.eval`` unpacking."""
++        if self.keys is None:
++            return ()
++        return (self.keys, self.values)
++
++    def make_mask(self, N, **kwargs):
++        return None if N == 1 else "causal"
++
++    def _grow(self, required: int) -> None:
++        """Double the buffer until it can hold *required* tokens."""
++        new_max = self.max_seq_len
++        while new_max < required:
++            new_max *= 2
++        B, n_kv_heads, _, head_dim = self.keys.shape
++        new_k = mx.zeros((B, n_kv_heads, new_max, head_dim), dtype=self.keys.dtype)
++        new_v = mx.zeros((B, n_kv_heads, new_max, head_dim), dtype=self.values.dtype)
++        if self.offset > 0:
++            new_k[:, :, : self.offset, :] = self.keys[:, :, : self.offset, :]
++            new_v[:, :, : self.offset, :] = self.values[:, :, : self.offset, :]
++        self.keys = new_k
++        self.values = new_v
++        self.max_seq_len = new_max
++
++    def update_and_fetch(
++        self, keys: mx.array, values: mx.array
++    ) -> tuple[mx.array, mx.array]:
++        """Append K/V and return all valid K/V up to current offset."""
++        if self.keys is None:
++            self._allocate(keys)
++        S = keys.shape[2]
++        end = self.offset + S
++        if end > self.max_seq_len:
++            self._grow(end)
++        self.keys[:, :, self.offset : end, :] = keys
++        self.values[:, :, self.offset : end, :] = values
++        self.offset = end
++        return self.keys[:, :, :end, :], self.values[:, :, :end, :]
++
++    def write_token(self, k: mx.array, v: mx.array) -> None:
++        """Write one token. k, v shape: (1, n_kv_heads, 1, head_dim)."""
++        self.keys[:, :, self.offset : self.offset + 1, :] = k
++        self.values[:, :, self.offset : self.offset + 1, :] = v
++        self.offset += 1
++
++    def get_kv(self) -> tuple[mx.array, mx.array]:
++        """Return valid K/V: (1, n_kv_heads, offset, head_dim)."""
++        return self.keys[:, :, : self.offset, :], self.values[:, :, : self.offset, :]
++
++
++class PoolBackedCache:
++    """Lazily gathers cached KV from the shared pool during forward pass.
++
++    Each ``update_and_fetch`` gathers this layer's prefix from the pool
++    on demand, keeping operations in the lazy compute graph.  Convert to
++    ``ContiguousKVCache`` via ``to_contiguous`` after the forward pass.
++    """
++
++    __slots__ = (
++        "_pool",
++        "_layer_idx",
++        "_slots",
++        "offset",
++        "_full_keys",
++        "_full_values",
++        "_new_keys",
++        "_new_values",
++    )
++
++    def __init__(
++        self,
++        pool: MlxKVPool,
++        layer_idx: int,
++        slots: mx.array,
++        prefix_len: int,
++    ):
++        self._pool = pool
++        self._layer_idx = layer_idx
++        self._slots = slots
++        self.offset = prefix_len
++        self._full_keys: mx.array | None = None
++        self._full_values: mx.array | None = None
++        self._new_keys: mx.array | None = None
++        self._new_values: mx.array | None = None
++
++    @property
++    def keys(self) -> mx.array | None:
++        return self._full_keys
++
++    @property
++    def values(self) -> mx.array | None:
++        return self._full_values
++
++    @property
++    def state(self):
++        if self._full_keys is not None:
++            return (self._full_keys, self._full_values)
++        return ()
++
++    def make_mask(self, N, **kwargs):
++        return None if N == 1 else "causal"
++
++    def update_and_fetch(
++        self, keys: mx.array, values: mx.array
++    ) -> tuple[mx.array, mx.array]:
++        """Gather cached prefix from pool, concatenate with new K/V."""
++        S = keys.shape[2]
++
++        if self.offset > 0:
++            k_cached, v_cached = self._pool.get_kv(
++                self._layer_idx, self._slots[: self.offset]
++            )
++            # Pool layout (S, n_kv_heads, head_dim) → cache (1, n_kv_heads, S, head_dim)
++            k_cached = k_cached.transpose(1, 0, 2)[None]
++            v_cached = v_cached.transpose(1, 0, 2)[None]
++            k_all = mx.concatenate([k_cached, keys], axis=2)
++            v_all = mx.concatenate([v_cached, values], axis=2)
++        else:
++            k_all = keys
++            v_all = values
++
++        self.offset += S
++        self._full_keys = k_all
++        self._full_values = v_all
++        self._new_keys = keys
++        self._new_values = values
++        return k_all, v_all
++
++    def to_contiguous(self, max_seq_len: int = 4096) -> ContiguousKVCache:
++        """Convert to ContiguousKVCache reusing forward-pass arrays."""
++        cache = ContiguousKVCache(max_seq_len=max_seq_len)
++        if self._full_keys is not None:
++            cache.update_and_fetch(self._full_keys, self._full_values)
++        return cache
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py
+new file mode 100644
+index 000000000000..636c20d98628
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py
+@@ -0,0 +1,80 @@
++"""Flat KV pool with per-layer buffers of shape (pool_size, n_kv_heads, head_dim).
++
++Slot 0 is reserved as padding (1-based indexing).
++"""
++
++import logging
++
++import mlx.core as mx
++
++logger = logging.getLogger(__name__)
++
++
++class MlxKVPool:
++    """Pre-allocated KV pool indexed by integer slot IDs."""
++
++    def __init__(
++        self,
++        pool_size: int,
++        num_layers: int,
++        n_kv_heads: int,
++        head_dim: int,
++        dtype: mx.Dtype = mx.float16,
++    ):
++        self.pool_size = pool_size
++        self.num_layers = num_layers
++        self.n_kv_heads = n_kv_heads
++        self.head_dim = head_dim
++        self.dtype = dtype
++
++        # Per-layer buffers: (pool_size, n_kv_heads, head_dim)
++        self.k_buffer: list[mx.array] = [
++            mx.zeros((pool_size, n_kv_heads, head_dim), dtype=dtype)
++            for _ in range(num_layers)
++        ]
++        self.v_buffer: list[mx.array] = [
++            mx.zeros((pool_size, n_kv_heads, head_dim), dtype=dtype)
++            for _ in range(num_layers)
++        ]
++
++        mem_mb = (pool_size * n_kv_heads * head_dim * 2 * num_layers * dtype.size) / (
++            1024 * 1024
++        )
++        logger.info(
++            f"MlxKVPool: {pool_size} slots × {num_layers} layers "
++            f"× {n_kv_heads} heads × {head_dim} dim, "
++            f"dtype={dtype}, ~{mem_mb:.1f} MB"
++        )
++
++    def set_kv(self, layer_id: int, slots: mx.array, k: mx.array, v: mx.array) -> None:
++        """Scatter K/V into *slots* for one layer."""
++        self.k_buffer[layer_id][slots] = k
++        self.v_buffer[layer_id][slots] = v
++
++    def get_kv(self, layer_id: int, slots: mx.array) -> tuple[mx.array, mx.array]:
++        """Gather K/V from *slots* for one layer."""
++        return self.k_buffer[layer_id][slots], self.v_buffer[layer_id][slots]
++
++    def get_kv_all_layers(self, slots: mx.array) -> tuple[mx.array, mx.array]:
++        """Gather K/V from *slots* across all layers."""
++        k_all = mx.stack([self.k_buffer[i][slots] for i in range(self.num_layers)])
++        v_all = mx.stack([self.v_buffer[i][slots] for i in range(self.num_layers)])
++        return k_all, v_all
++
++    def set_kv_all_layers(
++        self, slots: mx.array, k_all: mx.array, v_all: mx.array
++    ) -> None:
++        """Scatter K/V into *slots* across all layers."""
++        for i in range(self.num_layers):
++            self.set_kv(i, slots, k_all[i], v_all[i])
++
++    def all_buffers(self) -> list[mx.array]:
++        """Return all buffer arrays (for ``mx.eval``)."""
++        return self.k_buffer + self.v_buffer
++
++    def clear(self) -> None:
++        """Zero all buffers."""
++        shape = (self.pool_size, self.n_kv_heads, self.head_dim)
++        for i in range(self.num_layers):
++            self.k_buffer[i] = mx.zeros(shape, dtype=self.dtype)
++            self.v_buffer[i] = mx.zeros(shape, dtype=self.dtype)
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
+new file mode 100644
+index 000000000000..1d1b5065f57a
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
+@@ -0,0 +1,46 @@
++"""Model introspection and attention patching."""
++
++from typing import Any
++
++from sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper import (
++    MLXAttentionWrapper,
++)
++
++
++def find_attention_layers(model: Any) -> tuple[list[Any], str]:
++    """Find transformer layers and the attention attribute name."""
++    root = getattr(model, "language_model", model)
++    container = getattr(root, "model", root)
++    layer_list = getattr(container, "layers", None) or getattr(root, "layers", [])
++
++    if layer_list:
++        sample = layer_list[0]
++        if hasattr(sample, "self_attn"):
++            return layer_list, "self_attn"
++        if hasattr(sample, "attention"):
++            return layer_list, "attention"
++        raise ValueError(f"No attention attribute in layer type {type(sample)}")
++    return layer_list, "self_attn"
++
++
++def patch_model_attention(model: Any) -> int:
++    """Install MLXAttentionWrapper on all attention layers (idempotent).
++
++    The wrapper delegates to the inner module when no BatchedDecodeContext
++    is set, so it is always installed and never removed.
++    """
++    layer_list, attn_attr = find_attention_layers(model)
++    patched = 0
++    for idx, layer in enumerate(layer_list):
++        attn = getattr(layer, attn_attr)
++        if isinstance(attn, MLXAttentionWrapper):
++            continue
++        setattr(layer, attn_attr, MLXAttentionWrapper(attn, idx))
++        patched += 1
++    return patched
++
++
++def get_num_layers(model: Any) -> int:
++    """Return the number of transformer layers."""
++    layer_list, _ = find_attention_layers(model)
++    return len(layer_list)
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index d3d9569a6c25..223f3552aec4 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1,96 +1,79 @@
+-"""End-to-end MLX model runner for Apple Silicon.
++"""MLX model runner for Apple Silicon.
+ 
+-Runs the entire model within MLX, bypassing PyTorch MPS entirely.
++Slot allocation and radix-trie prefix matching are handled by the
++scheduler (``TokenToKVPoolAllocator`` / ``RadixCache``).  This runner
++reads cached KV from ``MlxKVPool``, runs the forward pass, and writes
++new KV back.  Each request also keeps a ``ContiguousKVCache`` for
++decode-time attention.
+ """
+ 
+ import logging
+ import time
+-from dataclasses import dataclass
+ 
+ import mlx.core as mx
++import psutil
+ from mlx_lm import load as mlx_lm_load
+-from mlx_lm.models.cache import (
+-    BatchKVCache,
+-    BatchRotatingKVCache,
+-    KVCache,
+-    RotatingKVCache,
+-    make_prompt_cache,
++
++from sglang.srt.hardware_backend.mlx.kv_cache import (
++    BatchedDecodeContext,
++    ContiguousKVCache,
++    MLXAttentionWrapper,
++    OffsetCache,
++    PoolBackedCache,
++    clear_context,
++    find_attention_layers,
++    get_num_layers,
++    patch_model_attention,
++    set_context,
+ )
++from sglang.srt.hardware_backend.mlx.kv_cache.kv_pool import MlxKVPool
++from sglang.srt.mem_cache.memory_pool import ReqToTokenPool
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+-@dataclass
+-class MlxRequestState:
+-    """Per-request state for MLX inference."""
+-
+-    token_ids: list[int]
+-    cache: list  # List of KVCache per layer
+-    generated_tokens: int = 0
+-
+-
+-def _merge_kv_caches(
+-    caches_list: list[list],
+-) -> list:
+-    """Merge multiple per-request caches into batched caches."""
+-    if not caches_list:
+-        return []
+-
+-    num_layers = len(caches_list[0])
+-    merged = []
+-
+-    for layer_idx in range(num_layers):
+-        layer_caches = [caches[layer_idx] for caches in caches_list]
+-        if isinstance(layer_caches[0], KVCache):
+-            batch_cache = BatchKVCache.merge(layer_caches)
+-        elif isinstance(layer_caches[0], RotatingKVCache):
+-            batch_cache = BatchRotatingKVCache.merge(layer_caches)
+-        else:
+-            raise TypeError(f"Unsupported cache type: {type(layer_caches[0]).__name__}")
+-        merged.append(batch_cache)
+-
+-    return merged
+-
+-
+-def _extract_kv_cache(batch_caches: list, idx: int) -> list:
+-    """Extract a single request's cache from batched caches.
+-
+-    Works with both BatchKVCache (has .extract) and plain KVCache
+-    populated with batched data of shape (B, H, L, D).
+-    """
+-    extracted = []
+-    for cache in batch_caches:
+-        if hasattr(cache, "extract"):
+-            extracted.append(cache.extract(idx))
+-        else:
+-            # Plain KVCache with batched data — slice along batch dim
+-            new_cache = KVCache()
+-            new_cache.keys = mx.contiguous(cache.keys[idx : idx + 1])
+-            new_cache.values = mx.contiguous(cache.values[idx : idx + 1])
+-            new_cache.offset = cache.offset
+-            extracted.append(new_cache)
+-    return extracted
+-
+-
+ class MlxModelRunner:
+-    """Model runner that executes the entire model in MLX.
+-
+-    This avoids the MPS<->MLX tensor bridge overhead by keeping all
+-    computation within MLX.
+-    """
++    """MLX model runner with radix-cache prefix sharing."""
+ 
+     def __init__(
+         self,
+         model_path: str,
+         trust_remote_code: bool = False,
++        disable_radix_cache: bool = False,
++        pool_size: int | None = None,
++        mem_fraction_static: float = 0.8,
+     ):
+         self.model_path = model_path
+         self.trust_remote_code = trust_remote_code
+         self.model = None
+-        self._request_states: dict[str, MlxRequestState] = {}
++        self.disable_radix_cache = disable_radix_cache
++        self._mem_fraction_static = mem_fraction_static
+ 
+         self._load_model()
+ 
++        # Pin MLX allocations to prevent OS paging
++        device_info = mx.device_info()
++        max_wired = int(device_info.get("max_recommended_working_set_size", 0))
++        if max_wired > 0:
++            mx.set_wired_limit(max_wired)
++            logger.info(f"Wired memory limit set to {max_wired / (1024**3):.1f} GB")
++
++        patch_model_attention(self.model)
++
++        self._num_layers = get_num_layers(self.model)
++        self._max_seq_len = 4096  # doubles on overflow
++
++        self._req_caches: dict[str, list[ContiguousKVCache | PoolBackedCache]] = {}
++        self._req_token_ids: dict[str, list[int]] = {}
++        self._cache_pool: list[list[ContiguousKVCache]] = []  # reusable caches
++
++        self._kv_pool: MlxKVPool | None = None
++        self._req_to_token_pool: ReqToTokenPool | None = None
++        self._req_pool_idx: dict[str, int] = {}
++        self._req_synced_offset: dict[str, int] = {}
++
++        self._pool_size = self._compute_pool_size(pool_size)
++
+     @staticmethod
+     def _extract_logits(model_output):
+         """Extract logits from model output, handling both tuple and direct returns."""
+@@ -98,6 +81,29 @@ def _extract_logits(model_output):
+             return model_output[0]
+         return model_output
+ 
++    def _acquire_cache(self) -> list[ContiguousKVCache]:
++        """Get a reusable cache list from the pool, or create a new one."""
++        if self._cache_pool:
++            cache = self._cache_pool.pop()
++            for c in cache:
++                c.offset = 0
++            return cache
++        return [
++            ContiguousKVCache(max_seq_len=self._max_seq_len)
++            for _ in range(self._num_layers)
++        ]
++
++    def _release_cache(self, cache: list[ContiguousKVCache]) -> None:
++        """Return a cache list to the pool for reuse."""
++        self._cache_pool.append(cache)
++
++    @staticmethod
++    def _eval_with_cache(
++        token_result: mx.array, cache: list[ContiguousKVCache | PoolBackedCache]
++    ) -> None:
++        """Evaluate token result and all cache buffers in one mx.eval call."""
++        mx.eval(token_result, *[s for c in cache for s in c.state])
++
+     def _load_model(self):
+         """Load model using mlx_lm."""
+         logger.info(f"Loading MLX model: {self.model_path}")
+@@ -107,200 +113,336 @@ def _load_model(self):
+             self.model_path,
+             tokenizer_config={"trust_remote_code": self.trust_remote_code},
+         )
++        # Force-evaluate weights so mx.get_active_memory() reflects
++        # actual usage before KV pool sizing.
++        mx.eval(self.model.parameters())
+ 
+         load_time = time.time() - start_time
+         logger.info(f"MLX model loaded in {load_time:.2f}s")
+ 
++    def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
++        """Return (n_kv_heads, head_dim, dtype) from the model."""
++        layer_list, attn_attr = find_attention_layers(self.model)
++        if not layer_list:
++            raise RuntimeError("Cannot determine attention config: no layers found")
++        sample_attn = getattr(layer_list[0], attn_attr)
++        if isinstance(sample_attn, MLXAttentionWrapper):
++            sample_attn = sample_attn._inner
++        n_kv_heads = sample_attn.n_kv_heads
++        if hasattr(sample_attn, "head_dim"):
++            head_dim = sample_attn.head_dim
++        elif hasattr(sample_attn, "k_proj") and hasattr(sample_attn.k_proj, "weight"):
++            head_dim = sample_attn.k_proj.weight.shape[0] // n_kv_heads
++        else:
++            raise RuntimeError("Cannot determine head_dim from attention module")
++        dtype = mx.float16
++        if hasattr(sample_attn, "k_proj") and hasattr(sample_attn.k_proj, "weight"):
++            dtype = sample_attn.k_proj.weight.dtype
++        return n_kv_heads, head_dim, dtype
++
++    def _compute_pool_size(self, explicit_size: int | None) -> int:
++        """Determine pool slot count (auto-size from available memory if needed)."""
++        if explicit_size is not None:
++            return explicit_size
++        n_kv_heads, head_dim, dtype = self._get_attn_config()
++        num_layers = self._num_layers
++        sys_available = psutil.virtual_memory().available
++        mlx_limit = mx.device_info().get(
++            "max_recommended_working_set_size",
++            mx.device_info().get("memory_size", 0),
++        )
++        mlx_used = mx.get_active_memory()
++        mlx_usable = int(mlx_limit * self._mem_fraction_static)
++        kv_budget = min(
++            max(mlx_usable - mlx_used, 0),
++            int(sys_available * self._mem_fraction_static),
++        )
++        bytes_per_slot = 2 * num_layers * n_kv_heads * head_dim * dtype.size
++        pool_size = max(kv_budget // bytes_per_slot, 256)
++        logger.info(
++            f"Auto-sized KV pool: "
++            f"sys_available={sys_available / (1024**3):.2f} GB, "
++            f"mlx_limit={mlx_limit / (1024**3):.1f} GB, "
++            f"mlx_used={mlx_used / (1024**3):.2f} GB, "
++            f"kv_budget={kv_budget / (1024**3):.2f} GB, "
++            f"bytes_per_slot={bytes_per_slot}, pool_size={pool_size}"
++        )
++        return pool_size
++
++    @property
++    def pool_size(self) -> int:
++        return self._pool_size
++
++    def init_kv_pool(self, req_to_token_pool: ReqToTokenPool) -> None:
++        """Create MlxKVPool (+1 for padding slot 0) and wire scheduler pools."""
++        self._req_to_token_pool = req_to_token_pool
++        if self.disable_radix_cache:
++            return
++        n_kv_heads, head_dim, dtype = self._get_attn_config()
++        # +1 for padding slot 0
++        self._kv_pool = MlxKVPool(
++            pool_size=self._pool_size + 1,
++            num_layers=self._num_layers,
++            n_kv_heads=n_kv_heads,
++            head_dim=head_dim,
++            dtype=dtype,
++        )
++        logger.info(
++            f"KV pool initialized: pool_size={self._pool_size} "
++            f"(buffer size {self._pool_size + 1} incl. padding slot 0), "
++            f"{self._num_layers} layers, {n_kv_heads} kv_heads, {head_dim} head_dim"
++        )
++
+     def prefill(
+         self,
+         req_id: str,
+-        token_ids: list[int],
++        new_token_ids: list[int],
++        full_token_ids: list[int],
++        prefix_slot_ids: list[int],
++        new_slot_ids: list[int],
++        req_pool_idx: int,
+     ) -> int:
+-        """Run prefill for a single request.
+-
+-        If a request with the same req_id already has state (e.g. from a
+-        previous partial prefill), the existing KV cache is reused and only
+-        the new tokens are fed through the model.
+-
+-        Args:
+-            req_id: Request identifier
+-            token_ids: Input token IDs (full sequence, including any
+-                previously prefilled tokens)
+-
+-        Returns:
+-            Next token ID (greedy sampled)
+-        """
+-        existing_state = self._request_states.get(req_id)
+-        if existing_state is not None:
+-            # Continuation: reuse existing cache, feed only new tokens
+-            cached_input_len = (
+-                len(existing_state.token_ids) - existing_state.generated_tokens
+-            )
+-            new_tokens = token_ids[cached_input_len:]
+-            cache = existing_state.cache
++        """Prefill a request.  Returns next_token_id."""
++        num_layers = self._num_layers
++        prefix_len = len(prefix_slot_ids)
++
++        if self.disable_radix_cache:
++            cache = self._acquire_cache()
++            input_ids = mx.array([new_token_ids], dtype=mx.int32)
++            model_output = self.model(input_ids, cache=cache)
++            logits = self._extract_logits(model_output)
++            next_token_mlx = mx.argmax(logits[:, -1, :], axis=-1)
++            self._eval_with_cache(next_token_mlx, cache)
++            next_token = int(next_token_mlx.item())
++
++            self._req_token_ids[req_id] = list(full_token_ids) + [next_token]
++            self._req_caches[req_id] = cache
++            self._req_pool_idx[req_id] = req_pool_idx
++            self._req_synced_offset[req_id] = 0
++            return next_token
++
++        assert self._kv_pool is not None
++
++        new_token_count = len(new_token_ids)
++
++        if prefix_len > 0:
++            slot_ids_mx = mx.array(prefix_slot_ids, dtype=mx.int32)
++            cache = [
++                PoolBackedCache(self._kv_pool, i, slot_ids_mx, prefix_len)
++                for i in range(num_layers)
++            ]
+         else:
+-            new_tokens = token_ids
+-            cache = make_prompt_cache(self.model)
++            cache = self._acquire_cache()
+ 
+-        input_ids = mx.array([new_tokens], dtype=mx.int32)
+-        model_output = self.model(input_ids, cache=cache)
++        if new_token_count > 0:
++            extend_tokens = new_token_ids
++        else:
++            # Full cache hit — rerun last token to get next-token logits
++            extend_tokens = full_token_ids[-1:]
++            for c in cache:
++                c.offset = max(c.offset - 1, 0)
+ 
++        input_ids = mx.array([extend_tokens], dtype=mx.int32)
++        model_output = self.model(input_ids, cache=cache)
+         logits = self._extract_logits(model_output)
+ 
+         last_logits = logits[:, -1, :]
+         next_token_mlx = mx.argmax(last_logits, axis=-1)
+ 
+-        # Evaluate everything together
+-        mx.eval(next_token_mlx, *[c.state for c in cache])
++        # Convert PoolBackedCache → ContiguousKVCache for decode
++        if prefix_len > 0:
++            contiguous_cache = self._acquire_cache()
++            for layer_idx in range(num_layers):
++                pbc = cache[layer_idx]
++                contiguous_cache[layer_idx].update_and_fetch(
++                    pbc._full_keys, pbc._full_values
++                )
++            cache = contiguous_cache
++
++        self._eval_with_cache(next_token_mlx, cache)
+         next_token = int(next_token_mlx.item())
+ 
+-        # Store state for future decoding
+-        self._request_states[req_id] = MlxRequestState(
+-            token_ids=list(token_ids) + [next_token],
+-            cache=cache,
+-            generated_tokens=1,
+-        )
++        if new_slot_ids:
++            self._sync_new_kv_to_pool(cache, prefix_len, new_slot_ids)
+ 
+-        return next_token
++        self._req_token_ids[req_id] = list(full_token_ids) + [next_token]
++        self._req_caches[req_id] = cache
++        self._req_pool_idx[req_id] = req_pool_idx
++        self._req_synced_offset[req_id] = prefix_len + len(new_slot_ids)
+ 
+-    def prefill_batch(
+-        self,
+-        req_ids: list[str],
+-        token_ids_list: list[list[int]],
+-    ) -> list[int]:
+-        """Run batched prefill for multiple requests in a single forward pass.
+-
+-        When all sequences have the same length, they are stacked into a single
+-        batch tensor for one forward pass.  For variable-length sequences the
+-        method falls back to serial prefill.
+-
+-        Args:
+-            req_ids: List of request identifiers
+-            token_ids_list: List of token ID sequences, one per request
+-
+-        Returns:
+-            List of next token IDs (greedy sampled)
+-        """
+-        if len(req_ids) == 1:
+-            return [self.prefill(req_ids[0], token_ids_list[0])]
+-
+-        # Check if all sequences have the same length (enables true batching)
+-        lengths = [len(tids) for tids in token_ids_list]
+-        if len(set(lengths)) != 1:
+-            # Variable lengths – fall back to serial prefill
+-            return [
+-                self.prefill(rid, tids) for rid, tids in zip(req_ids, token_ids_list)
+-            ]
+-
+-        # All same length – use a single set of fresh caches;
+-        # they'll be populated with shape (batch_size, ...) on the first forward pass
+-        batch_cache = make_prompt_cache(self.model)
+-
+-        # Stack into (batch_size, seq_len)
+-        batched_input = mx.array(
+-            [list(tids) for tids in token_ids_list], dtype=mx.int32
+-        )
+-
+-        # Single forward pass
+-        model_output = self.model(batched_input, cache=batch_cache)
+-        logits = self._extract_logits(model_output)
+-
+-        last_logits = logits[:, -1, :]
+-        next_tokens_mlx = mx.argmax(last_logits, axis=-1)
+-
+-        # Evaluate everything together
+-        mx.eval(next_tokens_mlx, *[c.state for c in batch_cache])
+-        next_tokens = next_tokens_mlx.tolist()
+-
+-        # Extract individual caches and store per-request state
+-        for i, req_id in enumerate(req_ids):
+-            individual_cache = _extract_kv_cache(batch_cache, i)
+-            self._request_states[req_id] = MlxRequestState(
+-                token_ids=list(token_ids_list[i]) + [next_tokens[i]],
+-                cache=individual_cache,
+-                generated_tokens=1,
+-            )
+-
+-        return next_tokens
++        return next_token
+ 
+-    def decode_batch(
++    def extend(
+         self,
+-        req_ids: list[str],
+-    ) -> list[int]:
+-        """Run batched decode for multiple requests.
+-
+-        Args:
+-            req_ids: List of request IDs to decode
+-
+-        Returns:
+-            List of next token IDs
+-        """
+-        if len(req_ids) == 1:
+-            return [self._decode_single(req_ids[0])]
+-
+-        decode_reqs = []
+-        for req_id in req_ids:
+-            state = self._request_states[req_id]
+-            decode_reqs.append((req_id, state))
+-
+-        return self._batched_decode(decode_reqs)
+-
+-    def _decode_single(self, req_id: str) -> int:
+-        """Decode a single token for one request."""
+-        state = self._request_states[req_id]
+-        last_token = state.token_ids[-1]
++        req_id: str,
++        new_token_ids: list[int],
++        new_slot_ids: list[int],
++    ) -> int:
++        """Continue prefill for a chunked request.  Returns next_token_id."""
++        assert req_id in self._req_caches, f"extend called for unknown request {req_id}"
+ 
+-        input_ids = mx.array([[last_token]], dtype=mx.int32)
+-        model_output = self.model(input_ids, cache=state.cache)
++        cache = self._req_caches[req_id]
+ 
++        input_ids = mx.array([new_token_ids], dtype=mx.int32)
++        model_output = self.model(input_ids, cache=cache)
+         logits = self._extract_logits(model_output)
+ 
+         last_logits = logits[:, -1, :]
+         next_token_mlx = mx.argmax(last_logits, axis=-1)
+-
+-        mx.eval(next_token_mlx, *[c.state for c in state.cache])
++        self._eval_with_cache(next_token_mlx, cache)
+         next_token = int(next_token_mlx.item())
+ 
+-        state.token_ids.append(next_token)
+-        state.generated_tokens += 1
+-
+-        return next_token
++        prev_tokens = self._req_token_ids[req_id]
++        if prev_tokens:
++            prev_tokens.pop()  # remove stale intermediate token
++        prev_tokens.extend(new_token_ids)
++        prev_tokens.append(next_token)
+ 
+-    def _batched_decode(
+-        self, decode_reqs: list[tuple[str, MlxRequestState]]
+-    ) -> list[int]:
+-        """Run a single batched forward pass for multiple decode requests."""
+-        last_tokens = [state.token_ids[-1] for _, state in decode_reqs]
++        # Sync new chunk KV to pool immediately
++        if not self.disable_radix_cache and new_slot_ids:
++            synced = self._req_synced_offset[req_id]
++            self._sync_new_kv_to_pool(cache, synced, new_slot_ids)
++            self._req_synced_offset[req_id] = synced + len(new_slot_ids)
+ 
+-        # Merge individual KV caches into batched cache
+-        caches_list = [state.cache for _, state in decode_reqs]
+-        batch_cache = _merge_kv_caches(caches_list)
++        return next_token
+ 
+-        # Create batched input: shape (batch_size, 1)
+-        batched_input = mx.array(last_tokens, dtype=mx.int32)[:, None]
++    def _sync_new_kv_to_pool(
++        self,
++        cache: list[ContiguousKVCache],
++        cache_start: int,
++        slot_ids: list[int],
++    ) -> None:
++        """Sync KV from contiguous cache to pool at the given slot IDs."""
++        if not slot_ids or self._kv_pool is None:
++            return
++        num_layers = len(cache)
++        end = cache_start + len(slot_ids)
++        slot_ids_mx = mx.array(slot_ids, dtype=mx.int32)
++        # Transpose cache (1, n_kv_heads, S, head_dim) → pool (S, n_kv_heads, head_dim)
++        k_all = mx.stack(
++            [
++                cache[i].keys[0, :, cache_start:end, :].transpose(1, 0, 2)
++                for i in range(num_layers)
++            ]
++        )
++        v_all = mx.stack(
++            [
++                cache[i].values[0, :, cache_start:end, :].transpose(1, 0, 2)
++                for i in range(num_layers)
++            ]
++        )
++        self._kv_pool.set_kv_all_layers(slot_ids_mx, k_all, v_all)
++
++    def _sync_decode_kv_to_pool(self, req_id: str) -> None:
++        """Sync un-flushed decode KV for *req_id* to the shared pool."""
++        if self._kv_pool is None or self._req_to_token_pool is None:
++            return
++        cache = self._req_caches.get(req_id)
++        if cache is None:
++            return
++        current_offset = cache[0].offset
++        synced_offset = self._req_synced_offset.get(req_id, 0)
++        if current_offset <= synced_offset:
++            return
++        req_pool_idx = self._req_pool_idx.get(req_id)
++        if req_pool_idx is None:
++            return
++        # Read slot IDs from scheduler's req_to_token_pool
++        slot_ids = (
++            self._req_to_token_pool.req_to_token[
++                req_pool_idx, synced_offset:current_offset
++            ]
++            .to(dtype=int)
++            .tolist()
++        )
++        self._sync_new_kv_to_pool(cache, synced_offset, slot_ids)
++        self._req_synced_offset[req_id] = current_offset
+ 
+-        # Single forward pass
+-        model_output = self.model(batched_input, cache=batch_cache)
+-        logits = self._extract_logits(model_output)
++    def flush_all_decode_kv(self) -> None:
++        """Sync all active requests' un-flushed decode KV to the pool."""
++        if self.disable_radix_cache or self._kv_pool is None:
++            return
++        for req_id in list(self._req_caches.keys()):
++            self._sync_decode_kv_to_pool(req_id)
+ 
+-        next_token_logits = logits[:, -1, :]
+-        next_tokens_mlx = mx.argmax(next_token_logits, axis=-1)
++    def decode_batch(
++        self,
++        req_ids: list[str],
++    ) -> list[int]:
++        """Decode one token per request."""
++        batch_size = len(req_ids)
++        num_layers = self._num_layers
++
++        caches = [self._req_caches[rid] for rid in req_ids]
++        seq_lens = [caches[i][0].offset for i in range(batch_size)]
++
++        if batch_size == 1:
++            cache = caches[0]
++            last_token = self._req_token_ids[req_ids[0]][-1]
++            input_ids = mx.array([[last_token]], dtype=mx.int32)
++            model_output = self.model(input_ids, cache=cache)
++            logits = self._extract_logits(model_output)
++            next_tokens_mlx = mx.argmax(logits[:, -1, :], axis=-1)
++            self._eval_with_cache(next_tokens_mlx, cache)
++        else:
++            layer_caches = [
++                [caches[i][layer_idx] for i in range(batch_size)]
++                for layer_idx in range(num_layers)
++            ]
++            ctx = BatchedDecodeContext(
++                batch_size=batch_size,
++                seq_lens=seq_lens,
++                layer_caches=layer_caches,
++            )
++            set_context(ctx)
++            try:
++                max_offset = max(seq_lens)
++                shim_cache = [OffsetCache(offset=max_offset) for _ in range(num_layers)]
++                last_tokens = [self._req_token_ids[rid][-1] for rid in req_ids]
++                batched_input = mx.array(last_tokens, dtype=mx.int32)[:, None]
++                model_output = self.model(batched_input, cache=shim_cache)
++                logits = self._extract_logits(model_output)
++                next_tokens_mlx = mx.argmax(logits[:, -1, :], axis=-1)
++
++                eval_targets = [next_tokens_mlx]
++                for c_list in caches:
++                    for c in c_list:
++                        eval_targets.append(c.keys)
++                        eval_targets.append(c.values)
++                mx.eval(*eval_targets)
++            finally:
++                clear_context()
+ 
+-        mx.eval(next_tokens_mlx, *[c.state for c in batch_cache])
+         next_tokens = next_tokens_mlx.tolist()
+ 
+-        # Extract updated caches back to individual requests
+-        for i, (_, state) in enumerate(decode_reqs):
+-            state.cache = _extract_kv_cache(batch_cache, i)
+-            state.token_ids.append(next_tokens[i])
+-            state.generated_tokens += 1
++        for i, rid in enumerate(req_ids):
++            self._req_token_ids[rid].append(next_tokens[i])
+ 
+         return next_tokens
+ 
++    def has_request(self, req_id: str) -> bool:
++        """Check if a request has active state."""
++        return req_id in self._req_caches
++
+     def remove_request(self, req_id: str):
+-        """Clean up state for a completed request."""
+-        self._request_states.pop(req_id, None)
++        """Sync remaining decode KV to pool, then release request state."""
++        if not self.disable_radix_cache:
++            self._sync_decode_kv_to_pool(req_id)
++
++        self._req_token_ids.pop(req_id, None)
++        cache = self._req_caches.pop(req_id, None)
++        if cache is not None:
++            self._release_cache(cache)
++        self._req_pool_idx.pop(req_id, None)
++        self._req_synced_offset.pop(req_id, None)
+ 
+     def clear(self):
+         """Clear all request states."""
+-        self._request_states.clear()
++        self._req_token_ids.clear()
++        for cache in self._req_caches.values():
++            self._cache_pool.append(cache)
++        self._req_caches.clear()
++        self._req_pool_idx.clear()
++        self._req_synced_offset.clear()
++        if self._kv_pool is not None:
++            self._kv_pool.clear()
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 36fca4c24547..3dd8520f26f9 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -1,11 +1,7 @@
+ """Lightweight ModelRunner stub for MLX on Apple Silicon.
+ 
+-Subclasses ModelRunner but overrides both load_model() and initialize()
+-to skip PyTorch weight loading entirely.  No GPU memory is consumed:
+-the KV cache pool uses a zero-allocation _DummyKVCache, and only
+-CPU-side bookkeeping structures (req_to_token_pool,
+-token_to_kv_pool_allocator) are created so the SGLang scheduler can
+-function.  The actual KV cache is managed by the MLX model runner.
++Skips PyTorch weight loading.  Creates only the CPU-side bookkeeping
++(req_to_token_pool, token_to_kv_pool_allocator) the scheduler needs.
+ """
+ 
+ import logging
+@@ -78,6 +74,10 @@ class MlxModelRunnerStub(ModelRunner):
+     the minimal bookkeeping pools needed by the scheduler are created.
+     """
+ 
++    def __init__(self, *args, mlx_pool_size: int | None = None, **kwargs):
++        self._mlx_pool_size = mlx_pool_size
++        super().__init__(*args, **kwargs)
++
+     def load_model(self):
+         """Set only the metadata that downstream code needs, without
+         loading any PyTorch model weights."""
+@@ -128,9 +128,12 @@ def initialize(self, pre_model_load_memory: float):
+         # KV cache dtype
+         self.kv_cache_dtype = self.dtype
+ 
+-        # Pool sizing — use context_len as the capacity.
+-        # No actual GPU memory is consumed because _DummyKVCache is empty.
+-        self.max_total_num_tokens = self.model_config.context_len
++        # Pool sizing — use the MLX runner's auto-sized pool if available,
++        # otherwise fall back to context_len.
++        if self._mlx_pool_size is not None:
++            self.max_total_num_tokens = self._mlx_pool_size
++        else:
++            self.max_total_num_tokens = self.model_config.context_len
+         self.max_running_requests = min(
+             self.max_total_num_tokens // 2,
+             4096,
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index 6cee8a31e19b..f73bb5de69e9 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -1,13 +1,8 @@
+ """MLX-specific TpModelWorker subclass for Apple Silicon.
+ 
+-Overrides the standard TpModelWorker to route forward passes through
+-the native MLX model runner, avoiding PyTorch MPS entirely for inference.
+-
+-PyTorch model weights are never loaded.  A lightweight ModelRunner stub
+-(MlxModelRunnerStub) provides only the minimal bookkeeping structures
+-(req_to_token_pool, token_to_kv_pool_allocator with a zero-memory
+-dummy KV cache) that the SGLang scheduler expects.  The actual KV cache
+-is managed internally by the MLX model runner.
++Routes forward passes through the MLX model runner, bypassing PyTorch
++MPS.  A lightweight stub provides scheduler bookkeeping; the actual
++KV data lives in MlxKVPool.
+ """
+ 
+ import logging
+@@ -33,12 +28,23 @@ class MlxTpModelWorker(TpModelWorker):
+     """
+ 
+     def _init_model_runner(self):
+-        """Override to use a lightweight ModelRunner that skips weight loading."""
++        """Create MLX runner first (auto-sizes pool), then stub with matching size."""
+         from sglang.srt.hardware_backend.mlx.model_runner import MlxModelRunner
+         from sglang.srt.hardware_backend.mlx.model_runner_stub import (
+             MlxModelRunnerStub,
+         )
+ 
++        logger.info("Initializing MlxModelRunner for end-to-end MLX inference")
++        init_kwargs = dict(
++            model_path=self.server_args.model_path,
++            trust_remote_code=self.server_args.trust_remote_code,
++            disable_radix_cache=self.server_args.disable_radix_cache,
++            mem_fraction_static=self.server_args.mem_fraction_static,
++        )
++        if self.server_args.max_total_tokens is not None:
++            init_kwargs["pool_size"] = self.server_args.max_total_tokens
++        self._mlx_runner = MlxModelRunner(**init_kwargs)
++
+         self._model_runner = MlxModelRunnerStub(
+             model_config=self.model_config,
+             mem_fraction_static=self.server_args.mem_fraction_static,
+@@ -56,20 +62,22 @@ def _init_model_runner(self):
+             req_to_token_pool=self.req_to_token_pool,
+             token_to_kv_pool_allocator=self.token_to_kv_pool_allocator,
+             memory_pool_config=self.memory_pool_config,
++            mlx_pool_size=self._mlx_runner.pool_size,
+         )
+ 
+-        # Initialize the MLX model runner (loads weights via MLX, not PyTorch)
+-        logger.info("Initializing MlxModelRunner for end-to-end MLX inference")
+-        self._mlx_runner = MlxModelRunner(
+-            model_path=self.server_args.model_path,
+-            trust_remote_code=self.server_args.trust_remote_code,
+-        )
+         self._mlx_active_rids: set[str] = set()
++        self._mlx_pool_initialized = False
+ 
+     def get_pad_input_ids_func(self):
+         """Override since the stub ModelRunner has no real model."""
+         return None
+ 
++    def _ensure_mlx_pool_initialized(self):
++        """Lazily initialize the MlxKVPool after the stub's pools are ready."""
++        if not self._mlx_pool_initialized:
++            self._mlx_runner.init_kv_pool(self._model_runner.req_to_token_pool)
++            self._mlx_pool_initialized = True
++
+     def forward_batch_generation(
+         self,
+         model_worker_batch: ModelWorkerBatch,
+@@ -80,6 +88,7 @@ def forward_batch_generation(
+     ) -> GenerationBatchResult:
+         """Override to route through MLX model runner."""
+         if model_worker_batch is not None:
++            self._ensure_mlx_pool_initialized()
+             return self._forward_batch_generation_mlx(model_worker_batch)
+ 
+         # Fallback to standard path for None batches
+@@ -95,11 +104,7 @@ def _forward_batch_generation_mlx(
+         self,
+         model_worker_batch: ModelWorkerBatch,
+     ) -> GenerationBatchResult:
+-        """Run forward pass through the MLX model runner.
+-
+-        Bypasses the standard ModelRunner forward+sample and uses native MLX
+-        inference for the entire model. Only supports greedy sampling.
+-        """
++        """Run forward pass through the MLX model runner (greedy only)."""
+         from sglang.srt.layers.logits_processor import LogitsProcessorOutput
+ 
+         forward_mode = model_worker_batch.forward_mode
+@@ -111,32 +116,61 @@ def _forward_batch_generation_mlx(
+                 can_run_cuda_graph=False,
+             )
+ 
+-        # Auto-cleanup: remove MLX state for requests no longer in the batch
++        # Auto-cleanup: remove MLX state for requests no longer in the batch.
+         current_rids = {req.rid for req in reqs}
+         stale_rids = self._mlx_active_rids - current_rids
+         for rid in stale_rids:
+             self._mlx_runner.remove_request(rid)
+-        self._mlx_active_rids = current_rids
++        if forward_mode.is_decode():
++            self._mlx_active_rids = current_rids
++        else:
++            self._mlx_active_rids = (self._mlx_active_rids - stale_rids) | current_rids
+ 
+         next_token_ids_list = []
+ 
+         if forward_mode.is_extend():
+-            # Prefill (or MIXED): extract per-request tokens from concatenated input_ids
++            # Ensure pool is up-to-date before PoolBackedCache reads it
++            # for prefix-cached prefills.  Only runs on extend batches.
++            self._mlx_runner.flush_all_decode_kv()
+             input_ids_cpu = model_worker_batch.input_ids.cpu().tolist()
++            out_cache_loc_cpu = model_worker_batch.out_cache_loc.cpu().tolist()
+             extend_seq_lens = model_worker_batch.extend_seq_lens
+-            offset = 0
++
++            offset = 0  # into input_ids_cpu
++            slot_offset = 0  # into out_cache_loc_cpu
+             prefill_rids = []
++            extend_rids = []
+             decode_rids = []
++
+             for i, req in enumerate(reqs):
+                 seq_len = extend_seq_lens[i]
+                 req_token_ids = input_ids_cpu[offset : offset + seq_len]
++                req_new_slots = out_cache_loc_cpu[slot_offset : slot_offset + seq_len]
+                 offset += seq_len
+-                if req.rid in self._mlx_runner._request_states:
+-                    # MIXED mode: this request already has MLX state, decode it
+-                    decode_rids.append(req.rid)
++                slot_offset += seq_len
++
++                if self._mlx_runner.has_request(req.rid):
++                    if seq_len > 1:
++                        # Chunked prefill continuation
++                        next_token = self._mlx_runner.extend(
++                            req.rid, req_token_ids, req_new_slots
++                        )
++                        extend_rids.append((req.rid, next_token))
++                    else:
++                        # MIXED mode: single-token decode
++                        decode_rids.append(req.rid)
+                 else:
+-                    # Prefill: new request
+-                    next_token = self._mlx_runner.prefill(req.rid, req_token_ids)
++                    # New prefill
++                    prefix_slot_ids = req.prefix_indices.tolist()
++                    full_token_ids = list(req.fill_ids)
++                    next_token = self._mlx_runner.prefill(
++                        req_id=req.rid,
++                        new_token_ids=req_token_ids,
++                        full_token_ids=full_token_ids,
++                        prefix_slot_ids=prefix_slot_ids,
++                        new_slot_ids=req_new_slots,
++                        req_pool_idx=req.req_pool_idx,
++                    )
+                     prefill_rids.append((req.rid, next_token))
+ 
+             # Batch decode all existing requests at once
+@@ -147,16 +181,17 @@ def _forward_batch_generation_mlx(
+                 decode_map = {}
+ 
+             prefill_map = dict(prefill_rids)
++            extend_map = dict(extend_rids)
+ 
+-            # Reassemble in original request order
+             for req in reqs:
+                 if req.rid in decode_map:
+                     next_token_ids_list.append(decode_map[req.rid])
++                elif req.rid in extend_map:
++                    next_token_ids_list.append(extend_map[req.rid])
+                 else:
+                     next_token_ids_list.append(prefill_map[req.rid])
+ 
+         elif forward_mode.is_decode():
+-            # Decode: batch decode all requests
+             req_ids = [req.rid for req in reqs]
+             next_token_ids_list = self._mlx_runner.decode_batch(req_ids)
+ 

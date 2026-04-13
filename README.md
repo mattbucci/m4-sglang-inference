@@ -195,15 +195,14 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 
 ## Patches
 
-5 patches on top of SGLang `main` (apply in order):
+4 patches on top of SGLang `main` at commit `1f8df9705` (apply in order):
 
 | Patch | Purpose |
 |-------|---------|
-| **001-mlx-request-cleanup** | Fix `KeyError` on concurrent decode (PR #22632) |
+| **001-mlx-radix-cache** | Radix cache support for MLX (PR #21509) — 102x prefill speedup on cache hits |
 | **002-mps-backend-defaults** | Disable CUDA graph, force torch_native attention, disable multimodal on MPS |
 | **003-mlx-skip-quantization-check** | Skip quantization verification for MLX models (no `quant_method` field) |
-| **004-mlx-stub-hybrid-ssm-fixes** | Override hybrid SSM detection, add DummyMambaPool, disable multimodal in subprocess |
-| **005-mlx-arrayscache-batched-decode** | Add `ArraysCache` support for concurrent DeltaNet model decode |
+| **004-mlx-lifecycle-and-hybrid-fixes** | Request lifecycle hooks + hybrid DeltaNet/Mamba model support |
 
 See [patches/README.md](patches/README.md) for details.
 
