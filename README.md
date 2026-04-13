@@ -42,17 +42,17 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are downloaded automatically from HuggingFace on first launch. The `mlx-community/` namespace has pre-quantized MLX versions of most popular models.
 
-### Agent / coding workloads (single-user, max context)
+### Agent / coding workloads (single-user)
 
-| Model | Type | 4-bit size | Max context | 1-user tok/s | Launch | Status |
-|-------|------|:----------:|:----------:|:------------:|:------:|:------:|
-| Devstral-24B | Dense | ~14 GB | 32K | 16 | `launch.sh devstral` | Working |
-| Coder-30B | MoE (128 experts) | ~16 GB | 32K | — | `launch.sh coder-30b` | Testing |
-| Gemma 4 26B | MoE (128 experts) | ~15 GB | 4K | — | `launch.sh gemma4` | Testing |
-| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | 32K | — | `launch.sh qwen35` | Testing |
-| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | 8K | — | `launch.sh coder-next` | Testing |
+| Model | Type | 4-bit size | 1-user tok/s | Launch | Status |
+|-------|------|:----------:|:------------:|:------:|:------:|
+| Devstral-24B | Dense | ~14 GB | 16 | `launch.sh devstral` | Working |
+| Coder-30B | MoE (128 experts) | ~16 GB | 68 | `launch.sh coder-30b` | Working |
+| Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Testing |
+| Qwen3.5-27B | DeltaNet hybrid | ~15 GB | — | `launch.sh qwen35` | Testing |
+| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
 
-All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace.
+All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. Max context is limited by available memory, not a fixed cap — 64GB unified memory supports long context for most models.
 
 ### Memory budget (64GB unified)
 
@@ -113,15 +113,36 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace.
 - MLX kernels compile on first use: first request after cold start takes 20-30s. Subsequent requests are fast.
 - Concurrency throughput scales to 45 tok/s @16 concurrent, but output quality degrades with batched decode (KV cache merge/extract limitation)
 
-### Cross-platform comparison
+### Coder-30B MoE 4-bit (128 experts)
 
-| Hardware | Devstral-24B 1-user | Peak throughput | VRAM/Memory |
-|----------|:-------------------:|:---------------:|:-----------:|
-| M4 Pro 64GB (MLX) | 16 tok/s | 45 @16 | 64 GB unified |
-| 2x R9700 RDNA4 (ROCm) | 37 tok/s | 1,266 @64 | 64 GB (32+32) |
-| 2x RTX 3090 (CUDA) | 79 tok/s | 1,647 @32 | 48 GB (24+24) |
+30B total / 3B active MoE. ~16 GB 4-bit weights. Fastest model — MoE only reads active expert weights per token.
 
-The M4 Pro is ~2-5x slower than discrete GPUs for decode (bandwidth-limited: 273 GB/s vs 936+ GB/s) but has the advantage of 64GB unified memory fitting models that discrete GPUs struggle with.
+![Coder-30B context scaling](benchmarks/coder-30b-4bit/context_vs_toks.png)
+
+| Context Length | tok/s |
+|:--------------:|:-----:|
+| 128 | 61.8 |
+| 512 | 61.4 |
+| 1K | 55.7 |
+| 4K | 36.1 |
+| 8K | 24.2 |
+| 16K | 14.0 |
+| **32K** | **14.0** |
+
+![Coder-30B concurrency](benchmarks/coder-30b-4bit/concurrency_vs_toks.png)
+
+| Concurrency | Total tok/s |
+|:-----------:|:-----------:|
+| 1 | 68 |
+| 2 | 60 |
+| 4 | 70 |
+| 8 | 82 |
+| **16** | **94** |
+
+**Notes:**
+- 68 tok/s single-user — 4x faster than Devstral because MoE only activates 3B of 30B params per token
+- Throughput scales to 94 tok/s @16 concurrent
+- Context length limited by KV cache memory, not model weights — should support much longer context with 64GB
 
 ## Patches
 

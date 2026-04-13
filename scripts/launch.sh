@@ -57,7 +57,6 @@ apply_preset() {
         qwen35)
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
-            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
             ;;
         *)
