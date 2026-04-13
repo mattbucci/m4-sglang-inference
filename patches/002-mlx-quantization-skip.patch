@@ -476,19 +476,31 @@ index 226139d..b311942 100644
          return self.dllm_algorithm is not None
  
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index cb549bf..629419a 100644
+index cb549bf..1a39a8d 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -1128,6 +1128,8 @@ class ServerArgs:
+@@ -1128,6 +1128,20 @@ class ServerArgs:
      def _handle_mps_backends(self):
          if self.device == "mps":
              self.disable_overlap_schedule = True
 +            self.disable_piecewise_cuda_graph = True
 +            self.disable_cuda_graph = True
++            # Force torch_native attention — Triton is not available on macOS.
++            # Without this, models that default to triton attention (Gemma4)
++            # crash with "function object is not subscriptable" when the
++            # scheduler tries to launch a Triton kernel for cache indexing.
++            self.attention_backend = "torch_native"
++            # MLX backend: text-only inference. Disable multimodal so the
++            # TokenizerManager (main process) doesn't try to load an image
++            # processor that triggers CUDA assertions on MPS. This must be
++            # set here (not in tp_worker) because server_args is shared
++            # across all processes before they fork.
++            if self.enable_multimodal is None:
++                self.enable_multimodal = False
  
      def _handle_xpu_backends(self):
          if self.device == "xpu":
-@@ -1144,6 +1146,10 @@ class ServerArgs:
+@@ -1144,6 +1158,10 @@ class ServerArgs:
              self.disable_piecewise_cuda_graph = False
              return
  

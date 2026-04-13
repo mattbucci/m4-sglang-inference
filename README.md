@@ -48,7 +48,7 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 |-------|------|:----------:|:------------:|:------:|:------:|
 | Devstral-24B | Dense | ~14 GB | 17.2 | `launch.sh devstral` | Working |
 | Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
-| Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Blocked: missing preprocessor_config.json in MLX model |
+| Gemma 4 26B | MoE (128 experts) | ~15 GB | 60.6 | `launch.sh gemma4` | Working |
 | Qwen3.5-27B | DeltaNet hybrid | ~15 GB | 14.5 | `launch.sh qwen35` | Working (single-user only, concurrent crashes) |
 | Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
 
@@ -69,7 +69,7 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 ### Models that need special handling
 
 - **Devstral-24B** — VLM (Mistral3 architecture) requires `--skip-server-warmup` to avoid image processor CUDA assertion. Vision not supported on MLX.
-- **Gemma 4 26B** — Blocked. MLX 4-bit model missing `preprocessor_config.json` for the VLM processor. SGLang auto-detects Gemma4 as multimodal but can't load the image processor.
+- **Gemma 4 26B** — Working. Our patch disables multimodal in `_handle_mps_backends` (before TokenizerManager forks) and forces `torch_native` attention (Triton not available on macOS).
 - **Qwen3.5-27B** — Working for single-user inference. Our patch overrides `hybrid_gdn_config` to prevent MambaRadixCache creation. Concurrent requests crash with `TypeError: Unsupported cache type: ArraysCache` in the MLX batched decode merge path.
 - **Coder-Next 80B** — Tight fit in 64GB (~42 GB weights + KV cache). Same DeltaNet hybrid architecture as Qwen3.5; should work for single-user with our patches.
 
@@ -156,6 +156,24 @@ All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. M
 - Concurrent requests crash: MLX's `ArraysCache` type (used by DeltaNet layers) isn't supported by the batched decode `_merge_kv_caches` function
 - Our patch overrides `hybrid_gdn_config`/`mamba2_config` to prevent the scheduler from creating MambaRadixCache, which fixed the startup crash
 - Thinking model: generates `<think>` tokens before response content. Use without `--reasoning-parser` for benchmarking.
+
+### Gemma 4 26B MoE 4-bit (128 experts)
+
+26B total / 4B active MoE. ~15 GB 4-bit weights. Max tested context: 4K.
+
+| Context Length | TPOT (ms) | tok/s | TTFT (ms) |
+|:--------------:|:---------:|:-----:|:---------:|
+| 128 | 16.8 | 34.4 | 58 |
+| 512 | 16.1 | 34.4 | 31 |
+| 1K | 16.6 | 34.4 | 30 |
+| 2K | 16.5 | 34.4 | 29 |
+| **4K** | **16.8** | **34.4** | **63** |
+
+**Notes:**
+- **TPOT: 16.5ms flat (60.6 tok/s decode)** — fastest model, MoE activates only ~4B params per token
+- Required three patches to work: disable multimodal in `_handle_mps_backends` (before TokenizerManager forks), force `torch_native` attention (Triton unavailable on macOS), skip server warmup
+- `sglang.bench_serving` reports 34.4 tok/s throughput (includes scheduling overhead); raw TPOT of 16.5ms = 60.6 tok/s decode
+- Context limited to 4K in current preset — needs testing at higher context
 
 ## Patches
 
