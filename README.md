@@ -50,7 +50,7 @@ All models run on SGLang with the MLX backend (`SGLANG_USE_MLX=1`). Models are d
 | Coder-30B | MoE (128 experts) | ~16 GB | 71.7 | `launch.sh coder-30b` | Working |
 | Gemma 4 26B | MoE (128 experts) | ~15 GB | — | `launch.sh gemma4` | Blocked: missing preprocessor_config.json in MLX model |
 | Qwen3.5-27B | DeltaNet hybrid | ~15 GB | — | `launch.sh qwen35` | Blocked: mamba_pool_idx not assigned by MLX stub |
-| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Testing |
+| Coder-Next 80B | MoE+DeltaNet (512 experts) | ~42 GB | — | `launch.sh coder-next` | Blocked: DeltaNet hybrid (same mamba issue as Qwen3.5) |
 
 All models served as 4-bit MLX quantized from `mlx-community/` on HuggingFace. Max context is limited by available memory, not a fixed cap — 64GB unified memory supports long context for most models.
 
