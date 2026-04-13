@@ -1,109 +1,96 @@
 {
-  "model": "Coder-30B 4bit",
+  "model": "Coder-30B 4-bit",
+  "model_id": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
   "engine": "SGLang + MLX",
   "hardware": "Apple M4 Pro 64GB",
-  "timestamp": "2026-04-12 17:12:14",
-  "output_tokens": 100,
+  "timestamp": "2026-04-12 22:50:13",
+  "method": "sglang.bench_serving",
   "context_sweep": [
     {
       "context": 128,
-      "prompt_tokens": 65,
-      "completion_tokens": 100,
-      "elapsed": 1.62,
-      "tok_per_sec": 61.8
+      "tpot_ms": 13.7,
+      "tok_per_sec": 73.0,
+      "ttft_ms": 152.9
     },
     {
       "context": 256,
-      "prompt_tokens": 129,
-      "completion_tokens": 69,
-      "elapsed": 1.16,
-      "tok_per_sec": 59.4
+      "tpot_ms": 13.9,
+      "tok_per_sec": 71.8,
+      "ttft_ms": 157.6
     },
     {
       "context": 512,
-      "prompt_tokens": 257,
-      "completion_tokens": 100,
-      "elapsed": 1.63,
-      "tok_per_sec": 61.4
+      "tpot_ms": 13.8,
+      "tok_per_sec": 72.3,
+      "ttft_ms": 152.4
     },
     {
       "context": 1024,
-      "prompt_tokens": 513,
-      "completion_tokens": 100,
-      "elapsed": 1.8,
-      "tok_per_sec": 55.7
+      "tpot_ms": 13.9,
+      "tok_per_sec": 72.2,
+      "ttft_ms": 157.2
     },
     {
       "context": 2048,
-      "prompt_tokens": 1025,
-      "completion_tokens": 38,
-      "elapsed": 1.18,
-      "tok_per_sec": 32.2
+      "tpot_ms": 15.2,
+      "tok_per_sec": 65.6,
+      "ttft_ms": 1276.5
     },
     {
       "context": 4096,
-      "prompt_tokens": 2049,
-      "completion_tokens": 100,
-      "elapsed": 2.77,
-      "tok_per_sec": 36.1
+      "tpot_ms": 15.3,
+      "tok_per_sec": 65.4,
+      "ttft_ms": 1283.8
     },
     {
       "context": 8192,
-      "prompt_tokens": 4097,
-      "completion_tokens": 100,
-      "elapsed": 4.13,
-      "tok_per_sec": 24.2
+      "tpot_ms": 18.0,
+      "tok_per_sec": 55.5,
+      "ttft_ms": 7226.9
     },
     {
       "context": 16384,
-      "prompt_tokens": 8193,
-      "completion_tokens": 100,
-      "elapsed": 7.12,
-      "tok_per_sec": 14.0
+      "tpot_ms": 23.6,
+      "tok_per_sec": 42.5,
+      "ttft_ms": 27863.5
     },
     {
       "context": 32768,
-      "prompt_tokens": 16385,
-      "completion_tokens": 100,
-      "elapsed": 7.13,
-      "tok_per_sec": 14.0
+      "tpot_ms": 32.8,
+      "tok_per_sec": 30.5,
+      "ttft_ms": 87982.6
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "total_tokens": 100,
-      "elapsed": 1.47,
-      "tok_per_sec": 68.0,
-      "errors": 0
+      "tpot_ms": 33.5,
+      "tok_per_sec": 92.3,
+      "ttft_ms": 445.7
     },
     {
       "concurrency": 2,
-      "total_tokens": 200,
-      "elapsed": 3.33,
-      "tok_per_sec": 60.1,
-      "errors": 0
+      "tpot_ms": 54.5,
+      "tok_per_sec": 101.5,
+      "ttft_ms": 1896.8
     },
     {
       "concurrency": 4,
-      "total_tokens": 334,
-      "elapsed": 4.79,
-      "tok_per_sec": 69.7,
-      "errors": 0
+      "tpot_ms": 84.6,
+      "tok_per_sec": 110.1,
+      "ttft_ms": 4233.5
     },
     {
       "concurrency": 8,
-      "total_tokens": 800,
-      "elapsed": 9.77,
-      "tok_per_sec": 81.8,
-      "errors": 0
+      "tpot_ms": 184.7,
+      "tok_per_sec": 125.5,
+      "ttft_ms": 7332.9
     },
     {
       "concurrency": 16,
-      "total_tokens": 1600,
-      "elapsed": 16.96,
-      "tok_per_sec": 94.4,
-      "errors": 0
+      "tpot_ms": 413.7,
+      "tok_per_sec": 121.3,
+      "ttft_ms": 12659.1
     }
   ]
 }
