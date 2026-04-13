@@ -5,7 +5,6 @@ High-throughput LLM inference on Apple M4 Pro (64GB unified memory) using SGLang
 ## Known Issues
 
 - **Greedy sampling only** — MLX backend uses `mx.argmax`; temperature, top-p, top-k not yet supported
-- **Batched decode quality** — Concurrent requests may produce garbage output due to KV cache corruption in the merge/extract path. Single-user inference is reliable. This is a limitation of the upstream MLX backend's batched decode implementation.
 - **VLM warmup crash** — Devstral (Mistral3) detected as VLM; image processor triggers CUDA assertion on MPS. Workaround: `--skip-server-warmup` (set automatically in launch presets).
 - **HDMI display blackout** — Screen may go black briefly when server starts heavy GPU load. This is a known M4 Pro HDMI issue under sustained Metal compute, not a crash. Display recovers within seconds.
 - **Variable-length prefill** — Falls back to serial processing when sequences have different lengths
