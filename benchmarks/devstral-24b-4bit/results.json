@@ -1,109 +1,90 @@
 {
   "model": "Devstral-24B 4-bit",
+  "model_id": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
   "engine": "SGLang + MLX",
   "hardware": "Apple M4 Pro 64GB",
-  "timestamp": "2026-04-12 21:51:36",
-  "output_tokens": 100,
+  "timestamp": "2026-04-12 22:38:05",
+  "method": "sglang.bench_serving",
   "context_sweep": [
     {
       "context": 128,
-      "prompt_tokens": 59,
-      "completion_tokens": 100,
-      "elapsed": 6.56,
-      "tok_per_sec": 15.2
+      "tpot_ms": 58.2,
+      "tok_per_sec": 17.2,
+      "ttft_ms": 485.3
     },
     {
       "context": 256,
-      "prompt_tokens": 123,
-      "completion_tokens": 100,
-      "elapsed": 7.06,
-      "tok_per_sec": 14.2
+      "tpot_ms": 57.1,
+      "tok_per_sec": 17.5,
+      "ttft_ms": 485.6
     },
     {
       "context": 512,
-      "prompt_tokens": 251,
-      "completion_tokens": 100,
-      "elapsed": 7.66,
-      "tok_per_sec": 13.1
+      "tpot_ms": 57.0,
+      "tok_per_sec": 17.5,
+      "ttft_ms": 478.4
     },
     {
       "context": 1024,
-      "prompt_tokens": 507,
-      "completion_tokens": 100,
-      "elapsed": 9.87,
-      "tok_per_sec": 10.1
+      "tpot_ms": 57.1,
+      "tok_per_sec": 17.5,
+      "ttft_ms": 479.6
     },
     {
       "context": 2048,
-      "prompt_tokens": 1019,
-      "completion_tokens": 100,
-      "elapsed": 14.36,
-      "tok_per_sec": 7.0
+      "tpot_ms": 58.5,
+      "tok_per_sec": 17.1,
+      "ttft_ms": 8705.1
     },
     {
       "context": 4096,
-      "prompt_tokens": 2043,
-      "completion_tokens": 100,
-      "elapsed": 23.0,
-      "tok_per_sec": 4.3
+      "tpot_ms": 58.5,
+      "tok_per_sec": 17.1,
+      "ttft_ms": 8632.3
     },
     {
       "context": 8192,
-      "prompt_tokens": 4091,
-      "completion_tokens": 100,
-      "elapsed": 39.56,
-      "tok_per_sec": 2.5
+      "tpot_ms": 63.3,
+      "tok_per_sec": 15.8,
+      "ttft_ms": 42706.0
     },
     {
       "context": 16384,
-      "prompt_tokens": 8187,
-      "completion_tokens": 100,
-      "elapsed": 72.67,
-      "tok_per_sec": 1.4
+      "tpot_ms": 71.3,
+      "tok_per_sec": 14.0,
+      "ttft_ms": 105222.2
     },
     {
       "context": 32768,
-      "prompt_tokens": 16379,
-      "completion_tokens": 100,
-      "elapsed": 143.39,
-      "tok_per_sec": 0.7
+      "tpot_ms": 85.3,
+      "tok_per_sec": 11.7,
+      "ttft_ms": 255288.3
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "total_tokens": 100,
-      "elapsed": 6.01,
-      "tok_per_sec": 16.6,
-      "errors": 0
+      "tpot_ms": 104.3,
+      "tok_per_sec": 27.6,
+      "ttft_ms": 3007.5
     },
     {
       "concurrency": 2,
-      "total_tokens": 200,
-      "elapsed": 6.47,
-      "tok_per_sec": 30.9,
-      "errors": 0
+      "tpot_ms": 187.4,
+      "tok_per_sec": 28.0,
+      "ttft_ms": 9082.9
     },
     {
       "concurrency": 4,
-      "total_tokens": 329,
-      "elapsed": 9.85,
-      "tok_per_sec": 33.4,
-      "errors": 0
+      "tpot_ms": 269.4,
+      "tok_per_sec": 31.1,
+      "ttft_ms": 19509.5
     },
     {
       "concurrency": 8,
-      "total_tokens": 729,
-      "elapsed": 20.96,
-      "tok_per_sec": 34.8,
-      "errors": 0
-    },
-    {
-      "concurrency": 16,
-      "total_tokens": 1458,
-      "elapsed": 29.95,
-      "tok_per_sec": 48.7,
-      "errors": 0
+      "tpot_ms": 305.9,
+      "tok_per_sec": 40.7,
+      "ttft_ms": 38495.9
     }
   ]
 }

@@ -6,5 +6,13 @@
     "multi8_tpot_ms": 337.5,
     "multi8_throughput": 22.52,
     "multi8_ttft_ms": 8731.87
+  },
+  "coder-30b": {
+    "single_tpot_ms": 13.94,
+    "single_throughput": 58.16,
+    "single_ttft_ms": 153.81,
+    "multi8_tpot_ms": 100.18,
+    "multi8_throughput": 80.39,
+    "multi8_ttft_ms": 2282.29
   }
 }
