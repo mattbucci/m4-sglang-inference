@@ -106,14 +106,17 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 # Install
 ./scripts/setup.sh
 
-# Run a model
+# Run a model (FP8 KV cache + radix cache enabled by default)
 ./scripts/launch.sh coder-30b
 
-# 256K context with FP8 KV cache
-./scripts/launch.sh coder-30b --context-length 262144 --kv-cache fp8
+# 256K context (FP8 KV + radix cache + RoPE scaling all automatic)
+./scripts/launch.sh coder-30b --context-length 262144
 
 # TurboQuant for models with large KV heads
 ./scripts/launch.sh gemma4-31b --context-length 262144 --kv-cache turboquant
+
+# Full precision if needed
+./scripts/launch.sh devstral --kv-cache fp16
 ```
 
 ## Supported Models
@@ -164,11 +167,7 @@ For agentic workloads, the same system prompt and conversation history are sent 
 
 SGLang's radix cache (our patch 001) reuses KV cache from shared prefixes. On cache hit, only new tokens need prefilling:
 
-```bash
-# Radix cache is supported but currently disabled by default.
-# To enable, remove --disable-radix-cache from launch.sh.
-# Note: radix cache + quantized KV cache interaction is experimental.
-```
+Radix cache is **enabled by default**. Combined with FP8 KV cache (also default), subsequent turns in a conversation skip redundant prefill entirely.
 
 | Scenario | Without Cache | With Radix Cache |
 |:---------|:------------:|:----------------:|
@@ -190,9 +189,9 @@ Three features enable 256K context on 64GB Apple Silicon:
 
 | Mode | Bytes/elem | Savings | Use case |
 |:-----|:----------:|:-------:|:---------|
-| fp16 (default) | 2.0 | 1x | Short context |
-| **fp8** | 1.03 | **1.9x** | Long context, most models |
-| **turboquant** | 0.56 | **3.6x** | Models with large KV heads |
+| **fp8** (default) | 1.03 | **1.9x** | Most models, best speed/memory tradeoff |
+| **turboquant** | 0.56 | **3.6x** | Models with large KV heads (Gemma 4 31B) |
+| fp16 | 2.0 | 1x | Debugging, quality testing |
 
 ### Health Check Timeout
 

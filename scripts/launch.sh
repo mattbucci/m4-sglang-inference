@@ -18,9 +18,9 @@
 #   qwen35         Qwen3.5-27B DeltaNet 4-bit (32K)
 #
 # KV cache modes (--kv-cache):
-#   auto           Float16 (default, full precision)
-#   fp8            MXFP8 quantized (~2x memory savings, 256K feasible)
-#   turboquant     Affine 4-bit quantized (~3.5x savings, 256K+ easy)
+#   fp8            MXFP8 quantized (default, ~2x memory savings)
+#   turboquant     Affine 4-bit quantized (~3.5x savings, large KV heads)
+#   fp16           Full precision float16 (no quantization)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,7 +36,7 @@ CHAT_TEMPLATE=""
 REASONING=""
 WARMUP=""
 WATCHDOG=600
-KV_CACHE="auto"
+KV_CACHE="fp8"
 EXTRA_ARGS=""
 
 # --- Model presets (tuned for 64GB unified memory) ---
@@ -162,7 +162,6 @@ CMD=(python3 -m sglang.launch_server
     --port "$PORT"
     --host 0.0.0.0
     --enable-metrics
-    --disable-radix-cache
     --kv-cache-dtype "$KV_CACHE"
 )
 
