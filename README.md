@@ -25,7 +25,11 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 
 ## Performance
 
-> All benchmarks on Mac mini M4 Pro (64GB), SGLang + MLX, FP8 KV cache
+> Mac mini M4 Pro (64GB), SGLang + MLX, `sglang.bench_serving`
+>
+> **Context sweep**: single user, 64 output tokens, radix cache disabled, FP8 or TurboQuant KV cache. Measures decode speed (TPOT) and prefill time (TTFT) at each context length up to 256K.
+>
+> **Concurrency sweep**: 256 in / 256 out, 8K context, scaling concurrent users. Run separately with smaller KV pool to leave room for batching.
 
 ### Decode Speed vs Context Length
 
