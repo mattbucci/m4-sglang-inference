@@ -53,9 +53,12 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 | **Devstral-24B** | 27.0 tok/s | 30.4 tok/s | 39.2 tok/s |
 
 <details>
-<summary><b>Full context sweep tables</b></summary>
+<summary><b>Coder-30B MoE — best for 256K agentic use</b></summary>
 
-#### Coder-30B MoE (best for 256K agentic use)
+<div align="center">
+<img src="benchmarks/coder-30b-4bit/context_vs_toks.png" alt="Coder-30B context scaling" width="600">
+<img src="benchmarks/coder-30b-4bit/concurrency_vs_toks.png" alt="Coder-30B throughput" width="600">
+</div>
 
 | Context | TPOT (ms) | tok/s | TTFT |
 |:-------:|:---------:|:-----:|:----:|
@@ -69,7 +72,36 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 | 128K | 307.6 | 3.3 | 19.5m |
 | **256K** | **309.2** | **3.2** | **19.5m** |
 
-#### Devstral-24B Dense
+</details>
+
+<details>
+<summary><b>Qwen3-30B MoE — same architecture as Coder-30B</b></summary>
+
+<div align="center">
+<img src="benchmarks/qwen3-30b-moe-4bit/context_vs_toks.png" alt="Qwen3-30B context scaling" width="600">
+</div>
+
+| Context | TPOT (ms) | tok/s | TTFT |
+|:-------:|:---------:|:-----:|:----:|
+| 128 | 14.7 | 68.0 | 0.2s |
+| 1K | 14.5 | 69.2 | 0.2s |
+| 4K | 18.1 | 55.2 | 1.3s |
+| 8K | 28.1 | 35.6 | 7s |
+| 16K | 46.7 | 21.4 | 26s |
+| 32K | 84.7 | 11.8 | 1.4m |
+| **64K** | **158.5** | **6.3** | **5.1m** |
+
+RoPE scaled from 40K native → 256K. Matches Coder-30B exactly.
+
+</details>
+
+<details>
+<summary><b>Devstral-24B Dense</b></summary>
+
+<div align="center">
+<img src="benchmarks/devstral-24b-4bit/context_vs_toks.png" alt="Devstral context scaling" width="600">
+<img src="benchmarks/devstral-24b-4bit/concurrency_vs_toks.png" alt="Devstral throughput" width="600">
+</div>
 
 | Context | TPOT (ms) | tok/s | TTFT |
 |:-------:|:---------:|:-----:|:----:|
@@ -82,7 +114,14 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 | 64K | 295.7 | 3.4 | 10.9m |
 | **256K** | **540.9** | **1.8** | **29.3m** |
 
-#### Gemma 4 26B MoE
+</details>
+
+<details>
+<summary><b>Gemma 4 26B MoE</b></summary>
+
+<div align="center">
+<img src="benchmarks/gemma4-26b-4bit/context_vs_toks.png" alt="Gemma4 context scaling" width="600">
+</div>
 
 | Context | TPOT (ms) | tok/s | TTFT |
 |:-------:|:---------:|:-----:|:----:|
@@ -95,6 +134,45 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 | 64K | 333.1 | 3.0 | 4.8m |
 | 128K | 672.6 | 1.5 | 17.8m |
 | **256K** | **674.9** | **1.5** | **17.7m** |
+
+48% KV pool at 256K — tightest fit of the passing models.
+
+</details>
+
+<details>
+<summary><b>Qwen3-32B Dense</b></summary>
+
+<div align="center">
+<img src="benchmarks/qwen3-32b-4bit/context_vs_toks.png" alt="Qwen3-32B context scaling" width="600">
+</div>
+
+| Context | TPOT (ms) | tok/s | TTFT |
+|:-------:|:---------:|:-----:|:----:|
+| 128 | 81.8 | 12.2 | 0.1s |
+| 1K | 82.2 | 12.2 | 0.1s |
+| 4K | 90.2 | 11.1 | 0.1s |
+| **8K** | **121.4** | **8.2** | **0.3s** |
+
+64 layers makes KV cache very large. Needs `--kv-cache turboquant` for 256K. Confirmed working at 32K+ with radix cache disabled.
+
+</details>
+
+<details>
+<summary><b>Gemma 4 31B Dense</b></summary>
+
+<div align="center">
+<img src="benchmarks/gemma4-31b-4bit/context_vs_toks.png" alt="Gemma4-31B context scaling" width="600">
+</div>
+
+| Context | TPOT (ms) | tok/s | TTFT |
+|:-------:|:---------:|:-----:|:----:|
+| 128 | 80.1 | 12.5 | 0.7s |
+| 1K | 80.1 | 12.5 | 0.7s |
+| 4K | 99.0 | 10.1 | 12s |
+| 8K | 181.1 | 5.5 | 60s |
+| **16K** | **347.7** | **2.9** | **2.8m** |
+
+Very large KV heads (506K bytes/slot). Needs turboquant for anything beyond 16K.
 
 </details>
 
