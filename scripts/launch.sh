@@ -5,7 +5,8 @@
 #   ./scripts/launch.sh <model> [options]
 #   ./scripts/launch.sh devstral
 #   ./scripts/launch.sh coder-30b --context-length 16384
-#   ./scripts/launch.sh gemma4 --port 8000
+#   ./scripts/launch.sh devstral --context-length 262144 --kv-cache fp8
+#   ./scripts/launch.sh devstral --context-length 262144 --kv-cache turboquant
 #   MODEL=/path/to/weights ./scripts/launch.sh coder-next
 #
 # Models:
@@ -15,6 +16,11 @@
 #   gemma4         Gemma 4 26B MoE 4-bit (4K)
 #   gemma4-31b     Gemma 4 31B 4-bit (4K)
 #   qwen35         Qwen3.5-27B DeltaNet 4-bit (32K)
+#
+# KV cache modes (--kv-cache):
+#   auto           Float16 (default, full precision)
+#   fp8            MXFP8 quantized (~2x memory savings, 256K feasible)
+#   turboquant     Affine 4-bit quantized (~3.5x savings, 256K+ easy)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +36,7 @@ CHAT_TEMPLATE=""
 REASONING=""
 WARMUP=""
 WATCHDOG=600
+KV_CACHE="auto"
 EXTRA_ARGS=""
 
 # --- Model presets (tuned for 64GB unified memory) ---
@@ -66,6 +73,16 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
+        qwen3-32b)
+            MODEL="${MODEL:-mlx-community/Qwen3-32B-4bit}"
+            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
+            REASONING="--reasoning-parser qwen3"
+            ;;
+        qwen3-moe)
+            MODEL="${MODEL:-mlx-community/Qwen3-30B-A3B-4bit}"
+            CTX=32768; MAX_RUNNING=8; CHUNKED=4096
+            REASONING="--reasoning-parser qwen3"
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
@@ -74,19 +91,21 @@ apply_preset() {
     esac
 }
 
-# --- Parse arguments ---
+# --- Parse arguments (save CLI overrides to apply after preset) ---
 PRESET=""
+CLI_CTX="" CLI_PORT="" CLI_MAX_RUNNING="" CLI_CHUNKED="" CLI_WATCHDOG="" CLI_KV_CACHE=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
-            head -16 "$0" | tail -15
+            head -23 "$0" | tail -22
             exit 0
             ;;
-        --context-length) CTX="$2"; shift 2 ;;
-        --port) PORT="$2"; shift 2 ;;
-        --max-running) MAX_RUNNING="$2"; shift 2 ;;
-        --chunked-prefill) CHUNKED="$2"; shift 2 ;;
-        --watchdog) WATCHDOG="$2"; shift 2 ;;
+        --context-length) CLI_CTX="$2"; shift 2 ;;
+        --port) CLI_PORT="$2"; shift 2 ;;
+        --max-running) CLI_MAX_RUNNING="$2"; shift 2 ;;
+        --chunked-prefill) CLI_CHUNKED="$2"; shift 2 ;;
+        --watchdog) CLI_WATCHDOG="$2"; shift 2 ;;
+        --kv-cache) CLI_KV_CACHE="$2"; shift 2 ;;
         -*)
             echo "Unknown option: $1"; exit 1 ;;
         *)
@@ -105,7 +124,14 @@ if [[ -z "$PRESET" ]]; then
     exit 1
 fi
 
+# Apply preset first, then CLI overrides
 apply_preset "$PRESET"
+[[ -n "$CLI_CTX" ]] && CTX="$CLI_CTX"
+[[ -n "$CLI_PORT" ]] && PORT="$CLI_PORT"
+[[ -n "$CLI_MAX_RUNNING" ]] && MAX_RUNNING="$CLI_MAX_RUNNING"
+[[ -n "$CLI_CHUNKED" ]] && CHUNKED="$CLI_CHUNKED"
+[[ -n "$CLI_WATCHDOG" ]] && WATCHDOG="$CLI_WATCHDOG"
+[[ -n "$CLI_KV_CACHE" ]] && KV_CACHE="$CLI_KV_CACHE"
 
 # Resolve chat template (deferred $MODEL / $SCRIPT_DIR expansion)
 CHAT_TEMPLATE=$(eval echo "$CHAT_TEMPLATE")
@@ -122,7 +148,7 @@ echo "Python  $(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.ve
 echo "MLX     $(python3 -c 'import mlx.core as mx; print(mx.__version__)')"
 echo "SGLang  $(python3 -c 'import sglang; print(sglang.__version__)')"
 echo "Model:  $MODEL"
-echo "Context: $CTX  Port: $PORT  Memory: ${MEM_GB}GB"
+echo "Context: $CTX  Port: $PORT  Memory: ${MEM_GB}GB  KV: $KV_CACHE"
 echo "=============================================="
 
 # --- Build command ---
@@ -137,6 +163,7 @@ CMD=(python3 -m sglang.launch_server
     --host 0.0.0.0
     --enable-metrics
     --disable-radix-cache
+    --kv-cache-dtype "$KV_CACHE"
 )
 
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)

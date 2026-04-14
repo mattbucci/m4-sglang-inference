@@ -40,6 +40,15 @@ setup_mlx_env() {
 
     # Metal performance hints
     export MLX_USE_DEFAULT_STREAM=1
+
+    # Long-context support: increase health check timeout.
+    # Default 20s is too short — a single prefill chunk at 64K+ context
+    # can take 50-90s on Apple Silicon, blocking the scheduler heartbeat.
+    export SGLANG_HEALTH_CHECK_TIMEOUT=${SGLANG_HEALTH_CHECK_TIMEOUT:-120}
+
+    # Allow context length override beyond model's default max.
+    # Required for 256K context on models with shorter native limits.
+    export SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1
 }
 
 # System info
