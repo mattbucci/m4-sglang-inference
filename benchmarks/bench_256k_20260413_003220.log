@@ -1,0 +1,40 @@
+[00:32:20] Starting 256K benchmark sweep
+[00:32:20] Models: devstral coder-30b coder-next gemma4 gemma4-31b qwen35
+[00:32:20] Target context: 262144
+[00:32:20] Log: benchmarks/bench_256k_20260413_003220.log
+[00:32:20] ==============================================
+[00:32:20]   Devstral-24B 4-bit
+[00:32:20]   KV: fp8  Context: 262144
+[00:32:20] ==============================================
+[00:32:20] Killing all sglang/bench processes...
+[00:32:22] Reclaiming memory...
+[00:32:30] Available memory: 54.4 GB
+[00:32:30] Launching server...
+[00:32:30] Waiting for server (PID 27690)...
+[00:32:46] Server ready
+[00:32:46]   [2026-04-13 00:32:43] Auto-sized KV pool (mode=fp8): sys_available=41.01 GB, mlx_limit=51.8 GB, mlx_used=12.35 GB, kv_budget=33.27 GB, bytes_per_slot=84480 (1.031 B/elem), pool_size=422859
+[00:32:46] Running benchmark...
+=== Devstral-24B 4-bit ===
+Model: mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        58.5      17.1       495.0
+     256        59.0      17.0       496.7
+     512        58.5      17.1       491.8
+    1024        58.3      17.2       500.1
+    2048        62.9      15.9      8555.1
+    4096        63.1      15.9      9006.0
+    8192        77.7      12.9     42854.0
+   16384       108.6       9.2    104320.9
+   32768       171.7       5.8    256596.6
+   65536         ERR         —           —
+  Server appears down, stopping context sweep
+
+--- Concurrency sweep (256 in / 256 out, sglang.bench_serving) ---
+ Conc    TPOT(ms)     tok/s    TTFT(ms)
+---------------------------------------------

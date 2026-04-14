@@ -1,0 +1,96 @@
+{
+  "model": "Devstral-24B 4-bit",
+  "model_id": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-04-13 00:20:08",
+  "method": "sglang.bench_serving",
+  "kv_cache_mode": "fp8",
+  "context_max": 262144,
+  "context_sweep": [
+    {
+      "context": 128,
+      "tpot_ms": 57.5,
+      "tok_per_sec": 17.4,
+      "ttft_ms": 492.6
+    },
+    {
+      "context": 256,
+      "tpot_ms": 57.6,
+      "tok_per_sec": 17.4,
+      "ttft_ms": 491.2
+    },
+    {
+      "context": 512,
+      "tpot_ms": 57.5,
+      "tok_per_sec": 17.4,
+      "ttft_ms": 488.3
+    },
+    {
+      "context": 1024,
+      "tpot_ms": 60.0,
+      "tok_per_sec": 16.7,
+      "ttft_ms": 503.1
+    },
+    {
+      "context": 2048,
+      "tpot_ms": 61.4,
+      "tok_per_sec": 16.3,
+      "ttft_ms": 7929.0
+    },
+    {
+      "context": 4096,
+      "tpot_ms": 62.0,
+      "tok_per_sec": 16.1,
+      "ttft_ms": 8596.8
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 77.0,
+      "tok_per_sec": 13.0,
+      "ttft_ms": 42177.6
+    },
+    {
+      "context": 16384,
+      "tpot_ms": 108.9,
+      "tok_per_sec": 9.2,
+      "ttft_ms": 105903.9
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 169.5,
+      "tok_per_sec": 5.9,
+      "ttft_ms": 256443.6
+    },
+    {
+      "context": 65536,
+      "error": "timeout_or_crash"
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "tpot_ms": 109.3,
+      "tok_per_sec": 26.6,
+      "ttft_ms": 3049.4
+    },
+    {
+      "concurrency": 2,
+      "tpot_ms": 205.4,
+      "tok_per_sec": 27.0,
+      "ttft_ms": 8800.8
+    },
+    {
+      "concurrency": 4,
+      "tpot_ms": 283.8,
+      "tok_per_sec": 30.0,
+      "ttft_ms": 19809.7
+    },
+    {
+      "concurrency": 8,
+      "tpot_ms": 601.5,
+      "tok_per_sec": 39.3,
+      "ttft_ms": 33064.3
+    }
+  ]
+}

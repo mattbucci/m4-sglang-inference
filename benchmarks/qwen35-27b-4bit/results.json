@@ -1,0 +1,90 @@
+{
+  "model": "Qwen3.5-27B 4-bit",
+  "model_id": "mlx-community/Qwen3.5-27B-4bit",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-04-14 11:02:42",
+  "method": "sglang.bench_serving",
+  "kv_cache_mode": "fp8",
+  "context_max": 262144,
+  "context_sweep": [
+    {
+      "context": 128,
+      "tpot_ms": 69.8,
+      "tok_per_sec": 14.3,
+      "ttft_ms": 562.5
+    },
+    {
+      "context": 256,
+      "tpot_ms": 70.8,
+      "tok_per_sec": 14.1,
+      "ttft_ms": 567.6
+    },
+    {
+      "context": 512,
+      "tpot_ms": 71.2,
+      "tok_per_sec": 14.1,
+      "ttft_ms": 571.0
+    },
+    {
+      "context": 1024,
+      "tpot_ms": 69.5,
+      "tok_per_sec": 14.4,
+      "ttft_ms": 566.5
+    },
+    {
+      "context": 2048,
+      "tpot_ms": 71.6,
+      "tok_per_sec": 14.0,
+      "ttft_ms": 9158.9
+    },
+    {
+      "context": 4096,
+      "tpot_ms": 71.6,
+      "tok_per_sec": 14.0,
+      "ttft_ms": 9692.0
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 79.0,
+      "tok_per_sec": 12.7,
+      "ttft_ms": 47936.5
+    },
+    {
+      "context": 16384,
+      "tpot_ms": 90.4,
+      "tok_per_sec": 11.1,
+      "ttft_ms": 118826.1
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 112.3,
+      "tok_per_sec": 8.9,
+      "ttft_ms": 276164.0
+    },
+    {
+      "context": 65536,
+      "tpot_ms": 162.8,
+      "tok_per_sec": 6.1,
+      "ttft_ms": 671284.8
+    },
+    {
+      "context": 131072,
+      "tpot_ms": 256.9,
+      "tok_per_sec": 3.9,
+      "ttft_ms": 1677484.7
+    },
+    {
+      "context": 262144,
+      "tpot_ms": 256.7,
+      "tok_per_sec": 3.9,
+      "ttft_ms": 1667114.5
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "error": "timeout_or_crash"
+    }
+  ]
+}

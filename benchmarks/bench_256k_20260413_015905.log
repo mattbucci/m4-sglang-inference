@@ -1,0 +1,307 @@
+[01:59:05] Starting 256K benchmark sweep
+[01:59:05] Models: devstral coder-30b coder-next gemma4 gemma4-31b qwen35
+[01:59:05] Target context: 262144
+[01:59:05] Log: benchmarks/bench_256k_20260413_015905.log
+[01:59:05] ==============================================
+[01:59:05]   Devstral-24B 4-bit
+[01:59:05]   KV: fp8  Context: 262144
+[01:59:05] ==============================================
+[01:59:05] Killing all sglang/bench processes...
+[01:59:07] Reclaiming memory...
+[01:59:15] Available memory: 55.3 GB
+[01:59:15] Launching server...
+[01:59:15] Waiting for server (PID 28916)...
+[01:59:36] Server ready
+[01:59:36]   [2026-04-13 01:59:29] Auto-sized KV pool (mode=fp8): sys_available=41.53 GB, mlx_limit=51.8 GB, mlx_used=12.35 GB, kv_budget=33.27 GB, bytes_per_slot=84480 (1.031 B/elem), pool_size=422859
+[01:59:36] Running benchmark...
+=== Devstral-24B 4-bit ===
+Model: mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        58.7      17.0       493.4
+     256        57.6      17.4       489.2
+     512        58.0      17.2       495.1
+    1024        58.6      17.1       491.7
+    2048        61.9      16.1      7831.3
+    4096        62.1      16.1      8332.9
+    8192        77.4      12.9     42050.2
+   16384       108.8       9.2    105855.2
+   32768       169.2       5.9    257159.2
+   65536       295.7       3.4    653747.8
+  131072         ERR         —           —
+  Server still alive, continuing...
+  262144       540.9       1.8   1758876.6
+
+--- Concurrency sweep (256 in / 256 out, sglang.bench_serving) ---
+ Conc    TPOT(ms)     tok/s    TTFT(ms)
+---------------------------------------------
+    1       108.5      27.0      3024.1
+    2       198.3      26.8      8850.2
+    4       317.9      30.4     19409.2
+    8       585.5      39.2     33419.0
+
+Results saved to benchmarks/devstral-24b-4bit/results.json
+[04:43:54] Results: benchmarks/devstral-24b-4bit/results.json
+[04:43:54] Killing all sglang/bench processes...
+[04:43:56] Devstral-24B 4-bit fp8: max successful context = 262144
+[04:43:56] PASS: Devstral-24B 4-bit fp8 reached 262144
+[04:43:56] ==============================================
+[04:43:56]   Coder-30B 4-bit
+[04:43:56]   KV: fp8  Context: 262144
+[04:43:56] ==============================================
+[04:43:56] Killing all sglang/bench processes...
+[04:43:58] Reclaiming memory...
+[04:44:07] Available memory: 55.2 GB
+[04:44:07] Launching server...
+[04:44:07] Waiting for server (PID 29826)...
+[04:44:28] Server ready
+[04:44:28]   [2026-04-13 04:44:21] Auto-sized KV pool (mode=fp8): sys_available=38.25 GB, mlx_limit=51.8 GB, mlx_used=16.00 GB, kv_budget=29.62 GB, bytes_per_slot=50688 (1.031 B/elem), pool_size=627412
+[04:44:28] Running benchmark...
+=== Coder-30B 4-bit ===
+Model: mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        14.6      68.4       157.2
+     256        14.9      67.2       160.1
+     512        15.0      66.8       158.3
+    1024        14.6      68.7       156.2
+    2048        18.1      55.2      1282.1
+    4096        18.1      55.2      1280.2
+    8192        28.0      35.8      7275.0
+   16384        46.4      21.6     26484.7
+   32768        84.7      11.8     85828.1
+   65536       158.3       6.3    300117.8
+  131072       307.6       3.3   1167359.3
+  262144       309.2       3.2   1167952.2
+
+--- Concurrency sweep (256 in / 256 out, sglang.bench_serving) ---
+ Conc    TPOT(ms)     tok/s    TTFT(ms)
+---------------------------------------------
+    1        38.1      82.6       449.2
+    2        62.9      89.6      1916.1
+    4        98.3      97.1      4197.3
+    8       231.3     107.4      7376.5
+
+Results saved to benchmarks/coder-30b-4bit/results.json
+[06:21:31] Results: benchmarks/coder-30b-4bit/results.json
+[06:21:31] Killing all sglang/bench processes...
+[06:21:33] Coder-30B 4-bit fp8: max successful context = 262144
+[06:21:33] PASS: Coder-30B 4-bit fp8 reached 262144
+[06:21:33] ==============================================
+[06:21:33]   Coder-Next 80B 4-bit
+[06:21:33]   KV: fp8  Context: 262144
+[06:21:33] ==============================================
+[06:21:33] Killing all sglang/bench processes...
+[06:21:36] Reclaiming memory...
+[06:21:44] Available memory: 55.5 GB
+[06:21:44] Launching server...
+[06:21:44] Waiting for server (PID 30521)...
+[06:31:47] ERROR: Server did not start
+[06:31:47]       raise ValueError(f"No attention attribute in layer type {type(sample)}")
+[06:31:47]   ValueError: No attention attribute in layer type <class 'mlx_lm.models.qwen3_next.Qwen3NextDecoderLayer'>
+[06:31:47] Killing all sglang/bench processes...
+[06:31:50] Coder-Next 80B 4-bit: fp8 launch/bench failed, trying turboquant...
+[06:31:50] ==============================================
+[06:31:50]   Coder-Next 80B 4-bit
+[06:31:50]   KV: turboquant  Context: 262144
+[06:31:50] ==============================================
+[06:31:50] Killing all sglang/bench processes...
+[06:31:52] Reclaiming memory...
+[06:32:00] Available memory: 53.5 GB
+[06:32:00] Launching server...
+[06:32:00] Waiting for server (PID 30915)...
+[06:42:04] ERROR: Server did not start
+[06:42:04]       raise ValueError(f"No attention attribute in layer type {type(sample)}")
+[06:42:04]   ValueError: No attention attribute in layer type <class 'mlx_lm.models.qwen3_next.Qwen3NextDecoderLayer'>
+[06:42:04] Killing all sglang/bench processes...
+[06:42:06] WARN: Coder-Next 80B 4-bit both modes failed (partial data at 0)
+[06:42:06] ==============================================
+[06:42:06]   Gemma 4 26B 4-bit
+[06:42:06]   KV: fp8  Context: 262144
+[06:42:06] ==============================================
+[06:42:06] Killing all sglang/bench processes...
+[06:42:08] Reclaiming memory...
+[06:42:16] Available memory: 53.4 GB
+[06:42:16] Launching server...
+[06:42:16] Waiting for server (PID 31317)...
+[06:42:37] Server ready
+[06:42:37]   [2026-04-13 06:42:31] Auto-sized KV pool (mode=fp8): sys_available=35.90 GB, mlx_limit=51.8 GB, mlx_used=13.48 GB, kv_budget=31.59 GB, bytes_per_slot=126720 (1.031 B/elem), pool_size=267673
+[06:42:37] Running benchmark...
+=== Gemma 4 26B 4-bit ===
+Model: mlx-community/gemma-4-26b-a4b-it-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        17.0      58.8       176.3
+     256        17.1      58.7       175.7
+     512        16.8      59.6       174.8
+    1024        16.8      59.5       178.8
+    2048        22.3      44.9      1610.2
+    4096        22.1      45.4      1609.2
+    8192        42.2      23.7      8961.6
+   16384        82.8      12.1     30045.5
+   32768       165.6       6.0     86431.9
+   65536       333.1       3.0    289943.6
+  131072       672.6       1.5   1069934.7
+  262144       674.9       1.5   1061686.8
+
+--- Concurrency sweep (256 in / 256 out, sglang.bench_serving) ---
+ Conc    TPOT(ms)     tok/s    TTFT(ms)
+---------------------------------------------
+    1         ERR         —           —
+  Server appears down, stopping concurrency sweep
+
+Results saved to benchmarks/gemma4-26b-4bit/results.json
+[08:12:00] Results: benchmarks/gemma4-26b-4bit/results.json
+[08:12:00] Killing all sglang/bench processes...
+[08:12:02] Gemma 4 26B 4-bit fp8: max successful context = 262144
+[08:12:02] PASS: Gemma 4 26B 4-bit fp8 reached 262144
+[08:12:02] ==============================================
+[08:12:02]   Gemma 4 31B 4-bit
+[08:12:02]   KV: fp8  Context: 262144
+[08:12:02] ==============================================
+[08:12:02] Killing all sglang/bench processes...
+[08:12:04] Reclaiming memory...
+[08:12:12] Available memory: 58.1 GB
+[08:12:12] Launching server...
+[08:12:12] Waiting for server (PID 31878)...
+[08:18:36] Server ready
+[08:18:36]   [2026-04-13 08:18:32] Auto-sized KV pool (mode=fp8): sys_available=37.65 GB, mlx_limit=51.8 GB, mlx_used=16.09 GB, kv_budget=29.53 GB, bytes_per_slot=506880 (1.031 B/elem), pool_size=62561
+[08:18:36] Running benchmark...
+=== Gemma 4 31B 4-bit ===
+Model: mlx-community/gemma-4-31b-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        79.6      12.6       666.9
+     256        79.5      12.6       668.3
+     512        79.3      12.6       668.4
+    1024        79.4      12.6       670.0
+    2048       100.3      10.0     11529.3
+    4096       100.6       9.9     11922.9
+    8192       179.2       5.6     60650.7
+   16384       350.6       2.9    170912.0
+   32768         ERR         —           —
+  Server still alive, continuing...
+   65536         ERR         —           —
+  Server appears down, stopping context sweep
+
+Server is down — skipping concurrency sweep
+--- Concurrency sweep (256 in / 256 out, sglang.bench_serving) ---
+ Conc    TPOT(ms)     tok/s    TTFT(ms)
+---------------------------------------------
+
+Results saved to benchmarks/gemma4-31b-4bit/results.json
+[08:50:48] Results: benchmarks/gemma4-31b-4bit/results.json
+[08:50:48] Killing all sglang/bench processes...
+[08:50:50] Gemma 4 31B 4-bit fp8: max successful context = 16384
+[08:50:50] Gemma 4 31B 4-bit: fp8 only reached 16384, retrying with turboquant...
+[08:50:50] ==============================================
+[08:50:50]   Gemma 4 31B 4-bit
+[08:50:50]   KV: turboquant  Context: 262144
+[08:50:50] ==============================================
+[08:50:50] Killing all sglang/bench processes...
+[08:50:52] Reclaiming memory...
+[08:51:01] Available memory: 57.4 GB
+[08:51:01] Launching server...
+[08:51:01] Waiting for server (PID 32273)...
+[08:51:22] Server ready
+[08:51:22]   [2026-04-13 08:51:16] Auto-sized KV pool (mode=turboquant): sys_available=39.01 GB, mlx_limit=51.8 GB, mlx_used=16.09 GB, kv_budget=29.53 GB, bytes_per_slot=276480 (0.562 B/elem), pool_size=114695
+[08:51:22] Running benchmark...
+=== Gemma 4 31B 4-bit ===
+Model: mlx-community/gemma-4-31b-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        80.1      12.5       668.6
+     256        80.1      12.5       671.4
+     512        80.1      12.5       670.2
+    1024        80.1      12.5       671.7
+    2048        98.8      10.1     11413.0
+    4096        99.0      10.1     11714.3
+    8192       181.1       5.5     60080.6
+   16384       347.7       2.9    170703.6
+   32768         ERR         —           —
+  Server still alive, continuing...
+   65536         ERR         —           —
+  Server appears down, stopping context sweep
+
+Server is down — skipping concurrency sweep
+--- Concurrency sweep (256 in / 256 out, sglang.bench_serving) ---
+ Conc    TPOT(ms)     tok/s    TTFT(ms)
+---------------------------------------------
+
+Results saved to benchmarks/gemma4-31b-4bit/results.json
+[09:29:19] Results: benchmarks/gemma4-31b-4bit/results.json
+[09:29:19] Killing all sglang/bench processes...
+[09:29:22] PASS: Gemma 4 31B 4-bit turboquant reached 16384
+[09:29:22] ==============================================
+[09:29:22]   Qwen3.5-27B 4-bit
+[09:29:22]   KV: fp8  Context: 262144
+[09:29:22] ==============================================
+[09:29:22] Killing all sglang/bench processes...
+[09:29:24] Reclaiming memory...
+[09:29:32] Available memory: 56.8 GB
+[09:29:32] Launching server...
+[09:29:32] Waiting for server (PID 32496)...
+[09:39:35] ERROR: Server did not start
+[09:39:35]       raise ValueError(f"No attention attribute in layer type {type(sample)}")
+[09:39:35]   ValueError: No attention attribute in layer type <class 'mlx_lm.models.qwen3_5.DecoderLayer'>
+[09:39:35] Killing all sglang/bench processes...
+[09:39:38] Qwen3.5-27B 4-bit: fp8 launch/bench failed, trying turboquant...
+[09:39:38] ==============================================
+[09:39:38]   Qwen3.5-27B 4-bit
+[09:39:38]   KV: turboquant  Context: 262144
+[09:39:38] ==============================================
+[09:39:38] Killing all sglang/bench processes...
+[09:39:40] Reclaiming memory...
+[09:39:48] Available memory: 56.6 GB
+[09:39:48] Launching server...
+[09:39:48] Waiting for server (PID 32860)...
+[09:49:51] ERROR: Server did not start
+[09:49:51]       raise ValueError(f"No attention attribute in layer type {type(sample)}")
+[09:49:51]   ValueError: No attention attribute in layer type <class 'mlx_lm.models.qwen3_5.DecoderLayer'>
+[09:49:51] Killing all sglang/bench processes...
+[09:49:54] WARN: Qwen3.5-27B 4-bit both modes failed (partial data at 0)
+[09:49:54] Regenerating charts...
+Generating benchmark charts...
+
+Devstral-24B 4-bit:
+  /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/devstral-24b-4bit/context_vs_toks.png
+  /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/devstral-24b-4bit/concurrency_vs_toks.png
+
+Coder-30B 4-bit (MoE):
+  /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/coder-30b-4bit/context_vs_toks.png
+  /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/coder-30b-4bit/concurrency_vs_toks.png
+
+Gemma 4 26B 4-bit (MoE):
+  /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/gemma4-26b-4bit/context_vs_toks.png
+Traceback (most recent call last):
+  File "/Users/letsrtfm/AI/m4-sglang-inference/scripts/bench/generate_charts.py", line 207, in <module>
+    make_concurrency_chart(key, meta, results, out_dir)
+  File "/Users/letsrtfm/AI/m4-sglang-inference/scripts/bench/generate_charts.py", line 106, in make_concurrency_chart
+    measured = {p["concurrency"]: p["tok_per_sec"] for p in sweep}
+                                  ~^^^^^^^^^^^^^^^
+KeyError: 'tok_per_sec'

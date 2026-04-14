@@ -39,11 +39,13 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 
 ### 256K Context Results
 
-| Model | Type | Weights | tok/s @128 | tok/s @256K | TTFT @256K | KV Pool |
-|:------|:-----|:-------:|:----------:|:-----------:|:----------:|:-------:|
-| **Coder-30B** | MoE (3B active) | 16 GB | 68.4 | 3.2 | 19.5m | 20% |
-| **Devstral-24B** | Dense | 14 GB | 17.0 | 1.8 | 29.3m | 30% |
-| **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 1.5 | 17.7m | 48% |
+| Model | Type | Weights | tok/s @128 | tok/s @64K | tok/s @256K | KV Pool |
+|:------|:-----|:-------:|:----------:|:----------:|:-----------:|:-------:|
+| **Coder-Next 80B** | MoE+DeltaNet | 42 GB | 55.7 | **18.3** | 64K max | 81K slots |
+| **Qwen3.5-27B** | DeltaNet | 15 GB | 14.3 | 6.1 | **3.9** | 51% |
+| **Coder-30B** | MoE (3B active) | 16 GB | 68.4 | 6.3 | **3.2** | 20% |
+| **Devstral-24B** | Dense | 14 GB | 17.0 | 3.4 | **1.8** | 30% |
+| **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 3.0 | **1.5** | 48% |
 
 ### Throughput Scaling
 
@@ -164,6 +166,50 @@ RoPE scaled from 40K native → 256K. Matches Coder-30B exactly.
 </details>
 
 <details>
+<summary><b>Qwen3.5-27B DeltaNet — fastest at 256K</b></summary>
+
+<div align="center">
+<img src="benchmarks/qwen35-27b-4bit/context_vs_toks.png" alt="Qwen3.5 context scaling" width="600">
+</div>
+
+| Context | TPOT (ms) | tok/s | TTFT |
+|:-------:|:---------:|:-----:|:----:|
+| 128 | 69.8 | 14.3 | 0.6s |
+| 1K | 69.5 | 14.4 | 0.6s |
+| 4K | 71.6 | 14.0 | 10s |
+| 8K | 79.0 | 12.7 | 48s |
+| 16K | 90.4 | 11.1 | 2.0m |
+| 32K | 112.3 | 8.9 | 4.6m |
+| 64K | 162.8 | 6.1 | 11.2m |
+| 128K | 256.9 | 3.9 | 28.0m |
+| **256K** | **256.7** | **3.9** | **27.8m** |
+
+DeltaNet O(1) layers keep TPOT remarkably flat. Fastest decode at 128K+ of all models. 51% pool at 256K. RoPE scaled from 40K native.
+
+</details>
+
+<details>
+<summary><b>Coder-Next 80B MoE+DeltaNet — fastest at 64K</b></summary>
+
+<div align="center">
+<img src="benchmarks/coder-next-80b-4bit/context_vs_toks.png" alt="Coder-Next context scaling" width="600">
+</div>
+
+| Context | TPOT (ms) | tok/s | TTFT |
+|:-------:|:---------:|:-----:|:----:|
+| 128 | 18.3 | 54.6 | 0.2s |
+| 1K | 17.9 | 55.7 | 0.2s |
+| 4K | 18.9 | 52.9 | 1.6s |
+| 8K | 21.5 | 46.5 | 8s |
+| 16K | 26.4 | 37.8 | 23s |
+| 32K | 35.8 | 28.0 | 58s |
+| **64K** | **54.7** | **18.3** | **2.6m** |
+
+An 80B model doing 18.3 tok/s at 64K — faster than Devstral-24B at *any* context. MoE+DeltaNet hybrid compounds both advantages. 81K pool limits context to 64K on 64 GB (42 GB weights).
+
+</details>
+
+<details>
 <summary><b>Gemma 4 31B Dense</b></summary>
 
 <div align="center">
@@ -207,14 +253,14 @@ Very large KV heads (506K bytes/slot). Needs turboquant for anything beyond 16K.
 
 | Model | Type | Weights | 1-user tok/s | Max Context | Launch |
 |:------|:-----|:-------:|:------------:|:-----------:|:-------|
+| Coder-Next 80B | MoE+DeltaNet | 42 GB | 55.7 | **64K** (18.3 tok/s) | `launch.sh coder-next` |
 | Coder-30B | MoE (3B active) | 16 GB | 68.4 | **256K** (3.2 tok/s) | `launch.sh coder-30b` |
 | Qwen3-30B | MoE (3B active) | 16 GB | 69.0 | **64K** (6.3 tok/s) | `launch.sh qwen3-moe` |
 | Gemma 4 26B | MoE (4B active) | 15 GB | 58.8 | **256K** (1.5 tok/s) | `launch.sh gemma4` |
-| Coder-Next 80B | MoE+DeltaNet | 42 GB | 55.3 | 8K (mem limited) | `launch.sh coder-next` |
+| Qwen3.5-27B | DeltaNet hybrid | 15 GB | 14.3 | **256K** (3.9 tok/s) | `launch.sh qwen35` |
 | Devstral-24B | Dense | 14 GB | 17.0 | **256K** (1.8 tok/s) | `launch.sh devstral` |
-| Qwen3.5-27B | DeltaNet hybrid | 15 GB | 14.5 | pending | `launch.sh qwen35` |
-| Qwen3-32B | Dense | 18 GB | 12.2 | 8K (GPU OOM) | `launch.sh qwen3-32b` |
-| Gemma 4 31B | Dense | 17 GB | 12.5 | 16K (turboquant) | `launch.sh gemma4-31b` |
+| Qwen3-32B | Dense (turboquant) | 18 GB | 12.1 | 16K (bench timeout) | `launch.sh qwen3-32b` |
+| Gemma 4 31B | Dense (turboquant) | 17 GB | 12.5 | 16K | `launch.sh gemma4-31b` |
 
 All models 4-bit MLX quantized from [`mlx-community/`](https://huggingface.co/mlx-community) on HuggingFace.
 

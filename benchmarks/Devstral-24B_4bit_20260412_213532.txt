@@ -1,0 +1,27 @@
+=============================================
+BENCHMARK: Devstral-24B 4bit
+Model:     mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit
+Hardware:  Apple M4 Pro (64GB)
+Backend:   SGLang + MLX
+Date:      2026-04-12 21:35
+Server:    http://localhost:23334
+=============================================
+
+--- Smoke test ---
+  Response: Hello, how are you?
+
+--- Decode throughput (256 in / 256 out) ---
+Conc      TPOT(ms)    Throughput    TTFT(ms)    E2E(s)    
+------------------------------------------------------------
+1         105.80      27.40         3047.54     22042.94  
+2         201.96      27.45         8898.96     38957.98  
+4         266.48      31.48         19322.99    55445.34  
+8         300.76      41.44         37660.30    77853.09  
+16                                                        
+
+--- Context sweep (single user, 64 out) ---
+Input       TPOT(ms)    Throughput    TTFT(ms)  
+----------------------------------------------------
+128         OOM/ERR     -             -         
+  (stopping context sweep — server may have crashed)
+

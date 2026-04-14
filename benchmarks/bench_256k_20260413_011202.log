@@ -1,0 +1,34 @@
+[01:12:02] Starting 256K benchmark sweep
+[01:12:02] Models: devstral coder-30b coder-next gemma4 gemma4-31b qwen35
+[01:12:02] Target context: 262144
+[01:12:02] Log: benchmarks/bench_256k_20260413_011202.log
+[01:12:02] ==============================================
+[01:12:02]   Devstral-24B 4-bit
+[01:12:02]   KV: fp8  Context: 262144
+[01:12:02] ==============================================
+[01:12:02] Killing all sglang/bench processes...
+[01:12:05] Reclaiming memory...
+[01:12:13] Available memory: 55.6 GB
+[01:12:13] Launching server...
+[01:12:13] Waiting for server (PID 28082)...
+[01:12:34] Server ready
+[01:12:34]   [2026-04-13 01:12:27] Auto-sized KV pool (mode=fp8): sys_available=41.79 GB, mlx_limit=51.8 GB, mlx_used=12.35 GB, kv_budget=33.27 GB, bytes_per_slot=84480 (1.031 B/elem), pool_size=422859
+[01:12:34] Running benchmark...
+=== Devstral-24B 4-bit ===
+Model: mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+     128        58.3      17.1       495.2
+     256        57.6      17.4       488.5
+     512        57.8      17.3       489.1
+    1024        57.7      17.3       487.6
+    2048        62.0      16.1      7852.5
+    4096        62.3      16.0      8265.9
+    8192        77.3      12.9     41870.5
+   16384       109.1       9.2    106277.8
+   32768       169.3       5.9    257765.1

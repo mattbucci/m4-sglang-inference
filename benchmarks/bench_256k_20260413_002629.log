@@ -1,0 +1,15 @@
+[00:26:29] Starting 256K benchmark sweep
+[00:26:29] Models: devstral coder-30b coder-next gemma4 gemma4-31b qwen35
+[00:26:29] Log: benchmarks/bench_256k_20260413_002629.log
+[00:26:29] ==============================================
+[00:26:29] Model:    Devstral-24B 4-bit
+[00:26:29] KV mode:  fp8
+[00:26:29] Context:  262144
+[00:26:29] ==============================================
+[00:26:29] Reclaiming memory...
+[00:26:37] Available memory after reclaim: 55.5 GB
+[00:26:37] Launching devstral with --kv-cache fp8 --context-length 262144 ...
+[00:26:37] Waiting for server (PID 27473)...
+[00:26:58] Server is healthy!
+[00:26:58]   [2026-04-13 00:26:52] Auto-sized KV pool (mode=fp8): sys_available=41.66 GB, mlx_limit=51.8 GB, mlx_used=12.35 GB, kv_budget=33.27 GB, bytes_per_slot=84480 (1.031 B/elem), pool_size=422859
+[00:26:58] Running benchmark...
