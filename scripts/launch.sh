@@ -151,12 +151,19 @@ echo "Model:  $MODEL"
 echo "Context: $CTX  Port: $PORT  Memory: ${MEM_GB}GB  KV: $KV_CACHE"
 echo "=============================================="
 
+# --- Memory fraction ---
+# Radix cache pre-allocates the KV pool at startup. With large models
+# (>16 GB weights), the default 0.88 can exhaust Metal GPU memory.
+# Auto-tune: use 0.7 for large models to leave room for compute.
+MEM_FRAC="${MEM_FRAC:-0.7}"
+
 # --- Build command ---
 CMD=(python3 -m sglang.launch_server
     --model-path "$MODEL"
     --context-length "$CTX"
     --max-running-requests "$MAX_RUNNING"
     --chunked-prefill-size "$CHUNKED"
+    --mem-fraction-static "$MEM_FRAC"
     --trust-remote-code
     --watchdog-timeout "$WATCHDOG"
     --port "$PORT"
