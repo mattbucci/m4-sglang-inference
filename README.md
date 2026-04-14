@@ -121,16 +121,16 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 
 ## Supported Models
 
-| Model | Type | Weights | 1-user tok/s | 256K | Launch |
-|:------|:-----|:-------:|:------------:|:----:|:-------|
-| Coder-30B | MoE (3B active) | 16 GB | 68.4 | 3.2 | `launch.sh coder-30b` |
-| Qwen3-30B | MoE (3B active) | 16 GB | ~68 | pending | `launch.sh qwen3-moe` |
-| Gemma 4 26B | MoE (4B active) | 15 GB | 58.8 | 1.5 | `launch.sh gemma4` |
-| Coder-Next 80B | MoE+DeltaNet | 42 GB | 55.3 | mem limited | `launch.sh coder-next` |
-| Devstral-24B | Dense | 14 GB | 17.0 | 1.8 | `launch.sh devstral` |
+| Model | Type | Weights | 1-user tok/s | Max Context | Launch |
+|:------|:-----|:-------:|:------------:|:-----------:|:-------|
+| Coder-30B | MoE (3B active) | 16 GB | 68.4 | **256K** (3.2 tok/s) | `launch.sh coder-30b` |
+| Qwen3-30B | MoE (3B active) | 16 GB | 69.0 | **64K** (6.3 tok/s) | `launch.sh qwen3-moe` |
+| Gemma 4 26B | MoE (4B active) | 15 GB | 58.8 | **256K** (1.5 tok/s) | `launch.sh gemma4` |
+| Coder-Next 80B | MoE+DeltaNet | 42 GB | 55.3 | 8K (mem limited) | `launch.sh coder-next` |
+| Devstral-24B | Dense | 14 GB | 17.0 | **256K** (1.8 tok/s) | `launch.sh devstral` |
 | Qwen3.5-27B | DeltaNet hybrid | 15 GB | 14.5 | pending | `launch.sh qwen35` |
-| Qwen3-32B | Dense | 18 GB | ~12 | pending | `launch.sh qwen3-32b` |
-| Gemma 4 31B | Dense | 17 GB | 12.5 | 16K max | `launch.sh gemma4-31b` |
+| Qwen3-32B | Dense | 18 GB | 12.2 | 8K (GPU OOM) | `launch.sh qwen3-32b` |
+| Gemma 4 31B | Dense | 17 GB | 12.5 | 16K (turboquant) | `launch.sh gemma4-31b` |
 
 All models 4-bit MLX quantized from [`mlx-community/`](https://huggingface.co/mlx-community) on HuggingFace.
 

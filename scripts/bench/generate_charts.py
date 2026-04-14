@@ -31,12 +31,14 @@ plt.rcParams.update({
 })
 
 MODELS = {
-    "devstral-24b-4bit":   {"label": "Devstral-24B 4-bit",                    "color": "#58a6ff"},
-    "coder-30b-4bit":      {"label": "Coder-30B 4-bit (MoE)",                "color": "#3fb950"},
-    "gemma4-26b-4bit":     {"label": "Gemma 4 26B 4-bit (MoE)",              "color": "#d2a8ff"},
-    "qwen35-27b-4bit":     {"label": "Qwen3.5-27B 4-bit",                    "color": "#f0883e"},
-    "coder-next-80b-4bit": {"label": "Coder-Next 80B 4-bit (MoE+DeltaNet)",  "color": "#f778ba"},
-    "gemma4-31b-4bit":     {"label": "Gemma 4 31B 4-bit",                    "color": "#79c0ff"},
+    "devstral-24b-4bit":      {"label": "Devstral-24B (Dense)",             "color": "#58a6ff"},
+    "coder-30b-4bit":         {"label": "Coder-30B (MoE)",                  "color": "#3fb950"},
+    "gemma4-26b-4bit":        {"label": "Gemma 4 26B (MoE)",                "color": "#d2a8ff"},
+    "qwen3-30b-moe-4bit":    {"label": "Qwen3-30B (MoE)",                  "color": "#f0883e"},
+    "qwen3-32b-4bit":        {"label": "Qwen3-32B (Dense)",                 "color": "#e3b341"},
+    "gemma4-31b-4bit":        {"label": "Gemma 4 31B (Dense)",              "color": "#79c0ff"},
+    "coder-next-80b-4bit":    {"label": "Coder-Next 80B (MoE+DeltaNet)",    "color": "#f778ba"},
+    "qwen35-27b-4bit":        {"label": "Qwen3.5-27B (DeltaNet)",           "color": "#da3633"},
 }
 
 # Unified x-axis: 128 to 256K
