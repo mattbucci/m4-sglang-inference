@@ -129,7 +129,51 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 | Qwen3-32B | Dense | 18 GB | ~12 | pending | `launch.sh qwen3-32b` |
 | Gemma 4 31B | Dense | 17 GB | 12.5 | 16K max | `launch.sh gemma4-31b` |
 
-All models 4-bit MLX quantized from [`mlx-community/`](https://huggingface.co/mlx-community) on HuggingFace. MoE models recommended for agentic workloads.
+All models 4-bit MLX quantized from [`mlx-community/`](https://huggingface.co/mlx-community) on HuggingFace.
+
+### Choosing a Model
+
+**For agentic / long-context workloads** — use MoE models. They read far fewer weights per token (3-4B active vs 24-32B total), giving 4x faster decode at short context and 2x faster at 256K. Coder-30B is the best overall: fastest decode, lowest KV pool usage, highest concurrent throughput.
+
+**Why MoE wins at long context:**
+Each decode token must (1) read model weights and (2) read the entire KV cache for attention. At short context, weight loading dominates — MoE reads 1.5 GB vs Dense reading 14 GB, hence 4x faster. At long context, KV cache read grows linearly with context length (O(n) attention). At 256K with fp8, the KV read is ~5-10 GB — comparable to model weights. MoE models keep the weight component small, so the KV overhead is proportionally less painful.
+
+**For quality-sensitive workloads** — dense models (Devstral-24B, Qwen3-32B) may produce better outputs since all parameters participate in every token, but they are significantly slower at long context.
+
+**DeltaNet hybrids** (Qwen3.5, Coder-Next) — these alternate standard attention layers (O(n) per token) with linear attention layers (O(1) per token). The linear layers don't slow down with context at all, making them architecturally suited for very long context. However, they're currently limited by the standard attention layers that still have O(n) cost.
+
+### Context Length vs Decode Speed: Why It Degrades
+
+Every generated token must attend to **all previous tokens** across every layer — this is O(n) in both memory bandwidth and compute:
+
+| Context | KV Read (fp8) | Weight Read (MoE) | Weight Read (Dense) | Bottleneck |
+|:-------:|:-------------:|:-----------------:|:-------------------:|:-----------|
+| 128 | 2.6 MB | 1.5 GB | 14 GB | Weights |
+| 32K | 655 MB | 1.5 GB | 14 GB | Weights |
+| 128K | 2.6 GB | 1.5 GB | 14 GB | **KV cache** (MoE) |
+| 256K | 5.2 GB | 1.5 GB | 14 GB | **KV cache** |
+
+At 256K, the KV cache read per decode token is **3.5x the MoE weight read** — this is why decode slows from 68 tok/s to 3.2 tok/s. The M4 Pro's 273 GB/s memory bandwidth is shared between weights and KV, and the O(n) attention compute also becomes significant.
+
+> [!TIP]
+> [Research shows](https://github.com/ml-explore/mlx/discussions/3134) that 4-bit KV quantization (our TurboQuant) can actually be **faster** than unquantized on M4 Pro — less memory traffic outweighs the dequantization cost.
+
+### Prefix Caching (Radix Cache)
+
+For agentic workloads, the same system prompt and conversation history are sent with every request. Without caching, the server re-prefills the entire context from scratch each turn — at 256K, that's a **20-30 minute prefill every request**.
+
+SGLang's radix cache (our patch 001) reuses KV cache from shared prefixes. On cache hit, only new tokens need prefilling:
+
+```bash
+# Radix cache is supported but currently disabled by default.
+# To enable, remove --disable-radix-cache from launch.sh.
+# Note: radix cache + quantized KV cache interaction is experimental.
+```
+
+| Scenario | Without Cache | With Radix Cache |
+|:---------|:------------:|:----------------:|
+| First request (256K) | ~20 min | ~20 min |
+| Follow-up (same prefix + 100 new tokens) | ~20 min | **< 1 sec** |
 
 ---
 
