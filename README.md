@@ -47,10 +47,12 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 <img src="benchmarks/all_models_concurrency.png" alt="Throughput scaling" width="700">
 </div>
 
-| Model | 1 user | 4 users | 8 users |
-|:------|:------:|:-------:|:-------:|
-| **Coder-30B** | 82.6 tok/s | 97.1 tok/s | **107.4 tok/s** |
-| **Devstral-24B** | 27.0 tok/s | 30.4 tok/s | 39.2 tok/s |
+| Model | 1 user | 2 users | 4 users | 8 users |
+|:------|:------:|:-------:|:-------:|:-------:|
+| **Coder-30B** (MoE) | 82.6 | 89.6 | 97.1 | **107.4** |
+| **Devstral-24B** (Dense) | 27.0 | 26.8 | 30.4 | 39.2 |
+
+*tok/s total output throughput at 256 in / 256 out. Other models pending concurrency benchmarks.*
 
 <details>
 <summary><b>Coder-30B MoE — best for 256K agentic use</b></summary>
