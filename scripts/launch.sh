@@ -152,9 +152,10 @@ echo "Context: $CTX  Port: $PORT  Memory: ${MEM_GB}GB  KV: $KV_CACHE"
 echo "=============================================="
 
 # --- Memory fraction ---
-# Radix cache pre-allocates the KV pool at startup. With large models
-# (>16 GB weights), the default 0.88 can exhaust Metal GPU memory.
-# Auto-tune: use 0.7 for large models to leave room for compute.
+# Radix cache pre-allocates the full KV pool at startup. On unified
+# memory (Apple Silicon), this competes with Metal compute buffers.
+# Use 0.7 to leave ~30% headroom for attention intermediates.
+# Override with MEM_FRAC env var or --max-total-tokens for exact control.
 MEM_FRAC="${MEM_FRAC:-0.7}"
 
 # --- Build command ---

@@ -211,14 +211,29 @@ applying linear scale=0.1562 (factor=6.40)
 Patched 48 RoPE modules
 ```
 
-### Memory Budget (FP8 KV)
+### Memory Budget at 256K (64 GB Mac)
 
-| Model | Weights | KV Pool | 256K Usage | Fits 64GB |
-|:------|:-------:|:-------:|:----------:|:---------:|
-| Coder-30B (MoE) | 16 GB | 627K slots | 20% | Yes |
-| Devstral-24B | 14 GB | 423K slots | 30% | Yes |
-| Gemma 4 26B (MoE) | 15 GB | 268K slots | 48% | Yes |
-| Coder-Next 80B | 42 GB | 82K slots | — | No (weights) |
+The radix cache pre-allocates the full KV pool at startup. On Apple Silicon's unified memory, this competes with Metal compute buffers. Use `--mem-fraction-static 0.7` (default) to leave headroom.
+
+| Model | Weights | KV @256K (fp8) | Total | Headroom | Fits? |
+|:------|:-------:|:--------------:|:-----:|:--------:|:------|
+| Coder-30B (MoE) | 16 GB | 12.4 GB | 28 GB | 24 GB | **fp8** |
+| Qwen3-30B (MoE) | 16 GB | 12.4 GB | 28 GB | 24 GB | **fp8** |
+| Devstral-24B | 14 GB | 20.6 GB | 35 GB | 17 GB | **fp8** |
+| Gemma 4 26B (MoE) | 15 GB | 30.9 GB | 46 GB | 6 GB | **fp8** (tight) |
+| Qwen3-32B | 18 GB | 33.0 GB | 51 GB | 1 GB | **turboquant** needed |
+| Coder-Next 80B | 42 GB | — | — | — | No (weights alone) |
+
+> [!IMPORTANT]
+> Qwen3-32B and Gemma 4 31B need `--kv-cache turboquant` at 256K — fp8 KV doesn't leave enough headroom for Metal compute on 64 GB. TurboQuant (4-bit KV) halves KV memory: Qwen3-32B goes from 33 GB → 18 GB KV, leaving 16 GB headroom.
+
+```bash
+# Models that fit at 256K with fp8 (default)
+./scripts/launch.sh coder-30b --context-length 262144
+
+# Models that need turboquant at 256K
+./scripts/launch.sh qwen3-32b --context-length 262144 --kv-cache turboquant
+```
 
 ---
 
