@@ -336,7 +336,10 @@ def generate_charts():
         axes = [axes]
     fig.suptitle("Quality Comparison (4-bit MLX, M4 Pro)", fontsize=14, fontweight="bold")
 
-    colors = ["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336"][:len(tags)]
+    base_colors = ["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336",
+                   "#00BCD4", "#795548", "#607D8B", "#E91E63", "#CDDC39"]
+    # Repeat colors if we have more tags than the palette
+    colors = [base_colors[i % len(base_colors)] for i in range(len(tags))]
     for ax, (title, data) in zip(axes, benchmarks):
         vals = [v * 100 if v is not None else 0 for v in data]
         tested = [v is not None for v in data]
