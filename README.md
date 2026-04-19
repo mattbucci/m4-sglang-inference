@@ -37,11 +37,13 @@ silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
    backend is greedy-only, so this likely affects our `qwen35`, `qwen3-moe`,
    `qwen3-32b` presets too. Run `test_thinking.sh` to confirm and either
    document or patch.
-3. **MLX vision investigation.** MLX VLMs reliably crash the GPU on this M4 Pro
-   (user-confirmed). Patch 002 disables multimodal as a workaround, but vision
-   is a missing capability vs the GPU teams. Need to reproduce on the smallest
-   MLX VLM, isolate whether it's MLX itself or the SGLang MLX bridge, and write
-   a sixth patch.
+3. **MLX vision investigation — partial progress.** Confirmed
+   2026-04-18 evening: MLX vision **works fine via `mlx_vlm` direct path**
+   (SmolDocling-256M ran without GPU crash). The crashes are specifically in
+   the **SGLang MLX bridge** image-processor / tensor-handoff. Need to
+   re-enable multimodal in patch 002 and patch the bridge. Likely a tensor
+   conversion overflow analogous to the existing ">1 GB on CPU" rule in
+   `tensor_bridge.py`.
 4. **256K bench coverage.** Coder-30B and Devstral are fully characterized;
    need to backfill Qwen3.5-DeltaNet, Coder-Next-80B, Gemma 4 26B at 256K.
 
@@ -79,10 +81,14 @@ quality eval suite under `scripts/eval/` is a direct adoption.
   reasoning chain that never closes. Short factual prompts still return cleanly.
   Root cause: greedy decode + chat template that always emits `<think>`. Fix
   is blocked on MLX backend gaining real sampling support.
-- **MLX vision models crash the GPU** — every VLM tried so far reliably crashes
-  the M4 Pro GPU. Patch 002 disables multimodal by default; Devstral
-  uses `--skip-server-warmup` to avoid VLM misdetection. Vision is an open
-  investigation (see Active work #3) not a "won't fix."
+- **MLX vision works in mlx_vlm but crashes in the SGLang MLX bridge**
+  *(updated 2026-04-18 evening)*. Direct test:
+  `mlx_vlm.load("ds4sd/SmolDocling-256M-preview-mlx-bf16") + generate(...)`
+  on a synthetic image runs without GPU crash. So MLX itself is fine — the
+  crashes the user reported are in our **SGLang MLX bridge**, specifically
+  in the image-processor / tensor-handoff path. Patch 002 disables
+  multimodal as a workaround. Re-enabling and patching the bridge is the
+  open investigation (see Active work #3).
 - **VLM warmup crash on Devstral** — Devstral-24B is detected as VLM and crashes
   during warmup; we set `--skip-server-warmup` automatically in the preset.
 - **HDMI display blackout** — brief screen blank when server starts heavy Metal
