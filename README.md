@@ -64,11 +64,34 @@ silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
   proper fix for Qwen3.5/Coder-Next batched decode (current patch 008 is
   serial-decode fallback that limits MAX_RUNNING=1; correctness now fine,
   throughput is the only remaining concern).
-- Eval Qwen3.6-35B (preset added but not yet downloaded).
+- Test Qwen3.5/3.6 video input (`video_grid_thw`, `second_per_grid_ts`)
+  end-to-end through the bridge.
+- Source / build Gemma 4 mlx-community checkpoint with `preprocessor_config.json`
+  to unlock image+video+audio.
 - SGLang multimodal processor compat for Idefics3/SmolVLM (or custom
   processor that bypasses `transformers_auto`).
 - Root-cause patch 001 scatter-write corruption (MLX-level lazy-graph
   aliasing — works in REPL, fails in production server context).
+
+### Quality table (post-patch013, 50–100 sample MMLU on M4 Pro)
+
+| Model | MMLU | HumanEval | Needle 1K |
+|:------|:----:|:---------:|:---------:|
+| Qwen3.5-27B-4bit | **93.0%** | **100%** | PASS |
+| Gemma 4 31B-it-mxfp4 | 90.0% | 0% (raw-prompt path) | MISS |
+| Qwen3.6-35B-A3B-4bit | 88.0% | 80% | PASS |
+| Qwen3.5-9B-MLX-8bit | 87.7% | 80% | PASS |
+| Qwen3-32B (turboquant) | 86.7% | 87.5% | PASS |
+| Coder-30B-A3B-4bit | 86.7% | 75% | PASS |
+| Gemma 4 26B-A4B-it-4bit | 86.0% | 0% (raw-prompt path) | PASS |
+| Qwen3-30B-MoE-4bit | 83.3% | 75% | PASS |
+| Devstral-24B-4bit | 73.3% | 62.5% | PASS |
+| Coder-Next-80B-4bit | 70.0% | 100% | MISS |
+
+All evals run with `--no-thinking` and `--disable-radix-cache`. HumanEval
+0% on Gemma 4 is an instruction-format quirk on the raw `/v1/completions`
+endpoint, not a model defect (chat/completions evals are clean).
+Chart: `benchmarks/quality/quality_comparison.png`.
 
 ## Cross-team collaboration
 
