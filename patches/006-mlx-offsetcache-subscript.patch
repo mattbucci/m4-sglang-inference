@@ -1,0 +1,50 @@
+From: M4 SGLang patches
+Subject: Add __getitem__ to OffsetCache for hybrid model batched decode
+
+Hybrid models like Qwen3.5 / Coder-Next use linear_attn / DeltaNet layers
+that probe `cache[0] is not None` to detect first-call vs. resumed state.
+Without __getitem__, our OffsetCache shim crashes batched decode with
+``TypeError: 'OffsetCache' object is not subscriptable``.
+
+This is a stopgap — returning None from __getitem__ unblocks the crash but
+means DeltaNet starts fresh each decode step (loses recurrent state). The
+real fix is per-request DeltaNet state in caches[i], passed through to
+the model instead of replaced with the shim. Track in
+project_qwen35_deltanet_decode_crash memory.
+
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
+index aaaaaaaa..bbbbbbbb 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
+@@ -16,7 +16,12 @@ if TYPE_CHECKING:
+ class OffsetCache:
+     """Data-free shim satisfying mlx-lm's cache protocol.
+
+-    Provides ``make_mask`` and ``state`` without storing actual K/V.
++    Provides ``make_mask``, ``state``, and ``__getitem__`` without storing
++    actual K/V. The ``__getitem__`` returning ``None`` is required by hybrid
++    models like Qwen3.5 / Coder-Next whose ``linear_attn`` layers do
++    ``cache[0] is not None`` to detect first-call vs. resumed state. Without
++    this, batched decode on those models crashes with
++    ``TypeError: 'OffsetCache' object is not subscriptable``.
+     """
+
+     def __init__(self, offset: int = 0):
+@@ -26,6 +31,17 @@ class OffsetCache:
+     def state(self):
+         return ()  # Empty -- safe for mx.eval unpacking
+
++    def __getitem__(self, key):
++        # Return None for any index — signals "no cached state" to hybrid
++        # layers (DeltaNet conv_state, mamba ssm_state, etc.). They handle
++        # None by falling back to a zero-initialized state, which matches
++        # the intent of OffsetCache (we don't carry cache across batched
++        # decode for these layers; mlx-lm rebuilds it from offset).
++        return None
++
++    def __len__(self):
++        return 0
++
+     def make_mask(self, N, **kwargs):
+         return None if N == 1 else "causal"
+

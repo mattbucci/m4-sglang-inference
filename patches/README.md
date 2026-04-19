@@ -10,6 +10,7 @@ git apply ../../patches/002-mps-backend-defaults.patch
 git apply ../../patches/003-mlx-skip-quantization-check.patch
 git apply ../../patches/004-mlx-lifecycle-and-hybrid-fixes.patch
 git apply ../../patches/005-mlx-attn-wrapper-varargs.patch
+git apply ../../patches/006-mlx-offsetcache-subscript.patch
 ```
 
 ## 001-mlx-radix-cache ([PR #21509](https://github.com/sgl-project/sglang/pull/21509))
@@ -62,3 +63,25 @@ wrapper only accepted `(x, mask, cache)`, causing a `TypeError`.
 
 - Change wrapper signature to `(x, *args, **kwargs)` for full pass-through
 - Extract `attn_scale` from extra args and apply to queries in batched decode path
+
+## 006-mlx-offsetcache-subscript
+
+Adds `__getitem__` and `__len__` to `OffsetCache` (the data-free cache shim
+introduced in patch 001).
+
+Hybrid models like Qwen3.5 / Coder-Next have `linear_attn` / DeltaNet layers
+that probe `cache[0] is not None` to detect first-call vs. resumed state.
+Without this fix, batched decode on those models crashes:
+
+```
+File ".../mlx_lm/models/qwen3_5.py", line 148, in __call__
+    if cache is not None and cache[0] is not None:
+TypeError: 'OffsetCache' object is not subscriptable
+```
+
+The new `__getitem__` returns `None` for any index, signalling "no cached
+state" so the layer falls back to a zero-init recurrent state. **This is
+a stopgap** — DeltaNet now starts fresh each batched-decode step and loses
+its recurrent state. Real fix requires per-request DeltaNet state in
+`caches[i]`, passed through to the model instead of the shim. See memory
+project_qwen35_deltanet_decode_crash.

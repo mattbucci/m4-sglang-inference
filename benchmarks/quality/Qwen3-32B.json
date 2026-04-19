@@ -1,0 +1,28 @@
+{
+  "tag": "Qwen3-32B",
+  "timestamp": "2026-04-18 19:05",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 26,
+    "total": 30,
+    "accuracy": 0.8666666666666667
+  },
+  "humaneval": {
+    "passed": 7,
+    "total": 8,
+    "pass_rate": 0.875
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
