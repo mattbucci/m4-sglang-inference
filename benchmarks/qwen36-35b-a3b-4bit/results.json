@@ -1,0 +1,26 @@
+{
+  "model": "mlx-community/Qwen3.6-35B-A3B-4bit",
+  "tag": "Qwen3.6-35B-A3B",
+  "type": "MoE+DeltaNet hybrid",
+  "weights_gb": 17,
+  "context_max": 262144,
+  "kv_cache_dtype": "fp8",
+  "mem_fraction_static": 0.6,
+  "max_total_tokens": 270000,
+  "disable_radix_cache": true,
+  "max_running_requests": 1,
+  "timestamp_utc": "2026-04-19T16:20:22Z",
+  "long_context": [
+    {"input_tokens": 150,    "output_tokens": 64, "elapsed_s": 1.2,   "tpot_ms":   19.3, "throughput_tok_s": 51.8, "label": "256"},
+    {"input_tokens": 598,    "output_tokens": 64, "elapsed_s": 1.7,   "tpot_ms":   27.0, "throughput_tok_s": 37.0, "label": "1K"},
+    {"input_tokens": 2384,   "output_tokens": 64, "elapsed_s": 4.0,   "tpot_ms":   61.9, "throughput_tok_s": 16.2, "label": "4K"},
+    {"input_tokens": 4767,   "output_tokens": 64, "elapsed_s": 7.9,   "tpot_ms":  122.9, "throughput_tok_s":  8.1, "label": "8K"},
+    {"input_tokens": 9533,   "output_tokens": 64, "elapsed_s": 15.3,  "tpot_ms":  238.7, "throughput_tok_s":  4.2, "label": "16K"},
+    {"input_tokens": 19066,  "output_tokens": 64, "elapsed_s": 32.8,  "tpot_ms":  512.0, "throughput_tok_s":  2.0, "label": "32K"},
+    {"input_tokens": 38131,  "output_tokens": 64, "elapsed_s": 73.3,  "tpot_ms": 1145.4, "throughput_tok_s":  0.9, "label": "64K"},
+    {"input_tokens": 76262,  "output_tokens": 64, "elapsed_s": 187.5, "tpot_ms": 2929.7, "throughput_tok_s":  0.3, "label": "128K"},
+    {"input_tokens": 116365, "output_tokens": 64, "elapsed_s": 357.5, "tpot_ms": 5586.0, "throughput_tok_s":  0.2, "label": "200K"},
+    {"input_tokens": 145456, "output_tokens": 64, "elapsed_s": 501.6, "tpot_ms": 7837.9, "throughput_tok_s":  0.1, "label": "250K"}
+  ],
+  "notes": "First Qwen3.6 256K bench on M4 Pro. Prefill: 145K tokens in 502s = ~290 tok/s. Decode TPOT degrades from 19ms @ 256 to 7.8s @ 250K. Sister team R9700 reports 13.3 tok/s @ 262K (~80x faster decode at long context — discrete GPU compute advantage). Qwen3.6 also DeltaNet hybrid but scales worse than Qwen3.5-27B (3.9 tok/s @ 256K) — possibly the MoE expert routing overhead at long context, or the larger 35B vs 27B. Worth investigating."
+}

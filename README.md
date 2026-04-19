@@ -202,6 +202,14 @@ output portable chat-template messages.
 | **Coder-30B** | MoE (3B active) | 16 GB | 68.4 | 6.3 | **3.2** | 20% |
 | **Devstral-24B** | Dense | 14 GB | 17.0 | 3.4 | **1.8** | 30% |
 | **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 3.0 | **1.5** | 48% |
+| **Qwen3.6-35B-A3B** | MoE+DeltaNet | 17 GB | 51.8 | 0.9 | **0.1** @ 250K | 270K |
+
+Qwen3.6-35B-A3B 256K bench (2026-04-19): prefill 145K tokens in 502 s (~290
+tok/s), decode TPOT 7.8 s @ 250K. Sister team R9700 measures 13.3 tok/s @ 262K
+on the same model — discrete-GPU compute advantage at long context dwarfs the
+M4 unified-memory win for this MoE+DeltaNet stack. Curiously much slower than
+Qwen3.5-27B (3.9 tok/s @ 256K) despite both being DeltaNet hybrids — MoE expert
+routing overhead at long context is the open hypothesis. Worth investigating.
 
 ### Throughput Scaling
 

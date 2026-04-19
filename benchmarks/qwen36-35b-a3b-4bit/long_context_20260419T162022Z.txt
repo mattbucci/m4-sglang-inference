@@ -1,0 +1,27 @@
+Model: Qwen3.6-35B-A3B-4bit
+Output tokens per test: 64
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+  256 tokens (baseline)           in=    150  out=  64  time=   1.2s  TPOT=  19.3ms   51.8 tok/s
+  1K tokens                       in=    598  out=  64  time=   1.7s  TPOT=  27.0ms   37.0 tok/s
+  4K tokens                       in=   2384  out=  64  time=   4.0s  TPOT=  61.9ms   16.2 tok/s
+  8K tokens                       in=   4767  out=  64  time=   7.9s  TPOT= 122.9ms    8.1 tok/s
+  16K tokens                      in=   9533  out=  64  time=  15.3s  TPOT= 238.7ms    4.2 tok/s
+  32K tokens                      in=  19066  out=  64  time=  32.8s  TPOT= 512.0ms    2.0 tok/s
+  64K tokens                      in=  38131  out=  64  time=  73.3s  TPOT=1145.4ms    0.9 tok/s
+  128K tokens                     in=  76262  out=  64  time= 187.5s  TPOT=2929.7ms    0.3 tok/s
+  200K tokens                     in= 116365  out=  64  time= 357.5s  TPOT=5586.0ms    0.2 tok/s
+  250K tokens                     in= 145456  out=  64  time= 501.6s  TPOT=7837.9ms    0.1 tok/s
+
+=====================================================================================
+Summary: TPOT at different context lengths (output=64 tokens)
+  256 tokens (baseline)           TPOT=  19.3ms   51.8 tok/s  (prefill 150 tok in 1.2s)
+  1K tokens                       TPOT=  27.0ms   37.0 tok/s  (prefill 598 tok in 1.7s)
+  4K tokens                       TPOT=  61.9ms   16.2 tok/s  (prefill 2384 tok in 4.0s)
+  8K tokens                       TPOT= 122.9ms    8.1 tok/s  (prefill 4767 tok in 7.9s)
+  16K tokens                      TPOT= 238.7ms    4.2 tok/s  (prefill 9533 tok in 15.3s)
+  32K tokens                      TPOT= 512.0ms    2.0 tok/s  (prefill 19066 tok in 32.8s)
+  64K tokens                      TPOT=1145.4ms    0.9 tok/s  (prefill 38131 tok in 73.3s)
+  128K tokens                     TPOT=2929.7ms    0.3 tok/s  (prefill 76262 tok in 187.5s)
+  200K tokens                     TPOT=5586.0ms    0.2 tok/s  (prefill 116365 tok in 357.5s)
+  250K tokens                     TPOT=7837.9ms    0.1 tok/s  (prefill 145456 tok in 501.6s)
