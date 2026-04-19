@@ -19,6 +19,12 @@ Patches:
                                 concurrent decode now produces correct
                                 outputs); proper fix needs per-request
                                 state stacked into batched cache.
+  009-modality-multi-images: add MULTI_IMAGES member to Modality enum
+                             that SGLang's transformers_auto multimodal
+                             processor references but doesn't define.
+                             Without it, ANY image-bearing request 500s
+                             with AttributeError before reaching the
+                             model. Upstream SGLang bug.
 
 Run as:
   python patches/post_apply.py <SGLANG_DIR>
@@ -181,6 +187,28 @@ DECODE_BATCH_NEW = '''        seq_lens = [_get_offset(caches[i]) for i in range(
         if batch_size == 1:'''
 
 
+# -- Patch 009: add MULTI_IMAGES to Modality enum --
+
+MODALITY_FILE = "python/sglang/srt/managers/schedule_batch.py"
+
+MODALITY_OLD = '''class Modality(Enum):
+    IMAGE = auto()
+    VIDEO = auto()
+    AUDIO = auto()'''
+
+MODALITY_NEW = '''class Modality(Enum):
+    IMAGE = auto()
+    MULTI_IMAGES = auto()  # M4 patch 009: SGLang's transformers_auto.py:133
+                           # references this; without it, multimodal requests
+                           # crash with AttributeError before reaching the model.
+    VIDEO = auto()
+    AUDIO = auto()'''
+
+MODALITY_ALL_OLD = '''        return [Modality.IMAGE, Modality.VIDEO, Modality.AUDIO]'''
+
+MODALITY_ALL_NEW = '''        return [Modality.IMAGE, Modality.MULTI_IMAGES, Modality.VIDEO, Modality.AUDIO]'''
+
+
 def apply_edit(path: Path, old: str, new: str, label: str) -> None:
     """Idempotently replace `old` with `new` in `path`."""
     if not path.exists():
@@ -213,6 +241,10 @@ def main() -> int:
                "007-mlx-vlm-fallback")
     apply_edit(sglang / MODEL_RUNNER_FILE, DECODE_BATCH_OLD, DECODE_BATCH_NEW,
                "008-mlx-hybrid-serial-decode")
+    apply_edit(sglang / MODALITY_FILE, MODALITY_OLD, MODALITY_NEW,
+               "009-modality-multi-images (enum)")
+    apply_edit(sglang / MODALITY_FILE, MODALITY_ALL_OLD, MODALITY_ALL_NEW,
+               "009-modality-multi-images (all() helper)")
     return 0
 
 
