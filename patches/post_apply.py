@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Post-patch source edits for SGLang MLX backend.
 
-Replaces patches 006 and 007. The hand-written .patch files for those
+Replaces patches 006, 007, 008. The hand-written .patch files for those
 fail `git apply --check` (corrupt diff format), so we apply the same
 changes via idempotent in-place edits here.
 
@@ -12,6 +12,13 @@ Patches:
   007-mlx-vlm-fallback: route VLM model loads through mlx_vlm.load with
                         a TextOnlyVLMShim so SGLang can load (text-only
                         for now) Idefics3/SmolVLM/Qwen2-VL etc.
+  008-mlx-hybrid-serial-decode: detect DeltaNet-hybrid caches in
+                                decode_batch and route to per-request
+                                serial decode path. Stopgap that
+                                actually works (Qwen3.5 + Coder-Next
+                                concurrent decode now produces correct
+                                outputs); proper fix needs per-request
+                                state stacked into batched cache.
 
 Run as:
   python patches/post_apply.py <SGLANG_DIR>
@@ -147,6 +154,33 @@ MODEL_RUNNER_NEW = '''    def _load_model(self):
         )'''
 
 
+# -- Patch 008: hybrid serial decode fallback --
+
+DECODE_BATCH_OLD = '''        seq_lens = [_get_offset(caches[i]) for i in range(batch_size)]
+
+        if batch_size == 1:'''
+
+DECODE_BATCH_NEW = '''        seq_lens = [_get_offset(caches[i]) for i in range(batch_size)]
+
+        # Hybrid models (DeltaNet/Mamba) need per-request recurrent state in
+        # cache[layer]. Our batched-decode shim_cache (OffsetCache) discards
+        # that state, causing reshape errors and missing-attribute crashes.
+        # Stopgap: detect hybrid layers and force serial decode. Real fix
+        # would stack per-request DeltaNet state into batched cache.
+        is_hybrid = batch_size > 1 and any(
+            not isinstance(c, ContiguousKVCache) and not isinstance(c, OffsetCache)
+            for c in caches[0]
+        )
+        if is_hybrid:
+            results = []
+            for rid in req_ids:
+                serial = self.decode_batch([rid])
+                results.append(serial[0])
+            return results
+
+        if batch_size == 1:'''
+
+
 def apply_edit(path: Path, old: str, new: str, label: str) -> None:
     """Idempotently replace `old` with `new` in `path`."""
     if not path.exists():
@@ -177,6 +211,8 @@ def main() -> int:
                "006-mlx-offsetcache-subscript")
     apply_edit(sglang / MODEL_RUNNER_FILE, MODEL_RUNNER_OLD, MODEL_RUNNER_NEW,
                "007-mlx-vlm-fallback")
+    apply_edit(sglang / MODEL_RUNNER_FILE, DECODE_BATCH_OLD, DECODE_BATCH_NEW,
+               "008-mlx-hybrid-serial-decode")
     return 0
 
 
