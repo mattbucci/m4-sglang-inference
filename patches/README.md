@@ -11,6 +11,7 @@ git apply ../../patches/003-mlx-skip-quantization-check.patch
 git apply ../../patches/004-mlx-lifecycle-and-hybrid-fixes.patch
 git apply ../../patches/005-mlx-attn-wrapper-varargs.patch
 git apply ../../patches/006-mlx-offsetcache-subscript.patch
+git apply ../../patches/007-mlx-vlm-fallback.patch
 ```
 
 ## 001-mlx-radix-cache ([PR #21509](https://github.com/sgl-project/sglang/pull/21509))

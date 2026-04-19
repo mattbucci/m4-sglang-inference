@@ -1,0 +1,88 @@
+From: M4 SGLang patches
+Subject: mlx_vlm fallback for VLM model types in MlxModelRunner._load_model
+
+The MLX runner uses `mlx_lm.load()` which only supports text-only
+architectures. VLM architectures (Idefics3/SmolVLM/Qwen2-VL/etc.) raise
+`ValueError: Model type X not supported.` and bring the scheduler down.
+
+This patch:
+
+1. Falls back to `mlx_vlm.load()` when `mlx_lm.load()` raises
+   "not supported".
+2. Wraps the loaded VLM Model in `_TextOnlyVLMShim` so that the existing
+   call sites (`self.model(input_ids, cache=cache)`, all 5 of them in
+   prefill/extend/decode_batch) route to `vlm.language_model(...)` for
+   text-only requests.
+3. Unwraps `LanguageModelOutput` so SGLang's `logits[:, -1, :]` indexing
+   keeps working.
+
+**Verified:** smol-docling preset (`ds4sd/SmolDocling-256M-preview-mlx-bf16`)
+boots cleanly through SGLang and answers text-only requests. Output is
+docling-style nonsense ("0>0>500>500>") because SmolDocling is a
+docling-only model — not a quality issue, just a model choice. A real
+general VLM (Qwen2-VL, etc.) will produce sensible text output.
+
+**Not yet supported:** image-bearing requests. Those still need
+`pixel_values` plumbed from SGLang's image processor to the VLM's
+`get_input_embeddings()`. That's a separate patch (008?). For now the
+shim only handles text-only — same scope as the patch 002 multimodal
+disable.
+
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -158,18 +158,46 @@ class MlxModelRunner:
+     def _load_model(self):
+-        """Load model using mlx_lm."""
++        """Load model using mlx_lm; fall back to mlx_vlm for VLM architectures."""
+         logger.info(f"Loading MLX model: {self.model_path}")
+         start_time = time.time()
+
+-        self.model, _ = mlx_lm_load(
+-            self.model_path,
+-            tokenizer_config={"trust_remote_code": self.trust_remote_code},
+-        )
++        try:
++            self.model, _ = mlx_lm_load(
++                self.model_path,
++                tokenizer_config={"trust_remote_code": self.trust_remote_code},
++            )
++            self.is_vlm = False
++        except ValueError as e:
++            if "not supported" not in str(e):
++                raise
++            logger.warning(
++                f"mlx_lm cannot load {self.model_path} ({e}); "
++                f"falling back to mlx_vlm. VLM inference path through "
++                f"SGLang is text-only for now (no pixel_values plumbing)."
++            )
++            try:
++                from mlx_vlm import load as mlx_vlm_load
++            except ImportError:
++                raise RuntimeError(
++                    f"Model {self.model_path} requires mlx_vlm but it isn't "
++                    f"installed. Run `pip install mlx-vlm`."
++                ) from e
++            self.model, self.processor = mlx_vlm_load(self.model_path)
++            self.is_vlm = True
++            _vlm_model = self.model
++            class _TextOnlyVLMShim:
++                def __init__(self, vlm):
++                    self._vlm = vlm
++                def __call__(self, input_ids, cache=None, **kwargs):
++                    out = self._vlm.language_model(input_ids, cache=cache)
++                    return getattr(out, "logits", out)
++                def __getattr__(self, name):
++                    return getattr(self._vlm, name)
++            self.model = _TextOnlyVLMShim(_vlm_model)
++
+         # Force-evaluate weights so mx.get_active_memory() reflects
+         # actual usage before KV pool sizing.
+         mx.eval(self.model.parameters())
+
+         load_time = time.time() - start_time
+-        logger.info(f"MLX model loaded in {load_time:.2f}s")
++        logger.info(
++            f"MLX model loaded in {load_time:.2f}s "
++            f"(vlm={getattr(self, 'is_vlm', False)})"
++        )
