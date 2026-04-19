@@ -148,9 +148,16 @@ MODEL_RUNNER_NEW = '''    def _load_model(self):
             class _TextOnlyVLMShim:
                 def __init__(self, vlm):
                     self._vlm = vlm
-                def __call__(self, input_ids, cache=None, **kwargs):
-                    out = self._vlm.language_model(input_ids, cache=cache)
-                    # mlx_vlm wraps in LanguageModelOutput(logits=...).
+                def __call__(self, input_ids, cache=None, pixel_values=None, **kwargs):
+                    if pixel_values is not None:
+                        # Patch-010 path: real multimodal forward via vlm.__call__.
+                        # Once tp_worker.forward_batch_generation passes
+                        # pixel_values through MlxModelRunner.prefill, this
+                        # branch will produce actual image-aware output.
+                        out = self._vlm(input_ids, pixel_values, cache=cache)
+                    else:
+                        # Text-only path: bypass image embeddings.
+                        out = self._vlm.language_model(input_ids, cache=cache)
                     return getattr(out, "logits", out)
                 def __getattr__(self, name):
                     return getattr(self._vlm, name)
