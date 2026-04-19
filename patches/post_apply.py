@@ -33,11 +33,11 @@ Patches:
                             change — text-only path unchanged, only
                             triggers when multimodal_inputs is set.
 
-  Note: full image inference requires Qwen2-VL-style image_grid_thw
-  to also be threaded through (mlx_vlm's vision encoder needs it).
-  Currently we only pass pixel_values, so vision-bearing requests
-  reach the model but crash in rot_pos_emb. Future patch needs to
-  build a SGLang-mm-output → mlx_vlm-input adapter.
+  Update (full): tp_worker now also extracts model_specific_data
+  (image_grid_thw etc.) and passes via mm_extra_kwargs; prefill
+  threads through; TextOnlyVLMShim forwards via **kwargs to
+  vlm.__call__. Verified end-to-end with Qwen2-VL-2B: response
+  "A redcircle" for synthetic red circle image.
   011-mps-stub-cuda-redirect: SGLang's _mps_stub patches torch.Tensor.to
                               for MPS but doesn't handle .to('cuda') —
                               transformers' image processor unconditionally
@@ -286,20 +286,22 @@ PREFILL_NEW = '''    def prefill(
         new_slot_ids: list[int],
         req_pool_idx: int,
         pixel_values=None,
+        mm_extra_kwargs=None,
     ) -> int:
         """Prefill a request.  Returns next_token_id.
 
-        ``pixel_values``: optional mlx array for VLM image input. When set,
-        passed through to the model's __call__ — TextOnlyVLMShim (patch 007)
-        routes it to vlm.__call__ instead of language_model.
+        ``pixel_values``: optional mlx array for VLM image input.
+        ``mm_extra_kwargs``: optional dict of model-specific multimodal
+        kwargs (e.g. image_grid_thw for Qwen2-VL).
         """
         num_layers = self._num_layers
         prefix_len = len(prefix_slot_ids)
 
-        # Build kwargs once; passed to all self.model() calls below so VLM
-        # multimodal path is unified across the disable_radix and
-        # full-radix branches.
-        _model_kwargs = {"pixel_values": pixel_values} if pixel_values is not None else {}
+        _model_kwargs: dict = {}
+        if pixel_values is not None and getattr(self, "is_vlm", False):
+            _model_kwargs["pixel_values"] = pixel_values
+            if mm_extra_kwargs:
+                _model_kwargs.update(mm_extra_kwargs)
 
         if self.disable_radix_cache:
             cache = self._acquire_cache()
