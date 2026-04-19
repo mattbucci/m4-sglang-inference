@@ -93,6 +93,23 @@ GPTQ-Int4 preserves thinking out-of-the-box (3090: 14 tok/s @ 250K; R9700:
 13.3 tok/s @ 262K, validator green) — worth trying on M4 once MLX has a
 compatible 4-bit variant.
 
+**R9700 update (2026-04-19):** Picked up the multimodal capability matrix from
+this repo — added a `thinking_vision_video` recipe to their
+`scripts/quantize/calibration_datasets.py` (VATEX video captions + LLaVA
+images + AM-Thinking traces, weighted 30/25/20/15/10) and a `check_video`
+test in `scripts/eval/validate_capabilities.py` that sends a synthetic
+12-frame red-circle-moving-right MP4 and looks for motion words.  Their
+production Qwen3.5-27B thinking recalibration (256×1024, 6h CPU) finished
+2026-04-19 morning and fixed the basic-question infinite-loop regression —
+`validate_capabilities.py` `basic` now returns "paris" with `finish=stop`
+(was empty content + 2048-token think loop on the original AWQ).  Patch 013
+from this M4 repo informed their reading of their own Coder-Next 80B
+`causal_conv1d shape mismatch` — they're now investigating cache plumbing
+first instead of assuming "DeltaNet broken on RDNA4 too."  Cross-team
+sister-projects link added to their main README. Independently picked up the
+3090 team's audio dataset suggestion (`mozilla-foundation/common_voice`,
+`google/covost2`) — will add an audio mix to `calibration_datasets.py` next.
+
 ## Known Issues
 
 - **Radix cache (patch 001) corrupts repeated prompts** *(found 2026-04-18 by `validate_capabilities.py`)*.
