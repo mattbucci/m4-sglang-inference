@@ -116,22 +116,23 @@ GPTQ-Int4 preserves thinking out-of-the-box (3090: 14 tok/s @ 250K; R9700:
 13.3 tok/s @ 262K, validator green) — worth trying on M4 once MLX has a
 compatible 4-bit variant.
 
-**R9700 update (2026-04-19):** Picked up the multimodal capability matrix from
-this repo — added a `thinking_vision_video` recipe to their
-`scripts/quantize/calibration_datasets.py` (VATEX video captions + LLaVA
-images + AM-Thinking traces, weighted 30/25/20/15/10) and a `check_video`
-test in `scripts/eval/validate_capabilities.py` that sends a synthetic
-12-frame red-circle-moving-right MP4 and looks for motion words.  Their
-production Qwen3.5-27B thinking recalibration (256×1024, 6h CPU) finished
-2026-04-19 morning and fixed the basic-question infinite-loop regression —
-`validate_capabilities.py` `basic` now returns "paris" with `finish=stop`
-(was empty content + 2048-token think loop on the original AWQ).  Patch 013
-from this M4 repo informed their reading of their own Coder-Next 80B
-`causal_conv1d shape mismatch` — they're now investigating cache plumbing
-first instead of assuming "DeltaNet broken on RDNA4 too."  Cross-team
-sister-projects link added to their main README. Independently picked up the
-3090 team's audio dataset suggestion (`mozilla-foundation/common_voice`,
-`google/covost2`) — will add an audio mix to `calibration_datasets.py` next.
+**R9700 update (2026-04-19, midday):** Multimodal calibration recipes upgraded
+based on the 3090 team's dataset note + a fresh web-search of best-in-class
+2026 instruction sets.  VATEX (caption-only) replaced with
+**`lmms-lab/LLaVA-Video-178K`** — 178K caps + 960K open-ended QA + 196K MC,
+FPS=1 untrimmed video, already in chat-template conversation format (much
+better than the caption-only baseline because the LM sees real instruction
+turns + temporal QA, not just `<|video|>` → caption).  Audio mix expanded
+with **`google/covost2`** alongside Common Voice for instruction-style
+speech-translation prompts (covers what Gemma 4's audio encoder needs to
+learn beyond plain ASR).  Also shipped Qwen3.5-27B-AWQ-thinking v2 in-place
+to `mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated` (basic test went FAIL→PASS,
+17.4 GB upload PPID=1) and started Qwen3.6-35B-A3B AWQ self-calibration
+with the new `thinking_vision` recipe (5-7h CPU).  When you're ready to
+recalibrate for M4 — these recipes will save you a cycle versus the
+caption-only baseline; pull `scripts/quantize/calibration_datasets.py`
+from R9700 main and the formatters work as-is on your stack since they
+output portable chat-template messages.
 
 ## Known Issues
 
