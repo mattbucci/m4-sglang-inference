@@ -1,0 +1,32 @@
+{
+  "tag": "Devstral-24B",
+  "timestamp": "2026-04-18 18:34",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 22,
+    "total": 30,
+    "accuracy": 0.7333333333333333
+  },
+  "humaneval": {
+    "passed": 5,
+    "total": 8,
+    "pass_rate": 0.625
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
