@@ -50,9 +50,11 @@ silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
    `ContiguousKVCache` for every layer, giving DeltaNet's 24 hybrid layers
    the wrong cache type and producing fluent garbage tokens. Fix routes
    the hybrid cache via `model.language_model.make_cache()` and resets
-   ArraysCache state on pool reuse. Both 4-bit Qwen3.5-27B and
-   Qwen3.5-9B-MLX-8bit now produce correct factual answers. **Old MMLU
-   numbers (16.7-33.3%) are stale — needs re-measurement.**
+   ArraysCache state on pool reuse. **Re-measured 2026-04-18 evening:**
+   Qwen3.5-27B-4bit jumped from MMLU 16.7% → **93.0%** (HumanEval **100%**,
+   LAB-Bench 37.1%, Needle PASS) — now the top-scoring model in the
+   quality table. Qwen3.5-9B-MLX-8bit at MMLU **87.7%** / HumanEval 80% /
+   LAB-Bench 31.4%.
 5. **256K bench coverage — open.** Coder-30B and Devstral fully
    characterized in old benchmarks; need to backfill remaining models.
 
@@ -61,8 +63,9 @@ silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
   proper fix for Qwen3.5/Coder-Next batched decode (current patch 008 is
   serial-decode fallback that limits MAX_RUNNING=1; correctness now fine,
   throughput is the only remaining concern).
-- Re-measure MMLU on Qwen3.5/Coder-Next after patch 013 cache fix —
-  prior 16.7-33.3% numbers are stale.
+- Re-measure Coder-Next MMLU after patch 013 (Qwen3.5 done — 93.0%).
+  Coder-Next isn't VLM-detected so primary fix doesn't apply, but the
+  ArraysCache reset secondary fix may still help.
 - SGLang multimodal processor compat for Idefics3/SmolVLM (or custom
   processor that bypasses `transformers_auto`).
 - Root-cause patch 001 scatter-write corruption (MLX-level lazy-graph
