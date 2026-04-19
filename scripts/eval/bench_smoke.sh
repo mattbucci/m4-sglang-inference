@@ -32,7 +32,10 @@ for preset in $PRESETS; do
     echo "============================================"
     echo "  Smoke: $preset"
     echo "============================================"
-    pkill -9 -f sglang 2>/dev/null || true
+    # Match only sglang server processes, NOT launch.sh wrapper (whose
+    # path contains "m4-sglang-inference" and would be matched by
+    # `-f sglang`).
+    pkill -9 -f 'sglang\.launch_server\|sglang::scheduler\|sglang::detokenizer' 2>/dev/null || true
     sleep 5
 
     # Always with --disable-radix-cache (patch 001 bug workaround) and --no-thinking

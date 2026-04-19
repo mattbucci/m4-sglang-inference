@@ -123,12 +123,16 @@ def check_thinking(
         after_think = after_think.split("<channel|>")[-1]
     answer_correct = bool(re.search(r"\$?0?\.05\b|\b5\s*cents?\b", after_think.lower()))
 
-    # Detect repetition loop signature: same line repeated 5+ times
+    # Detect repetition loop signature: same line repeated 5+ times.
+    # Only flag as a real loop when the response was ALSO truncated; otherwise
+    # repeated lines on a clean stop are usually benign formatting (e.g.
+    # bullet-list answer, "Answer: X / X = Y" emphasis).
     lines = [l.strip() for l in (after_think or content).splitlines() if l.strip()]
-    looped = False
+    repeated = False
     if lines:
         most_common = max(set(lines), key=lines.count)
-        looped = lines.count(most_common) >= 5
+        repeated = lines.count(most_common) >= 5
+    looped = repeated and truncated
 
     status = []
     if has_reasoning: status.append("reasoning_seen")
@@ -136,11 +140,12 @@ def check_thinking(
     if answer_correct: status.append("answer_ok")
     if truncated: status.append("TRUNCATED")
     if looped: status.append("LOOP_DETECTED")
+    elif repeated: status.append("repeated_lines(benign)")
 
     # Grading:
     #  - Thinking model: must produce <think>, close it, terminate cleanly, not loop
     #  - Non-thinking model (no markers): just needs to answer correctly + terminate
-    # Both modes hard-fail on truncation or loop signature.
+    # Both modes hard-fail on truncation or true loop (truncated AND repeated).
     if truncated or looped:
         passed = False
     elif has_reasoning:
