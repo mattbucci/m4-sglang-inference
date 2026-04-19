@@ -1,11 +1,11 @@
 {
   "tag": "Qwen3.5-27B",
-  "timestamp": "2026-04-18 18:51",
+  "timestamp": "2026-04-18 19:18",
   "max_context": 32768,
   "mmlu": {
-    "correct": 5,
+    "correct": 10,
     "total": 30,
-    "accuracy": 0.16666666666666666
+    "accuracy": 0.3333333333333333
   },
   "humaneval": {
     "passed": 0,
@@ -29,5 +29,5 @@
     ],
     "score": 0.0
   },
-  "notes": "PARTIAL/BROKEN \u2014 Qwen3.5 has 3 compounding issues on M4 MLX: (1) infinite <think> loop under greedy decode (eval used --no-thinking workaround), (2) DeltaNet linear_attn layer crashes during batched decode with OffsetCache not subscriptable error, (3) even with no-thinking, MMLU answers are 16.7% (near-random 25%) suggesting 4-bit DeltaNet quality regression. See memory project_qwen35_thinking_loop_mlx + project_qwen35_deltanet_decode_crash."
+  "notes": "PARTIAL/BROKEN \u2014 Qwen3.5 even with --max-running=1 + --no-thinking still triggers batched-decode (B=2 reshape error in attention_wrapper.py:79). MMLU completed 10/30 = 33.3%; HE+Needle all 0% reflect post-crash. Three compound issues: (1) infinite think loop, (2) batched-decode reshape mismatch (DeltaNet+attention need per-request state plumbing), (3) DeltaNet 4-bit quality regression. See memory project_qwen35_*."
 }
