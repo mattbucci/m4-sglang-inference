@@ -68,15 +68,23 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone "$SGLANG_REPO" "$SGLANG_DIR"
     cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
 
-    # Apply patches in order
+    # Apply patches in order. 001-005 are proper git patches; 006/007 are
+    # idempotent in-place edits run by post_apply.py (the .patch files for
+    # them are doc-only — git apply rejects them as corrupt due to hand-
+    # written diff format).
     if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
-        for patch in "$REPO_DIR/patches/"*.patch; do
+        for patch in "$REPO_DIR/patches/"00[1-5]-*.patch; do
             echo "  Applying $(basename "$patch")..."
             git apply "$patch" || echo "  WARNING: $(basename "$patch") failed to apply"
         done
     else
-        echo "  No patches to apply"
+        echo "  No git-style patches to apply"
+    fi
+    if [ -f "$REPO_DIR/patches/post_apply.py" ]; then
+        cd "$SGLANG_DIR"
+        echo "  Running post_apply.py for patches 006 + 007..."
+        python3 "$REPO_DIR/patches/post_apply.py" "$SGLANG_DIR"
     fi
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"
