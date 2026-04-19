@@ -25,38 +25,48 @@ its numbers land in this README. The 3090 and R9700 sister teams found *multiple
 silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
 `<unk>`, infinite `<think>` loops, or `<pad>` tokens. We adopt the same gate.
 
-### Active work (updated 2026-04-18 — most items below are now DONE)
+### Active work (updated 2026-04-18 evening — major items DONE)
 
 1. **Quality eval parity with sister repos — DONE.** Ported
    `validate_capabilities.py`, `validate_chat_template.py`, `eval_and_chart.py`
    (MMLU + HumanEval + LAB-Bench + Needle), `run_all_evals.sh`, `test_thinking.sh`,
-   `test_radix_cache_repeat.py` from the 3090/R9700 teams. **6-model quality
-   table published** in `benchmarks/quality/` with chart.
+   `test_radix_cache_repeat.py`, `bench_smoke.sh` (smoke-tested PASS on
+   coder-30b + devstral). **6-model quality table** published in
+   `benchmarks/quality/` with chart.
 2. **Qwen3 family thinking under greedy MLX — DONE.** Confirmed infinite
-   `<think>` loop. `--no-thinking` flag added to validators / eval scripts
-   (passes `chat_template_kwargs={"enable_thinking": false}`). All Qwen3
-   presets work serially with `--no-thinking + --disable-radix-cache`.
-3. **MLX vision investigation — DONE (partial unlock via patch 007).**
-   The "GPU crash" mythology debunked: MLX itself is fine. Bug 1 was
-   `mlx_lm.load()` not supporting VLM types — fixed by patch 007's
-   `mlx_vlm.load` fallback. Bug 2 is SGLang's `transformers_auto`
-   multimodal processor missing `Modality.MULTI_IMAGES` — separate fix
-   needed. SmolDocling now boots and serves text-only requests through SGLang.
-4. **DeltaNet hybrid batched-decode crash — partial unblock via patch 006.**
-   `OffsetCache` shim now has `__getitem__` / `__setitem__` / `__len__` /
-   `lengths` / `advance()` so `mlx_lm/qwen3_5.py:linear_attn` doesn't
-   AttributeError. But cache shapes still mismatch downstream — Qwen3.5 +
-   Coder-Next still effectively broken in batched decode. **Real fix needs
-   per-request DeltaNet `conv_state`/`ssm_state` plumbing in `caches[i]`.**
+   `<think>` loop. `--no-thinking` added to validators / eval scripts.
+3. **MLX vision end-to-end — DONE for Devstral.** Patches 007/010/011/012 +
+   VLM detection take an image from the OpenAI-format request all the way
+   into `mlx_vlm`'s vision encoder. **Devstral-24B describes a synthetic
+   red circle perfectly through SGLang.** Qwen3.5 wires up correctly but
+   hits the known DeltaNet 4-bit quality issue. Gemma 4 + Qwen3.6 are
+   architecturally VLMs but mlx-community 4bit checkpoints are missing
+   `preprocessor_config.json` (text-only on those for now).
+4. **DeltaNet hybrid quality — FIXED via patch 013 (2026-04-18 evening).**
+   Root cause was NOT 4-bit quantization. The bug: when Qwen3.5/3.6 load
+   via `mlx_vlm.load` (vision_config in their config.json), the outer
+   wrapper has no `make_cache` attribute — `make_cache` lives on
+   `language_model`. Our `_acquire_cache` fell through to building uniform
+   `ContiguousKVCache` for every layer, giving DeltaNet's 24 hybrid layers
+   the wrong cache type and producing fluent garbage tokens. Fix routes
+   the hybrid cache via `model.language_model.make_cache()` and resets
+   ArraysCache state on pool reuse. Both 4-bit Qwen3.5-27B and
+   Qwen3.5-9B-MLX-8bit now produce correct factual answers. **Old MMLU
+   numbers (16.7-33.3%) are stale — needs re-measurement.**
 5. **256K bench coverage — open.** Coder-30B and Devstral fully
    characterized in old benchmarks; need to backfill remaining models.
 
 ### Open work (each is a multi-hour project)
-- Patch 008: per-request DeltaNet state plumbing for Qwen3.5 / Coder-Next
-- Patch 009: SGLang multimodal processor compat for Idefics3/SmolVLM
-  (or write a custom processor that bypasses `transformers_auto`)
+- Per-request DeltaNet `conv_state`/`ssm_state` plumbing in `caches[i]` —
+  proper fix for Qwen3.5/Coder-Next batched decode (current patch 008 is
+  serial-decode fallback that limits MAX_RUNNING=1; correctness now fine,
+  throughput is the only remaining concern).
+- Re-measure MMLU on Qwen3.5/Coder-Next after patch 013 cache fix —
+  prior 16.7-33.3% numbers are stale.
+- SGLang multimodal processor compat for Idefics3/SmolVLM (or custom
+  processor that bypasses `transformers_auto`).
 - Root-cause patch 001 scatter-write corruption (MLX-level lazy-graph
-  aliasing — works in REPL, fails in production server context)
+  aliasing — works in REPL, fails in production server context).
 
 ## Cross-team collaboration
 

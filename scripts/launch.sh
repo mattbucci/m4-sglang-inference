@@ -82,7 +82,8 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             # MAX_RUNNING=1: DeltaNet batched decode crashes on cache shape
             # mismatch (see project_qwen35_deltanet_decode_crash). Serial
-            # decode path works.
+            # decode path works AND produces correct output now that
+            # patch 013 routes hybrid cache via language_model.make_cache.
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"

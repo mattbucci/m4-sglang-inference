@@ -502,6 +502,69 @@ TP_WORKER_NEW = '''                else:
                     prefill_rids.append((req.rid, next_token))'''
 
 
+# -- Patch 013: hybrid cache via VLM language_model.make_cache --
+
+# When the model is loaded as a VLM (mlx_vlm.load), the outer wrapper has no
+# `make_cache` attribute — make_cache lives on `language_model`. The original
+# _acquire_cache check (`hasattr(self.model, "make_cache")`) fell through to
+# the uniform-ContiguousKVCache loop, giving DeltaNet layers the wrong cache
+# type and producing fluent garbage tokens (Qwen3.5/3.6).
+#
+# Also resets DeltaNet ArraysCache state on cache-pool reuse so request N+1
+# doesn't inherit request N's recurrent state.
+
+ACQUIRE_CACHE_OLD = '''        if self._cache_pool:
+            cache = self._cache_pool.pop()
+            for c in cache:
+                if hasattr(c, "offset"):
+                    c.offset = 0
+            return cache
+
+        # Check if model has make_cache (hybrid models like DeltaNet)
+        if hasattr(self.model, "make_cache"):
+            native_cache = self.model.make_cache()'''
+
+ACQUIRE_CACHE_NEW = '''        if self._cache_pool:
+            cache = self._cache_pool.pop()
+            # Reset whatever the cache type allows so a returned cache from
+            # a previous request doesn't leak state into a new one.
+            for c in cache:
+                if hasattr(c, "offset"):
+                    c.offset = 0  # ContiguousKVCache / KVCache
+                elif hasattr(c, "reset"):
+                    c.reset()
+                elif hasattr(c, "cache"):
+                    # ArraysCache (DeltaNet recurrent state) — drop arrays so
+                    # next prefill rebuilds from scratch. Without this the
+                    # next request inherits the previous request's
+                    # conv_state/ssm_state and produces garbage.
+                    try:
+                        c.cache = [None for _ in c.cache]
+                    except Exception:
+                        pass
+            return cache
+
+        # Check if model has make_cache (hybrid models like DeltaNet).
+        # For VLM-wrapped hybrid models (mlx_vlm.load on Qwen3.5/3.6),
+        # make_cache lives on `language_model`, not the outer wrapper.
+        # Without this fallback the loop below makes uniform ContiguousKVCache
+        # for every layer — and DeltaNet layers receive the wrong cache
+        # type, producing fluent-looking garbage tokens.
+        native_maker = None
+        if hasattr(self.model, "make_cache"):
+            native_maker = self.model.make_cache
+        elif hasattr(self.model, "language_model") and hasattr(self.model.language_model, "make_cache"):
+            native_maker = self.model.language_model.make_cache
+
+        if native_maker is not None:
+            native_cache = native_maker()'''
+
+# Also need to swap the closing `if hasattr(...)` -> `if native_maker is not None`
+# but the entry is in the SAME block; the OLD->NEW above replaces the start of
+# the block and rewrites the conditional. The body (substitution loop) is
+# identical so we don't touch it.
+
+
 def apply_edit(path: Path, old: str, new: str, label: str) -> None:
     """Idempotently replace `old` with `new` in `path`."""
     if not path.exists():
@@ -550,6 +613,8 @@ def main() -> int:
                "012-mm-utils-shm-page-rounding (write)")
     apply_edit(sglang / MM_UTILS_FILE, MM_UTILS_READ_OLD, MM_UTILS_READ_NEW,
                "012-mm-utils-shm-page-rounding (read)")
+    apply_edit(sglang / MODEL_RUNNER_FILE, ACQUIRE_CACHE_OLD, ACQUIRE_CACHE_NEW,
+               "013-mlx-hybrid-cache-via-vlm-language-model")
     return 0
 
 
