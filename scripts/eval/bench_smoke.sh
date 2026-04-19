@@ -34,8 +34,11 @@ for preset in $PRESETS; do
     echo "============================================"
     # Match only sglang server processes, NOT launch.sh wrapper (whose
     # path contains "m4-sglang-inference" and would be matched by
-    # `-f sglang`).
-    pkill -9 -f 'sglang\.launch_server\|sglang::scheduler\|sglang::detokenizer' 2>/dev/null || true
+    # `-f sglang`). macOS BSD pkill alternation `\|` is unreliable, so
+    # call pkill once per pattern.
+    pkill -9 -f 'sglang\.launch_server' 2>/dev/null || true
+    pkill -9 -f 'sglang::scheduler' 2>/dev/null || true
+    pkill -9 -f 'sglang::detokenizer' 2>/dev/null || true
     sleep 5
 
     # Always with --disable-radix-cache (patch 001 bug workaround) and --no-thinking
@@ -68,8 +71,9 @@ pkill -9 -f sglang 2>/dev/null || true
 
 echo ""
 echo "============================================"
+n_presets=$(echo "$PRESETS" | wc -w | tr -d ' ')
 if [ ${#failed[@]} -eq 0 ]; then
-    echo "  Smoke: ALL ${#PRESETS} presets PASS"
+    echo "  Smoke: ALL $n_presets presets PASS"
     exit 0
 else
     echo "  Smoke: FAILED checks: ${failed[*]}"
