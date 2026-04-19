@@ -86,6 +86,16 @@ apply_preset() {
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             ;;
+        smol-docling)
+            # VLM smoke test: smallest available MLX VLM (256M params).
+            # Used for MLX vision investigation — patch 002 normally disables
+            # multimodal but `--enable-multimodal` on the CLI overrides
+            # (the patch only forces False when enable_multimodal is None).
+            MODEL="${MODEL:-ds4sd/SmolDocling-256M-preview-mlx-bf16}"
+            CTX=8192; MAX_RUNNING=1; CHUNKED=4096
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
+            WARMUP="--skip-server-warmup"
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
