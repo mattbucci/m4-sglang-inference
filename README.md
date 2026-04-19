@@ -25,27 +25,38 @@ its numbers land in this README. The 3090 and R9700 sister teams found *multiple
 silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
 `<unk>`, infinite `<think>` loops, or `<pad>` tokens. We adopt the same gate.
 
-### Active work (in priority order)
+### Active work (updated 2026-04-18 — most items below are now DONE)
 
-1. **Quality eval parity with sister repos.** Just ported `validate_capabilities.py`,
-   `validate_chat_template.py`, `eval_and_chart.py` (MMLU + HumanEval + LAB-Bench
-   + Needle), `run_all_evals.sh`, `test_thinking.sh` from the 3090/R9700 teams.
-   Next: run the full sweep across all 7 presets and publish the same comparison
-   chart they ship.
-2. **Qwen3 family thinking validation under greedy MLX.** 3090 team flagged that
-   Qwen3.6 enters a `"</think>\nParis\n</think>…"` loop at temperature=0; MLX
-   backend is greedy-only, so this likely affects our `qwen35`, `qwen3-moe`,
-   `qwen3-32b` presets too. Run `test_thinking.sh` to confirm and either
-   document or patch.
-3. **MLX vision investigation — partial progress.** Confirmed
-   2026-04-18 evening: MLX vision **works fine via `mlx_vlm` direct path**
-   (SmolDocling-256M ran without GPU crash). The crashes are specifically in
-   the **SGLang MLX bridge** image-processor / tensor-handoff. Need to
-   re-enable multimodal in patch 002 and patch the bridge. Likely a tensor
-   conversion overflow analogous to the existing ">1 GB on CPU" rule in
-   `tensor_bridge.py`.
-4. **256K bench coverage.** Coder-30B and Devstral are fully characterized;
-   need to backfill Qwen3.5-DeltaNet, Coder-Next-80B, Gemma 4 26B at 256K.
+1. **Quality eval parity with sister repos — DONE.** Ported
+   `validate_capabilities.py`, `validate_chat_template.py`, `eval_and_chart.py`
+   (MMLU + HumanEval + LAB-Bench + Needle), `run_all_evals.sh`, `test_thinking.sh`,
+   `test_radix_cache_repeat.py` from the 3090/R9700 teams. **6-model quality
+   table published** in `benchmarks/quality/` with chart.
+2. **Qwen3 family thinking under greedy MLX — DONE.** Confirmed infinite
+   `<think>` loop. `--no-thinking` flag added to validators / eval scripts
+   (passes `chat_template_kwargs={"enable_thinking": false}`). All Qwen3
+   presets work serially with `--no-thinking + --disable-radix-cache`.
+3. **MLX vision investigation — DONE (partial unlock via patch 007).**
+   The "GPU crash" mythology debunked: MLX itself is fine. Bug 1 was
+   `mlx_lm.load()` not supporting VLM types — fixed by patch 007's
+   `mlx_vlm.load` fallback. Bug 2 is SGLang's `transformers_auto`
+   multimodal processor missing `Modality.MULTI_IMAGES` — separate fix
+   needed. SmolDocling now boots and serves text-only requests through SGLang.
+4. **DeltaNet hybrid batched-decode crash — partial unblock via patch 006.**
+   `OffsetCache` shim now has `__getitem__` / `__setitem__` / `__len__` /
+   `lengths` / `advance()` so `mlx_lm/qwen3_5.py:linear_attn` doesn't
+   AttributeError. But cache shapes still mismatch downstream — Qwen3.5 +
+   Coder-Next still effectively broken in batched decode. **Real fix needs
+   per-request DeltaNet `conv_state`/`ssm_state` plumbing in `caches[i]`.**
+5. **256K bench coverage — open.** Coder-30B and Devstral fully
+   characterized in old benchmarks; need to backfill remaining models.
+
+### Open work (each is a multi-hour project)
+- Patch 008: per-request DeltaNet state plumbing for Qwen3.5 / Coder-Next
+- Patch 009: SGLang multimodal processor compat for Idefics3/SmolVLM
+  (or write a custom processor that bypasses `transformers_auto`)
+- Root-cause patch 001 scatter-write corruption (MLX-level lazy-graph
+  aliasing — works in REPL, fails in production server context)
 
 ## Cross-team collaboration
 
