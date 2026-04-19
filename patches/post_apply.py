@@ -25,6 +25,13 @@ Patches:
                              Without it, ANY image-bearing request 500s
                              with AttributeError before reaching the
                              model. Upstream SGLang bug.
+  010-mlx-vlm-pixel-values: thread pixel_values from
+                            req.multimodal_inputs through tp_worker →
+                            MlxModelRunner.prefill → TextOnlyVLMShim
+                            so VLM models can actually do image
+                            inference (not just text-only). Additive
+                            change — text-only path unchanged, only
+                            triggers when multimodal_inputs is set.
 
 Run as:
   python patches/post_apply.py <SGLANG_DIR>
@@ -223,6 +230,114 @@ MODALITY_ALL_OLD = '''        return [Modality.IMAGE, Modality.VIDEO, Modality.A
 MODALITY_ALL_NEW = '''        return [Modality.IMAGE, Modality.MULTI_IMAGES, Modality.VIDEO, Modality.AUDIO]'''
 
 
+# -- Patch 010: pixel_values plumbing in prefill() and tp_worker --
+
+PREFILL_OLD = '''    def prefill(
+        self,
+        req_id: str,
+        new_token_ids: list[int],
+        full_token_ids: list[int],
+        prefix_slot_ids: list[int],
+        new_slot_ids: list[int],
+        req_pool_idx: int,
+    ) -> int:
+        """Prefill a request.  Returns next_token_id."""
+        num_layers = self._num_layers
+        prefix_len = len(prefix_slot_ids)
+
+        if self.disable_radix_cache:
+            cache = self._acquire_cache()
+            input_ids = mx.array([new_token_ids], dtype=mx.int32)
+            model_output = self.model(input_ids, cache=cache)'''
+
+PREFILL_NEW = '''    def prefill(
+        self,
+        req_id: str,
+        new_token_ids: list[int],
+        full_token_ids: list[int],
+        prefix_slot_ids: list[int],
+        new_slot_ids: list[int],
+        req_pool_idx: int,
+        pixel_values=None,
+    ) -> int:
+        """Prefill a request.  Returns next_token_id.
+
+        ``pixel_values``: optional mlx array for VLM image input. When set,
+        passed through to the model's __call__ — TextOnlyVLMShim (patch 007)
+        routes it to vlm.__call__ instead of language_model.
+        """
+        num_layers = self._num_layers
+        prefix_len = len(prefix_slot_ids)
+
+        # Build kwargs once; passed to all self.model() calls below so VLM
+        # multimodal path is unified across the disable_radix and
+        # full-radix branches.
+        _model_kwargs = {"pixel_values": pixel_values} if pixel_values is not None else {}
+
+        if self.disable_radix_cache:
+            cache = self._acquire_cache()
+            input_ids = mx.array([new_token_ids], dtype=mx.int32)
+            model_output = self.model(input_ids, cache=cache, **_model_kwargs)'''
+
+# The model_output= line later in prefill (with cache=cache only) needs the
+# same kwargs treatment. Pattern is unique within prefill body.
+PREFILL_OLD2 = '''        model_output = self.model(input_ids, cache=cache)
+        logits = self._extract_logits(model_output)'''
+
+PREFILL_NEW2 = '''        model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+        logits = self._extract_logits(model_output)'''
+
+
+TP_WORKER_FILE = "python/sglang/srt/hardware_backend/mlx/tp_worker.py"
+
+TP_WORKER_OLD = '''                else:
+                    # New prefill
+                    prefix_slot_ids = req.prefix_indices.tolist()
+                    full_token_ids = list(req.fill_ids)
+                    next_token = self._mlx_runner.prefill(
+                        req_id=req.rid,
+                        new_token_ids=req_token_ids,
+                        full_token_ids=full_token_ids,
+                        prefix_slot_ids=prefix_slot_ids,
+                        new_slot_ids=req_new_slots,
+                        req_pool_idx=req.req_pool_idx,
+                    )
+                    prefill_rids.append((req.rid, next_token))'''
+
+TP_WORKER_NEW = '''                else:
+                    # New prefill
+                    prefix_slot_ids = req.prefix_indices.tolist()
+                    full_token_ids = list(req.fill_ids)
+                    # Patch 010: extract pixel_values from multimodal_inputs
+                    # (set by SGLang's processor when an image is in the
+                    # request). MlxModelRunner.prefill threads it to
+                    # TextOnlyVLMShim.__call__ which routes to the full
+                    # vlm.__call__ when present.
+                    pixel_values = None
+                    mm = getattr(req, "multimodal_inputs", None)
+                    if mm and getattr(mm, "mm_items", None):
+                        feature = getattr(mm.mm_items[0], "feature", None)
+                        if feature is not None:
+                            try:
+                                import mlx.core as _mx
+                                # mlx_vlm wants an MLX array. SGLang's
+                                # multimodal processor returns a torch
+                                # tensor; convert via numpy bridge.
+                                pixel_values = _mx.array(feature.numpy() if hasattr(feature, "numpy") else feature)
+                            except Exception:
+                                pixel_values = None
+                    next_token = self._mlx_runner.prefill(
+                        req_id=req.rid,
+                        new_token_ids=req_token_ids,
+                        full_token_ids=full_token_ids,
+                        prefix_slot_ids=prefix_slot_ids,
+                        new_slot_ids=req_new_slots,
+                        req_pool_idx=req.req_pool_idx,
+                        pixel_values=pixel_values,
+                    )
+                    prefill_rids.append((req.rid, next_token))'''
+
+
 def apply_edit(path: Path, old: str, new: str, label: str) -> None:
     """Idempotently replace `old` with `new` in `path`."""
     if not path.exists():
@@ -259,6 +374,12 @@ def main() -> int:
                "009-modality-multi-images (enum)")
     apply_edit(sglang / MODALITY_FILE, MODALITY_ALL_OLD, MODALITY_ALL_NEW,
                "009-modality-multi-images (all() helper)")
+    apply_edit(sglang / MODEL_RUNNER_FILE, PREFILL_OLD, PREFILL_NEW,
+               "010-mlx-vlm-pixel-values (prefill signature)")
+    apply_edit(sglang / MODEL_RUNNER_FILE, PREFILL_OLD2, PREFILL_NEW2,
+               "010-mlx-vlm-pixel-values (radix branch model call)")
+    apply_edit(sglang / TP_WORKER_FILE, TP_WORKER_OLD, TP_WORKER_NEW,
+               "010-mlx-vlm-pixel-values (tp_worker plumbing)")
     return 0
 
 
