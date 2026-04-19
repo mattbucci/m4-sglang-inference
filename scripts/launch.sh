@@ -16,6 +16,7 @@
 #   gemma4         Gemma 4 26B MoE 4-bit (4K)
 #   gemma4-31b     Gemma 4 31B 4-bit (4K)
 #   qwen35         Qwen3.5-27B DeltaNet 4-bit (32K)
+#   qwen35-9b-8bit Qwen3.5-9B DeltaNet 8-bit (32K, smaller+higher-precision)
 #
 # KV cache modes (--kv-cache):
 #   fp8            MXFP8 quantized (default, ~2x memory savings)
@@ -84,6 +85,17 @@ apply_preset() {
             # mismatch (see project_qwen35_deltanet_decode_crash). Serial
             # decode path works AND produces correct output now that
             # patch 013 routes hybrid cache via language_model.make_cache.
+            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
+            REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
+            WARMUP="--skip-server-warmup"
+            ;;
+        qwen35-9b-8bit)
+            # Smaller Qwen3.5 (9B) at higher precision (8-bit). Same DeltaNet
+            # hybrid + vision architecture as qwen35; needs patch 013 for
+            # correctness. Better quality/memory tradeoff than 27B-4bit for
+            # most workloads (~10 GB resident vs ~14 GB).
+            MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
