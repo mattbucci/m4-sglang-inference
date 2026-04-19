@@ -36,6 +36,11 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
     enters a `"</think>\nParis\n</think>…"` repetition loop at temperature=0. Validate
     every Qwen-family model with `validate_capabilities.py` before publishing numbers.
 - **MLX-format models required** — AWQ/GPTQ models from other platforms won't work; use `mlx_lm.convert` or download from `mlx-community/` on HuggingFace
+- **Always use full-size models for evals + benchmarks** — never substitute a smaller
+  variant (e.g. Qwen3.5-9B) "because it loads faster" when the README and quality
+  table track the full model (e.g. Qwen3.5-27B). 64GB unified memory was chosen
+  precisely so the full models fit; small variants exist for resource-constrained
+  users, not for our characterization runs.
 - Always source `scripts/common.sh` before launching
 - **Model status and benchmarks** are in README.md (single source of truth)
 
