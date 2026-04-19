@@ -96,6 +96,16 @@ apply_preset() {
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
             WARMUP="--skip-server-warmup"
             ;;
+        qwen2-vl)
+            # Real general-purpose VLM for end-to-end multimodal verification.
+            # 2B params, ~1.2 GB on disk. Used to validate patch 010
+            # (pixel_values plumbing). mlx_vlm direct path produces correct
+            # image-aware responses; SGLang+patches must match.
+            MODEL="${MODEL:-mlx-community/Qwen2-VL-2B-Instruct-4bit}"
+            CTX=8192; MAX_RUNNING=1; CHUNKED=4096
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
+            WARMUP="--skip-server-warmup"
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."

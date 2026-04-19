@@ -32,6 +32,14 @@ Patches:
                             inference (not just text-only). Additive
                             change — text-only path unchanged, only
                             triggers when multimodal_inputs is set.
+  011-mps-stub-cuda-redirect: SGLang's _mps_stub patches torch.Tensor.to
+                              for MPS but doesn't handle .to('cuda') —
+                              transformers' image processor unconditionally
+                              calls .to('cuda') on Apple, hitting CUDA's
+                              _lazy_init which crashes with "Torch not
+                              compiled with CUDA enabled." Fix: redirect
+                              cuda → cpu in the _patched_to so the image
+                              tensor lands somewhere torch can handle.
 
 Run as:
   python patches/post_apply.py <SGLANG_DIR>
@@ -304,6 +312,44 @@ TP_WORKER_OLD = '''                else:
                     )
                     prefill_rids.append((req.rid, next_token))'''
 
+MPS_STUB_OLD = '''    def _patched_to(self, *args, **kwargs):
+        if kwargs.get("non_blocking"):
+            # Detect target device from positional or keyword args
+            device = None
+            if args and isinstance(args[0], (str, torch.device)):
+                device = torch.device(args[0]) if isinstance(args[0], str) else args[0]
+            elif "device" in kwargs:
+                d = kwargs["device"]
+                device = torch.device(d) if isinstance(d, str) else d
+            if device is not None and device.type == "mps":
+                kwargs = {**kwargs, "non_blocking": False}
+        return _original_to(self, *args, **kwargs)'''
+
+MPS_STUB_NEW = '''    def _patched_to(self, *args, **kwargs):
+        # Detect target device from positional or keyword args
+        device = None
+        if args and isinstance(args[0], (str, torch.device)):
+            device = torch.device(args[0]) if isinstance(args[0], str) else args[0]
+        elif "device" in kwargs:
+            d = kwargs["device"]
+            device = torch.device(d) if isinstance(d, str) else d
+
+        if device is not None:
+            if device.type == "cuda":
+                # M4 patch 011: We have no CUDA. Redirect cuda→cpu so SGLang's
+                # multimodal image processor (and other transformers code that
+                # defaults to .to('cuda')) keeps working on Apple Silicon
+                # without crashing in CUDA's _lazy_init.
+                if args and isinstance(args[0], (str, torch.device)):
+                    args = ("cpu",) + args[1:]
+                else:
+                    kwargs = {**kwargs, "device": "cpu"}
+            elif device.type == "mps" and kwargs.get("non_blocking"):
+                kwargs = {**kwargs, "non_blocking": False}
+
+        return _original_to(self, *args, **kwargs)'''
+
+
 TP_WORKER_NEW = '''                else:
                     # New prefill
                     prefix_slot_ids = req.prefix_indices.tolist()
@@ -380,6 +426,8 @@ def main() -> int:
                "010-mlx-vlm-pixel-values (radix branch model call)")
     apply_edit(sglang / TP_WORKER_FILE, TP_WORKER_OLD, TP_WORKER_NEW,
                "010-mlx-vlm-pixel-values (tp_worker plumbing)")
+    apply_edit(sglang / "python/sglang/_mps_stub.py", MPS_STUB_OLD, MPS_STUB_NEW,
+               "011-mps-stub-cuda-redirect")
     return 0
 
 
