@@ -69,7 +69,10 @@ apply_preset() {
             ;;
         qwen35)
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
-            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
+            # MAX_RUNNING=1: DeltaNet batched decode crashes on cache shape
+            # mismatch (see project_qwen35_deltanet_decode_crash). Serial
+            # decode path works.
+            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;

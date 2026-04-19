@@ -1,16 +1,32 @@
 From: M4 SGLang patches
-Subject: Add __getitem__ to OffsetCache for hybrid model batched decode
+Subject: Add stub methods to OffsetCache so DeltaNet linear_attn doesn't AttributeError
 
-Hybrid models like Qwen3.5 / Coder-Next use linear_attn / DeltaNet layers
-that probe `cache[0] is not None` to detect first-call vs. resumed state.
-Without __getitem__, our OffsetCache shim crashes batched decode with
-``TypeError: 'OffsetCache' object is not subscriptable``.
+Hybrid models like Qwen3.5 / Coder-Next have `linear_attn` / DeltaNet layers
+that probe `cache[0]`, set `cache[0]`, read `cache.lengths`, and call
+`cache.advance(S)`. Without these methods, batched decode crashes with:
 
-This is a stopgap — returning None from __getitem__ unblocks the crash but
-means DeltaNet starts fresh each decode step (loses recurrent state). The
-real fix is per-request DeltaNet state in caches[i], passed through to
-the model instead of replaced with the shim. Track in
-project_qwen35_deltanet_decode_crash memory.
+  TypeError: 'OffsetCache' object is not subscriptable
+  AttributeError: 'OffsetCache' object has no attribute 'lengths'
+  AttributeError: 'OffsetCache' object has no attribute 'advance'
+
+This patch adds minimal stub methods so the layer can call them, but does
+NOT actually persist DeltaNet state across batched decode steps — the
+stubs no-op or return None.
+
+**Net effect: Qwen3.5 batched decode still doesn't work** — it now crashes
+later with a reshape error instead of an AttributeError. To actually run
+Qwen3.5 batched decode, we need per-request DeltaNet state plumbing
+(conv_state + ssm_state per request, passed through to linear_attn instead
+of replaced with the OffsetCache shim).
+
+For now, this patch makes the surface API contract work, which:
+- Removes the immediate crash signature (better diagnostics)
+- Lets the model reach the actual reshape mismatch, which is a clearer
+  signal that more work is needed
+- Doesn't break anything else (other models don't touch these methods)
+
+Workaround: launch Qwen3.5 with `--max-running-requests 1` to force serial
+decode (single-batch path) and bypass the DeltaNet batched code entirely.
 
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
 index aaaaaaaa..bbbbbbbb 100644
@@ -21,29 +37,41 @@ index aaaaaaaa..bbbbbbbb 100644
      """Data-free shim satisfying mlx-lm's cache protocol.
 
 -    Provides ``make_mask`` and ``state`` without storing actual K/V.
-+    Provides ``make_mask``, ``state``, and ``__getitem__`` without storing
-+    actual K/V. The ``__getitem__`` returning ``None`` is required by hybrid
-+    models like Qwen3.5 / Coder-Next whose ``linear_attn`` layers do
-+    ``cache[0] is not None`` to detect first-call vs. resumed state. Without
-+    this, batched decode on those models crashes with
++    Provides ``make_mask``, ``state``, ``__getitem__``, ``__setitem__``,
++    ``lengths``, and ``advance`` without storing actual K/V. The subscript
++    + lengths + advance stubs are required by hybrid models like
++    Qwen3.5 / Coder-Next whose ``linear_attn`` layers probe these
++    attributes. Without them, batched decode on those models crashes with
 +    ``TypeError: 'OffsetCache' object is not subscriptable``.
      """
 
      def __init__(self, offset: int = 0):
-@@ -26,6 +31,17 @@ class OffsetCache:
+@@ -26,6 +31,28 @@ class OffsetCache:
      def state(self):
          return ()  # Empty -- safe for mx.eval unpacking
 
 +    def __getitem__(self, key):
 +        # Return None for any index — signals "no cached state" to hybrid
 +        # layers (DeltaNet conv_state, mamba ssm_state, etc.). They handle
-+        # None by falling back to a zero-initialized state, which matches
-+        # the intent of OffsetCache (we don't carry cache across batched
-+        # decode for these layers; mlx-lm rebuilds it from offset).
++        # None by falling back to a zero-initialized state.
 +        return None
++
++    def __setitem__(self, key, value):
++        # Accept and discard — DeltaNet writes its updated state back here,
++        # but OffsetCache by design doesn't persist data.
++        pass
 +
 +    def __len__(self):
 +        return 0
++
++    # mlx-lm DeltaNet linear_attn probes `cache.lengths is not None` to
++    # decide whether to advance the conv_state pointer. None signals
++    # "first call, no length tracking" so the layer takes the cold path.
++    lengths = None
++
++    def advance(self, S):
++        """No-op stub — DeltaNet calls this after writing state."""
++        pass
 +
      def make_mask(self, N, **kwargs):
          return None if N == 1 else "causal"
