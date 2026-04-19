@@ -15,6 +15,75 @@ SGLang with native MLX backend on M4 Pro (64GB unified memory)
 
 ---
 
+## Current Focus (2026-04-18)
+
+**Primary target: single-user 256K context on agentic workloads** — multi-user
+throughput is secondary. Decode TPOT at long context > peak batch throughput.
+
+**Hard constraint: every new model must pass `validate_capabilities.py`** before
+its numbers land in this README. The 3090 and R9700 sister teams found *multiple*
+silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
+`<unk>`, infinite `<think>` loops, or `<pad>` tokens. We adopt the same gate.
+
+### Active work (in priority order)
+
+1. **Quality eval parity with sister repos.** Just ported `validate_capabilities.py`,
+   `validate_chat_template.py`, `eval_and_chart.py` (MMLU + HumanEval + LAB-Bench
+   + Needle), `run_all_evals.sh`, `test_thinking.sh` from the 3090/R9700 teams.
+   Next: run the full sweep across all 7 presets and publish the same comparison
+   chart they ship.
+2. **Qwen3 family thinking validation under greedy MLX.** 3090 team flagged that
+   Qwen3.6 enters a `"</think>\nParis\n</think>…"` loop at temperature=0; MLX
+   backend is greedy-only, so this likely affects our `qwen35`, `qwen3-moe`,
+   `qwen3-32b` presets too. Run `test_thinking.sh` to confirm and either
+   document or patch.
+3. **MLX vision investigation.** MLX VLMs reliably crash the GPU on this M4 Pro
+   (user-confirmed). Patch 002 disables multimodal as a workaround, but vision
+   is a missing capability vs the GPU teams. Need to reproduce on the smallest
+   MLX VLM, isolate whether it's MLX itself or the SGLang MLX bridge, and write
+   a sixth patch.
+4. **256K bench coverage.** Coder-30B and Devstral are fully characterized;
+   need to backfill Qwen3.5-DeltaNet, Coder-Next-80B, Gemma 4 26B at 256K.
+
+## Cross-team collaboration
+
+We share findings with two sister repos on the same SGLang stack:
+- **3090 team** — `~/AI/2x-3090-GA102-300-A1-sglang-inference` (NVIDIA Ampere,
+  AWQ_Marlin, 14 patches, hits 256K @ 74 tok/s on REAM-30B)
+- **R9700 team** — `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` (AMD RDNA4,
+  ROCm 7.2, 14 patches, hits 256K @ 13 tok/s on Qwen3.6-35B-A3B)
+
+Their kernel patches don't port directly (Marlin/HIP-specific), but their **eval
+harnesses, calibration insights, and chat-template fixes are portable** — the
+quality eval suite under `scripts/eval/` is a direct adoption.
+
+## Known Issues
+
+- **Radix cache (patch 001) corrupts repeated prompts** *(found 2026-04-18 by `validate_capabilities.py`)*.
+  When the *exact same prompt* is sent twice (cache-hit on the full prefix), the
+  2nd+ response is deterministic garbage unrelated to the prompt. First request
+  after `POST /flush_cache` is correct, then identical prompts re-trigger the bug.
+  All-different prompts are fine. **Workaround: launch with
+  `EXTRA_ARGS="--disable-radix-cache" bash scripts/launch.sh <preset>`**, which
+  is now the default in `scripts/eval/run_all_evals.sh` and `test_thinking.sh`.
+  Untreated, this silently invalidates every multi-turn agentic workload and
+  every quality benchmark from request 2 onward.
+- **Greedy-only sampling on MLX backend** — `mx.argmax` is the only sampler.
+  Temperature/top-p/top-k unsupported. Combined with Qwen3-family templates that
+  embed `<think>` markers regardless of `enable_thinking`, this is a known risk
+  for `</think>\nX\n</think>…` repetition loops. `validate_capabilities.py`
+  includes a loop-detector for this signature.
+- **MLX vision models crash the GPU** — every VLM tried so far reliably crashes
+  the M4 Pro GPU. Patch 002 disables multimodal by default; Devstral
+  uses `--skip-server-warmup` to avoid VLM misdetection. Vision is an open
+  investigation (see Active work #3) not a "won't fix."
+- **VLM warmup crash on Devstral** — Devstral-24B is detected as VLM and crashes
+  during warmup; we set `--skip-server-warmup` automatically in the preset.
+- **HDMI display blackout** — brief screen blank when server starts heavy Metal
+  compute (M4 Pro HDMI quirk, not an SGLang bug).
+
+---
+
 ## Highlights
 
 - **256K context** on 64GB Mac with FP8 quantized KV cache
@@ -367,12 +436,8 @@ The radix cache pre-allocates the full KV pool at startup. On Apple Silicon's un
 
 ---
 
-## Known Issues
-
 > [!NOTE]
-> - **Greedy sampling only** — MLX backend uses `mx.argmax`; temperature/top-p not yet supported
-> - **VLM warmup crash** — Devstral detected as VLM; use `--skip-server-warmup` (set automatically)
-> - **HDMI display blackout** — Brief screen blank when server starts heavy Metal compute (M4 Pro HDMI issue)
+> Full known-issues list lives at the top of this README, under [Known Issues](#known-issues).
 
 ## Patches
 

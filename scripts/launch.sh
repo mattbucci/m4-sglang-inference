@@ -37,7 +37,7 @@ REASONING=""
 WARMUP=""
 WATCHDOG=600
 KV_CACHE="fp8"
-EXTRA_ARGS=""
+EXTRA_ARGS="${EXTRA_ARGS:-}"
 
 # --- Model presets (tuned for 64GB unified memory) ---
 apply_preset() {

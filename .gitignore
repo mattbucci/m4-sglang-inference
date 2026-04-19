@@ -1,0 +1,12 @@
+.venv/
+components/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Raw bench_serving JSONL outputs — stored at repo root while iterating.
+# Keep processed results under benchmarks/<model>/ in git; drop the raw dumps.
+sglang_*.jsonl
+
+# Tmp eval/server logs
+*.log
