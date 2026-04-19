@@ -1,0 +1,24 @@
+{
+  "tag": "Gemma4-26B",
+  "timestamp": "2026-04-18 23:59",
+  "max_context": 4096,
+  "mmlu": {
+    "correct": 43,
+    "total": 50,
+    "accuracy": 0.86
+  },
+  "humaneval": {
+    "passed": 0,
+    "total": 5,
+    "pass_rate": 0.0
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}

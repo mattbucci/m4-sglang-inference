@@ -50,11 +50,12 @@ silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
    `ContiguousKVCache` for every layer, giving DeltaNet's 24 hybrid layers
    the wrong cache type and producing fluent garbage tokens. Fix routes
    the hybrid cache via `model.language_model.make_cache()` and resets
-   ArraysCache state on pool reuse. **Re-measured 2026-04-18 evening:**
-   Qwen3.5-27B-4bit jumped from MMLU 16.7% → **93.0%** (HumanEval **100%**,
-   LAB-Bench 37.1%, Needle PASS) — now the top-scoring model in the
-   quality table. Qwen3.5-9B-MLX-8bit at MMLU **87.7%** / HumanEval 80% /
-   LAB-Bench 31.4%.
+   ArraysCache state on pool reuse (the second part also helps text-only
+   DeltaNet hybrids like Coder-Next). **Re-measured 2026-04-19:**
+   Qwen3.5-27B-4bit MMLU 16.7% → **93.0%** (HumanEval **100%**),
+   Qwen3.5-9B-MLX-8bit **87.7%** / 80%, Coder-Next-80B-4bit MMLU 33.3% →
+   **70.0%** / HumanEval 0% → **100%**. Qwen3.5-27B is now the
+   top-scoring model in the quality table.
 5. **256K bench coverage — open.** Coder-30B and Devstral fully
    characterized in old benchmarks; need to backfill remaining models.
 
@@ -63,9 +64,7 @@ silent quality regressions in checkpoints that pass MMLU/HumanEval but emit
   proper fix for Qwen3.5/Coder-Next batched decode (current patch 008 is
   serial-decode fallback that limits MAX_RUNNING=1; correctness now fine,
   throughput is the only remaining concern).
-- Re-measure Coder-Next MMLU after patch 013 (Qwen3.5 done — 93.0%).
-  Coder-Next isn't VLM-detected so primary fix doesn't apply, but the
-  ArraysCache reset secondary fix may still help.
+- Eval Qwen3.6-35B (preset added but not yet downloaded).
 - SGLang multimodal processor compat for Idefics3/SmolVLM (or custom
   processor that bypasses `transformers_auto`).
 - Root-cause patch 001 scatter-write corruption (MLX-level lazy-graph
@@ -368,6 +367,20 @@ Very large KV heads (506K bytes/slot). Needs turboquant for anything beyond 16K.
 | Gemma 4 31B | Dense (turboquant) | 17 GB | 12.5 | 16K | `launch.sh gemma4-31b` |
 
 All models 4-bit MLX quantized from [`mlx-community/`](https://huggingface.co/mlx-community) on HuggingFace.
+
+### Multimodal capability matrix
+
+What each architecture *can* do vs what *works through our SGLang+MLX bridge today*:
+
+| Model | Image | Video | Audio | Status on M4 |
+|:------|:-----:|:-----:|:-----:|:------------|
+| Devstral-24B (Mistral3) | ✅ | ❌ | ❌ | **Image working** end-to-end (verified red-circle test). Patches 007/010/011/012 + VLM detection. |
+| Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | Image wires through; video supported by arch (`video_grid_thw`, `second_per_grid_ts`) and `tp_worker` already forwards `model_specific_data` — needs end-to-end test. See SGLang [commit 2a327f0](https://github.com/sgl-project/sglang/commit/2a327f08772f6b9ada7f2f4792f9b7d0e16a5fa1) (qwen_vl preprocess_video tuple-return fix). |
+| Qwen3.6-35B-A3B | ✅ | ✅ | ❌ | Same arch class as 3.5; preset added but not yet downloaded/tested. |
+| Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [supports image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video) (frames at ~1s, `<\|video\|>` token). **Blocked**: mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands. |
+| Coder-30B / Coder-Next-80B / Qwen3-30B-MoE / Qwen3-32B | ❌ | ❌ | ❌ | Text-only by architecture. |
+
+**Smol-docling (256M, VLM smoke test)** — loads via `mlx_vlm`; full image inference still blocked at SGLang's `transformers_auto` multimodal processor (Idefics3/SmolVLM).
 
 ### Choosing a Model
 

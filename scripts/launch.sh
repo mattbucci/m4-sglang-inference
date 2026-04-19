@@ -63,23 +63,29 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4)
-            # Gemma4ForConditionalGeneration — architecturally vision-capable
-            # but the mlx-community 4bit checkpoint is missing
-            # preprocessor_config.json, so SGLang can't load the image
-            # processor. Text-only for now; vision needs a re-upload from
-            # the original Gemma weights with the preprocessor.
+            # Gemma4ForConditionalGeneration — architecturally supports
+            # IMAGE + VIDEO + AUDIO, but the mlx-community 4bit checkpoint
+            # is missing preprocessor_config.json so SGLang can't load any
+            # of the multimodal processors. Text-only for now; multimodal
+            # needs a re-upload from the original Gemma weights with the
+            # preprocessor + audio config.
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
-            # Same situation as gemma4 — text-only on this checkpoint.
-            MODEL="${MODEL:-mlx-community/gemma-4-31b-4bit}"
+            # mlx-community/gemma-4-31b-4bit (no `-it`) is a BASE model:
+            # no chat template, no special tokens, no instruction tuning.
+            # Chat completions returned garbage start tokens. Switched to
+            # the instruction-tuned variant which speaks Gemma turn format.
+            MODEL="${MODEL:-mlx-community/gemma-4-31b-it-mxfp4}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
-            # Qwen3_5ForConditionalGeneration — DeltaNet hybrid + vision.
+            # Qwen3_5ForConditionalGeneration — DeltaNet hybrid + vision + VIDEO.
+            # video_grid_thw / second_per_grid_ts already flow through tp_worker
+            # mm_extra_kwargs path (see SGLang commit 2a327f0 for upstream fix).
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             # MAX_RUNNING=1: DeltaNet batched decode crashes on cache shape
             # mismatch (see project_qwen35_deltanet_decode_crash). Serial
@@ -123,7 +129,8 @@ apply_preset() {
             ;;
         qwen36)
             # Qwen3.6-35B-A3B MoE+DeltaNet+VL. Sister teams (3090/R9700) use
-            # this as their flagship 256K agentic model. Vision-capable.
+            # this as their flagship 256K agentic model. Vision + VIDEO capable
+            # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
