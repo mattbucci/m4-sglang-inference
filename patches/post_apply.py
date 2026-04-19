@@ -472,24 +472,44 @@ TP_WORKER_NEW = '''                else:
                     # New prefill
                     prefix_slot_ids = req.prefix_indices.tolist()
                     full_token_ids = list(req.fill_ids)
-                    # Patch 010: extract pixel_values from multimodal_inputs
-                    # (set by SGLang's processor when an image is in the
-                    # request). MlxModelRunner.prefill threads it to
-                    # TextOnlyVLMShim.__call__ which routes to the full
-                    # vlm.__call__ when present.
+                    # Patch 010 + 014: stack pixel_values across all
+                    # mm_items (multi-image / video frames) and concat
+                    # per-architecture model_specific_data
+                    # (image_grid_thw, video_grid_thw, second_per_grid_ts).
+                    # Without this, Qwen3.5/3.6 raise
+                    # "Image features and image tokens do not match"
+                    # because the prompt has N image tokens but the model
+                    # only saw 1 image's features.
                     pixel_values = None
+                    mm_extra_kwargs: dict = {}
                     mm = getattr(req, "multimodal_inputs", None)
                     if mm and getattr(mm, "mm_items", None):
-                        feature = getattr(mm.mm_items[0], "feature", None)
-                        if feature is not None:
-                            try:
-                                import mlx.core as _mx
-                                # mlx_vlm wants an MLX array. SGLang's
-                                # multimodal processor returns a torch
-                                # tensor; convert via numpy bridge.
-                                pixel_values = _mx.array(feature.numpy() if hasattr(feature, "numpy") else feature)
-                            except Exception:
-                                pixel_values = None
+                        try:
+                            import mlx.core as _mx
+                            _to_mx = lambda t: _mx.array(t.numpy() if hasattr(t, "numpy") else t)
+                            features = []
+                            ms_acc: dict = {}
+                            for it in mm.mm_items:
+                                f = getattr(it, "feature", None)
+                                if f is None:
+                                    continue
+                                features.append(_to_mx(f))
+                                ms = getattr(it, "model_specific_data", None) or {}
+                                for k, v in ms.items():
+                                    if v is None:
+                                        continue
+                                    ms_acc.setdefault(k, []).append(v)
+                            if features:
+                                pixel_values = _mx.concatenate(features, axis=0) if len(features) > 1 else features[0]
+                                for k, vs in ms_acc.items():
+                                    try:
+                                        mxs = [_to_mx(v) for v in vs]
+                                        mm_extra_kwargs[k] = _mx.concatenate(mxs, axis=0) if len(mxs) > 1 else mxs[0]
+                                    except Exception:
+                                        mm_extra_kwargs[k] = vs[0] if len(vs) == 1 else vs
+                        except Exception:
+                            pixel_values = None
+                            mm_extra_kwargs = {}
                     next_token = self._mlx_runner.prefill(
                         req_id=req.rid,
                         new_token_ids=req_token_ids,
@@ -498,6 +518,7 @@ TP_WORKER_NEW = '''                else:
                         new_slot_ids=req_new_slots,
                         req_pool_idx=req.req_pool_idx,
                         pixel_values=pixel_values,
+                        mm_extra_kwargs=mm_extra_kwargs or None,
                     )
                     prefill_rids.append((req.rid, next_token))'''
 
