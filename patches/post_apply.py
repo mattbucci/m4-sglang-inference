@@ -32,6 +32,12 @@ Patches:
                             inference (not just text-only). Additive
                             change — text-only path unchanged, only
                             triggers when multimodal_inputs is set.
+
+  Note: full image inference requires Qwen2-VL-style image_grid_thw
+  to also be threaded through (mlx_vlm's vision encoder needs it).
+  Currently we only pass pixel_values, so vision-bearing requests
+  reach the model but crash in rot_pos_emb. Future patch needs to
+  build a SGLang-mm-output → mlx_vlm-input adapter.
   011-mps-stub-cuda-redirect: SGLang's _mps_stub patches torch.Tensor.to
                               for MPS but doesn't handle .to('cuda') —
                               transformers' image processor unconditionally
@@ -40,6 +46,19 @@ Patches:
                               compiled with CUDA enabled." Fix: redirect
                               cuda → cpu in the _patched_to so the image
                               tensor lands somewhere torch can handle.
+
+  012-mm-utils-shm-page-rounding: SharedMemory page-rounds size on macOS
+                                  (16 KB pages on M-series), so
+                                  torch.frombuffer(shm.buf, ...) produces
+                                  a tensor LARGER than the logical nbytes.
+                                  Fix: slice to logical size on both
+                                  the write and read sides.
+
+  Plus: VLM detection in _load_model now reads config.json via
+  hf_hub_download to detect vision_config / image_token_id and force
+  mlx_vlm.load even when mlx_lm.load would have succeeded (Qwen2-VL,
+  Qwen3-VL). Without this, mlx_lm loads the model but its __call__ has
+  no pixel_values param and just produces text-only output.
 
 Run as:
   python patches/post_apply.py <SGLANG_DIR>
@@ -325,6 +344,51 @@ MPS_STUB_OLD = '''    def _patched_to(self, *args, **kwargs):
                 kwargs = {**kwargs, "non_blocking": False}
         return _original_to(self, *args, **kwargs)'''
 
+MM_UTILS_FILE = "python/sglang/srt/managers/mm_utils.py"
+
+MM_UTILS_WRITE_OLD = '''        nbytes = tensor.numel() * tensor.element_size()
+        shm = shared_memory.SharedMemory(create=True, size=nbytes)
+        try:
+            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)
+            dst.copy_(tensor.view(torch.uint8).reshape(-1))'''
+
+MM_UTILS_WRITE_NEW = '''        nbytes = tensor.numel() * tensor.element_size()
+        shm = shared_memory.SharedMemory(create=True, size=nbytes)
+        try:
+            # M4 patch 012: macOS rounds shm size up to a page (16 KB on
+            # Apple Silicon), so torch.frombuffer(shm.buf, ...) yields a
+            # tensor LARGER than nbytes. Slice dst to the actual logical size.
+            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)[:nbytes]
+            dst.copy_(tensor.view(torch.uint8).reshape(-1))'''
+
+MM_UTILS_READ_OLD = '''    def __setstate__(self, state):
+        self.shm_name = state["shm_name"]
+        self.shape = state["shape"]
+        self.dtype = state["dtype"]
+        self.shm = None
+        self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
+        # Zero-copy view into shared memory (no clone, no unlink)
+        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype).reshape(
+            self.shape
+        )'''
+
+MM_UTILS_READ_NEW = '''    def __setstate__(self, state):
+        self.shm_name = state["shm_name"]
+        self.shape = state["shape"]
+        self.dtype = state["dtype"]
+        self.shm = None
+        self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
+        # M4 patch 012 (read side): slice to logical element count before
+        # reshape — macOS page-rounds shm allocations.
+        n_elements = 1
+        for d in self.shape:
+            n_elements *= d
+        # Zero-copy view into shared memory (no clone, no unlink)
+        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype)[
+            :n_elements
+        ].reshape(self.shape)'''
+
+
 MPS_STUB_NEW = '''    def _patched_to(self, *args, **kwargs):
         # Detect target device from positional or keyword args
         device = None
@@ -428,6 +492,10 @@ def main() -> int:
                "010-mlx-vlm-pixel-values (tp_worker plumbing)")
     apply_edit(sglang / "python/sglang/_mps_stub.py", MPS_STUB_OLD, MPS_STUB_NEW,
                "011-mps-stub-cuda-redirect")
+    apply_edit(sglang / MM_UTILS_FILE, MM_UTILS_WRITE_OLD, MM_UTILS_WRITE_NEW,
+               "012-mm-utils-shm-page-rounding (write)")
+    apply_edit(sglang / MM_UTILS_FILE, MM_UTILS_READ_OLD, MM_UTILS_READ_NEW,
+               "012-mm-utils-shm-page-rounding (read)")
     return 0
 
 
