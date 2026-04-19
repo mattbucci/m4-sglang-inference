@@ -137,6 +137,13 @@ MODEL_RUNNER_NEW = '''    def _load_model(self):
             self.model, self.processor = mlx_vlm_load(self.model_path)
             self.is_vlm = True
             # Wrap so calls without pixel_values delegate to language_model.
+            # TODO(patch-010): when pixel_values is non-None, route through
+            # self._vlm(input_ids, pixel_values, cache=cache) instead.
+            # Requires plumbing pixel_values from
+            # model_worker_batch.mm_input through tp_worker.forward_batch_generation
+            # → MlxModelRunner.prefill → here. SGLang's multimodal processor
+            # (after patch 009) extracts pixel_values into mm_input but our
+            # prefill signature drops it.
             _vlm_model = self.model
             class _TextOnlyVLMShim:
                 def __init__(self, vlm):
