@@ -43,9 +43,13 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"
 apply_preset() {
     case "$1" in
         devstral)
+            # Mistral3ForConditionalGeneration — vision-capable.
+            # --enable-multimodal exposes the image path (patches 007/009/010
+            # /011/012 + VLM detection make it actually work).
             MODEL="${MODEL:-mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit}"
             CTX=32768; MAX_RUNNING=16; CHUNKED=8192
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"
             ;;
         coder-30b)
@@ -58,22 +62,28 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4)
+            # Gemma4ForConditionalGeneration — vision-capable.
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
+            # Gemma4ForConditionalGeneration — vision-capable.
             MODEL="${MODEL:-mlx-community/gemma-4-31b-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
+            # Qwen3_5ForConditionalGeneration — DeltaNet hybrid + vision.
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             # MAX_RUNNING=1: DeltaNet batched decode crashes on cache shape
             # mismatch (see project_qwen35_deltanet_decode_crash). Serial
             # decode path works.
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"
             ;;
         qwen3-32b)
@@ -96,14 +106,12 @@ apply_preset() {
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
             WARMUP="--skip-server-warmup"
             ;;
-        qwen2-vl)
-            # Real general-purpose VLM for end-to-end multimodal verification.
-            # 2B params, ~1.2 GB on disk. Used to validate patch 010
-            # (pixel_values plumbing). mlx_vlm direct path produces correct
-            # image-aware responses; SGLang+patches must match.
-            MODEL="${MODEL:-mlx-community/Qwen2-VL-2B-Instruct-4bit}"
-            CTX=8192; MAX_RUNNING=1; CHUNKED=4096
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
+        qwen36)
+            # Qwen3.6-35B-A3B MoE+DeltaNet+VL. Sister teams (3090/R9700) use
+            # this as their flagship 256K agentic model. Vision-capable.
+            MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
+            CTX=32768; MAX_RUNNING=1; CHUNKED=4096
+            REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
         *)
