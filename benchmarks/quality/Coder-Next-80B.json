@@ -25,5 +25,5 @@
     ],
     "score": 0.0
   },
-  "notes": "PARTIAL/BROKEN \u2014 Coder-Next 80B is a DeltaNet+MoE hybrid like Qwen3.5; hits the same DeltaNet decode batched-call crash + 4-bit DeltaNet quality regression. MMLU 10/30 = 33.3%; HE 0/8 + Needle 0/2 are post-crash. See memory project_qwen35_deltanet_decode_crash \u2014 applies to all DeltaNet hybrid presets (qwen35, coder-next)."
+  "notes": "PARTIAL/BROKEN \u2014 Coder-Next 80B is a DeltaNet+MoE hybrid like Qwen3.5; hits the same DeltaNet decode batched-call crash + 4-bit DeltaNet quality regression. MMLU 10/30 = 33.3%; HE 0/8 + Needle 0/2 are post-crash. See memory project_qwen35_deltanet_decode_crash \u2014 applies to all DeltaNet hybrid presets (qwen35, coder-next). Patch 008 verified to unblock concurrent decode (Tokyo/Berlin/Rome/Madrid stress test passes); the 33.3% MMLU is genuine 4-bit DeltaNet quality regression like Qwen3.5."
 }
