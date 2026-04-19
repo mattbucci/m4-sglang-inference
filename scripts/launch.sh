@@ -62,17 +62,19 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4)
-            # Gemma4ForConditionalGeneration — vision-capable.
+            # Gemma4ForConditionalGeneration — architecturally vision-capable
+            # but the mlx-community 4bit checkpoint is missing
+            # preprocessor_config.json, so SGLang can't load the image
+            # processor. Text-only for now; vision needs a re-upload from
+            # the original Gemma weights with the preprocessor.
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
-            # Gemma4ForConditionalGeneration — vision-capable.
+            # Same situation as gemma4 — text-only on this checkpoint.
             MODEL="${MODEL:-mlx-community/gemma-4-31b-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)

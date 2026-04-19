@@ -117,7 +117,59 @@ OFFSETCACHE_NEW = '''    def __init__(self, offset: int = 0):
         return None if N == 1 else "causal"
 
     def update_and_fetch(self, keys, values):
-        raise RuntimeError("OffsetCache should not store data")'''
+        raise RuntimeError("OffsetCache should not store data")
+
+
+class ContiguousKVCache:'''
+
+
+# Patch 006 also needs to add the same subscript stubs to ContiguousKVCache
+# so DeltaNet hybrid VLMs (Qwen3.5/3.6) don't TypeError when their
+# linear_attn layer probes cache[0] during single-batch decode. We extend
+# the existing class definition rather than replace it (the class body is
+# created by patch 001).
+CONTIGUOUS_OLD = '''class ContiguousKVCache:
+    """Pre-allocated KV buffer for one request x one layer.
+
+    Shape ``(1, n_kv_heads, max_seq_len, head_dim)``.  Slice assignment
+    instead of ``mx.concatenate``.  Lazy-allocated on first write.
+
+    When kv_cache_mode is FP8 or TURBOQUANT, K/V data is stored in
+    quantized form and dequantized on read.
+    """
+
+    __slots__ = ('''
+
+CONTIGUOUS_NEW = '''class ContiguousKVCache:
+    """Pre-allocated KV buffer for one request x one layer.
+
+    Shape ``(1, n_kv_heads, max_seq_len, head_dim)``.  Slice assignment
+    instead of ``mx.concatenate``.  Lazy-allocated on first write.
+
+    When kv_cache_mode is FP8 or TURBOQUANT, K/V data is stored in
+    quantized form and dequantized on read.
+
+    DeltaNet subscript protocol stubs (see OffsetCache for rationale):
+    needed so a hybrid VLM (Qwen3.5/3.6, Coder-Next) can use this cache
+    for both attention layers (real KV) and DeltaNet layers (cold path
+    each step).
+    """
+
+    lengths = None
+
+    def __getitem__(self, key):
+        return None
+
+    def __setitem__(self, key, value):
+        pass
+
+    def __len__(self):
+        return 0
+
+    def advance(self, S):
+        pass
+
+    __slots__ = ('''
 
 
 # -- Patch 007: mlx_vlm fallback in MlxModelRunner._load_model --
