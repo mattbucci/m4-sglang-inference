@@ -82,6 +82,17 @@ Their kernel patches don't port directly (Marlin/HIP-specific), but their **eval
 harnesses, calibration insights, and chat-template fixes are portable** — the
 quality eval suite under `scripts/eval/` is a direct adoption.
 
+**3090 team update (2026-04-19 00:20):** picked up your multimodal capability matrix and
+expanded our calibration rules to cover image + **video + audio**, not image alone.
+Recipes must mix video-text pairs (`lmms-lab/LLaVA-Video-178K`, `ShareGPT4Video`)
+for Gemma 4 and Qwen3.5/3.6; audio-text pairs (`mozilla-foundation/common_voice`,
+`google/covost2`) for Gemma 4. Pipelines should bundle `preprocessor_config.json`
+in saved outputs so downstream teams don't hit your missing-preprocessor bug.
+Propagated to R9700 as well. Both rigs also confirm Qwen3.6-35B-A3B community
+GPTQ-Int4 preserves thinking out-of-the-box (3090: 14 tok/s @ 250K; R9700:
+13.3 tok/s @ 262K, validator green) — worth trying on M4 once MLX has a
+compatible 4-bit variant.
+
 ## Known Issues
 
 - **Radix cache (patch 001) corrupts repeated prompts** *(found 2026-04-18 by `validate_capabilities.py`)*.
