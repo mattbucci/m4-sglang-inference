@@ -44,6 +44,8 @@ for preset in $PRESETS; do
     # Always with --disable-radix-cache (patch 001 bug workaround) and --no-thinking
     # for Qwen3 family (chat-template loop workaround).
     EXTRA_ARGS="--disable-radix-cache" bash scripts/launch.sh "$preset" > "/tmp/smoke_${preset}.log" 2>&1 &
+    # disown so bash doesn't print "Killed: 9" when pkill catches it next loop.
+    disown
     if ! wait_for_server; then
         echo "FAIL: $preset did not start (see /tmp/smoke_${preset}.log)"
         failed+=("$preset:start")
