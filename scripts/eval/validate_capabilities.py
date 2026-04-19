@@ -153,7 +153,7 @@ def check_thinking(
     return passed, msg
 
 
-def check_basic(base_url: str, model: str) -> tuple[bool, str]:
+def check_basic(base_url: str, model: str, thinking_kwargs: dict | None = None) -> tuple[bool, str]:
     """Short factual question — verifies the server / chat template at all."""
     payload = {
         "model": model,
@@ -161,6 +161,8 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
         "max_tokens": 256,
         "temperature": 0,
     }
+    if thinking_kwargs:
+        payload["chat_template_kwargs"] = thinking_kwargs
     try:
         r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=120)
     except Exception as e:
@@ -216,6 +218,10 @@ def main() -> int:
                    help="Run vision check (off by default — MLX backend disables VLMs)")
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
+    p.add_argument("--no-thinking", action="store_true",
+                   help="Disable thinking via chat_template_kwargs={'enable_thinking': false}. "
+                        "Required for Qwen3 family on greedy MLX to avoid infinite <think> loops. "
+                        "When set, the thinking probe is skipped because the model can't reason.")
     p.add_argument("--timeout", type=int, default=180)
     args = p.parse_args()
 
@@ -234,17 +240,21 @@ def main() -> int:
             model = "default"
 
     thinking_kwargs = json.loads(args.thinking_kwarg) if args.thinking_kwarg else None
+    if args.no_thinking:
+        thinking_kwargs = {"enable_thinking": False}
 
     print(f"=== M4 capability validator — {base}  model={model} ===")
 
     results: list[tuple[str, bool, str]] = []
     t0 = time.time()
 
-    ok, msg = check_basic(base, model)
+    ok, msg = check_basic(base, model, thinking_kwargs)
     results.append(("basic", ok, msg))
     print(f"  [{'PASS' if ok else 'FAIL'}] basic     {msg}")
 
-    if not args.skip_thinking:
+    if args.no_thinking:
+        print(f"  [SKIP] thinking  (--no-thinking forces enable_thinking=false; can't probe reasoning)")
+    elif not args.skip_thinking:
         ok, msg = check_thinking(base, model, thinking_kwargs)
         results.append(("thinking", ok, msg))
         print(f"  [{'PASS' if ok else 'FAIL'}] thinking  {msg}")

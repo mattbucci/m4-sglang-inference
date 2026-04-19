@@ -73,6 +73,12 @@ quality eval suite under `scripts/eval/` is a direct adoption.
   embed `<think>` markers regardless of `enable_thinking`, this is a known risk
   for `</think>\nX\n</think>…` repetition loops. `validate_capabilities.py`
   includes a loop-detector for this signature.
+- **Qwen3.5-27B / Qwen3-30B-MoE / Qwen3-32B enter infinite `<think>` loops**
+  *(confirmed 2026-04-18 via validator)*. The "ball and bat" reasoning prompt
+  hits `max_tokens=2048` with `finish_reason=length`, generating an open-ended
+  reasoning chain that never closes. Short factual prompts still return cleanly.
+  Root cause: greedy decode + chat template that always emits `<think>`. Fix
+  is blocked on MLX backend gaining real sampling support.
 - **MLX vision models crash the GPU** — every VLM tried so far reliably crashes
   the M4 Pro GPU. Patch 002 disables multimodal by default; Devstral
   uses `--skip-server-warmup` to avoid VLM misdetection. Vision is an open

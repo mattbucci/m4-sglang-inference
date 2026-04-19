@@ -33,8 +33,16 @@ from pathlib import Path
 RESULTS_DIR = Path("benchmarks/quality")
 LAB_BENCH_BENCHMARKS = ["LitQA2", "DbQA", "SuppQA", "TableQA", "ProtocolQA", "SeqQA", "CloningScenarios"]
 
+# Module-level: extra chat_template_kwargs added to every chat request.
+# Set via --no-thinking on the CLI (Qwen3 family enters infinite <think>
+# loop under greedy MLX otherwise).
+_chat_template_kwargs = None
+
 
 def _post(url: str, payload: dict, timeout: int = 300) -> dict:
+    if _chat_template_kwargs is not None and "chat/completions" in url:
+        payload = dict(payload)
+        payload["chat_template_kwargs"] = _chat_template_kwargs
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -374,7 +382,17 @@ if __name__ == "__main__":
     parser.add_argument("--labbench-samples", type=int, default=50)
     parser.add_argument("--needle-lengths", type=str, default="1024,4096,16384,65536")
     parser.add_argument("--workers", type=int, default=1, help="Concurrent requests (1 for MLX)")
+    parser.add_argument("--no-thinking", action="store_true",
+                        help="Pass chat_template_kwargs={'enable_thinking': false} to every "
+                             "request. Required for Qwen3 family on greedy MLX to avoid "
+                             "infinite <think> loops.")
     args = parser.parse_args()
+
+    if args.no_thinking:
+        _chat_template_kwargs = {"enable_thinking": False}
+        # Re-bind module global so _post() picks it up.
+        import sys as _sys
+        _sys.modules[__name__]._chat_template_kwargs = _chat_template_kwargs
 
     if args.run:
         lengths = [int(x) for x in args.needle_lengths.split(",")]

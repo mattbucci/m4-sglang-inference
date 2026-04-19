@@ -1,0 +1,32 @@
+{
+  "tag": "Qwen3-30B-MoE",
+  "timestamp": "2026-04-18 19:03",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 25,
+    "total": 30,
+    "accuracy": 0.8333333333333334
+  },
+  "humaneval": {
+    "passed": 6,
+    "total": 8,
+    "pass_rate": 0.75
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
