@@ -1,0 +1,29 @@
+{
+  "tag": "Coder-Next-80B",
+  "timestamp": "2026-04-18 19:30",
+  "max_context": 8192,
+  "mmlu": {
+    "correct": 10,
+    "total": 30,
+    "accuracy": 0.3333333333333333
+  },
+  "humaneval": {
+    "passed": 0,
+    "total": 8,
+    "pass_rate": 0.0
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": false
+      },
+      {
+        "context": 4096,
+        "found": false
+      }
+    ],
+    "score": 0.0
+  },
+  "notes": "PARTIAL/BROKEN \u2014 Coder-Next 80B is a DeltaNet+MoE hybrid like Qwen3.5; hits the same DeltaNet decode batched-call crash + 4-bit DeltaNet quality regression. MMLU 10/30 = 33.3%; HE 0/8 + Needle 0/2 are post-crash. See memory project_qwen35_deltanet_decode_crash \u2014 applies to all DeltaNet hybrid presets (qwen35, coder-next)."
+}
