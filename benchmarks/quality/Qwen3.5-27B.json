@@ -1,33 +1,11 @@
 {
   "tag": "Qwen3.5-27B",
-  "timestamp": "2026-04-18 19:18",
+  "timestamp": "2026-04-18 19:55",
   "max_context": 32768,
   "mmlu": {
-    "correct": 10,
+    "correct": 5,
     "total": 30,
-    "accuracy": 0.3333333333333333
+    "accuracy": 0.16666666666666666
   },
-  "humaneval": {
-    "passed": 0,
-    "total": 8,
-    "pass_rate": 0.0
-  },
-  "needle": {
-    "results": [
-      {
-        "context": 1024,
-        "found": false
-      },
-      {
-        "context": 4096,
-        "found": false
-      },
-      {
-        "context": 16384,
-        "found": false
-      }
-    ],
-    "score": 0.0
-  },
-  "notes": "PARTIAL/BROKEN \u2014 Qwen3.5 even with --max-running=1 + --no-thinking still triggers batched-decode (B=2 reshape error in attention_wrapper.py:79). MMLU completed 10/30 = 33.3%; HE+Needle all 0% reflect post-crash. Three compound issues: (1) infinite think loop, (2) batched-decode reshape mismatch (DeltaNet+attention need per-request state plumbing), (3) DeltaNet 4-bit quality regression. See memory project_qwen35_*."
+  "notes": "PARTIAL \u2014 Qwen3.5-27B re-eval with patch 008 (hybrid serial decode). Patch 008 fixed the BATCHED-DECODE CRASH (Coder-30B/Devstral comparable concurrent test now succeeds), but the underlying 4-bit DeltaNet quality regression is unchanged: MMLU 5/30 = 16.7% even on serial path with --no-thinking. HE eval was killed at ~prompt 4 (each Qwen3.5 prompt takes 5+ min serially). So patch 008 fixes correctness but the model is genuinely low-quality. See memory project_qwen35_*."
 }
