@@ -601,9 +601,18 @@ ACQUIRE_CACHE_NEW = '''        if self._cache_pool:
             for c in cache:
                 if hasattr(c, "offset"):
                     c.offset = 0  # ContiguousKVCache / KVCache / RotatingKVCache
-                    # Patch 015: RotatingKVCache has extra ring-buffer state
+                    # Patch 015: RotatingKVCache has a ring-buffer write index
+                    # AND retains keys/values from the prior request. Reset
+                    # both so the next prefill re-allocates fresh, otherwise
+                    # the second test in a sweep sees leftover keys and
+                    # mask-vs-keys shapes mismatch (2111 vs 2048).
                     if hasattr(c, "_idx"):
                         c._idx = 0
+                    if hasattr(c, "keys") and c.keys is not None and not hasattr(c, "_k_buffers"):
+                        # Native mlx_lm RotatingKVCache (not our ContiguousKVCache
+                        # which uses _k_buffers/_v_buffers).
+                        c.keys = None
+                        c.values = None
                 elif hasattr(c, "reset"):
                     c.reset()
                 elif hasattr(c, "cache"):

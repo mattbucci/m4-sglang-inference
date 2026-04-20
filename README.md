@@ -205,6 +205,7 @@ output portable chat-template messages.
 | **Devstral-24B** | Dense | 14 GB | 17.0 | 3.4 | **1.8** | 30% |
 | **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 3.0 | **1.5** | 48% |
 | **Qwen3.6-35B-A3B** | MoE+DeltaNet | 17 GB | 51.8 | 0.9 | **0.1** @ 250K | 270K |
+| **Gemma 4 31B-it** *(post-015, turboquant)* | Dense (sliding+full) | 17 GB | 8.6 | OOM @ 16K | — | 100K |
 
 Qwen3.6-35B-A3B 256K bench (2026-04-19): prefill 145K tokens in 502 s (~290
 tok/s), decode TPOT 7.8 s @ 250K. Sister team R9700 measures 13.3 tok/s @ 262K

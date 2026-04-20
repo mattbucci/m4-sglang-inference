@@ -1,0 +1,21 @@
+Model: gemma-4-31b-it-mxfp4
+Output tokens per test: 64
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+  256 tokens (baseline)           in=    247  out=  64  time=   7.4s  TPOT= 116.2ms    8.6 tok/s
+  1K tokens                       in=    985  out=  64  time=  15.1s  TPOT= 235.9ms    4.2 tok/s
+  4K tokens                       in=   3935  out=  64  time=  48.1s  TPOT= 751.6ms    1.3 tok/s
+  8K tokens                       in=   7866  out=  64  time=  94.6s  TPOT=1477.9ms    0.7 tok/s
+  16K tokens                      ERROR: Remote end closed connection without response
+  32K tokens                      ERROR: <urlopen error [Errno 61] Connection refused>
+  64K tokens                      ERROR: <urlopen error [Errno 61] Connection refused>
+  128K tokens                     ERROR: <urlopen error [Errno 61] Connection refused>
+  200K tokens                     ERROR: <urlopen error [Errno 61] Connection refused>
+  250K tokens                     ERROR: <urlopen error [Errno 61] Connection refused>
+
+=====================================================================================
+Summary: TPOT at different context lengths (output=64 tokens)
+  256 tokens (baseline)           TPOT= 116.2ms    8.6 tok/s  (prefill 247 tok in 7.4s)
+  1K tokens                       TPOT= 235.9ms    4.2 tok/s  (prefill 985 tok in 15.1s)
+  4K tokens                       TPOT= 751.6ms    1.3 tok/s  (prefill 3935 tok in 48.1s)
+  8K tokens                       TPOT=1477.9ms    0.7 tok/s  (prefill 7866 tok in 94.6s)

@@ -52,6 +52,25 @@ losing fp8/turboquant on those layers is irrelevant to the memory budget.
 
 ## Results so far (turboquant KV cache, MEM_FRAC=0.6)
 
+### Post-patch-015 (2026-04-20)
+
+Chunked prefill now works through 8K after patches 015a (keep
+RotatingKVCache native) and 015b (reset `_idx` + drop `keys`/`values`
+on cache pool reuse). 16K crashed — but OOM guard fired cleanly
+(free dropped to 7.88 GB, below 8 GB threshold; no system freeze).
+
+| Context req | Actual tokens | TPOT (ms) | Throughput (tok/s) | Prefill (s) |
+|-------------|--------------:|---------:|-------------------:|------------:|
+|         256 |           247 |    116.2 |                8.6 |         7.4 |
+|          1K |           985 |    235.9 |                4.2 |        15.1 |
+|          4K |          3935 |    751.6 |                1.3 |        48.1 |
+|          8K |          7866 |   1477.9 |                0.7 |        94.6 |
+|         16K |               | OOM GUARD (free < 8 GB kill threshold) |  |  |
+
+### Pre-patch-015 (archived)
+
+Chunked prefill crashed at chunk 2 of the 8K test:
+
 | Context | TPOT (ms) | Throughput (tok/s) | Prefill (s) |
 |--------:|---------:|-------------------:|------------:|
 |     256 |    103.8 |                9.6 |         6.6 |
