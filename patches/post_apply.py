@@ -600,7 +600,10 @@ ACQUIRE_CACHE_NEW = '''        if self._cache_pool:
             # a previous request doesn't leak state into a new one.
             for c in cache:
                 if hasattr(c, "offset"):
-                    c.offset = 0  # ContiguousKVCache / KVCache
+                    c.offset = 0  # ContiguousKVCache / KVCache / RotatingKVCache
+                    # Patch 015: RotatingKVCache has extra ring-buffer state
+                    if hasattr(c, "_idx"):
+                        c._idx = 0
                 elif hasattr(c, "reset"):
                     c.reset()
                 elif hasattr(c, "cache"):

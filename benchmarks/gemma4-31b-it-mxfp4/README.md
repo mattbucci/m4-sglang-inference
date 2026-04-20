@@ -10,7 +10,7 @@ ValueError: [broadcast_shapes] Shapes (2048,2048) and (1,32,2048,4096) cannot be
 Working data points (256, 1K, 4K) in
 [long_context_partial_*.txt](long_context_partial_20260420T064531Z.txt).
 
-## What we know
+## What we know (updated 2026-04-20)
 
 - The error is in `mlx_vlm.models.gemma4.language.Attention.__call__` during
   the **second** chunked-prefill chunk. Mask shape `(2048, 2048)` doesn't
@@ -18,11 +18,29 @@ Working data points (256, 1K, 4K) in
   (chunk1 + chunk2) but the mask is still square.
 - Patch 014 rewrote `ContiguousKVCache.make_mask` to return an explicit
   `(N, offset+N)` causal mask when `offset > 0`. Did **not** fix Gemma 4.
-- Hypothesis: Gemma 4 reads mask from `cache[first_full_cache_idx]`, but
-  the cache index used for mask creation may not be the one being updated
-  by `update_and_fetch` (Gemma 4 has KV-shared layers via
-  `layer_idx_to_cache_idx`). So at chunk 2 start, that specific cache's
-  `offset` is still 0, my code returns "causal", which expands to (N, N).
+- Initial hypothesis (KV-shared layers) was **wrong**: Gemma 4 31B-it has
+  `num_kv_shared_layers=0` — all 60 layers are concrete and own their
+  own caches.
+
+## Real root cause — patch 015
+
+Gemma 4 `make_cache()` returns a **mix** of cache types:
+- Full-attention layers (10 of 60) → `KVCache` (standard)
+- Sliding-attention layers (50 of 60, `sliding_window=1024`) →
+  `RotatingKVCache` (ring buffer, caps at window_size)
+
+Our `_acquire_cache` was replacing **both** `KVCache` AND `RotatingKVCache`
+with `ContiguousKVCache`. That broke the sliding semantics: a
+`ContiguousKVCache` stores all appended keys (no rotation), so after
+chunk 1 the sliding layer's cache holds 2048 keys instead of the
+expected 1024. At chunk 2, mask creation assumes rotating semantics
+(capping offset at `max_size-1=1023`) and returns a mask shape that
+doesn't match the actual key count.
+
+Patch 015 fix: only replace `KVCache` with our quantized
+`ContiguousKVCache`. Keep `RotatingKVCache` native so sliding-attention
+layers stay rotating. Sliding-layer KV is tiny (window_size=1024) so
+losing fp8/turboquant on those layers is irrelevant to the memory budget.
 
 ## Workarounds
 
