@@ -43,6 +43,16 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   users, not for our characterization runs.
 - Always source `scripts/common.sh` before launching
 - **Model status and benchmarks** are in README.md (single source of truth)
+- **OOM guard MANDATORY for long-context (≥64K) work.** macOS doesn't have a
+  Linux-style OOM killer; once a process touches a page past physical RAM, the
+  whole system stalls until reboot. Never run a 256K bench without
+  `bash scripts/common/oom_guard.sh &` running in the background — it pkill's
+  the SGLang server when free+inactive drops below 4 GB.
+- **Long-context launch flags:** for ≥128K, prefer
+  `--kv-cache turboquant` (4-bit, ~3.5x savings vs fp16 vs fp8's 2x) and
+  `--chunked-prefill-size 2048` (halves attention scratch spikes vs 4096).
+  At 64GB unified memory this is the difference between a clean run and a
+  hard freeze.
 
 ## Optimization Target
 - **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure
