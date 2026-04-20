@@ -523,6 +523,55 @@ TP_WORKER_NEW = '''                else:
                     prefill_rids.append((req.rid, next_token))'''
 
 
+# -- Patch 014: ContiguousKVCache.make_mask handles offset > 0 --
+#
+# `make_mask` always returned the "causal" sentinel (which mlx_vlm
+# expands to a square (N,N) mx.array). Fine for full prefill, broken
+# for chunked-prefill continuation: keys have accumulated to (offset+N),
+# so a (N,N) mask doesn't broadcast against (1, n_heads, N, offset+N)
+# scores → ValueError([broadcast_shapes]). Crashes Gemma 4 31B-it
+# (and any model that uses mlx_vlm's gemma4 attention) at any context
+# > chunked_prefill_size. Build the explicit non-square causal mask
+# when offset > 0; keep "causal" sentinel when offset == 0 so
+# mx.fast.SDPA's optimized path is preserved on the hot first chunk.
+
+CONTIGUOUS_MAKE_MASK_FILE = "python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py"
+
+# The OLD sequence is the make_mask immediately before _grow — that
+# pinpoints the ContiguousKVCache copy (OffsetCache and PoolBackedCache
+# also have make_mask but with different surrounding context).
+CONTIGUOUS_MAKE_MASK_OLD = '''    def make_mask(self, N, **kwargs):
+        return None if N == 1 else "causal"
+
+    def _grow(self, required: int) -> None:'''
+
+CONTIGUOUS_MAKE_MASK_NEW = '''    def make_mask(self, N, **kwargs):
+        # Decode (N==1): no mask needed.
+        if N == 1:
+            return None
+        # Chunked-prefill continuation (offset > 0): the keys array length
+        # is offset + N (previous chunks + current chunk). The "causal"
+        # sentinel only works when keys are exactly N long; once chunks
+        # accumulate, mlx_vlm gemma4's mask trim sees a square (N,N) mask
+        # that doesn't match the (1, n_heads, N, offset+N) scores shape
+        # → broadcast_shapes ValueError. Build the explicit non-square
+        # causal mask: query i (0..N-1) attends to keys 0..offset+i.
+        if self.offset > 0:
+            S = self.offset + N
+            window = kwargs.get("window_size")
+            q_idx = self.offset + mx.arange(N)
+            k_idx = mx.arange(S)
+            mask = q_idx[:, None] >= k_idx[None, :]
+            if window is not None:
+                mask = mask & (q_idx[:, None] - k_idx[None, :] < window)
+            return mask
+        # Full prefill from scratch (offset == 0): square mask, "causal"
+        # sentinel is fine and lets mx.fast.SDPA take the optimized path.
+        return "causal"
+
+    def _grow(self, required: int) -> None:'''
+
+
 # -- Patch 013: hybrid cache via VLM language_model.make_cache --
 
 # When the model is loaded as a VLM (mlx_vlm.load), the outer wrapper has no
@@ -636,6 +685,8 @@ def main() -> int:
                "012-mm-utils-shm-page-rounding (read)")
     apply_edit(sglang / MODEL_RUNNER_FILE, ACQUIRE_CACHE_OLD, ACQUIRE_CACHE_NEW,
                "013-mlx-hybrid-cache-via-vlm-language-model")
+    apply_edit(sglang / CONTIGUOUS_MAKE_MASK_FILE, CONTIGUOUS_MAKE_MASK_OLD, CONTIGUOUS_MAKE_MASK_NEW,
+               "014-contiguous-cache-make-mask-handles-offset")
     return 0
 
 
