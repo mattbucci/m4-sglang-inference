@@ -1,0 +1,24 @@
+{
+  "model": "Qwen3-Coder-30B-A3B-Instruct 4-bit",
+  "model_id": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp_utc": "2026-04-20T17:45:00Z",
+  "kv_cache_dtype": "turboquant",
+  "mem_fraction_static": 0.55,
+  "max_total_tokens": 80000,
+  "chunked_prefill_size": 2048,
+  "context_max": 65536,
+  "disable_radix_cache": true,
+  "patches_applied": ["013", "014", "015"],
+  "long_context": [
+    {"input_tokens":   246, "output_tokens": 64, "elapsed_s":  1.4, "tpot_ms":   22.5, "throughput_tok_s": 44.4, "label": "256"},
+    {"input_tokens":   984, "output_tokens": 64, "elapsed_s":  2.4, "tpot_ms":   37.0, "throughput_tok_s": 27.0, "label": "1K"},
+    {"input_tokens":  3934, "output_tokens": 64, "elapsed_s":  6.8, "tpot_ms":  105.7, "throughput_tok_s":  9.5, "label": "4K"},
+    {"input_tokens":  7865, "output_tokens": 64, "elapsed_s": 14.4, "tpot_ms":  224.4, "throughput_tok_s":  4.5, "label": "8K"},
+    {"input_tokens": 15729, "output_tokens": 64, "elapsed_s": 37.5, "tpot_ms":  586.0, "throughput_tok_s":  1.7, "label": "16K"},
+    {"input_tokens": 31458, "output_tokens": 64, "elapsed_s":105.4, "tpot_ms": 1647.3, "throughput_tok_s":  0.6, "label": "32K"},
+    {"label": "64K", "error": "OOM guard fired at free<8GB; killed server cleanly"}
+  ],
+  "notes": "Post patches 013/014/015 with turboquant KV. Coder-30B is MoE (A3B) — NOT a DeltaNet hybrid — so patch 013 shouldn't materially affect quality, but throughput is measurably lower than the 2026-04-14 fp8 baseline (68.4 @ 128 vs new 44.4 @ 256; 6.3 @ 64K vs 0.6 @ 32K). Delta is the cost of: (1) turboquant KV (extra dequant per attention vs fp8), (2) chunked_prefill_size=2048 vs old default 8192 (more overhead per token), (3) mlx_vlm + torchcodec process bloat from patches 007-012. OOM guard fired at 64K with MEM_FRAC=0.55 — this config maxes at 32K on M4 64GB."
+}

@@ -201,7 +201,8 @@ output portable chat-template messages.
 | **Coder-Next 80B** *(post-013, 2026-04-20)* | MoE+DeltaNet | 42 GB | INFEASIBLE on current toolchain — 42 GB weights + PyTorch/mlx_vlm/torchcodec overhead OOMs the 64 GB Mac during model load. Sister R9700 (2× 32 GB) runs it cleanly. |
 | **Qwen3.5-27B** *(pre-patch013, garbage)* | DeltaNet | 15 GB | 14.3 | 6.1 | **3.9** | 51% |
 | **Qwen3.5-27B** *(post-patch013, turboquant)* | DeltaNet | 15 GB | 11.1 | 0.2 | **0.07** @ 250K | 270K |
-| **Coder-30B** | MoE (3B active) | 16 GB | 68.4 | 6.3 | **3.2** | 20% |
+| **Coder-30B** *(Apr 14 fp8, pre-patches)* | MoE (3B active) | 16 GB | 68.4 | 6.3 | **3.2** | 20% |
+| **Coder-30B** *(post-013/014/015, turboquant)* | MoE (3B active) | 16 GB | 44.4 | OOM @ 64K | — | 80K |
 | **Devstral-24B** | Dense | 14 GB | 17.0 | 3.4 | **1.8** | 30% |
 | **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 3.0 | **1.5** | 48% |
 | **Qwen3.6-35B-A3B** | MoE+DeltaNet | 17 GB | 51.8 | 0.9 | **0.1** @ 250K | 270K |
