@@ -198,7 +198,8 @@ output portable chat-template messages.
 | Model | Type | Weights | tok/s @128 | tok/s @64K | tok/s @256K | KV Pool |
 |:------|:-----|:-------:|:----------:|:----------:|:-----------:|:-------:|
 | **Coder-Next 80B** | MoE+DeltaNet | 42 GB | 55.7 | **18.3** | 64K max | 81K slots |
-| **Qwen3.5-27B** | DeltaNet | 15 GB | 14.3 | 6.1 | **3.9** | 51% |
+| **Qwen3.5-27B** *(pre-patch013, garbage)* | DeltaNet | 15 GB | 14.3 | 6.1 | **3.9** | 51% |
+| **Qwen3.5-27B** *(post-patch013, turboquant)* | DeltaNet | 15 GB | 11.1 | 0.2 | timeout @128K+ | 270K |
 | **Coder-30B** | MoE (3B active) | 16 GB | 68.4 | 6.3 | **3.2** | 20% |
 | **Devstral-24B** | Dense | 14 GB | 17.0 | 3.4 | **1.8** | 30% |
 | **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 3.0 | **1.5** | 48% |
@@ -207,9 +208,16 @@ output portable chat-template messages.
 Qwen3.6-35B-A3B 256K bench (2026-04-19): prefill 145K tokens in 502 s (~290
 tok/s), decode TPOT 7.8 s @ 250K. Sister team R9700 measures 13.3 tok/s @ 262K
 on the same model — discrete-GPU compute advantage at long context dwarfs the
-M4 unified-memory win for this MoE+DeltaNet stack. Curiously much slower than
-Qwen3.5-27B (3.9 tok/s @ 256K) despite both being DeltaNet hybrids — MoE expert
-routing overhead at long context is the open hypothesis. Worth investigating.
+M4 unified-memory win for this MoE+DeltaNet stack.
+
+**The 3.9 tok/s @ 256K Qwen3.5 number was misleading.** It was measured on
+2026-04-14 *before* patch 013 fixed the DeltaNet cache wiring — the layers
+were skipping recurrent computation and emitting fluent garbage at high speed.
+Post-patch013 (correct inference) the same model is 0.2 tok/s @ 64K
+(turboquant KV; 128K+ exceeded the bench script's 600s timeout). The comparable
+**MoE** Qwen3.6-35B-A3B is 0.9 tok/s @ 64K — 4x faster than the dense Qwen3.5
+because only ~3B params are read per token. At long context on M4, dense weight
+reads dominate the budget.
 
 ### Throughput Scaling
 

@@ -1,0 +1,29 @@
+{
+  "model": "Qwen3.5-27B 4-bit",
+  "model_id": "mlx-community/Qwen3.5-27B-4bit",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp_utc": "2026-04-20T07:46:53Z",
+  "kv_cache_dtype": "turboquant",
+  "mem_fraction_static": 0.6,
+  "max_total_tokens": 270000,
+  "chunked_prefill_size": 2048,
+  "context_max": 262144,
+  "disable_radix_cache": true,
+  "max_running_requests": 1,
+  "patches_applied": ["013-vlm-language-model-make-cache", "014-contiguous-cache-make-mask-handles-offset"],
+  "long_context": [
+    {"input_tokens": 150,   "output_tokens": 64, "elapsed_s":   5.8, "tpot_ms":   89.9, "throughput_tok_s": 11.1, "label": "256"},
+    {"input_tokens": 598,   "output_tokens": 64, "elapsed_s":   9.4, "tpot_ms":  147.4, "throughput_tok_s":  6.8, "label": "1K"},
+    {"input_tokens": 2384,  "output_tokens": 64, "elapsed_s":  24.5, "tpot_ms":  382.3, "throughput_tok_s":  2.6, "label": "4K"},
+    {"input_tokens": 4767,  "output_tokens": 64, "elapsed_s":  46.9, "tpot_ms":  732.1, "throughput_tok_s":  1.4, "label": "8K"},
+    {"input_tokens": 9533,  "output_tokens": 64, "elapsed_s":  91.1, "tpot_ms": 1423.2, "throughput_tok_s":  0.7, "label": "16K"},
+    {"input_tokens": 19066, "output_tokens": 64, "elapsed_s": 178.0, "tpot_ms": 2780.9, "throughput_tok_s":  0.4, "label": "32K"},
+    {"input_tokens": 38131, "output_tokens": 64, "elapsed_s": 368.7, "tpot_ms": 5760.3, "throughput_tok_s":  0.2, "label": "64K"},
+    {"label": "128K", "error": "bench script 600s timeout — actual prefill alone ~1500s at observed ~75 tok/s rate"},
+    {"label": "200K", "error": "bench script 600s timeout"},
+    {"label": "250K", "error": "bench script 600s timeout"}
+  ],
+  "notes": "Post-patch013 + post-patch014 with turboquant KV. **Numbers are dramatically lower than the 2026-04-14 fp8 baseline (results.json: 14.3 tok/s @128) because the 4-14 run pre-dates patch 013 — DeltaNet cache wiring was broken, so the layers were skipping recurrent computation and emitting fluent garbage at high speed.** Patch 013 fixed correctness (MMLU 16.7→93%); now all 24 DeltaNet + 8 standard-attn layers actually compute → ~30x slower at 64K. This bench is the first apples-to-apples LONG-CONTEXT measurement on a CORRECT Qwen3.5-27B inference path. 128K+ tests need a longer per-request timeout in the bench script (600s default isn't enough at this throughput); next iteration will rerun with --timeout.",
+  "compared_to_qwen36": "Qwen3.6-35B-A3B (db317e9) hit 0.9 tok/s @64K — Qwen3.5-27B at 0.2 tok/s @64K is 4x slower despite being smaller. Same DeltaNet-hybrid arch but Qwen3.6 is MoE (only 3B active params per token), Qwen3.5 is dense, so dense weight reads dominate at long context. README perf table updated to reflect this."
+}

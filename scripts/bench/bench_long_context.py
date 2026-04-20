@@ -32,7 +32,10 @@ def bench_completions(base_url, input_len, output_len, label=""):
     )
 
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=600) as r:
+    # 1h per request — 128K+ on M4 with turboquant can take 25+ min just for
+    # prefill at our observed throughput. The full sweep can take several
+    # hours, which is the expected cost of a 256K characterization on Apple.
+    with urllib.request.urlopen(req, timeout=3600) as r:
         data = json.loads(r.read())
     elapsed = time.time() - t0
 

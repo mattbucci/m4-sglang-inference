@@ -1,0 +1,24 @@
+Model: Qwen3.5-27B-4bit
+Output tokens per test: 64
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+  256 tokens (baseline)           in=    150  out=  64  time=   5.8s  TPOT=  89.9ms   11.1 tok/s
+  1K tokens                       in=    598  out=  64  time=   9.4s  TPOT= 147.4ms    6.8 tok/s
+  4K tokens                       in=   2384  out=  64  time=  24.5s  TPOT= 382.3ms    2.6 tok/s
+  8K tokens                       in=   4767  out=  64  time=  46.9s  TPOT= 732.1ms    1.4 tok/s
+  16K tokens                      in=   9533  out=  64  time=  91.1s  TPOT=1423.2ms    0.7 tok/s
+  32K tokens                      in=  19066  out=  64  time= 178.0s  TPOT=2780.9ms    0.4 tok/s
+  64K tokens                      in=  38131  out=  64  time= 368.7s  TPOT=5760.3ms    0.2 tok/s
+  128K tokens                     ERROR: timed out
+  200K tokens                     ERROR: timed out
+  250K tokens                     ERROR: timed out
+
+=====================================================================================
+Summary: TPOT at different context lengths (output=64 tokens)
+  256 tokens (baseline)           TPOT=  89.9ms   11.1 tok/s  (prefill 150 tok in 5.8s)
+  1K tokens                       TPOT= 147.4ms    6.8 tok/s  (prefill 598 tok in 9.4s)
+  4K tokens                       TPOT= 382.3ms    2.6 tok/s  (prefill 2384 tok in 24.5s)
+  8K tokens                       TPOT= 732.1ms    1.4 tok/s  (prefill 4767 tok in 46.9s)
+  16K tokens                      TPOT=1423.2ms    0.7 tok/s  (prefill 9533 tok in 91.1s)
+  32K tokens                      TPOT=2780.9ms    0.4 tok/s  (prefill 19066 tok in 178.0s)
+  64K tokens                      TPOT=5760.3ms    0.2 tok/s  (prefill 38131 tok in 368.7s)
