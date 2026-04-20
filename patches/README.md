@@ -86,3 +86,78 @@ a stopgap** — DeltaNet now starts fresh each batched-decode step and loses
 its recurrent state. Real fix requires per-request DeltaNet state in
 `caches[i]`, passed through to the model instead of the shim. See memory
 project_qwen35_deltanet_decode_crash.
+
+## 007-mlx-vlm-fallback (in post_apply.py)
+
+Routes VLM model loads through `mlx_vlm.load` with a `_TextOnlyVLMShim` so
+SGLang can load Idefics3/SmolVLM/Qwen2-VL/Mistral3 (Devstral)/Qwen3.5/3.6/Gemma 4
+where `mlx_lm.load` fails with `Model type X not supported`. Combined with
+config.json detection (`vision_config`, `image_token_id`, `image_token_index`),
+forces VLM path even when `mlx_lm` would have technically worked but its
+`Model.__call__` only accepts text inputs.
+
+## 008-mlx-hybrid-serial-decode (in post_apply.py)
+
+Stopgap for batched decode on DeltaNet hybrids (Qwen3.5, Coder-Next): if any
+layer's cache isn't `ContiguousKVCache` or `OffsetCache`, force serial decode
+(one request at a time). Real fix needs per-request DeltaNet `conv_state` /
+`ssm_state` plumbed through `caches[i]`. Limits MAX_RUNNING=1 for these models.
+
+## 009-modality-multi-images (in post_apply.py)
+
+Adds `MULTI_IMAGES` member to SGLang's `Modality` enum that
+`transformers_auto.py:133` references but doesn't define. Without this,
+ANY image-bearing request 500s with `AttributeError: type object 'Modality'
+has no attribute 'MULTI_IMAGES'` before reaching the model. Upstream SGLang bug.
+
+## 010-mlx-vlm-pixel-values (in post_apply.py)
+
+Threads `pixel_values` from `req.multimodal_inputs` through
+`tp_worker → MlxModelRunner.prefill → TextOnlyVLMShim` so VLM models can
+actually do image inference. Also threads `model_specific_data`
+(`image_grid_thw`, `video_grid_thw`, `second_per_grid_ts`) via
+`mm_extra_kwargs`. Stacks across all `mm_items` for multi-image / video-frame
+sequences (Qwen3.5/3.6 see N images instead of just the first).
+
+## 011-mps-stub-cuda-redirect (in post_apply.py)
+
+SGLang's `_mps_stub` patches `torch.Tensor.to` for MPS but doesn't handle
+`.to('cuda')` — transformers' image processor unconditionally calls
+`.to('cuda')` on Apple, hitting CUDA's `_lazy_init` which crashes
+"Torch not compiled with CUDA enabled." Redirect cuda → cpu so the image
+tensor lands somewhere torch can handle.
+
+## 012-mm-utils-shm-page-rounding (in post_apply.py)
+
+`SharedMemory` page-rounds size on macOS (16 KB pages on M-series), so
+`torch.frombuffer(shm.buf, ...)` produces a tensor LARGER than the logical
+nbytes. Slice to logical size on both write and read sides.
+
+## 013-hybrid-cache-via-vlm-language-model (in post_apply.py)
+
+ROOT CAUSE for the "DeltaNet 4-bit quality issue" — was NOT quantization.
+When Qwen3.5/3.6 load via `mlx_vlm.load` (because of `vision_config`), the
+outer wrapper has no `make_cache` attribute — it lives on `language_model`.
+`_acquire_cache` couldn't find it and fell through to building uniform
+`ContiguousKVCache` for every layer, giving DeltaNet's hybrid layers the
+wrong cache type. Output looked grammatical but was fluent garbage. Fix
+routes the cache via `model.language_model.make_cache()` and resets
+ArraysCache state on pool reuse (the second part also helps text-only
+DeltaNet hybrids like Coder-Next). **Re-measured: Qwen3.5-27B MMLU 16.7%
+→ 93.0%, HumanEval 0% → 100%.**
+
+## 014-contiguous-cache-make-mask-handles-offset (in post_apply.py)
+
+`ContiguousKVCache.make_mask` always returned the `"causal"` sentinel,
+which `mlx_vlm` expands to a square `(N, N)` `mx.array`. Fine for full
+prefill from scratch; broken for chunked-prefill continuation: the keys
+have grown to `(offset + N)` length, so a square mask doesn't broadcast
+against `(1, n_heads, N, offset+N)` scores → `ValueError(broadcast_shapes)`.
+Fix builds an explicit `(N, offset+N)` causal mask when `offset > 0` (with
+optional sliding-window support); preserves `"causal"` sentinel when
+`offset == 0` so `mx.fast.SDPA`'s optimized path stays on the hot first chunk.
+
+Caveat: Gemma 4 31B-it has KV-shared layers (`layer_idx_to_cache_idx`)
+where mask creation reads from one cache slot but updates land in another;
+patch 014 alone doesn't unblock its long-context. Tracked in
+`benchmarks/gemma4-31b-it-mxfp4/README.md`.
