@@ -1,0 +1,23 @@
+Model: Qwen3-30B-A3B-4bit
+Output tokens per test: 64
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+  256 tokens (baseline)           in=    246  out=  64  time=   1.4s  TPOT=  21.9ms   45.8 tok/s
+  1K tokens                       in=    984  out=  64  time=   2.3s  TPOT=  36.6ms   27.3 tok/s
+  4K tokens                       in=   3934  out=  64  time=   6.7s  TPOT= 105.1ms    9.5 tok/s
+  8K tokens                       in=   7865  out=  64  time=  14.9s  TPOT= 232.7ms    4.3 tok/s
+  16K tokens                      in=  15729  out=  64  time=  39.2s  TPOT= 612.1ms    1.6 tok/s
+  32K tokens                      in=  31458  out=  64  time= 108.4s  TPOT=1693.1ms    0.6 tok/s
+  64K tokens                      ERROR: Remote end closed connection without response
+  128K tokens                     ERROR: <urlopen error [Errno 61] Connection refused>
+  200K tokens                     ERROR: <urlopen error [Errno 61] Connection refused>
+  250K tokens                     ERROR: <urlopen error [Errno 61] Connection refused>
+
+=====================================================================================
+Summary: TPOT at different context lengths (output=64 tokens)
+  256 tokens (baseline)           TPOT=  21.9ms   45.8 tok/s  (prefill 246 tok in 1.4s)
+  1K tokens                       TPOT=  36.6ms   27.3 tok/s  (prefill 984 tok in 2.3s)
+  4K tokens                       TPOT= 105.1ms    9.5 tok/s  (prefill 3934 tok in 6.7s)
+  8K tokens                       TPOT= 232.7ms    4.3 tok/s  (prefill 7865 tok in 14.9s)
+  16K tokens                      TPOT= 612.1ms    1.6 tok/s  (prefill 15729 tok in 39.2s)
+  32K tokens                      TPOT=1693.1ms    0.6 tok/s  (prefill 31458 tok in 108.4s)

@@ -1,0 +1,24 @@
+{
+  "model": "Qwen3-30B-A3B 4-bit",
+  "model_id": "mlx-community/Qwen3-30B-A3B-4bit",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp_utc": "2026-04-20T18:04:00Z",
+  "kv_cache_dtype": "turboquant",
+  "mem_fraction_static": 0.55,
+  "max_total_tokens": 80000,
+  "chunked_prefill_size": 2048,
+  "context_max": 65536,
+  "disable_radix_cache": true,
+  "patches_applied": ["013", "014", "015"],
+  "long_context": [
+    {"input_tokens":   246, "output_tokens": 64, "elapsed_s":  1.4, "tpot_ms":   21.9, "throughput_tok_s": 45.8, "label": "256"},
+    {"input_tokens":   984, "output_tokens": 64, "elapsed_s":  2.3, "tpot_ms":   36.6, "throughput_tok_s": 27.3, "label": "1K"},
+    {"input_tokens":  3934, "output_tokens": 64, "elapsed_s":  6.7, "tpot_ms":  105.1, "throughput_tok_s":  9.5, "label": "4K"},
+    {"input_tokens":  7865, "output_tokens": 64, "elapsed_s": 14.9, "tpot_ms":  232.7, "throughput_tok_s":  4.3, "label": "8K"},
+    {"input_tokens": 15729, "output_tokens": 64, "elapsed_s": 39.2, "tpot_ms":  612.1, "throughput_tok_s":  1.6, "label": "16K"},
+    {"input_tokens": 31458, "output_tokens": 64, "elapsed_s":108.4, "tpot_ms": 1693.1, "throughput_tok_s":  0.6, "label": "32K"},
+    {"label": "64K", "error": "OOM guard fired at free<8GB; killed server cleanly"}
+  ],
+  "notes": "Matched rebench of Coder-30B. Same arch class (MoE A3B), same patches, same flags. Throughput within ~3% at every context length — identical operational profile. OOM guard fires at 64K with these settings on 64GB M4. 32K is the workable ceiling."
+}
