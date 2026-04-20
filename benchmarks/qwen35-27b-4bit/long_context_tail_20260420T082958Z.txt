@@ -1,0 +1,32 @@
+Long-context tail bench (1h timeout per request)
+Label       Input    Out      Time       TPOT  Throughput
+----------------------------------------------------------------------
+  128K    in=  44372  out=  64  time=  724.9s  TPOT=11326.2ms   0.09 tok/s
+  200K    in=  67704  out=  64  time=  724.1s  TPOT=11313.4ms   0.09 tok/s
+  250K    in=  84630  out=  64  time=  956.6s  TPOT=14946.9ms   0.07 tok/s
+[
+  {
+    "input_tokens": 44372,
+    "output_tokens": 64,
+    "elapsed_s": 724.8760063648224,
+    "tpot_ms": 11326.18759945035,
+    "throughput_tok_s": 0.08829096209288721,
+    "label": "128K"
+  },
+  {
+    "input_tokens": 67704,
+    "output_tokens": 64,
+    "elapsed_s": 724.0579018592834,
+    "tpot_ms": 11313.404716551304,
+    "throughput_tok_s": 0.0883907210123066,
+    "label": "200K"
+  },
+  {
+    "input_tokens": 84630,
+    "output_tokens": 64,
+    "elapsed_s": 956.5987980365753,
+    "tpot_ms": 14946.85621932149,
+    "throughput_tok_s": 0.06690370104098016,
+    "label": "250K"
+  }
+]

@@ -199,7 +199,7 @@ output portable chat-template messages.
 |:------|:-----|:-------:|:----------:|:----------:|:-----------:|:-------:|
 | **Coder-Next 80B** | MoE+DeltaNet | 42 GB | 55.7 | **18.3** | 64K max | 81K slots |
 | **Qwen3.5-27B** *(pre-patch013, garbage)* | DeltaNet | 15 GB | 14.3 | 6.1 | **3.9** | 51% |
-| **Qwen3.5-27B** *(post-patch013, turboquant)* | DeltaNet | 15 GB | 11.1 | 0.2 | timeout @128K+ | 270K |
+| **Qwen3.5-27B** *(post-patch013, turboquant)* | DeltaNet | 15 GB | 11.1 | 0.2 | **0.07** @ 250K | 270K |
 | **Coder-30B** | MoE (3B active) | 16 GB | 68.4 | 6.3 | **3.2** | 20% |
 | **Devstral-24B** | Dense | 14 GB | 17.0 | 3.4 | **1.8** | 30% |
 | **Gemma 4 26B** | MoE (4B active) | 15 GB | 58.8 | 3.0 | **1.5** | 48% |
