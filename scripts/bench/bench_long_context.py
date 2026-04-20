@@ -13,10 +13,22 @@ import urllib.request
 
 
 def bench_completions(base_url, input_len, output_len, label=""):
-    """Run a single benchmark at given input/output lengths."""
-    word = "hello world test data benchmark context length padding "  # ~8 tokens per repeat
-    repeats = max(1, input_len // 8)
-    prompt_text = (word * repeats)[:input_len * 4]  # rough char estimate
+    """Run a single benchmark at given input/output lengths.
+
+    Generates a prompt that tokenizes to approximately ``input_len`` tokens.
+    Empirically the word "hello world test data benchmark context length
+    padding " (= 8 words, 56 chars) tokenizes to ~10 tokens on Qwen / Gemma /
+    Devstral tokenizers; an earlier `[:input_len * 4]` slice under-delivered
+    by ~1.7x (e.g. requested 145K → got 84K). Using 6 chars/token as the
+    inverse estimate plus a small safety margin gets us within ~5% of the
+    requested length.
+    """
+    word = "hello world test data benchmark context length padding "
+    chars_per_token = 6
+    safety = 1.1
+    target_chars = int(input_len * chars_per_token * safety)
+    repeats = max(1, target_chars // len(word) + 1)
+    prompt_text = (word * repeats)[:target_chars]
 
     body = json.dumps({
         "model": "default",
