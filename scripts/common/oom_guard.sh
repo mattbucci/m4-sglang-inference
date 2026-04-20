@@ -21,10 +21,20 @@
 #   GUARD_LOG       — log path (default /tmp/oom_guard.log)
 set -uo pipefail
 
-KILL_GB="${GUARD_KILL_GB:-4}"
-WARN_GB="${GUARD_WARN_GB:-8}"
-INTERVAL="${GUARD_INTERVAL:-10}"
+KILL_GB="${GUARD_KILL_GB:-8}"
+WARN_GB="${GUARD_WARN_GB:-12}"
+INTERVAL="${GUARD_INTERVAL:-2}"
 LOG="${GUARD_LOG:-/tmp/oom_guard.log}"
+
+# Tight defaults: macOS starts freezing WELL before free hits 0 — the OS is
+# already swapping by the time free < 4GB. The guard itself competes for
+# memory and can be killed by pressure before it gets to pkill the server.
+# 8GB kill + 2s interval gives margin to run + write the log + kill SGLang
+# before macOS locks up.
+#
+# PRIOR INCIDENT (2026-04-20, Coder-Next-80B): 10s interval and 3-5GB kill
+# threshold were both too loose for a 42GB MLX model load; guard itself was
+# killed by memory pressure and the system OOM'd. Don't repeat.
 
 ts() { date -u "+%Y-%m-%dT%H:%M:%SZ"; }
 log() { echo "[$(ts)] $*" | tee -a "$LOG" >&2; }
