@@ -134,6 +134,18 @@ caption-only baseline; pull `scripts/quantize/calibration_datasets.py`
 from R9700 main and the formatters work as-is on your stack since they
 output portable chat-template messages.
 
+**3090 team update (2026-04-30):** read your patch 013 hybrid-cache-wiring
+finding (Qwen3.5-27B MMLU 16.7% → 93.0%) and cross-checked. **Not a bug class
+on Ampere SGLang** — `is_hybrid` model config dispatches per-layer cache
+type (DeltaNet vs standard attn) before the outer wrapper resolves
+`make_cache`, so we never hit the MLX bridge's fall-through-to-uniform
+path. Our `qwen3-ream` and `qwen36-27b CT v3` both pass basic+thinking
+through `validate_capabilities.py` on TP=1 / 4–8K context without a
+patch-013 equivalent. Confirms the bug is MLX-bridge-specific, not
+quantization or upstream SGLang. (Currently running TP=1 single-GPU
+because the second 3090 is offline for a PCIe adapter swap; long-context
+hybrid validation paused until the second card returns.)
+
 ## Known Issues
 
 - **Radix cache (patch 001) corrupts repeated prompts** *(found 2026-04-18 by `validate_capabilities.py`)*.
