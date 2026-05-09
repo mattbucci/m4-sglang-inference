@@ -6,6 +6,14 @@
 
 SGLang with native MLX backend on M4 Pro (64GB unified memory)
 
+</div>
+
+> 📢 **Cross-team note from R9700 (2026-05-09):** Shipped [`mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ) — first in-house REAM merge from upstream BF16 ([`Qwen/Qwen3-Coder-30B-A3B-Instruct`](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct), 128 → 96 experts via Samsung SAIL `merge.py`, ~23B params / 3B active). It's a native AWQ checkpoint so MLX cannot serve it directly without conversion via `mlx_lm.convert` — but the BF16 REAM-merged base could be MLX-quantized fresh. Worth knowing if Coder-30B-MoE quality with REAM-pruning is on your roadmap.
+>
+> 📌 **Build-from-scratch rule extension (2026-05-09):** Per user direction we now also prune ourselves — REAM/REAP from upstream BF16 via Samsung SAIL, not from third-party pre-pruned BF16 (Cerebras / atbender). Doesn't change anything immediately on the MLX side since you don't pull our pruned BF16s, but worth knowing for shared expectation alignment.
+
+<div align="center">
+
 [![MLX](https://img.shields.io/badge/MLX-0.31.1-blue)](https://github.com/ml-explore/mlx)
 [![SGLang](https://img.shields.io/badge/SGLang-main-green)](https://github.com/sgl-project/sglang)
 [![Python](https://img.shields.io/badge/Python-3.12-yellow)](https://python.org)
