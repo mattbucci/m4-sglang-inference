@@ -46,6 +46,7 @@
 | Qwen3.5-27B-4bit | **93.0%** | **100%** | PASS |
 | Gemma 4 31B-it-mxfp4 | 90.0% | 0%* | MISS |
 | Qwen3.6-35B-A3B-4bit | 88.0% | 80% | PASS |
+| Qwen3.6-35B-A3B-4bit-DWQ (code-specialist) | 82.5% | **95.0%** | PASS |
 | Qwen3.5-9B-MLX-8bit | 87.7% | 80% | PASS |
 | Qwen3-32B (turboquant) | 86.7% | 87.5% | PASS |
 | Coder-30B-A3B-4bit-DWQ | **89.5%** | **95.0%** | PASS |
@@ -79,6 +80,16 @@ This is the kind of silent regression the 3090 team caught on Gemma 4 26B v3 in 
 | Decode @128 tok/s (turboquant) | 58.3 | 58.5 | flat (dead layers don't cost compute, only quality) |
 
 The 20-percentage-point lift on HumanEval is the load-bearing data point: dead attention layers at depths 36 + 46 of a 48-layer model degrade code generation roughly twice as badly as factual recall. The `coder-30b` launch preset now points at the DWQ variant by default.
+
+**DWQ is a code-specialist quantization recipe — not always a strict upgrade.** Probed qwen36 (`Qwen3.6-35B-A3B-4bit-DWQ`, also scanner-clean: 511/511 layers healthy):
+
+| Metric | Standard 4bit | 4bit-DWQ | Delta |
+|--------|:-------------:|:--------:|:-----:|
+| MMLU (100 samples) | 88.0% | 82.5% | **-5.5 pp** |
+| HumanEval (20 samples) | 80.0% | **95.0%** | +15.0 pp |
+| Needle 1K | PASS | PASS | — |
+
+DWQ trades factual-recall accuracy for code-completion accuracy. The 15-pp HumanEval lift comes paired with a 5.5-pp MMLU drop. For coder-30b that's a clear win (it's already a coding model — fix the dead layers AND specialize the rest). For qwen36 — the sister-team flagship for *general* agentic workloads — the tradeoff isn't worth it; keeping the standard 4bit. Worth knowing if a code-focused launch path lands later: `MODEL="mlx-community/Qwen3.6-35B-A3B-4bit-DWQ" launch.sh qwen36` is the override.
 
 ## Known Issues
 

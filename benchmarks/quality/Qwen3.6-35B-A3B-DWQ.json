@@ -1,0 +1,24 @@
+{
+  "tag": "Qwen3.6-35B-A3B-DWQ",
+  "timestamp": "2026-05-11 12:05",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 47,
+    "total": 57,
+    "accuracy": 0.8245614035087719
+  },
+  "humaneval": {
+    "passed": 19,
+    "total": 20,
+    "pass_rate": 0.95
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
