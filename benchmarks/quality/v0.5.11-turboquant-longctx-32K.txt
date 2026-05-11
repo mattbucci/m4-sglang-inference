@@ -4,3 +4,8 @@ qwen3-moe|58.7|10.3|1.7|0.6|Bad
 qwen36|52.9|11.0|2.8|1.2|Bad
 qwen36-27b|11.7|1.6|0.4|0.2|Bad
 devstral|13.9|1.9|0.4|0.2|Bad
+
+64K follow-up runs (post-CTX-env-fix):
+preset    | @64K  | prefill (s)
+coder-30b | 0.2   | 360.7
+qwen36    | 0.5   | 139.4   <- DeltaNet 2.5× faster decode, 2.6× faster prefill

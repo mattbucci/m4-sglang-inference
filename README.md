@@ -162,12 +162,14 @@ Decode tok/s under the turboquant KV cache wired up in patch 008. 5 models × 5 
 | Preset | @128 | @4K | @16K | @32K | @64K |
 |--------|:----:|:---:|:----:|:----:|:----:|
 | qwen3-moe (Qwen3-30B-A3B) | 58.7 | 10.3 | 1.7 | 0.6 | — \* |
-| coder-30b (Qwen3-Coder-30B) | 58.3 | 10.4 | 1.8 | 0.6 | — \* |
-| qwen36 (Qwen3.6-35B-A3B MoE+DN+VL) | 52.9 | 11.0 | 2.8 | **1.2** | — \* |
+| coder-30b (Qwen3-Coder-30B) | 58.3 | 10.4 | 1.8 | 0.6 | **0.2** |
+| qwen36 (Qwen3.6-35B-A3B MoE+DN+VL) | 52.9 | 11.0 | 2.8 | **1.2** | **0.5** |
 | qwen36-27b (Qwen3.6-27B Dense+DN+VL) | 11.7 | 1.6 | 0.4 | 0.2 | — \* |
 | devstral (24B Dense) | 13.9 | 1.9 | 0.4 | 0.2 | — \* |
 
-\*64K runs rejected with HTTP 400 because the preset `CTX=32768` overrode the env var (`CTX=80000 launch.sh`). Fixed in `scripts/launch.sh` for follow-up — env vars now beat the preset's `CTX=` assignment.
+\*The original 64K runs were rejected with HTTP 400 because the preset's `CTX=32768` overrode the env var (`CTX=80000 launch.sh`); the launch.sh env-override fix landed mid-sweep. coder-30b and qwen36 were re-run after the fix with `CTX=80000` to backfill that column; the others can be re-run on follow-up.
+
+**At 64K, qwen36 (DeltaNet hybrid) is 2.5× faster than coder-30b (pure MoE)** — 0.5 vs 0.2 tok/s decode, 139 s vs 361 s prefill. The DeltaNet linear-attention layers don't pay the full O(n) KV-read cost on every decode token, which compounds across alternating attention layers. This is the load-bearing data point that argues for Qwen3.6-35B-A3B as the M4's 256K-context choice.
 
 **Headline: turboquant works.** Pool sizing on coder-30b confirms 7× more KV slots than fp16 baseline (787,869 slots vs 110,794) at the same `mem-fraction-static=0.7`. Validation `2/2 PASS` — output identical to fp16 within tolerance. Decode tok/s at short context is within 1% of fp16 (58.3 vs 57.9 on coder-30b @128). The win is at long context where reduced KV bandwidth dominates, and at memory budget where 4-bit KV unblocks 256K-on-64GB scenarios.
 
