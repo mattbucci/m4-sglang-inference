@@ -73,11 +73,18 @@ All evals run with `--no-thinking` and `--disable-radix-cache`. \*Gemma 4 HumanE
 
 ./scripts/launch.sh coder-30b               # MoE — peak throughput, 256K
 ./scripts/launch.sh devstral                # Dense — image-VLM verified
-./scripts/launch.sh qwen35                  # DeltaNet hybrid, 256K
-./scripts/launch.sh gemma4                  # MoE 26B, 256K (tight)
+./scripts/launch.sh qwen35                  # DeltaNet hybrid (32K preset)
+./scripts/launch.sh gemma4                  # MoE 26B (4K preset, tight 64GB)
 ./scripts/launch.sh qwen3-moe               # Qwen3-30B MoE
-./scripts/launch.sh qwen3-32b               # Dense, needs --kv-cache turboquant for 256K
-./scripts/launch.sh gemma4-31b              # Dense, needs --kv-cache turboquant
+./scripts/launch.sh qwen3-32b               # Dense
+./scripts/launch.sh gemma4-31b              # Dense
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B (DeltaNet+MoE+VL, sister-team flagship)
+./scripts/launch.sh qwen36-27b              # Qwen3.6-27B Dense+DeltaNet+VL (new)
+
+# Long-context (128K) — qwen36 validated, prefill ~6.5 min, decode ~0.10 tok/s
+CTX=140000 EXTRA_ARGS="--disable-radix-cache --kv-cache-dtype turboquant \
+    --chunked-prefill-size 2048 --mem-fraction-static 0.5" \
+    bash scripts/launch.sh qwen36
 
 python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate
 python scripts/eval/validate_chat_template.py --model <path>
