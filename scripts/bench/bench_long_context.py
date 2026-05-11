@@ -74,6 +74,9 @@ def main():
     parser.add_argument("--port", type=int, default=23334)
     parser.add_argument("--output-tokens", type=int, default=64,
                         help="Number of output tokens per test")
+    parser.add_argument("--contexts", type=int, nargs="+", default=None,
+                        help="Override the default context-length list (256, 1K, …, 250K). "
+                             "E.g. `--contexts 128 4096 16384` for a quick sweep.")
     args = parser.parse_args()
 
     base_url = f"http://localhost:{args.port}"
@@ -100,19 +103,29 @@ def main():
     print(f"{'Label':30s}  {'Input':>9s}  {'Out':>5s}  {'Time':>7s}  {'TPOT':>8s}  {'Throughput':>10s}")
     print("-" * 85)
 
-    # Context lengths — push to the limits of 64GB unified memory
-    tests = [
-        (256, "256 tokens (baseline)"),
-        (1024, "1K tokens"),
-        (4096, "4K tokens"),
-        (8192, "8K tokens"),
-        (16384, "16K tokens"),
-        (32768, "32K tokens"),
-        (65536, "64K tokens"),
-        (131072, "128K tokens"),
-        (200000, "200K tokens"),
-        (250000, "250K tokens"),
-    ]
+    # Context lengths — push to the limits of 64GB unified memory by default;
+    # accept a custom list when the caller just wants a short sweep.
+    if args.contexts:
+        def _label(n):
+            if n >= 1024 * 1024:
+                return f"{n // (1024*1024)}M tokens"
+            if n >= 1024:
+                return f"{n // 1024}K tokens"
+            return f"{n} tokens"
+        tests = [(n, _label(n)) for n in args.contexts]
+    else:
+        tests = [
+            (256, "256 tokens (baseline)"),
+            (1024, "1K tokens"),
+            (4096, "4K tokens"),
+            (8192, "8K tokens"),
+            (16384, "16K tokens"),
+            (32768, "32K tokens"),
+            (65536, "64K tokens"),
+            (131072, "128K tokens"),
+            (200000, "200K tokens"),
+            (250000, "250K tokens"),
+        ]
 
     results = []
     for input_len, label in tests:

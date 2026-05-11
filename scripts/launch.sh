@@ -17,6 +17,8 @@
 #   gemma4-31b     Gemma 4 31B 4-bit (4K)
 #   qwen35         Qwen3.5-27B DeltaNet 4-bit (32K)
 #   qwen35-9b-8bit Qwen3.5-9B DeltaNet 8-bit (32K, smaller+higher-precision)
+#   qwen36         Qwen3.6-35B-A3B-4bit MoE+DeltaNet+VL (sister-team flagship)
+#   qwen36-27b     Qwen3.6-27B-4bit Dense DeltaNet+VL (new — no MoE variant)
 #
 # KV cache modes (--kv-cache):
 #   fp8            MXFP8 quantized (default, ~2x memory savings)
@@ -133,6 +135,16 @@ apply_preset() {
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
+            REASONING="--reasoning-parser qwen3"
+            WARMUP="--skip-server-warmup"
+            ;;
+        qwen36-27b)
+            # Qwen3.6-27B (Dense, no MoE). Pure DeltaNet+VL variant of the
+            # Qwen3.6 family — smaller weights than 35B-A3B, no MoE indirection
+            # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
+            # as qwen35 / qwen36 (patches 013/015 load-bearing).
+            MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
+            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;

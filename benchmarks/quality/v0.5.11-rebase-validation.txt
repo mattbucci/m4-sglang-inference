@@ -1,0 +1,11 @@
+preset|basic|thinking|notes
+coder-30b|PASS|PASS| 2/2 passed in 3.5s 
+qwen3-moe|PASS|PASS| 2/2 passed in 10.2s 
+qwen3-32b|PASS|PASS| 2/2 passed in 62.0s 
+devstral|PASS|PASS| 2/2 passed in 14.2s 
+qwen35|PASS|FAIL| 1/2 passed in 156.9s 
+qwen35-9b-8bit|PASS|FAIL| 1/2 passed in 85.3s 
+gemma4|PASS|PASS| 2/2 passed in 3.8s 
+gemma4-31b|PASS|PASS| 2/2 passed in 12.0s 
+qwen36|PASS|PASS| 2/2 passed in 22.6s 
+qwen36-27b|PASS|PASS| 2/2 passed in 103.8s 

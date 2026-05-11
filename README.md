@@ -15,11 +15,28 @@
 
 ### Active work
 
-1. **SGLang v0.5.11 rebase** — upstream landed the `kv_cache/` subpackage from our patch 001 in v0.5.11 (`612785ffd`). 7 numbered patches + 8 in-tree mods need surgical re-derivation against the new tree. Plan in [`patches/REBASE-v0.5.11-NOTES.md`](patches/REBASE-v0.5.11-NOTES.md).
-2. **Per-request DeltaNet `conv_state`/`ssm_state` plumbing** — current in-tree patch 008 serializes hybrid decode (MAX_RUNNING=1) for correctness; proper fix stacks per-request state in `caches[i]`. Throughput-only concern now that patch 013 makes the output correct.
-3. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
-4. **mlx_vlm import bloat** — text-only loads pull in mlx_vlm and torchcodec, costing ~5 GB of headroom. Skipping these imports for text-only models would unblock Coder-Next-80B on M4 and stop the OOM-guard fires at 64K on everything else.
-5. **256K bench coverage** — Coder-30B, Qwen3-30B-MoE, Devstral-24B characterized post-patches; Gemma 4 31B-it works through 8K. Remaining models pending the v0.5.11 rebase.
+1. **SGLang v0.5.11 rebase — DONE.** Upstream landed the `kv_cache/` subpackage (patch 001) so we dropped it; everything else folded into 7 fresh `.patch` files that apply cleanly via `git apply` — no more `post_apply.py`. **Cross-team mlx-community model gate: 10/10 boot, 10/10 basic, 8/10 thinking** on v0.5.11 (see *v0.5.11 capability gate* table below).
+2. **Activate turboquant on v0.5.11.** Patch 008 ships the `kv_quant.py` module + parameter pass-through. `ContiguousKVCache` and `MlxKVPool` need wiring to `KVQuantizer` before fp8/turboquant actually compress KV — currently they store fp16. Load-bearing for 256K work on Gemma 4 31B / Qwen3-32B.
+3. **Per-request DeltaNet `conv_state`/`ssm_state` plumbing** — current in-tree fallback serializes hybrid decode (MAX_RUNNING=1) for correctness; proper fix stacks per-request state in `caches[i]`. Throughput-only concern now that patch 013 makes the output correct.
+4. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
+5. **mlx_vlm import bloat** — text-only loads pull in mlx_vlm and torchcodec, costing ~5 GB of headroom. Skipping these imports for text-only models would unblock Coder-Next-80B on M4 and stop the OOM-guard fires at 64K on everything else.
+
+### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
+
+| Preset | Model | Basic | Thinking | Notes |
+|--------|-------|:-----:|:--------:|-------|
+| coder-30b | Qwen3-Coder-30B-A3B-Instruct-4bit | **PASS** | **PASS** | 3.5 s — non-thinking model |
+| qwen3-moe | Qwen3-30B-A3B-4bit | **PASS** | **PASS** | 10.2 s — thinking trace terminates cleanly (568 tok) |
+| qwen3-32b | Qwen3-32B-4bit | **PASS** | **PASS** | 62.0 s — thinking trace terminates (584 tok) |
+| devstral | Devstral-Small-2-24B-Instruct-2512-4bit | **PASS** | **PASS** | 14.2 s — image VLM path verified |
+| qwen35 | Qwen3.5-27B-4bit | **PASS** | FAIL | 156.9 s — basic PASS confirms patch 013 hybrid-cache fix on v0.5.11; thinking truncates on known greedy-decode `<think>` loop |
+| qwen35-9b-8bit | Qwen3.5-9B-MLX-8bit | **PASS** | FAIL | 85.3 s — same as above, smaller variant |
+| gemma4 | gemma-4-26b-a4b-it-4bit | **PASS** | **PASS** | 3.8 s |
+| gemma4-31b | gemma-4-31b-it-mxfp4 | **PASS** | **PASS** | 12.0 s |
+| qwen36 | Qwen3.6-35B-A3B-4bit | **PASS** | **PASS** | 22.6 s — biggest DeltaNet+MoE+VL test; thinking trace 1326 tok terminates |
+| qwen36-27b | **Qwen3.6-27B-4bit (new)** | **PASS** | **PASS** | 103.8 s — Dense DeltaNet+VL variant; thinking trace 1311 tok terminates |
+
+10/10 boot success, 10/10 basic, 8/10 thinking on the v0.5.11 stack. The 2 thinking truncations are the pre-existing Qwen3.5 greedy-decode `<think>` loop (patch 013 still works — basic answers are correct, not garbage). Notably the Qwen3.6-A3B and Qwen3.6-27B Dense variants both terminate thinking cleanly out of the box, validating the new Qwen3.6 chat template. Raw data: [`benchmarks/quality/v0.5.11-rebase-validation.txt`](benchmarks/quality/v0.5.11-rebase-validation.txt).
 
 ### Quality table (post-patch013, 50–100 sample MMLU, M4 Pro)
 
