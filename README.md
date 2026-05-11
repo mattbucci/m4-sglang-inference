@@ -136,6 +136,8 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 
 ### v0.5.11 short-sweep decode tok/s (2026-05-11, full cross-team set, fp16 KV)
 
+![v0.5.11 perf chart](benchmarks/quality/v0.5.11-perf-shortsweep.png)
+
 Single-user decode speed at 128 / 4K / 16K context. fp16 KV (default — turboquant integration still pending on v0.5.11). Output 64 tokens, radix cache disabled.
 
 | Preset | Model | tok/s @128 | tok/s @4K | tok/s @16K |
