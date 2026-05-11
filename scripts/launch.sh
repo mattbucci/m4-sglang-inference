@@ -56,7 +56,11 @@ apply_preset() {
             WARMUP="--skip-server-warmup"
             ;;
         coder-30b)
-            MODEL="${MODEL:-mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit}"
+            # 4bit-DWQ (Distillation Weight Quantization) is the clean variant
+            # — the original 4bit upload has 10 dead layers (model.layers.36/46
+            # weight + biases all-zero, attention output collapses through those
+            # two layers). check_mlx_quant_scales.py catches it; DWQ is 9/9.
+            MODEL="${MODEL:-mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ}"
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             ;;
         coder-next)
