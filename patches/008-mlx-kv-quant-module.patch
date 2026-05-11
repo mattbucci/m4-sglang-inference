@@ -1,0 +1,292 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
+index 208e64452..f18175d00 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
+@@ -13,6 +13,12 @@ from sglang.srt.hardware_backend.mlx.kv_cache.contiguous_cache import (
+     PoolBackedCache,
+ )
+ from sglang.srt.hardware_backend.mlx.kv_cache.kv_pool import MlxKVPool
++from sglang.srt.hardware_backend.mlx.kv_cache.kv_quant import (
++    KVCacheMode,
++    KVQuantizer,
++    bytes_per_element,
++    parse_kv_cache_mode,
++)
+ from sglang.srt.hardware_backend.mlx.kv_cache.model_patching import (
+     find_attention_layers,
+     get_num_layers,
+@@ -21,14 +27,18 @@ from sglang.srt.hardware_backend.mlx.kv_cache.model_patching import (
+ 
+ __all__ = [
+     "BatchedDecodeContext",
++    "bytes_per_element",
+     "clear_context",
+     "ContiguousKVCache",
+     "find_attention_layers",
+     "get_context",
+     "get_num_layers",
++    "KVCacheMode",
++    "KVQuantizer",
+     "MLXAttentionWrapper",
+     "MlxKVPool",
+     "OffsetCache",
++    "parse_kv_cache_mode",
+     "patch_model_attention",
+     "PoolBackedCache",
+     "set_context",
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py
+new file mode 100644
+index 000000000..a0dc817f8
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py
+@@ -0,0 +1,250 @@
++"""KV cache quantization for MLX backend.
++
++Supports three modes:
++  - fp16:       Full-precision float16 (default, no quantization)
++  - fp8:        MXFP8 quantization (~2x memory savings, minimal quality loss)
++  - turboquant: Affine 4-bit quantization (~3.5x memory savings)
++
++Both quantized modes store KV cache data in compressed form and dequantize
++on read, trading compute for memory to enable longer context windows.
++"""
++
++from __future__ import annotations
++
++import enum
++import logging
++
++import mlx.core as mx
++
++logger = logging.getLogger(__name__)
++
++# MXFP8: group_size=32, bits=8
++_FP8_GROUP_SIZE = 32
++_FP8_BITS = 8
++
++# TurboQuant: affine, group_size=64, bits=4
++_TQ_GROUP_SIZE = 64
++_TQ_BITS = 4
++
++
++class KVCacheMode(enum.Enum):
++    FP16 = "fp16"
++    FP8 = "fp8"
++    TURBOQUANT = "turboquant"
++
++
++def parse_kv_cache_mode(value: str) -> KVCacheMode:
++    """Parse a string into a KVCacheMode, accepting common aliases."""
++    v = value.lower().strip()
++    aliases = {
++        "fp16": KVCacheMode.FP16,
++        "float16": KVCacheMode.FP16,
++        "auto": KVCacheMode.FP16,
++        "fp8": KVCacheMode.FP8,
++        "mxfp8": KVCacheMode.FP8,
++        "fp8_e4m3": KVCacheMode.FP8,
++        "fp8_e5m2": KVCacheMode.FP8,
++        "turboquant": KVCacheMode.TURBOQUANT,
++        "turbo": KVCacheMode.TURBOQUANT,
++        "tq": KVCacheMode.TURBOQUANT,
++        "4bit": KVCacheMode.TURBOQUANT,
++    }
++    if v not in aliases:
++        raise ValueError(
++            f"Unknown KV cache mode: {value!r}. "
++            f"Valid options: fp16, fp8, turboquant"
++        )
++    return aliases[v]
++
++
++def bytes_per_element(mode: KVCacheMode) -> float:
++    """Effective bytes per KV element (including scale/bias overhead).
++
++    Used for pool sizing calculations.
++    """
++    if mode is KVCacheMode.FP16:
++        return 2.0  # float16
++    elif mode is KVCacheMode.FP8:
++        # MXFP8: 1 byte per element + 1 uint8 scale per group of 32
++        return 1.0 + 1.0 / _FP8_GROUP_SIZE
++    elif mode is KVCacheMode.TURBOQUANT:
++        # Affine 4-bit: 0.5 bytes per element + scale (2 bytes) + bias (2 bytes) per group of 64
++        return 0.5 + 4.0 / _TQ_GROUP_SIZE
++    raise ValueError(f"Unknown mode: {mode}")
++
++
++class KVQuantizer:
++    """Handles quantization and dequantization of KV cache data.
++
++    Provides buffer creation, quantize-on-write, and dequantize-on-read
++    for both 3D pool buffers and 4D per-request cache buffers.
++    """
++
++    def __init__(self, mode: KVCacheMode, original_dtype: mx.Dtype = mx.float16):
++        self.mode = mode
++        self.original_dtype = original_dtype
++
++    @property
++    def is_quantized(self) -> bool:
++        return self.mode is not KVCacheMode.FP16
++
++    # -- 3D pool buffers: (pool_size, n_kv_heads, head_dim) --
++
++    def create_pool_buffers(
++        self, pool_size: int, n_kv_heads: int, head_dim: int
++    ) -> dict[str, mx.array]:
++        """Create pre-allocated buffers for one K or V pool layer.
++
++        Returns a dict with keys depending on mode:
++          fp16:       {"data": array}
++          fp8:        {"data": array, "scales": array}
++          turboquant: {"data": array, "scales": array, "biases": array}
++        """
++        if self.mode is KVCacheMode.FP16:
++            return {
++                "data": mx.zeros(
++                    (pool_size, n_kv_heads, head_dim), dtype=self.original_dtype
++                )
++            }
++        elif self.mode is KVCacheMode.FP8:
++            data_dim = head_dim // 4  # 4 fp8 values per uint32
++            scale_dim = head_dim // _FP8_GROUP_SIZE
++            return {
++                "data": mx.zeros((pool_size, n_kv_heads, data_dim), dtype=mx.uint32),
++                "scales": mx.zeros(
++                    (pool_size, n_kv_heads, scale_dim), dtype=mx.uint8
++                ),
++            }
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            data_dim = head_dim // 8  # 8 4-bit values per uint32
++            meta_dim = head_dim // _TQ_GROUP_SIZE
++            return {
++                "data": mx.zeros((pool_size, n_kv_heads, data_dim), dtype=mx.uint32),
++                "scales": mx.zeros(
++                    (pool_size, n_kv_heads, meta_dim), dtype=mx.float16
++                ),
++                "biases": mx.zeros(
++                    (pool_size, n_kv_heads, meta_dim), dtype=mx.float16
++                ),
++            }
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def quantize_pool(self, data: mx.array) -> dict[str, mx.array]:
++        """Quantize a 3D tensor (slots, n_kv_heads, head_dim) for pool storage."""
++        if self.mode is KVCacheMode.FP16:
++            return {"data": data}
++        elif self.mode is KVCacheMode.FP8:
++            w_q, scales = mx.quantize(data, mode="mxfp8")
++            return {"data": w_q, "scales": scales}
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            w_q, scales, biases = mx.quantize(
++                data, group_size=_TQ_GROUP_SIZE, bits=_TQ_BITS
++            )
++            return {"data": w_q, "scales": scales, "biases": biases}
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def dequantize_pool(self, buffers: dict[str, mx.array]) -> mx.array:
++        """Dequantize pool buffers back to original dtype."""
++        if self.mode is KVCacheMode.FP16:
++            return buffers["data"]
++        elif self.mode is KVCacheMode.FP8:
++            result = mx.dequantize(buffers["data"], buffers["scales"], mode="mxfp8")
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            result = mx.dequantize(
++                buffers["data"],
++                buffers["scales"],
++                buffers["biases"],
++                group_size=_TQ_GROUP_SIZE,
++                bits=_TQ_BITS,
++            )
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    # -- 4D cache buffers: (1, n_kv_heads, seq_len, head_dim) --
++
++    def create_cache_buffers(
++        self, batch: int, n_kv_heads: int, max_seq_len: int, head_dim: int
++    ) -> dict[str, mx.array]:
++        """Create pre-allocated buffers for one K or V contiguous cache."""
++        if self.mode is KVCacheMode.FP16:
++            return {
++                "data": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, head_dim),
++                    dtype=self.original_dtype,
++                )
++            }
++        elif self.mode is KVCacheMode.FP8:
++            data_dim = head_dim // 4
++            scale_dim = head_dim // _FP8_GROUP_SIZE
++            return {
++                "data": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, data_dim), dtype=mx.uint32
++                ),
++                "scales": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, scale_dim), dtype=mx.uint8
++                ),
++            }
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            data_dim = head_dim // 8
++            meta_dim = head_dim // _TQ_GROUP_SIZE
++            return {
++                "data": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, data_dim), dtype=mx.uint32
++                ),
++                "scales": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, meta_dim), dtype=mx.float16
++                ),
++                "biases": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, meta_dim), dtype=mx.float16
++                ),
++            }
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def quantize_cache(self, data: mx.array) -> dict[str, mx.array]:
++        """Quantize a 4D tensor (B, n_kv_heads, S, head_dim) for cache storage."""
++        if self.mode is KVCacheMode.FP16:
++            return {"data": data}
++        elif self.mode is KVCacheMode.FP8:
++            w_q, scales = mx.quantize(data, mode="mxfp8")
++            return {"data": w_q, "scales": scales}
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            w_q, scales, biases = mx.quantize(
++                data, group_size=_TQ_GROUP_SIZE, bits=_TQ_BITS
++            )
++            return {"data": w_q, "scales": scales, "biases": biases}
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def dequantize_cache(self, buffers: dict[str, mx.array]) -> mx.array:
++        """Dequantize cache buffers back to original dtype."""
++        if self.mode is KVCacheMode.FP16:
++            return buffers["data"]
++        elif self.mode is KVCacheMode.FP8:
++            result = mx.dequantize(buffers["data"], buffers["scales"], mode="mxfp8")
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            result = mx.dequantize(
++                buffers["data"],
++                buffers["scales"],
++                buffers["biases"],
++                group_size=_TQ_GROUP_SIZE,
++                bits=_TQ_BITS,
++            )
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def pool_buffer_arrays(self, buffers: dict[str, mx.array]) -> list[mx.array]:
++        """Return all arrays from a pool buffer dict (for mx.eval)."""
++        return list(buffers.values())
++
++    def cache_buffer_arrays(self, buffers: dict[str, mx.array]) -> list[mx.array]:
++        """Return all arrays from a cache buffer dict (for mx.eval state)."""
++        return list(buffers.values())

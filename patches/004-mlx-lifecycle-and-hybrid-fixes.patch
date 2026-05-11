@@ -1,17 +1,389 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 4c47d67f0..22d2bfe08 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -25,12 +25,15 @@ from mlx_lm import load as mlx_lm_load
+ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     BatchedDecodeContext,
+     ContiguousKVCache,
++    KVCacheMode,
+     MLXAttentionWrapper,
+     OffsetCache,
+     PoolBackedCache,
++    bytes_per_element,
+     clear_context,
+     find_attention_layers,
+     get_num_layers,
++    parse_kv_cache_mode,
+     patch_model_attention,
+     set_context,
+ )
+@@ -100,16 +103,25 @@ class MlxModelRunner:
+         disable_radix_cache: bool = False,
+         pool_size: int | None = None,
+         mem_fraction_static: float = 0.8,
++        kv_cache_mode: str | KVCacheMode = "fp16",
++        context_length: int | None = None,
+     ):
+         self.model_path = model_path
+         self.trust_remote_code = trust_remote_code
+         self.model = None
+         self.disable_radix_cache = disable_radix_cache
+         self._mem_fraction_static = mem_fraction_static
++        if isinstance(kv_cache_mode, str):
++            self._kv_cache_mode = parse_kv_cache_mode(kv_cache_mode)
++        else:
++            self._kv_cache_mode = kv_cache_mode
++        self._context_length = context_length
+         # Counter used to trigger periodic mx.clear_cache() calls.
+         self._decode_step_ct: int = 0
+ 
+         self._load_model()
++        if self._context_length is not None:
++            self._apply_rope_scaling()
+ 
+         # Pin MLX allocations to prevent OS paging
+         device_info = mx.device_info()
+@@ -141,13 +153,91 @@ class MlxModelRunner:
+             return model_output[0]
+         return model_output
+ 
+-    def _acquire_cache(self) -> list[ContiguousKVCache]:
+-        """Get a reusable cache list from the pool, or create a new one."""
++    def _acquire_cache(self) -> list:
++        """Get a reusable cache list from the pool, or create a new one.
++
++        Hybrid models (Qwen3.5 DeltaNet, Qwen3.6 GDN, Coder-Next mamba)
++        provide ``make_cache()`` which returns a heterogeneous cache list
++        per layer — ``ArraysCache`` for DeltaNet recurrent state,
++        ``RotatingKVCache`` for sliding attention, ``KVCache`` for full
++        attention. For VLM-wrapped hybrids loaded via ``mlx_vlm.load``,
++        ``make_cache`` lives on ``self.model.language_model`` rather than
++        the outer wrapper.
++        """
+         if self._cache_pool:
+             cache = self._cache_pool.pop()
++            # Reset any state the cache type allows so a returned cache
++            # from a previous request doesn't leak state into a new one.
+             for c in cache:
+-                c.offset = 0
++                if hasattr(c, "offset"):
++                    c.offset = 0  # ContiguousKVCache / KVCache / RotatingKVCache
++                    # RotatingKVCache has a ring-buffer write index (_idx)
++                    # that also needs reset; otherwise the next request
++                    # writes at the prior request's wrap-around position.
++                    if hasattr(c, "_idx"):
++                        c._idx = 0
++                    # RotatingKVCache also keeps the prior keys/values
++                    # tensors — drop them so the next prefill re-allocates
++                    # fresh (skip our ContiguousKVCache which uses pool
++                    # buffers, not bare arrays).
++                    if (
++                        hasattr(c, "keys")
++                        and c.keys is not None
++                        and not hasattr(c, "_k_buffers")
++                    ):
++                        c.keys = None
++                        c.values = None
++                elif hasattr(c, "reset"):
++                    c.reset()
++                elif hasattr(c, "cache"):
++                    # ArraysCache (DeltaNet recurrent state) — drop arrays
++                    # so the next prefill rebuilds. Without this the next
++                    # request inherits the previous request's conv_state /
++                    # ssm_state and produces garbage.
++                    try:
++                        c.cache = [None for _ in c.cache]
++                    except Exception:
++                        pass
+             return cache
++
++        # Check if model has make_cache (hybrid models like DeltaNet).
++        # For VLM-wrapped hybrids loaded via mlx_vlm.load on Qwen3.5/3.6,
++        # make_cache lives on `language_model`, not the outer wrapper —
++        # without this fallback, the loop below builds uniform
++        # ContiguousKVCache for every layer and DeltaNet layers receive
++        # the wrong cache type, producing fluent-looking garbage tokens.
++        # (MMLU regressed to 16.7% pre-fix; recovered to 93.0% with it.)
++        native_maker = None
++        if hasattr(self.model, "make_cache"):
++            native_maker = self.model.make_cache
++        elif hasattr(self.model, "language_model") and hasattr(
++            self.model.language_model, "make_cache"
++        ):
++            native_maker = self.model.language_model.make_cache
++
++        if native_maker is not None:
++            native_cache = native_maker()
++            # Replace ONLY plain KVCache (full attention) with our
++            # quantized ContiguousKVCache. Keep RotatingKVCache NATIVE —
++            # its rotating-ring-buffer semantics are load-bearing for
++            # sliding-attention layers (Gemma 4 sliding_window=1024).
++            # Replacing it with non-rotating ContiguousKVCache means
++            # chunk 2 stores 2× chunk_size keys instead of the expected
++            # window_size, and the model's make_mask (which assumes
++            # rotating) computes a mask shape that doesn't match →
++            # broadcast_shapes ValueError. Sliding KV is tiny (capped at
++            # sliding_window) so losing fp8/turboquant on those layers
++            # doesn't meaningfully hurt the 64 GB budget.
++            cache = []
++            for nc in native_cache:
++                if type(nc).__name__ == "KVCache":
++                    cache.append(ContiguousKVCache(max_seq_len=self._max_seq_len))
++                else:
++                    # Native cache (RotatingKVCache for sliding,
++                    # ArraysCache for DeltaNet, etc.) — keep as-is.
++                    cache.append(nc)
++            return cache
++
+         return [
+             ContiguousKVCache(max_seq_len=self._max_seq_len)
+             for _ in range(self._num_layers)
+@@ -179,21 +269,218 @@ class MlxModelRunner:
+             for s in cache.state
+         ]
+ 
++    def _is_vlm_config(self) -> bool:
++        """Detect VLM architecture from config.json.
++
++        ``mlx_lm`` *can* load some VLMs (Qwen2-VL, Qwen3-VL) but the
++        loaded ``Model.__call__`` accepts only text inputs — image
++        features must come through ``input_embeddings`` which we don't
++        compute. ``mlx_vlm`` wraps the same model with an image-aware
++        ``__call__``. So when the architecture IS a VLM, prefer
++        ``mlx_vlm`` even if ``mlx_lm`` would have worked.
++        """
++        try:
++            import json as _json
++            from huggingface_hub import hf_hub_download
++
++            cfg_path = hf_hub_download(repo_id=self.model_path, filename="config.json")
++            with open(cfg_path) as f:
++                cfg = _json.load(f)
++            return any(
++                k in cfg
++                for k in ("vision_config", "image_token_id", "image_token_index")
++            )
++        except Exception as _e:
++            logger.debug(
++                f"_is_vlm_config: detection failed ({_e}); assuming text-only"
++            )
++            return False
++
+     def _load_model(self):
+-        """Load model using mlx_lm."""
++        """Load via ``mlx_vlm`` if the architecture is a VLM, else ``mlx_lm``.
++
++        Falls back across loaders if either raises so we still get the
++        model loaded one way or another. Image-bearing requests are
++        routed through the VLM's full forward (with ``pixel_values``);
++        text-only requests skip vision via ``language_model``. See
++        patches 010–012 for the per-architecture multimodal-data
++        forwarding contract.
++        """
+         logger.info(f"Loading MLX model: {self.model_path}")
+         start_time = time.time()
+ 
+-        self.model, _ = mlx_lm_load(
+-            self.model_path,
+-            tokenizer_config={"trust_remote_code": self.trust_remote_code},
+-        )
++        prefer_vlm = self._is_vlm_config()
++        if prefer_vlm:
++            logger.info(
++                "Detected VLM architecture; loading via mlx_vlm (image-aware __call__)."
++            )
++            try:
++                from mlx_vlm import load as mlx_vlm_load
++
++                vlm_model, self.processor = mlx_vlm_load(self.model_path)
++                self.is_vlm = True
++                # Probe the VLM's __call__ signature once so we know which
++                # extra positional args it needs. Mistral3 takes a required
++                # `mask` after pixel_values; Qwen2-VL has it as
++                # keyword-default-None; Idefics3 doesn't take it at all.
++                import inspect as _insp
++
++                _vlm_sig = _insp.signature(vlm_model.__call__)
++                _vlm_params = list(_vlm_sig.parameters.values())
++                _needs_mask_positional = any(
++                    p.name == "mask" and p.default is _insp.Parameter.empty
++                    for p in _vlm_params
++                )
++
++                class _TextOnlyVLMShim:
++                    """Route ``model(input_ids, cache=...)`` to the VLM's
++                    ``language_model`` for text-only and to the VLM's
++                    full ``__call__`` for image-bearing requests."""
++
++                    def __init__(self, vlm):
++                        self._vlm = vlm
++
++                    def __call__(
++                        self, input_ids, cache=None, pixel_values=None, **kwargs
++                    ):
++                        if pixel_values is not None:
++                            # Forward all extra kwargs (image_grid_thw etc.)
++                            # so per-architecture multimodal data reaches
++                            # the VLM's get_input_embeddings.
++                            if _needs_mask_positional:
++                                out = self._vlm(
++                                    input_ids,
++                                    pixel_values,
++                                    None,
++                                    cache=cache,
++                                    **kwargs,
++                                )
++                            else:
++                                out = self._vlm(
++                                    input_ids,
++                                    pixel_values,
++                                    cache=cache,
++                                    **kwargs,
++                                )
++                        else:
++                            out = self._vlm.language_model(input_ids, cache=cache)
++                        return getattr(out, "logits", out)
++
++                    def __getattr__(self, name):
++                        return getattr(self._vlm, name)
++
++                self.model = _TextOnlyVLMShim(vlm_model)
++                mx.eval(self.model.parameters())
++                load_time = time.time() - start_time
++                logger.info(
++                    f"MLX model loaded in {load_time:.2f}s (vlm=True via mlx_vlm)"
++                )
++                return
++            except Exception as e:
++                logger.warning(
++                    f"mlx_vlm.load failed for VLM model {self.model_path}: {e}. "
++                    f"Falling back to mlx_lm (text-only path)."
++                )
++
++        try:
++            self.model, _ = mlx_lm_load(
++                self.model_path,
++                tokenizer_config={"trust_remote_code": self.trust_remote_code},
++            )
++            self.is_vlm = False
++        except ValueError as e:
++            # mlx_lm raises ValueError("Model type X not supported.") for
++            # VLMs (Idefics3, SmolVLM, etc.); try mlx_vlm fallback.
++            if "not supported" not in str(e):
++                raise
++            logger.warning(
++                f"mlx_lm cannot load {self.model_path} ({e}); "
++                f"falling back to mlx_vlm. Text-only path."
++            )
++            try:
++                from mlx_vlm import load as mlx_vlm_load
++            except ImportError as imp_err:
++                raise RuntimeError(
++                    f"Model {self.model_path} requires mlx_vlm but it isn't "
++                    f"installed. Run `pip install mlx-vlm`."
++                ) from imp_err
++            vlm_model, self.processor = mlx_vlm_load(self.model_path)
++            self.is_vlm = True
++
++            class _TextOnlyVLMShim:
++                def __init__(self, vlm):
++                    self._vlm = vlm
++
++                def __call__(self, input_ids, cache=None, **kwargs):
++                    out = self._vlm.language_model(input_ids, cache=cache)
++                    return getattr(out, "logits", out)
++
++                def __getattr__(self, name):
++                    return getattr(self._vlm, name)
++
++            self.model = _TextOnlyVLMShim(vlm_model)
++
+         # Force-evaluate weights so mx.get_active_memory() reflects
+         # actual usage before KV pool sizing.
+         mx.eval(self.model.parameters())
+ 
+         load_time = time.time() - start_time
+-        logger.info(f"MLX model loaded in {load_time:.2f}s")
++        logger.info(
++            f"MLX model loaded in {load_time:.2f}s "
++            f"(vlm={getattr(self, 'is_vlm', False)})"
++        )
++
++    def _apply_rope_scaling(self):
++        """Apply linear RoPE scaling if context_length exceeds the model's native max.
++
++        Lets models trained at e.g. 40K serve 256K via linear interpolation.
++        Cheaper than re-training; quality drops at the very long end but
++        the radix-cache + long-context regime is bandwidth-bound either way.
++        """
++        if self._context_length is None:
++            return
++
++        root = getattr(self.model, "language_model", self.model)
++        model_obj = getattr(root, "model", root)
++        config = getattr(model_obj, "args", None) or getattr(root, "args", None)
++        if config is None:
++            return
++
++        native_max = getattr(config, "max_position_embeddings", None)
++        if native_max is None or self._context_length <= native_max:
++            return
++
++        factor = self._context_length / native_max
++        scale = 1.0 / factor
++        logger.info(
++            f"RoPE scaling: context_length={self._context_length} > "
++            f"max_position_embeddings={native_max}, applying linear "
++            f"scale={scale:.4f} (factor={factor:.2f})"
++        )
++
++        import mlx.nn as nn
++
++        layer_list = getattr(model_obj, "layers", [])
++        patched = 0
++        for layer in layer_list:
++            for attr_name in ("self_attn", "attention"):
++                attn = getattr(layer, attr_name, None)
++                if attn is None:
++                    continue
++                inner = attn._inner if isinstance(attn, MLXAttentionWrapper) else attn
++                rope = getattr(inner, "rope", None)
++                if rope is not None and isinstance(rope, nn.RoPE):
++                    inner.rope = nn.RoPE(
++                        dims=rope.dims,
++                        traditional=rope.traditional,
++                        base=rope.base,
++                        scale=scale,
++                    )
++                    patched += 1
++        if patched > 0:
++            logger.info(f"Patched {patched} RoPE modules with scale={scale:.4f}")
++        else:
++            logger.warning("No RoPE modules found to patch")
+ 
+     def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
+         """Return (n_kv_heads, head_dim, dtype) from the model."""
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
-index 3dd8520..19c7594 100644
+index 3dd8520f2..664b93469 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
-@@ -57,6 +57,16 @@ class _DummyKVCache(KVCache):
+@@ -57,6 +57,22 @@ class _DummyKVCache(KVCache):
          return 0, 0
  
  
 +class _DummyMambaPool:
++    """Minimal mamba pool stand-in so SGLang's hybrid-model bookkeeping
++    doesn't crash when the real model uses DeltaNet / Mamba layers but
++    MLX is managing recurrent state itself."""
++
 +    def __init__(self):
 +        self.size = 1
 +        self.free_slots = torch.tensor([], dtype=torch.long)
++
 +    def available_size(self):
 +        return self.size
++
 +    def clear(self):
 +        pass
 +
@@ -19,10 +391,13 @@ index 3dd8520..19c7594 100644
  class _DummyModel:
      """Minimal stand-in so that `inspect.signature(model.forward)` and
      `getattr(model, ...)` calls in ModelRunner.__init__ don't crash."""
-@@ -78,6 +88,18 @@ class MlxModelRunnerStub(ModelRunner):
+@@ -78,6 +94,21 @@ class MlxModelRunnerStub(ModelRunner):
          self._mlx_pool_size = mlx_pool_size
          super().__init__(*args, **kwargs)
  
++    # Override hybrid-model probes the scheduler reads when deciding whether
++    # to allocate mamba / GDN / linear-attn state. MLX manages all recurrent
++    # state itself, so SGLang must not attempt to allocate any.
 +    @property
 +    def hybrid_gdn_config(self):
 +        return None
@@ -38,87 +413,91 @@ index 3dd8520..19c7594 100644
      def load_model(self):
          """Set only the metadata that downstream code needs, without
          loading any PyTorch model weights."""
-@@ -148,6 +170,8 @@ class MlxModelRunnerStub(ModelRunner):
+@@ -148,6 +179,12 @@ class MlxModelRunnerStub(ModelRunner):
              enable_memory_saver=False,
          )
  
++        # Hybrid models (Qwen3.5 DeltaNet, Qwen3.6 GDN, Coder-Next mamba)
++        # expect `req_to_token_pool.mamba_pool` to exist. MLX owns the
++        # recurrent state itself, so a dummy pool is enough to satisfy
++        # the bookkeeping reads.
 +        self.req_to_token_pool.mamba_pool = _DummyMambaPool()
 +
          dummy_kv = _DummyKVCache(
              size=self.max_total_num_tokens,
              dtype=self.kv_cache_dtype,
 diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-index f73bb5d..af03362 100644
+index a12d25240..ec4b41188 100644
 --- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
 +++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-@@ -34,6 +34,9 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -47,12 +47,21 @@ class MlxTpModelWorker(TpModelWorker):
              MlxModelRunnerStub,
          )
  
++        # MLX VLM image-processor / tensor-handoff path is unreliable through
++        # SGLang's multimodal pipeline — disable it at the worker level so
++        # processors don't even try to load. Devstral re-enables image via
++        # patches 007/010-012 with a guarded path.
 +        self.model_config.is_multimodal = False
 +        self.server_args.enable_multimodal = False
 +
          logger.info("Initializing MlxModelRunner for end-to-end MLX inference")
          init_kwargs = dict(
              model_path=self.server_args.model_path,
-@@ -65,13 +68,19 @@ class MlxTpModelWorker(TpModelWorker):
-             mlx_pool_size=self._mlx_runner.pool_size,
+             trust_remote_code=self.server_args.trust_remote_code,
+             disable_radix_cache=self.server_args.disable_radix_cache,
+             mem_fraction_static=self.server_args.mem_fraction_static,
++            kv_cache_mode=self.server_args.kv_cache_dtype,
++            context_length=self.server_args.context_length,
          )
- 
--        self._mlx_active_rids: set[str] = set()
-         self._mlx_pool_initialized = False
- 
-     def get_pad_input_ids_func(self):
+         if self.server_args.max_total_tokens is not None:
+             init_kwargs["pool_size"] = self.server_args.max_total_tokens
+@@ -85,6 +94,20 @@ class MlxTpModelWorker(TpModelWorker):
          """Override since the stub ModelRunner has no real model."""
          return None
  
 +    def cleanup_requests(self, req_ids: list[str]):
++        """Proactively drop MLX state for requests the scheduler reports
++        as finished. Faster than waiting for `_cleanup_stale_rids` to
++        observe the batch-membership change."""
 +        for req_id in req_ids:
 +            self._mlx_runner.remove_request(req_id)
++            self._mlx_active_rids.discard(req_id)
 +
 +    def clear_runtime_state(self):
++        """Wipe all MLX-side state. Called when the scheduler goes fully
++        idle so we don't keep stale cache slots warm across long pauses."""
 +        self._mlx_runner.clear()
++        self._mlx_active_rids.clear()
 +
      def _ensure_mlx_pool_initialized(self):
          """Lazily initialize the MlxKVPool after the stub's pools are ready."""
          if not self._mlx_pool_initialized:
-@@ -116,16 +125,6 @@ class MlxTpModelWorker(TpModelWorker):
-                 can_run_cuda_graph=False,
-             )
- 
--        # Auto-cleanup: remove MLX state for requests no longer in the batch.
--        current_rids = {req.rid for req in reqs}
--        stale_rids = self._mlx_active_rids - current_rids
--        for rid in stale_rids:
--            self._mlx_runner.remove_request(rid)
--        if forward_mode.is_decode():
--            self._mlx_active_rids = current_rids
--        else:
--            self._mlx_active_rids = (self._mlx_active_rids - stale_rids) | current_rids
--
-         next_token_ids_list = []
- 
-         if forward_mode.is_extend():
 diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
-index b411877..6418831 100644
+index 2c3d98647..f9de4b3bd 100644
 --- a/python/sglang/srt/managers/scheduler.py
 +++ b/python/sglang/srt/managers/scheduler.py
-@@ -3134,6 +3134,7 @@ class Scheduler(
+@@ -3345,6 +3345,9 @@ class Scheduler(
          if self.is_fully_idle():
              self.cur_batch = None
              self.last_batch = None
++            # Let backend workers (e.g. MLX) drop their own per-request
++            # state before SGLang's own pool reset runs.
 +            self.tp_worker.clear_runtime_state()
              self.tree_cache.reset()
              self.req_to_token_pool.clear()
              self.token_to_kv_pool_allocator.clear()
 diff --git a/python/sglang/srt/managers/scheduler_output_processor_mixin.py b/python/sglang/srt/managers/scheduler_output_processor_mixin.py
-index 3bbd3e5..d448f1c 100644
+index 044deafdd..5a4f17a3a 100644
 --- a/python/sglang/srt/managers/scheduler_output_processor_mixin.py
 +++ b/python/sglang/srt/managers/scheduler_output_processor_mixin.py
-@@ -555,6 +555,9 @@ class SchedulerOutputProcessorMixin:
+@@ -585,6 +585,12 @@ class SchedulerOutputProcessorMixin:
  
          self.maybe_collect_customized_info(i, req, logits_output)
  
++        # Backend hook: let MLX (or any other backend) drop its own
++        # per-request state as soon as the scheduler retires the req,
++        # rather than waiting for the next batch-membership scan.
 +        if req.finished():
 +            self.tp_worker.cleanup_requests([req.rid])
 +
@@ -126,17 +505,21 @@ index 3bbd3e5..d448f1c 100644
          self: Scheduler, req: Req, next_token_id: Union[int, List[int]]
      ):
 diff --git a/python/sglang/srt/managers/tp_worker.py b/python/sglang/srt/managers/tp_worker.py
-index 226139d..03e3710 100644
+index efb7f7563..08a150cdb 100644
 --- a/python/sglang/srt/managers/tp_worker.py
 +++ b/python/sglang/srt/managers/tp_worker.py
-@@ -426,6 +426,12 @@ class TpModelWorker(BaseTpWorker):
+@@ -427,6 +427,16 @@ class TpModelWorker(BaseTpWorker):
              self.model_runner.token_to_kv_pool.size,
          )
  
 +    def cleanup_requests(self, req_ids: List[str]):
++        """No-op for default workers. MLX backend overrides to drop
++        backend-side per-request state when the scheduler retires a req."""
 +        pass
 +
 +    def clear_runtime_state(self):
++        """No-op for default workers. MLX backend overrides to wipe
++        backend-side state when the scheduler goes fully idle."""
 +        pass
 +
      def is_dllm(self):

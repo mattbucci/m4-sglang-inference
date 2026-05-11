@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index 67cce0e..1ec1f1b 100644
+index cf8bbff0b..b60a2e0e3 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -230,8 +230,11 @@ class ModelConfig:
+@@ -269,8 +269,11 @@ class ModelConfig:
          # Update hybrid model
          self._derive_hybrid_model()
  

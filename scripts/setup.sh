@@ -21,7 +21,7 @@ SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_BRANCH="main"
 # Pin to a specific commit to ensure patches apply cleanly.
 # Update this hash when rebasing patches onto a newer upstream.
-SGLANG_COMMIT="1f8df9705"  # 2026-04-12: Fix broken streaming response (#22549)
+SGLANG_COMMIT="v0.5.11"  # 2026-05-04: SGLang v0.5.11 — kv_cache/ subpackage upstreamed
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -68,23 +68,16 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone "$SGLANG_REPO" "$SGLANG_DIR"
     cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
 
-    # Apply patches in order. 001-005 are proper git patches; 006/007 are
-    # idempotent in-place edits run by post_apply.py (the .patch files for
-    # them are doc-only — git apply rejects them as corrupt due to hand-
-    # written diff format).
+    # Apply patches in order. All 7 patches (002-008) are proper git
+    # patches regenerated against v0.5.11 — 001 (radix cache) was upstreamed.
     if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
-        for patch in "$REPO_DIR/patches/"00[1-5]-*.patch; do
+        for patch in "$REPO_DIR/patches/"00[2-9]-*.patch; do
             echo "  Applying $(basename "$patch")..."
             git apply "$patch" || echo "  WARNING: $(basename "$patch") failed to apply"
         done
     else
-        echo "  No git-style patches to apply"
-    fi
-    if [ -f "$REPO_DIR/patches/post_apply.py" ]; then
-        cd "$SGLANG_DIR"
-        echo "  Running post_apply.py for patches 006 + 007..."
-        python3 "$REPO_DIR/patches/post_apply.py" "$SGLANG_DIR"
+        echo "  No patches to apply"
     fi
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"

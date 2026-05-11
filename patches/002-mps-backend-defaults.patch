@@ -1,11 +1,14 @@
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index cb549bf..cdce67f 100644
+index c5bba8351..9b1137e0e 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -1128,6 +1128,11 @@ class ServerArgs:
+@@ -1179,8 +1179,12 @@ class ServerArgs:
+ 
      def _handle_mps_backends(self):
          if self.device == "mps":
-             self.disable_overlap_schedule = True
+-            if not use_mlx():
+-                self.disable_overlap_schedule = True
++            self.disable_overlap_schedule = True
 +            self.disable_piecewise_cuda_graph = True
 +            self.disable_cuda_graph = True
 +            self.attention_backend = "torch_native"
@@ -14,13 +17,39 @@ index cb549bf..cdce67f 100644
  
      def _handle_xpu_backends(self):
          if self.device == "xpu":
-@@ -1144,6 +1149,9 @@ class ServerArgs:
+@@ -1197,6 +1201,13 @@ class ServerArgs:
              self.disable_piecewise_cuda_graph = False
              return
  
++        # Skip model-config probing if already disabled (e.g. by MPS handler) —
++        # avoids loading the model config when we already know piecewise CUDA
++        # graph is off, which matters on MLX where the model arch may not
++        # match `is_piecewise_cuda_graph_disabled_model` patterns.
 +        if self.disable_piecewise_cuda_graph:
 +            return
 +
          # Disable piecewise cuda graph with following conditions:
          # 1. Disable Model Arch
          if self.get_model_config().is_piecewise_cuda_graph_disabled_model:
+@@ -4428,8 +4439,19 @@ class ServerArgs:
+             "--kv-cache-dtype",
+             type=str,
+             default=ServerArgs.kv_cache_dtype,
+-            choices=["auto", "fp8_e5m2", "fp8_e4m3", "bf16", "bfloat16", "fp4_e2m1"],
+-            help='Data type for kv cache storage. "auto" will use model data type. "bf16" or "bfloat16" for BF16 KV cache. "fp8_e5m2" and "fp8_e4m3" are supported for CUDA 11.8+. "fp4_e2m1" (only mxfp4) is supported for CUDA 12.8+ and PyTorch 2.8.0+',
++            choices=[
++                "auto", "fp8_e5m2", "fp8_e4m3", "bf16", "bfloat16", "fp4_e2m1",
++                # MLX backend aliases — friendlier names for the Apple Silicon
++                # KV quantization modes our MlxKVPool understands.
++                "fp16", "fp8", "mxfp8", "turboquant", "turbo", "tq", "4bit",
++            ],
++            help=(
++                'Data type for kv cache storage. "auto" will use model data type. '
++                '"fp8_e5m2" / "fp8_e4m3" are CUDA 11.8+. "fp4_e2m1" (mxfp4) is '
++                'CUDA 12.8+ / PyTorch 2.8.0+. MLX backend: "fp8" / "mxfp8" for '
++                'MXFP8 (~2× savings), "turboquant" / "tq" / "4bit" for affine '
++                '4-bit (~3.5× savings; load-bearing for 256K on M4).'
++            ),
+         )
+         parser.add_argument(
+             "--enable-fp32-lm-head",

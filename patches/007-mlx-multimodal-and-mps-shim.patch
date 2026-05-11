@@ -1,0 +1,103 @@
+diff --git a/python/sglang/_mps_stub.py b/python/sglang/_mps_stub.py
+index 8a090b398..118795a65 100644
+--- a/python/sglang/_mps_stub.py
++++ b/python/sglang/_mps_stub.py
+@@ -208,16 +208,27 @@ def _patch_non_blocking() -> None:
+ 
+     @functools.wraps(_original_to)
+     def _patched_to(self, *args, **kwargs):
+-        if kwargs.get("non_blocking"):
+-            # Detect target device from positional or keyword args
+-            device = None
+-            if args and isinstance(args[0], (str, torch.device)):
+-                device = torch.device(args[0]) if isinstance(args[0], str) else args[0]
+-            elif "device" in kwargs:
+-                d = kwargs["device"]
+-                device = torch.device(d) if isinstance(d, str) else d
+-            if device is not None and device.type == "mps":
++        # Detect target device from positional or keyword args.
++        device = None
++        if args and isinstance(args[0], (str, torch.device)):
++            device = torch.device(args[0]) if isinstance(args[0], str) else args[0]
++        elif "device" in kwargs:
++            d = kwargs["device"]
++            device = torch.device(d) if isinstance(d, str) else d
++
++        if device is not None:
++            if device.type == "cuda":
++                # No CUDA on Apple Silicon. Redirect cuda→cpu so SGLang's
++                # multimodal image processor (and other transformers code
++                # defaulting to .to('cuda')) keeps working without crashing
++                # in CUDA's _lazy_init.
++                if args and isinstance(args[0], (str, torch.device)):
++                    args = ("cpu",) + args[1:]
++                else:
++                    kwargs = {**kwargs, "device": "cpu"}
++            elif device.type == "mps" and kwargs.get("non_blocking"):
+                 kwargs = {**kwargs, "non_blocking": False}
++
+         return _original_to(self, *args, **kwargs)
+ 
+     torch.Tensor.to = _patched_to
+diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
+index c71b0e1c4..92792f425 100644
+--- a/python/sglang/srt/managers/mm_utils.py
++++ b/python/sglang/srt/managers/mm_utils.py
+@@ -1539,7 +1539,11 @@ class ShmPointerMMData:
+         nbytes = tensor.numel() * tensor.element_size()
+         shm = shared_memory.SharedMemory(create=True, size=nbytes)
+         try:
+-            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)
++            # macOS rounds shm allocations up to a page (16 KB on Apple
++            # Silicon), so torch.frombuffer(shm.buf, ...) returns a
++            # tensor LARGER than nbytes. dst.copy_(src) then fails the
++            # size match. Slice dst to the logical byte count.
++            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)[:nbytes]
+             dst.copy_(tensor.view(torch.uint8).reshape(-1))
+         except BaseException:
+             shm.close()
+@@ -1562,10 +1566,16 @@ class ShmPointerMMData:
+         self.dtype = state["dtype"]
+         self.shm = None
+         self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
++        # macOS rounds shm allocations up to a page so the buffer is
++        # larger than self.shape implies. Slice to logical element count
++        # before reshape — mirrors the write-side fix above.
++        n_elements = 1
++        for d in self.shape:
++            n_elements *= d
+         # Zero-copy view into shared memory (no clone, no unlink)
+-        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype).reshape(
+-            self.shape
+-        )
++        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype)[
++            :n_elements
++        ].reshape(self.shape)
+ 
+     def materialize(self) -> torch.Tensor:
+         """Clone tensor from shm to owned memory, then release shm handle."""
+diff --git a/python/sglang/srt/managers/schedule_batch.py b/python/sglang/srt/managers/schedule_batch.py
+index ee6c1c77b..cc8a050de 100755
+--- a/python/sglang/srt/managers/schedule_batch.py
++++ b/python/sglang/srt/managers/schedule_batch.py
+@@ -199,6 +199,11 @@ class FINISH_ABORT(BaseFinishReason):
+ 
+ class Modality(Enum):
+     IMAGE = auto()
++    # SGLang's transformers_auto multimodal processor references
++    # ``Modality.MULTI_IMAGES`` when assembling multi-image batches; without
++    # it, multimodal requests crash with AttributeError before reaching
++    # the model.
++    MULTI_IMAGES = auto()
+     VIDEO = auto()
+     AUDIO = auto()
+ 
+@@ -213,7 +218,7 @@ class Modality(Enum):
+ 
+     @staticmethod
+     def all():
+-        return [Modality.IMAGE, Modality.VIDEO, Modality.AUDIO]
++        return [Modality.IMAGE, Modality.MULTI_IMAGES, Modality.VIDEO, Modality.AUDIO]
+ 
+ 
+ class MultimodalInputFormat(Enum):
