@@ -1,11 +1,11 @@
 {
   "tag": "Coder-30B-DWQ",
-  "timestamp": "2026-05-11 14:55",
+  "timestamp": "2026-05-11 16:21",
   "max_context": 32768,
   "mmlu": {
-    "correct": 51,
-    "total": 57,
-    "accuracy": 0.8947368421052632
+    "correct": 84,
+    "total": 100,
+    "accuracy": 0.84
   },
   "humaneval": {
     "passed": 19,

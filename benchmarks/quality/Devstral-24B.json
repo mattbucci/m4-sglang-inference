@@ -1,11 +1,11 @@
 {
   "tag": "Devstral-24B",
-  "timestamp": "2026-05-11 15:04",
+  "timestamp": "2026-05-11 16:24",
   "max_context": 32768,
   "mmlu": {
-    "correct": 43,
-    "total": 57,
-    "accuracy": 0.7543859649122807
+    "correct": 71,
+    "total": 100,
+    "accuracy": 0.71
   },
   "humaneval": {
     "passed": 11,
