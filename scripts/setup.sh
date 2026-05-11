@@ -110,6 +110,14 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "  Installing additional dependencies..."
     pip install openai requests matplotlib
+
+    # Pin torchcodec to 0.8 — pyproject's 0.11.1 ships dylibs that link
+    # against libavutil.{56,57,58,60} (FFmpeg 4/5/6/8). On macOS with brew
+    # FFmpeg 7 (libavutil.59) every server boot spams a stack trace per
+    # mismatched dylib. 0.8 has core for libavutil.59 and works once
+    # DYLD_LIBRARY_PATH points at /opt/homebrew/opt/ffmpeg/lib (handled
+    # in scripts/common.sh::setup_mlx_env).
+    pip install --force-reinstall --no-deps torchcodec==0.8
 else
     echo "[2/3] Skipping venv creation"
     activate_venv

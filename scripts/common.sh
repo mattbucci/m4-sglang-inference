@@ -49,6 +49,17 @@ setup_mlx_env() {
     # Allow context length override beyond model's default max.
     # Required for 256K context on models with shorter native limits.
     export SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1
+
+    # torchcodec ships libtorchcodec_core{4..8}.dylib that link against the
+    # libavutil from FFmpeg {4..8}. We have brew FFmpeg 7 (libavutil.59);
+    # torchcodec finds it only when DYLD_LIBRARY_PATH points at brew's lib
+    # dir. Without this, every server boot spams a stack trace per dylib.
+    # macOS strips DYLD_* from inherited env in some paths, so set both.
+    local FFMPEG_LIB="/opt/homebrew/opt/ffmpeg/lib"
+    if [ -d "$FFMPEG_LIB" ]; then
+        export DYLD_LIBRARY_PATH="$FFMPEG_LIB${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+        export DYLD_FALLBACK_LIBRARY_PATH="$FFMPEG_LIB${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+    fi
 }
 
 # System info
