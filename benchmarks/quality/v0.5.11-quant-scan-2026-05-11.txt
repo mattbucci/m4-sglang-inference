@@ -1,0 +1,43 @@
+=== mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit ===
+FAILED: 10/386 quantized layers broken
+
+=== mlx-community/Qwen3-30B-A3B-4bit ===
+OK: all 386 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/Qwen3-32B-4bit ===
+OK: all 449 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit ===
+OK: all 285 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/Qwen3.5-27B-4bit ===
+OK: all 498 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/Qwen3.5-9B-MLX-8bit ===
+OK: all 250 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/gemma-4-26b-a4b-it-4bit ===
+OK: all 327 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/gemma-4-31b-it-mxfp4 ===
+OK: all 411 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/Qwen3.6-35B-A3B-4bit ===
+OK: all 512 quantized layers (weight+scales+biases) healthy
+
+=== mlx-community/Qwen3.6-27B-4bit ===
+OK: all 498 quantized layers (weight+scales+biases) healthy
+
+
+Detail on the only failing model (coder-30b):
+  [BAD] model-00003-of-00004.safetensors::model.layers.36.self_attn.k_proj
+  [BAD] model-00003-of-00004.safetensors::model.layers.36.self_attn.q_proj
+  [BAD] model-00003-of-00004.safetensors::model.layers.36.mlp.gate
+  [BAD] model-00003-of-00004.safetensors::model.layers.36.self_attn.v_proj
+  [BAD] model-00003-of-00004.safetensors::model.layers.36.self_attn.o_proj
+  [BAD] model-00004-of-00004.safetensors::model.layers.46.self_attn.v_proj
+  [BAD] model-00004-of-00004.safetensors::model.layers.46.self_attn.q_proj
+  [BAD] model-00004-of-00004.safetensors::model.layers.46.self_attn.o_proj
+  [BAD] model-00004-of-00004.safetensors::model.layers.46.self_attn.k_proj
+  [BAD] model-00004-of-00004.safetensors::model.layers.46.mlp.gate
+FAILED: 10/386 quantized layers broken
