@@ -9,3 +9,11 @@ devstral|13.9|1.9|0.4|0.2|Bad
 preset    | @64K  | prefill (s)
 coder-30b | 0.2   | 360.7
 qwen36    | 0.5   | 139.4   <- DeltaNet 2.5× faster decode, 2.6× faster prefill
+
+128K data point (chunked=2K, mem-fraction-static=0.5, turboquant, qwen36):
+- prefill: ~6.5 min for 128K
+- decode: 0.10 tok/s (per server-side gen-throughput log; bench HTTP
+  timeout at 120s severed the client before 64-token decode completed,
+  so this is a single-batch measurement, not a multi-batch average)
+- pool: 322,430 slots at bytes/slot=23040 (0.562 B/elem)
+- system: stayed stable, OOM guard quiet throughout
