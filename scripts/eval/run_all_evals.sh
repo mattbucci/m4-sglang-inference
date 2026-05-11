@@ -15,7 +15,26 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_DIR"
 
 PORT="${PORT:-23334}"
-EVAL_CMD="python scripts/eval/eval_and_chart.py --run --port $PORT --workers 1 --mmlu-samples 100 --humaneval-samples 20 --labbench-samples 25 --needle-lengths 1024,4096,16384"
+EVAL_CMD_BASE="python scripts/eval/eval_and_chart.py --run --port $PORT --workers 1 --mmlu-samples 100 --humaneval-samples 20 --labbench-samples 25 --needle-lengths 1024,4096,16384"
+
+# Per-preset eval flags. Qwen3-family models infinite-loop in <think> blocks
+# under greedy MLX decode (see project_qwen35_thinking_loop_mlx memory and
+# CLAUDE.md "Greedy sampling only" rule), so they must run with
+# enable_thinking=false — the chat_template_kwargs flag eval_and_chart wires
+# in via --no-thinking. Without it, MMLU questions burn 1024 tokens of
+# thinking trace per request and never reach an answer letter (14 tok/s
+# decode × 1024 tokens × 100 samples ≈ 2h JUST for MMLU on a 27B model).
+eval_cmd_for() {
+    local preset="$1"
+    case "$preset" in
+        qwen35|qwen35-9b-8bit|qwen3-moe|qwen3-32b|qwen36|qwen36-27b)
+            echo "$EVAL_CMD_BASE --no-thinking"
+            ;;
+        *)
+            echo "$EVAL_CMD_BASE"
+            ;;
+    esac
+}
 
 wait_for_server() {
     local max_wait=300  # MLX models load slowly
@@ -91,7 +110,9 @@ sys.exit(0 if cache_ok() else 1)
         echo "WARN: $tag failed capability validator — running quality eval anyway for the record"
     fi
 
-    PYTHONUNBUFFERED=1 $EVAL_CMD --tag "$tag" 2>&1 | tee "/tmp/eval_${preset}_results.log"
+    local eval_cmd
+    eval_cmd="$(eval_cmd_for "$preset")"
+    PYTHONUNBUFFERED=1 $eval_cmd --tag "$tag" 2>&1 | tee "/tmp/eval_${preset}_results.log"
 
     pkill -f sglang 2>/dev/null || true
     sleep 5
