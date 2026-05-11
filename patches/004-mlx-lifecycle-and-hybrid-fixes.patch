@@ -64,7 +64,7 @@ index 1d1b5065f..b89bb6e76 100644
          setattr(layer, attn_attr, MLXAttentionWrapper(attn, idx))
          patched += 1
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 4c47d67f0..654dd0ac9 100644
+index 4c47d67f0..2ccd4a998 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 @@ -25,12 +25,15 @@ from mlx_lm import load as mlx_lm_load
@@ -464,6 +464,44 @@ index 4c47d67f0..654dd0ac9 100644
          if hasattr(sample_attn, "head_dim"):
              head_dim = sample_attn.head_dim
          elif hasattr(sample_attn, "k_proj") and hasattr(sample_attn.k_proj, "weight"):
+@@ -232,15 +541,19 @@ class MlxModelRunner:
+             max(mlx_usable - mlx_used, 0),
+             int(sys_available * self._mem_fraction_static),
+         )
+-        bytes_per_slot = 2 * num_layers * n_kv_heads * head_dim * dtype.size
++        # Account for KV-cache-mode memory savings: fp16=2.0 B/elem,
++        # fp8=~1.03, turboquant=~0.56 (incl. scales/biases overhead).
++        bpe = bytes_per_element(self._kv_cache_mode)
++        bytes_per_slot = int(2 * num_layers * n_kv_heads * head_dim * bpe)
+         pool_size = max(kv_budget // bytes_per_slot, 256)
+         logger.info(
+-            f"Auto-sized KV pool: "
++            f"Auto-sized KV pool (mode={self._kv_cache_mode.value}): "
+             f"sys_available={sys_available / (1024**3):.2f} GB, "
+             f"mlx_limit={mlx_limit / (1024**3):.1f} GB, "
+             f"mlx_used={mlx_used / (1024**3):.2f} GB, "
+             f"kv_budget={kv_budget / (1024**3):.2f} GB, "
+-            f"bytes_per_slot={bytes_per_slot}, pool_size={pool_size}"
++            f"bytes_per_slot={bytes_per_slot} ({bpe:.3f} B/elem), "
++            f"pool_size={pool_size}"
+         )
+         return pool_size
+ 
+@@ -261,11 +574,13 @@ class MlxModelRunner:
+             n_kv_heads=n_kv_heads,
+             head_dim=head_dim,
+             dtype=dtype,
++            kv_cache_mode=self._kv_cache_mode,
+         )
+         logger.info(
+             f"KV pool initialized: pool_size={self._pool_size} "
+             f"(buffer size {self._pool_size + 1} incl. padding slot 0), "
+-            f"{self._num_layers} layers, {n_kv_heads} kv_heads, {head_dim} head_dim"
++            f"{self._num_layers} layers, {n_kv_heads} kv_heads, {head_dim} head_dim, "
++            f"mode={self._kv_cache_mode.value}"
+         )
+ 
+     def prefill(
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
 index 3dd8520f2..664b93469 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
