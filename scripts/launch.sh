@@ -29,12 +29,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-# --- Defaults (overridden by model preset, then by CLI flags) ---
+# --- Defaults (overridden by model preset, then env vars, then CLI flags) ---
 MODEL="${MODEL:-}"
 TOKENIZER=""
-CTX=32768
-MAX_RUNNING=8
-CHUNKED=4096
+CTX="${CTX:-32768}"
+MAX_RUNNING="${MAX_RUNNING:-8}"
+CHUNKED="${CHUNKED:-4096}"
 CHAT_TEMPLATE=""
 REASONING=""
 WARMUP=""
@@ -189,8 +189,12 @@ if [[ -z "$PRESET" ]]; then
     exit 1
 fi
 
-# Apply preset first, then CLI overrides
+# Env-var overrides take precedence over the preset (so callers can do
+# `CTX=80000 ./scripts/launch.sh coder-30b` without editing the preset).
+# CLI flags still beat env vars below.
+ENV_CTX="${CTX:-}"
 apply_preset "$PRESET"
+[[ -n "$ENV_CTX" ]] && CTX="$ENV_CTX"
 [[ -n "$CLI_CTX" ]] && CTX="$CLI_CTX"
 [[ -n "$CLI_PORT" ]] && PORT="$CLI_PORT"
 [[ -n "$CLI_MAX_RUNNING" ]] && MAX_RUNNING="$CLI_MAX_RUNNING"

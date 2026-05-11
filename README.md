@@ -155,7 +155,25 @@ Single-user decode speed at 128 / 4K / 16K context. fp16 KV (default — turboqu
 
 \*Gemma 4 presets ship with `CTX=4096` (tight 64 GB budget) — 16K requests rejected. Raise via `CTX=16384 bash scripts/launch.sh gemma4` for the longer-context numbers. Raw bench logs: `/tmp/perf_<preset>_bench.log`.
 
-### Pre-rebase 256K results (turboquant, fp8) — kept for context
+### v0.5.11 long-context turboquant sweep (2026-05-11)
+
+Decode tok/s under the turboquant KV cache wired up in patch 008. 5 models × 5 context lengths (128 → 64K), single user, radix cache disabled.
+
+| Preset | @128 | @4K | @16K | @32K | @64K |
+|--------|:----:|:---:|:----:|:----:|:----:|
+| qwen3-moe (Qwen3-30B-A3B) | 58.7 | 10.3 | 1.7 | 0.6 | — \* |
+| coder-30b (Qwen3-Coder-30B) | 58.3 | 10.4 | 1.8 | 0.6 | — \* |
+| qwen36 (Qwen3.6-35B-A3B MoE+DN+VL) | 52.9 | 11.0 | 2.8 | **1.2** | — \* |
+| qwen36-27b (Qwen3.6-27B Dense+DN+VL) | 11.7 | 1.6 | 0.4 | 0.2 | — \* |
+| devstral (24B Dense) | 13.9 | 1.9 | 0.4 | 0.2 | — \* |
+
+\*64K runs rejected with HTTP 400 because the preset `CTX=32768` overrode the env var (`CTX=80000 launch.sh`). Fixed in `scripts/launch.sh` for follow-up — env vars now beat the preset's `CTX=` assignment.
+
+**Headline: turboquant works.** Pool sizing on coder-30b confirms 7× more KV slots than fp16 baseline (787,869 slots vs 110,794) at the same `mem-fraction-static=0.7`. Validation `2/2 PASS` — output identical to fp16 within tolerance. Decode tok/s at short context is within 1% of fp16 (58.3 vs 57.9 on coder-30b @128). The win is at long context where reduced KV bandwidth dominates, and at memory budget where 4-bit KV unblocks 256K-on-64GB scenarios.
+
+**Notable: DeltaNet O(1) layers visible at 32K.** Qwen3.6-35B-A3B's MoE+DeltaNet hybrid maintains 1.2 tok/s @ 32K — 2× the speed of the MoE-only coder-30b/qwen3-moe (0.6 tok/s @ 32K). The hybrid linear-attention layers don't pay the full O(n) KV-read cost on every decode token.
+
+### Pre-rebase 256K results (turboquant, fp8) — archived for comparison
 
 | Model | tok/s @128 | tok/s @64K | tok/s @256K | KV pool |
 |-------|:----------:|:----------:|:-----------:|:-------:|
@@ -168,7 +186,7 @@ Single-user decode speed at 128 / 4K / 16K context. fp16 KV (default — turboqu
 | Gemma 4 26B | 58.8 | 3.0 | **1.5** | 48% |
 | Gemma 4 31B-it (post-015, turboquant) | 8.6 | OOM @ 16K | — | 100K |
 
-The pre-rebase 256K numbers were taken on the old `1f8df97` stack with turboquant active. On the v0.5.11 stack turboquant is currently inactive (Active work #2) — that's why the post-rebase short-sweep table above uses fp16 KV. The pre-rebase 256K table will be re-run on v0.5.11 once turboquant integration ships. The 3.9 tok/s @ 256K Qwen3.5 number we cited pre-patch013 was misleading — that bench ran on broken DeltaNet inference (fluent garbage, MMLU 16.7%); post-013 the real number is 0.07 tok/s @ 250K. Sister R9700 hits 13.3 tok/s @ 262K on Qwen3.6 — discrete-GPU compute advantage at long context dwarfs M4's unified-memory win for MoE+DeltaNet stacks.
+These pre-rebase numbers were taken on the old `1f8df97` stack with turboquant active. The v0.5.11 turboquant sweep above replaces them up to 32K; the 64K + 256K columns are pending the preset-CTX env-override fix (now in place). The 3.9 tok/s @ 256K Qwen3.5 number we cited pre-patch013 was misleading — that bench ran on broken DeltaNet inference (fluent garbage, MMLU 16.7%); post-013 the real number is 0.07 tok/s @ 250K. Sister R9700 hits 13.3 tok/s @ 262K on Qwen3.6 — discrete-GPU compute advantage at long context dwarfs M4's unified-memory win for MoE+DeltaNet stacks.
 
 ### Throughput scaling (256 in / 256 out, 8 K context)
 
