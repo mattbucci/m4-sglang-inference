@@ -221,6 +221,53 @@ def needle_eval(chat_url, lengths=[1024, 4096, 16384, 65536], max_tokens=512):
     return {"results": results, "score": sum(r["found"] for r in results) / len(results)}
 
 
+def _mmlu_cache_ok(d, expected_n):
+    """Cached MMLU is reusable when sample size matches and accuracy is plausible."""
+    if not d or d.get("total", 0) == 0:
+        return False
+    if d["total"] != expected_n:
+        return False
+    # Random-guess baseline on 4-choice is 25%. Anything ≤5% means every request
+    # failed (server crashed mid-eval) — treat as invalid.
+    return d.get("accuracy", 0) > 0.05
+
+
+def _humaneval_cache_ok(d, expected_n):
+    """Cached HumanEval is reusable when sample size matches and pass rate is plausible."""
+    if not d or d.get("total", 0) == 0:
+        return False
+    if d["total"] != expected_n:
+        return False
+    # 0% pass@1 is technically possible for a broken model, but combined with
+    # 0% on MMLU it indicates a crash. Caller checks MMLU first; if that's
+    # invalid, this also gets re-run via the corrupt-run detector.
+    return True
+
+
+def _labbench_cache_ok(d, expected_n):
+    """Cached LAB-Bench is reusable when each benchmark's sample size matches."""
+    if not d or not d.get("_overall"):
+        return False
+    for bench in LAB_BENCH_BENCHMARKS:
+        if bench not in d:
+            return False
+        if d[bench].get("total", 0) != expected_n:
+            return False
+    # Detect "every benchmark scored 0/expected_n" — that's a crash, not a
+    # legitimate result.
+    if d["_overall"].get("correct", 0) == 0:
+        return False
+    return True
+
+
+def _needle_cache_ok(d, expected_lengths):
+    """Cached Needle is reusable when context lengths match."""
+    if not d or not d.get("results"):
+        return False
+    cached_lengths = [r["context"] for r in d["results"]]
+    return cached_lengths == list(expected_lengths)
+
+
 def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50,
              needle_lengths=[1024, 4096, 16384, 65536], workers=1):
     base_url = f"http://localhost:{port}"
@@ -242,48 +289,58 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50,
     else:
         results = {"tag": tag, "timestamp": time.strftime("%Y-%m-%d %H:%M"), "max_context": max_ctx}
 
+    # Whole-run corruption detector: if MMLU shows ≤5% (below random guessing),
+    # the server probably died mid-eval and the rest of the sections are also
+    # bogus zeroes. Invalidate everything so we get a clean re-run.
+    if "mmlu" in results and results["mmlu"].get("total", 0) > 0 \
+            and results["mmlu"].get("accuracy", 0) <= 0.05:
+        print(f"\n[cache] {tag}: MMLU={results['mmlu']['accuracy']:.1%} ≤ 5% — "
+              f"prior run looks corrupt, invalidating all cached sections.")
+        for k in ("mmlu", "humaneval", "labbench", "needle"):
+            results.pop(k, None)
+
     def save():
         with open(outfile, "w") as f:
             json.dump(results, f, indent=2)
 
-    if "mmlu" not in results or results["mmlu"].get("total", 0) == 0:
+    if not _mmlu_cache_ok(results.get("mmlu"), mmlu_n):
         print(f"\nMMLU ({mmlu_n} samples)...")
         results["mmlu"] = mmlu_eval(chat_url, mmlu_n, max_workers=workers, max_tokens=mc_budget)
         print(f"  {results['mmlu']['accuracy']:.1%}")
         save()
     else:
-        print(f"\nMMLU: {results['mmlu']['accuracy']:.1%} (cached)")
+        print(f"\nMMLU: {results['mmlu']['accuracy']:.1%} (cached, {results['mmlu']['total']} samples)")
 
-    if "humaneval" not in results or results["humaneval"].get("total", 0) == 0:
+    if not _humaneval_cache_ok(results.get("humaneval"), he_n):
         print(f"\nHumanEval ({he_n} samples)...")
         results["humaneval"] = humaneval_eval(chat_url, he_n, max_workers=workers, max_tokens=code_budget)
         print(f"  {results['humaneval']['pass_rate']:.1%}")
         save()
     else:
-        print(f"\nHumanEval: {results['humaneval']['pass_rate']:.1%} (cached)")
+        print(f"\nHumanEval: {results['humaneval']['pass_rate']:.1%} (cached, {results['humaneval']['total']} samples)")
 
     if labbench_n <= 0:
         print(f"\nLAB-Bench: skipped (labbench_n={labbench_n})")
-    elif "labbench" not in results or not results["labbench"].get("_overall"):
+    elif not _labbench_cache_ok(results.get("labbench"), labbench_n):
         print(f"\nLAB-Bench ({labbench_n} samples per benchmark, {len(LAB_BENCH_BENCHMARKS)} benchmarks)...")
         results["labbench"] = labbench_suite(chat_url, n_samples=labbench_n, max_workers=workers, max_tokens=mc_budget)
         print(f"  Overall: {results['labbench']['_overall']['accuracy']:.1%}")
         save()
     else:
         lb = results["labbench"]
-        print(f"\nLAB-Bench: {lb['_overall']['accuracy']:.1%} (cached)")
+        print(f"\nLAB-Bench: {lb['_overall']['accuracy']:.1%} (cached, {labbench_n} per bench)")
         for bench in LAB_BENCH_BENCHMARKS:
             if bench in lb:
                 print(f"    {bench}: {lb[bench]['accuracy']:.1%}")
 
-    if "needle" not in results or not results["needle"].get("results"):
+    if not _needle_cache_ok(results.get("needle"), needle_lengths):
         print(f"\nNeedle ({needle_lengths})...")
         results["needle"] = needle_eval(chat_url, needle_lengths, max_tokens=mc_budget)
         for r in results["needle"]["results"]:
             print(f"  {r['context']:>6d}: {'OK' if r['found'] else 'MISS'}")
         save()
     else:
-        print(f"\nNeedle: {results['needle']['score']:.1%} (cached)")
+        print(f"\nNeedle: {results['needle']['score']:.1%} (cached, {len(needle_lengths)} lengths)")
 
     print(f"\nSaved to {outfile}")
     return results
@@ -389,6 +446,9 @@ if __name__ == "__main__":
                         help="Pass chat_template_kwargs={'enable_thinking': false} to every "
                              "request. Required for Qwen3 family on greedy MLX to avoid "
                              "infinite <think> loops.")
+    parser.add_argument("--invalidate", action="store_true",
+                        help="Drop any existing JSON for this tag before running, "
+                             "forcing a full re-eval.")
     args = parser.parse_args()
 
     if args.no_thinking:
@@ -396,6 +456,12 @@ if __name__ == "__main__":
         # Re-bind module global so _post() picks it up.
         import sys as _sys
         _sys.modules[__name__]._chat_template_kwargs = _chat_template_kwargs
+
+    if args.invalidate:
+        outfile = RESULTS_DIR / f"{args.tag.replace(' ', '_')}.json"
+        if outfile.exists():
+            print(f"--invalidate: removing {outfile}")
+            outfile.unlink()
 
     if args.run:
         lengths = [int(x) for x in args.needle_lengths.split(",")]
