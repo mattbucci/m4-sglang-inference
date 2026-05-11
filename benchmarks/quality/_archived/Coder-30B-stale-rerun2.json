@@ -1,0 +1,74 @@
+{
+  "tag": "Coder-30B",
+  "timestamp": "2026-05-11 14:21",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 51,
+    "total": 57,
+    "accuracy": 0.8947368421052632
+  },
+  "humaneval": {
+    "passed": 19,
+    "total": 20,
+    "pass_rate": 0.95
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "DbQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "SuppQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "TableQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "ProtocolQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 8,
+      "total": 175,
+      "accuracy": 0.045714285714285714
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": false
+      },
+      {
+        "context": 4096,
+        "found": false
+      },
+      {
+        "context": 16384,
+        "found": false
+      }
+    ],
+    "score": 0.0
+  }
+}

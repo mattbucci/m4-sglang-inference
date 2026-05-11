@@ -1,0 +1,15 @@
+{
+  "tag": "Coder-30B",
+  "timestamp": "2026-05-11 14:21",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 51,
+    "total": 57,
+    "accuracy": 0.8947368421052632
+  },
+  "humaneval": {
+    "passed": 19,
+    "total": 20,
+    "pass_rate": 0.95
+  }
+}
