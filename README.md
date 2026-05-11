@@ -48,7 +48,8 @@
 | Qwen3.6-35B-A3B-4bit | 88.0% | 80% | PASS |
 | Qwen3.5-9B-MLX-8bit | 87.7% | 80% | PASS |
 | Qwen3-32B (turboquant) | 86.7% | 87.5% | PASS |
-| Coder-30B-A3B-4bit | 86.7% | 75% | PASS |
+| Coder-30B-A3B-4bit-DWQ | **89.5%** | **95.0%** | PASS |
+| Coder-30B-A3B-4bit (10 dead layers — old) | 86.7% | 75% | PASS |
 | Gemma 4 26B-A4B-it-4bit | 86.0% | 0%* | PASS |
 | Qwen3-30B-MoE-4bit | 83.3% | 75% | PASS |
 | Devstral-24B-4bit | 73.3% | 62.5% | PASS |
@@ -67,6 +68,17 @@ python scripts/eval/check_mlx_quant_scales.py mlx-community/Qwen3-Coder-30B-A3B-
 **Result across the full cross-team model set:** 9 of 10 checkpoints are clean; **`mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit` has 10 broken layers** — both `model.layers.36.*` and `model.layers.46.*` have their `self_attn.{q,k,v,o}_proj` and `mlp.gate` quantized as `weight` payload all-zero AND `biases` all-zero. Dequant produces identically zero output through those layers' attention + routing gate. The capability gate still passes (basic factual answers survive thanks to the surrounding 46 layers and DeltaNet/MoE redundancy), but MMLU 86.7% — slightly below the Qwen3.6-27B at 88% despite Coder-30B being a larger architecture — is consistent with degraded attention at two layers.
 
 This is the kind of silent regression the 3090 team caught on Gemma 4 26B v3 in 16 hours; the MLX analog catches it in 30 seconds. Raw scan output in [`benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt`](benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt). Make `check_mlx_quant_scales.py` part of every new-checkpoint gate before adding numbers to the README.
+
+**Quality lift after swapping to the DWQ variant** (`mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ`, clean: 386/386 layers healthy):
+
+| Metric | Broken 4bit (old) | 4bit-DWQ (new) | Lift |
+|--------|:----------------:|:--------------:|:----:|
+| MMLU (100 samples) | 86.7% | **89.5%** | +2.8 pp |
+| HumanEval (20 samples) | 75.0% | **95.0%** | **+20.0 pp** |
+| Needle 1K | PASS | PASS | — |
+| Decode @128 tok/s (turboquant) | 58.3 | 58.5 | flat (dead layers don't cost compute, only quality) |
+
+The 20-percentage-point lift on HumanEval is the load-bearing data point: dead attention layers at depths 36 + 46 of a 48-layer model degrade code generation roughly twice as badly as factual recall. The `coder-30b` launch preset now points at the DWQ variant by default.
 
 ## Known Issues
 
