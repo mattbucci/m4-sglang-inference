@@ -1,6 +1,6 @@
 {
   "tag": "Coder-30B-DWQ",
-  "timestamp": "2026-05-11 11:49",
+  "timestamp": "2026-05-11 14:55",
   "max_context": 32768,
   "mmlu": {
     "correct": 51,
@@ -17,8 +17,58 @@
       {
         "context": 1024,
         "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
       }
     ],
     "score": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 9,
+      "total": 25,
+      "accuracy": 0.36
+    },
+    "DbQA": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "SuppQA": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "TableQA": {
+      "correct": 6,
+      "total": 25,
+      "accuracy": 0.24
+    },
+    "ProtocolQA": {
+      "correct": 5,
+      "total": 25,
+      "accuracy": 0.2
+    },
+    "SeqQA": {
+      "correct": 12,
+      "total": 25,
+      "accuracy": 0.48
+    },
+    "CloningScenarios": {
+      "correct": 6,
+      "total": 25,
+      "accuracy": 0.24
+    },
+    "_overall": {
+      "correct": 54,
+      "total": 175,
+      "accuracy": 0.30857142857142855
+    }
   }
 }
