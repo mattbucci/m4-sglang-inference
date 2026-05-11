@@ -164,7 +164,9 @@ Single-user decode speed at 128 / 4K / 16K context. fp16 KV (default — turboqu
 
 ### v0.5.11 long-context turboquant sweep (2026-05-11)
 
-Decode tok/s under the turboquant KV cache wired up in patch 008. 5 models × 5 context lengths (128 → 64K), single user, radix cache disabled.
+![v0.5.11 turboquant long-context chart](benchmarks/quality/v0.5.11-longctx-turboquant.png)
+
+Decode tok/s under the turboquant KV cache wired up in patch 008. 5 models × up to 6 context lengths (128 → 128K), single user, radix cache disabled.
 
 | Preset | @128 | @4K | @16K | @32K | @64K |
 |--------|:----:|:---:|:----:|:----:|:----:|
