@@ -134,7 +134,26 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 > **Context sweep**: single user, 64 output tokens, radix cache disabled, FP8 or TurboQuant KV cache.
 > **Concurrency sweep**: 256 in / 256 out, 8 K context, scaling concurrent users.
 
-### 256K context results
+### v0.5.11 short-sweep decode tok/s (2026-05-11, full cross-team set, fp16 KV)
+
+Single-user decode speed at 128 / 4K / 16K context. fp16 KV (default — turboquant integration still pending on v0.5.11). Output 64 tokens, radix cache disabled.
+
+| Preset | Model | tok/s @128 | tok/s @4K | tok/s @16K |
+|--------|-------|:----------:|:---------:|:----------:|
+| coder-30b | Qwen3-Coder-30B-A3B-Instruct-4bit (MoE) | **57.9** | 10.3 | 1.7 |
+| qwen3-moe | Qwen3-30B-A3B-4bit (MoE) | **59.2** | 10.5 | 1.7 |
+| qwen36 | Qwen3.6-35B-A3B-4bit (MoE+DeltaNet+VL) | **52.5** | 11.0 | 2.6 |
+| gemma4 | gemma-4-26b-a4b-it-4bit (MoE, ctx=4K preset) | **47.5** | 8.7 | n/a* |
+| qwen35-9b-8bit | Qwen3.5-9B-MLX-8bit (DeltaNet) | 23.7 | 5.0 | 1.3 |
+| devstral | Devstral-Small-2-24B-2512-4bit (Dense+VLM) | 14.2 | 2.0 | 0.5 |
+| qwen36-27b | Qwen3.6-27B-4bit (Dense DeltaNet+VL, **new**) | 11.7 | 1.6 | 0.4 |
+| qwen35 | Qwen3.5-27B-4bit (DeltaNet) | 11.8 | 1.7 | 0.4 |
+| gemma4-31b | gemma-4-31b-it-mxfp4 (Dense, ctx=4K preset) | 10.4 | 1.3 | n/a* |
+| qwen3-32b | Qwen3-32B-4bit (Dense) | 10.0 | 1.3 | 0.3 |
+
+\*Gemma 4 presets ship with `CTX=4096` (tight 64 GB budget) — 16K requests rejected. Raise via `CTX=16384 bash scripts/launch.sh gemma4` for the longer-context numbers. Raw bench logs: `/tmp/perf_<preset>_bench.log`.
+
+### Pre-rebase 256K results (turboquant, fp8) — kept for context
 
 | Model | tok/s @128 | tok/s @64K | tok/s @256K | KV pool |
 |-------|:----------:|:----------:|:-----------:|:-------:|
@@ -147,7 +166,7 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 | Gemma 4 26B | 58.8 | 3.0 | **1.5** | 48% |
 | Gemma 4 31B-it (post-015, turboquant) | 8.6 | OOM @ 16K | — | 100K |
 
-The 3.9 tok/s @ 256K Qwen3.5 number we cited pre-patch013 was misleading — that bench ran on broken DeltaNet inference (fluent garbage, MMLU 16.7%). Post-013 the real number is 0.07 tok/s @ 250K. Sister R9700 hits 13.3 tok/s @ 262K on Qwen3.6 — discrete-GPU compute advantage at long context dwarfs M4's unified-memory win for MoE+DeltaNet stacks.
+The pre-rebase 256K numbers were taken on the old `1f8df97` stack with turboquant active. On the v0.5.11 stack turboquant is currently inactive (Active work #2) — that's why the post-rebase short-sweep table above uses fp16 KV. The pre-rebase 256K table will be re-run on v0.5.11 once turboquant integration ships. The 3.9 tok/s @ 256K Qwen3.5 number we cited pre-patch013 was misleading — that bench ran on broken DeltaNet inference (fluent garbage, MMLU 16.7%); post-013 the real number is 0.07 tok/s @ 250K. Sister R9700 hits 13.3 tok/s @ 262K on Qwen3.6 — discrete-GPU compute advantage at long context dwarfs M4's unified-memory win for MoE+DeltaNet stacks.
 
 ### Throughput scaling (256 in / 256 out, 8 K context)
 
