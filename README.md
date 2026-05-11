@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang `1f8df97` (post-v0.5.10 main) + 7 numbered patches + in-tree mods 008–015 (see [patches/README.md](patches/README.md)).
+256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 7 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11, so the patch set is now 7 instead of 13.
 
 ## Current Focus (2026-05-11)
 
@@ -173,16 +173,15 @@ Manually:
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 git clone https://github.com/sgl-project/sglang.git components/sglang
-cd components/sglang && git checkout 1f8df9705
-for p in ../../patches/00*.patch; do git apply "$p"; done
-python ../../patches/post_apply.py    # in-tree mods 008–015
+cd components/sglang && git checkout v0.5.11
+for p in ../../patches/00[2-9]-*.patch; do git apply "$p"; done
 cd python && cp pyproject_other.toml pyproject.toml
 pip install -e ".[srt_mps]"
 ```
 
 | Component | Version |
 |-----------|---------|
-| SGLang | `1f8df9705` (post-v0.5.10 main) + 7 patches + 8 in-tree mods |
+| SGLang | **v0.5.11** (`612785ffd`) + 7 patches |
 | MLX | 0.31.1 |
 | mlx-lm | 0.31.2 |
 | PyTorch | 2.9.1 (MPS) |
@@ -190,28 +189,24 @@ pip install -e ".[srt_mps]"
 
 ## Patches
 
-7 numbered patches on top of SGLang `1f8df9705`, plus 8 in-tree mods (008–015) carried by `patches/post_apply.py` so fresh installs reproduce the working stack. See [patches/README.md](patches/README.md) for full per-patch notes and [patches/REBASE-v0.5.11-NOTES.md](patches/REBASE-v0.5.11-NOTES.md) for the upcoming v0.5.11 rebase plan.
+7 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). All patches apply via `git apply` against a clean v0.5.11 — no more `post_apply.py`. See [patches/README.md](patches/README.md) for the per-patch breakdown and [patches/REBASE-v0.5.11-NOTES.md](patches/REBASE-v0.5.11-NOTES.md) for the rebase narrative.
 
 | # | Patch | What |
 |:-:|-------|------|
-| 001 | mlx-radix-cache | Metal-native `MlxKVPool`, `ContiguousKVCache`, zero-copy prefix gather, batched attention for BS>1 decode. ~100× prefill on cache hits. (Mostly upstreamed in v0.5.11.) |
-| 002 | mps-backend-defaults | Disable CUDA graph, force `torch_native` attention, disable VLM by default. |
+| 002 | mps-backend-defaults | Disable CUDA graph & piecewise CUDA on MPS, force `torch_native` attention, multimodal off by default. |
 | 003 | mlx-skip-quantization-check | Skip SGLang's quantization verify when MLX backend is active. |
-| 004 | mlx-lifecycle-and-hybrid-fixes | Request lifecycle + DeltaNet/Mamba hybrid cache wiring. |
-| 005 | mlx-attn-wrapper-varargs | Devstral varargs forward-pass compat. |
-| 006 | mlx-offsetcache-subscript | `OffsetCache` `__getitem__` shim for concurrent decode. |
-| 007 | mlx-vlm-fallback | Route VLM-type loads through `mlx_vlm` via a `_TextOnlyVLMShim`. |
-| 008–012 | in-tree | VLM image/tensor handoff; serial DeltaNet decode (MAX_RUNNING=1). |
-| 013 | in-tree | Route hybrid cache via `model.language_model.make_cache()` for VLM-wrapped DeltaNet — fixes MMLU 16.7% → 93.0%. |
-| 014 | in-tree | `ContiguousKVCache.make_mask` returns explicit `(N, offset+N)` array when `offset>0`. Unblocks chunked prefill at large context. |
-| 015 | in-tree | Keep `RotatingKVCache` native for Gemma 4 sliding layers; full cache reset on pool reuse. |
+| 004 | mlx-lifecycle-and-hybrid-fixes | Lifecycle (clear-on-idle, drop-on-finish) + hybrid-model bookkeeping + **patch 013** hybrid cache via `language_model.make_cache()` (Qwen3.5/3.6 MMLU 16.7%→93%) + **patch 015** keep `RotatingKVCache` native (Gemma 4 sliding) + VLM-detect-first `_load_model` with image-aware shim + RoPE auto-scaling. Hybrid-aware `find_attention_layers` so DeltaNet-first layer orderings don't crash; `_get_attn_config` accepts both `n_kv_heads` (mlx_lm) and `num_key_value_heads` (mlx_vlm). |
+| 005 | mlx-attn-wrapper-varargs | Devstral / Ministral3 `attn_scale` positional-arg compat. |
+| 006 | mlx-offsetcache-and-make-mask | `OffsetCache.__getitem__`/`__setitem__`/`__len__`/`lengths`/`advance` stubs for hybrid decode + **patch 014** explicit `(N, offset+N)` `make_mask` when `offset>0` (chunked prefill). |
+| 007 | mlx-multimodal-and-mps-shim | `_mps_stub` cuda→cpu redirect, `mm_utils` shm page-rounding (macOS 16 KB pages), `Modality.MULTI_IMAGES` enum member. |
+| 008 | mlx-kv-quant-module | New `kv_quant.py` — `KVCacheMode`, `KVQuantizer`, `bytes_per_element`, `parse_kv_cache_mode` (fp8/mxfp8/turboquant/tq/4bit aliases). Wired into `MlxModelRunner.__init__` via `kv_cache_mode` + `context_length` kwargs; ContiguousKVCache + MlxKVPool wire-up TBD. |
 
 ## Repo layout
 
 ```
 patches/                    # SGLang patches — see patches/README.md
   00*.patch                 #   7 numbered patches
-  post_apply.py             #   in-tree mods 008–015 (for fresh installs)
+  REBASE-v0.5.11-NOTES.md   #   v0.5.11 rebase strategy & lineage
   REBASE-v0.5.11-NOTES.md   #   upcoming SGLang version bump plan
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle (chart)
