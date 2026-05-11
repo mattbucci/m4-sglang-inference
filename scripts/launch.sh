@@ -93,11 +93,11 @@ apply_preset() {
             # video_grid_thw / second_per_grid_ts already flow through tp_worker
             # mm_extra_kwargs path (see SGLang commit 2a327f0 for upstream fix).
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
-            # MAX_RUNNING=1: DeltaNet batched decode crashes on cache shape
-            # mismatch (see project_qwen35_deltanet_decode_crash). Serial
-            # decode path works AND produces correct output now that
-            # patch 013 routes hybrid cache via language_model.make_cache.
-            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
+            # MAX_RUNNING=4: hybrid serial-per-request decode fallback +
+            # always-fresh hybrid cache (no pool reuse) unblocks concurrent
+            # decode on DeltaNet hybrids. Verified 2026-05-11 with 2-way
+            # concurrent prompts returning correct outputs on Qwen3.5-27B.
+            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"
@@ -108,7 +108,7 @@ apply_preset() {
             # correctness. Better quality/memory tradeoff than 27B-4bit for
             # most workloads (~10 GB resident vs ~14 GB).
             MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
-            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
+            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"
@@ -143,7 +143,7 @@ apply_preset() {
             # this as their flagship 256K agentic model. Vision + VIDEO capable
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
-            CTX=32768; MAX_RUNNING=1; CHUNKED=4096
+            CTX=32768; MAX_RUNNING=4; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
@@ -153,7 +153,7 @@ apply_preset() {
             # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
             # as qwen35 / qwen36 (patches 013/015 load-bearing).
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
-            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
+            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
@@ -199,11 +199,15 @@ if [[ -z "$PRESET" ]]; then
 fi
 
 # Env-var overrides take precedence over the preset (so callers can do
-# `CTX=80000 ./scripts/launch.sh coder-30b` without editing the preset).
-# CLI flags still beat env vars below.
+# `CTX=80000 MAX_RUNNING=4 ./scripts/launch.sh coder-30b` without editing
+# the preset). CLI flags still beat env vars below.
 ENV_CTX="${CTX:-}"
+ENV_MAX_RUNNING="${MAX_RUNNING:-}"
+ENV_CHUNKED="${CHUNKED:-}"
 apply_preset "$PRESET"
 [[ -n "$ENV_CTX" ]] && CTX="$ENV_CTX"
+[[ -n "$ENV_MAX_RUNNING" ]] && MAX_RUNNING="$ENV_MAX_RUNNING"
+[[ -n "$ENV_CHUNKED" ]] && CHUNKED="$ENV_CHUNKED"
 [[ -n "$CLI_CTX" ]] && CTX="$CLI_CTX"
 [[ -n "$CLI_PORT" ]] && PORT="$CLI_PORT"
 [[ -n "$CLI_MAX_RUNNING" ]] && MAX_RUNNING="$CLI_MAX_RUNNING"

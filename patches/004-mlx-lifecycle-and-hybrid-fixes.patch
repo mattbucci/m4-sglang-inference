@@ -64,7 +64,7 @@ index 1d1b5065f..b89bb6e76 100644
          setattr(layer, attn_attr, MLXAttentionWrapper(attn, idx))
          patched += 1
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 4c47d67f0..2ccd4a998 100644
+index 4c47d67f0..81a8cb412 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 @@ -25,12 +25,15 @@ from mlx_lm import load as mlx_lm_load
@@ -109,7 +109,20 @@ index 4c47d67f0..2ccd4a998 100644
  
          # Pin MLX allocations to prevent OS paging
          device_info = mx.device_info()
-@@ -141,13 +153,91 @@ class MlxModelRunner:
+@@ -123,6 +135,12 @@ class MlxModelRunner:
+         self._num_layers = get_num_layers(self.model)
+         self._max_seq_len = 4096  # doubles on overflow
+ 
++        # Detect hybrid (DeltaNet / mamba / GDN) models — their layers
++        # alternate per-layer cache types, so the batched-decode path's
++        # uniform OffsetCache shim breaks the recurrent state. Falls
++        # back to serial-per-request decode at batch > 1.
++        self._is_hybrid_model = self._detect_hybrid()
++
+         self._req_caches: dict[str, list[ContiguousKVCache | PoolBackedCache]] = {}
+         self._req_token_ids: dict[str, list[int]] = {}
+         self._cache_pool: list[list[ContiguousKVCache]] = []  # reusable caches
+@@ -141,22 +159,183 @@ class MlxModelRunner:
              return model_output[0]
          return model_output
  
@@ -125,7 +138,19 @@ index 4c47d67f0..2ccd4a998 100644
 +        attention. For VLM-wrapped hybrids loaded via ``mlx_vlm.load``,
 +        ``make_cache`` lives on ``self.model.language_model`` rather than
 +        the outer wrapper.
++
++        Hybrid models also bypass the pool: ``ArraysCache`` carries enough
++        internal state (``cache`` list, ``lengths``, possible internal
++        positional buffers we don't introspect) that pool-reuse repeatedly
++        crashes with broadcast-shape errors of the form
++        ``(B, heads, S_stale, D) vs (B, 1, S_new, D)``. Always-fresh
++        ``make_cache()`` per request is a small per-prefill allocation cost
++        and avoids the class of bug entirely. The fp16/turboquant
++        non-hybrid pool reuse path is unaffected.
 +        """
++        if self._is_hybrid_model:
++            return self._build_fresh_cache()
++
          if self._cache_pool:
              cache = self._cache_pool.pop()
 +            # Reset any state the cache type allows so a returned cache
@@ -161,6 +186,18 @@ index 4c47d67f0..2ccd4a998 100644
 +                        c.cache = [None for _ in c.cache]
 +                    except Exception:
 +                        pass
++                    # Also reset the length tracker — DeltaNet's GatedDeltaNet
++                    # branches on ``cache.lengths is not None`` to decide
++                    # whether to advance the conv_state pointer. A stale
++                    # tensor from a prior request causes a broadcast
++                    # mismatch on the next prefill (e.g. (1,24,26,64) vs
++                    # (1,1,24,64) — the cache thinks it already has 2
++                    # tokens cached but we just gave it 24 fresh ones).
++                    if hasattr(c, "lengths"):
++                        try:
++                            c.lengths = None
++                        except Exception:
++                            pass
              return cache
 +
 +        # Check if model has make_cache (hybrid models like DeltaNet).
@@ -204,7 +241,76 @@ index 4c47d67f0..2ccd4a998 100644
          return [
              ContiguousKVCache(max_seq_len=self._max_seq_len)
              for _ in range(self._num_layers)
-@@ -179,31 +269,250 @@ class MlxModelRunner:
+         ]
+ 
+     def _release_cache(self, cache: list[ContiguousKVCache]) -> None:
+-        """Return a cache list to the pool for reuse."""
++        """Return a cache list to the pool for reuse.
++
++        No-op for hybrid models — those always build fresh (see
++        ``_acquire_cache`` for rationale).
++        """
++        if self._is_hybrid_model:
++            return
+         self._cache_pool.append(cache)
+ 
++    def _build_fresh_cache(self) -> list:
++        """Build a fresh per-request cache. Always-fresh path for hybrid
++        models; equivalent to the no-pool branch of ``_acquire_cache``."""
++        native_maker = None
++        if hasattr(self.model, "make_cache"):
++            native_maker = self.model.make_cache
++        elif hasattr(self.model, "language_model") and hasattr(
++            self.model.language_model, "make_cache"
++        ):
++            native_maker = self.model.language_model.make_cache
++
++        if native_maker is not None:
++            native_cache = native_maker()
++            cache = []
++            for nc in native_cache:
++                if type(nc).__name__ == "KVCache":
++                    cache.append(ContiguousKVCache(max_seq_len=self._max_seq_len))
++                else:
++                    cache.append(nc)
++            return cache
++
++        return [
++            ContiguousKVCache(max_seq_len=self._max_seq_len)
++            for _ in range(self._num_layers)
++        ]
++
++    def _detect_hybrid(self) -> bool:
++        """Return True if the model has DeltaNet / mamba / GDN layers.
++
++        Hybrid models alternate per-layer cache types — the standard
++        attention layers use ``KVCache``, the linear-attention / SSM
++        layers use ``ArraysCache``. The batched-decode path's uniform
++        ``OffsetCache`` shim doesn't carry conv_state / ssm_state, so
++        DeltaNet layers produce garbage at batch > 1 without per-request
++        ArraysCache routing. This flag triggers a serial-per-request
++        decode fallback in ``decode_batch_start``.
++        """
++        try:
++            maker = getattr(self.model, "make_cache", None) or getattr(
++                getattr(self.model, "language_model", None), "make_cache", None
++            )
++            if maker is None:
++                return False
++            sample = maker()
++            for layer_cache in sample:
++                name = type(layer_cache).__name__
++                if name in ("ArraysCache", "MambaCache", "RecurrentCache"):
++                    return True
++            return False
++        except Exception as e:
++            logger.debug(f"_detect_hybrid failed ({e}); assuming non-hybrid")
++            return False
++
+     @staticmethod
+     def _eval_with_cache(
+         token_result: mx.array, cache: list[ContiguousKVCache | PoolBackedCache]
+@@ -179,31 +358,250 @@ class MlxModelRunner:
              for s in cache.state
          ]
  
@@ -464,7 +570,7 @@ index 4c47d67f0..2ccd4a998 100644
          if hasattr(sample_attn, "head_dim"):
              head_dim = sample_attn.head_dim
          elif hasattr(sample_attn, "k_proj") and hasattr(sample_attn.k_proj, "weight"):
-@@ -232,15 +541,19 @@ class MlxModelRunner:
+@@ -232,15 +630,19 @@ class MlxModelRunner:
              max(mlx_usable - mlx_used, 0),
              int(sys_available * self._mem_fraction_static),
          )
@@ -487,7 +593,7 @@ index 4c47d67f0..2ccd4a998 100644
          )
          return pool_size
  
-@@ -261,11 +574,13 @@ class MlxModelRunner:
+@@ -261,11 +663,13 @@ class MlxModelRunner:
              n_kv_heads=n_kv_heads,
              head_dim=head_dim,
              dtype=dtype,
@@ -502,6 +608,35 @@ index 4c47d67f0..2ccd4a998 100644
          )
  
      def prefill(
+@@ -545,6 +949,28 @@ class MlxModelRunner:
+                 caches=caches,
+             )
+ 
++        # Hybrid models (DeltaNet / mamba / GDN) cannot share the uniform
++        # OffsetCache shim — their linear-attention layers carry per-request
++        # conv_state and ssm_state that the shim doesn't represent. Fall
++        # back to serial-per-request decode: each request runs its own
++        # forward with its own ArraysCache, then we stack the outputs.
++        # Slower than true batched decode but correct, and unblocks
++        # MAX_RUNNING > 1 on the qwen35 / qwen36 / coder-next family.
++        if self._is_hybrid_model:
++            per_req_logits = []
++            for i, rid in enumerate(req_ids):
++                last_token = self._req_token_ids[rid][-1]
++                input_ids = mx.array([[last_token]], dtype=mx.int32)
++                out = self.model(input_ids, cache=caches[i])
++                per_req_logits.append(self._extract_logits(out)[:, -1, :])
++            stacked = mx.concatenate(per_req_logits, axis=0)  # (B, vocab)
++            lazy_tokens = mx.argmax(stacked, axis=-1)
++            return MlxPendingDecode(
++                lazy_tokens=lazy_tokens,
++                req_ids=list(req_ids),
++                caches=caches,
++            )
++
+         seq_lens = [caches[i][0].offset for i in range(batch_size)]
+         layer_caches = [
+             [caches[i][layer_idx] for i in range(batch_size)]
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
 index 3dd8520f2..664b93469 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
