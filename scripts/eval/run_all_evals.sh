@@ -34,28 +34,28 @@ run_eval_for() {
     local tag="$2"
 
     local results_file="benchmarks/quality/${tag// /_}.json"
-    # Skip only if every section matches the requested sample sizes AND results
+    # Skip only if every section meets the requested sample bar AND results
     # are plausible (MMLU > 5% — anything ≤5% is below random-guess on 4-choice,
-    # i.e. server-died-mid-eval). Sample-size mismatch or 0%-everywhere means
-    # we should re-run, not silently keep the stale JSON.
+    # i.e. server-died-mid-eval). Accepts cached totals >= requested (a stricter
+    # measurement is fine to reuse); below the bar or 0%-everywhere means re-run.
     if [ -f "$results_file" ] && python3 -c "
 import json, sys
 r = json.load(open('$results_file'))
 def cache_ok():
     mmlu = r.get('mmlu', {})
-    if mmlu.get('total', 0) != 100 or mmlu.get('accuracy', 0) <= 0.05:
+    if mmlu.get('total', 0) < 100 or mmlu.get('accuracy', 0) <= 0.05:
         return False
     he = r.get('humaneval', {})
-    if he.get('total', 0) != 20:
+    if he.get('total', 0) < 20:
         return False
     lb = r.get('labbench', {})
     if not lb.get('_overall') or lb['_overall'].get('correct', 0) == 0:
         return False
     for bench in ['LitQA2','DbQA','SuppQA','TableQA','ProtocolQA','SeqQA','CloningScenarios']:
-        if lb.get(bench, {}).get('total', 0) != 25:
+        if lb.get(bench, {}).get('total', 0) < 25:
             return False
-    needle = r.get('needle', {}).get('results', [])
-    if [n['context'] for n in needle] != [1024, 4096, 16384]:
+    needle_lengths = {n['context'] for n in r.get('needle', {}).get('results', [])}
+    if not {1024, 4096, 16384}.issubset(needle_lengths):
         return False
     return True
 sys.exit(0 if cache_ok() else 1)

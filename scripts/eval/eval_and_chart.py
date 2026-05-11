@@ -71,7 +71,12 @@ def mmlu_eval(chat_url, n_samples=200, max_workers=1, max_tokens=1024):
     from datasets import load_dataset
     ds = load_dataset("cais/mmlu", "all", split="test")
     subjects = list(set(ds["subject"]))
-    per_subject = max(1, n_samples // len(subjects))
+    # MMLU has 57 subjects. ``n_samples // len(subjects)`` floors to 1 when
+    # n_samples=100, capping the eval at 57 samples and producing a total
+    # that never matches the requested 100. Use ceil-division so the bucket
+    # is always large enough; the final ``samples[:n_samples]`` truncates
+    # back down. With n_samples=100 → per_subject=2 → 114 candidates → 100.
+    per_subject = max(1, -(-n_samples // len(subjects)))
     samples = []
     for subj in subjects:
         samples.extend([x for x in ds if x["subject"] == subj][:per_subject])
@@ -222,21 +227,21 @@ def needle_eval(chat_url, lengths=[1024, 4096, 16384, 65536], max_tokens=512):
 
 
 def _mmlu_cache_ok(d, expected_n):
-    """Cached MMLU is reusable when sample size matches and accuracy is plausible."""
-    if not d or d.get("total", 0) == 0:
+    """Cached MMLU is reusable when sample size meets the bar and accuracy is plausible.
+
+    A cache with MORE samples than asked is fine — it's a stricter measurement.
+    A cache with fewer samples should be re-run since it's less robust. Below
+    5% accuracy is below 4-choice random guessing (25%) and indicates a
+    server-crashed-mid-eval state.
+    """
+    if not d or d.get("total", 0) < expected_n:
         return False
-    if d["total"] != expected_n:
-        return False
-    # Random-guess baseline on 4-choice is 25%. Anything ≤5% means every request
-    # failed (server crashed mid-eval) — treat as invalid.
     return d.get("accuracy", 0) > 0.05
 
 
 def _humaneval_cache_ok(d, expected_n):
-    """Cached HumanEval is reusable when sample size matches and pass rate is plausible."""
-    if not d or d.get("total", 0) == 0:
-        return False
-    if d["total"] != expected_n:
+    """Cached HumanEval is reusable when sample size meets the bar."""
+    if not d or d.get("total", 0) < expected_n:
         return False
     # 0% pass@1 is technically possible for a broken model, but combined with
     # 0% on MMLU it indicates a crash. Caller checks MMLU first; if that's
@@ -245,15 +250,15 @@ def _humaneval_cache_ok(d, expected_n):
 
 
 def _labbench_cache_ok(d, expected_n):
-    """Cached LAB-Bench is reusable when each benchmark's sample size matches."""
+    """Cached LAB-Bench is reusable when each benchmark meets the sample bar."""
     if not d or not d.get("_overall"):
         return False
     for bench in LAB_BENCH_BENCHMARKS:
         if bench not in d:
             return False
-        if d[bench].get("total", 0) != expected_n:
+        if d[bench].get("total", 0) < expected_n:
             return False
-    # Detect "every benchmark scored 0/expected_n" — that's a crash, not a
+    # Detect "every benchmark scored 0/total" — that's a crash, not a
     # legitimate result.
     if d["_overall"].get("correct", 0) == 0:
         return False
@@ -261,11 +266,14 @@ def _labbench_cache_ok(d, expected_n):
 
 
 def _needle_cache_ok(d, expected_lengths):
-    """Cached Needle is reusable when context lengths match."""
+    """Cached Needle is reusable when every requested length is present.
+
+    Extra cached lengths are fine; missing any means re-run.
+    """
     if not d or not d.get("results"):
         return False
-    cached_lengths = [r["context"] for r in d["results"]]
-    return cached_lengths == list(expected_lengths)
+    cached_lengths = {r["context"] for r in d["results"]}
+    return all(L in cached_lengths for L in expected_lengths)
 
 
 def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50,
