@@ -97,7 +97,7 @@ apply_preset() {
             # always-fresh hybrid cache (no pool reuse) unblocks concurrent
             # decode on DeltaNet hybrids. Verified 2026-05-11 with 2-way
             # concurrent prompts returning correct outputs on Qwen3.5-27B.
-            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
+            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"
@@ -108,7 +108,7 @@ apply_preset() {
             # correctness. Better quality/memory tradeoff than 27B-4bit for
             # most workloads (~10 GB resident vs ~14 GB).
             MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
-            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
+            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"
@@ -143,7 +143,7 @@ apply_preset() {
             # this as their flagship 256K agentic model. Vision + VIDEO capable
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
-            CTX=32768; MAX_RUNNING=4; CHUNKED=4096
+            CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
@@ -153,7 +153,7 @@ apply_preset() {
             # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
             # as qwen35 / qwen36 (patches 013/015 load-bearing).
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
-            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
+            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
