@@ -171,6 +171,8 @@ Decode tok/s under the turboquant KV cache wired up in patch 008. 5 models × 5 
 
 **At 64K, qwen36 (DeltaNet hybrid) is 2.5× faster than coder-30b (pure MoE)** — 0.5 vs 0.2 tok/s decode, 139 s vs 361 s prefill. The DeltaNet linear-attention layers don't pay the full O(n) KV-read cost on every decode token, which compounds across alternating attention layers. This is the load-bearing data point that argues for Qwen3.6-35B-A3B as the M4's 256K-context choice.
 
+**128K and 256K runs OOM at default `mem-fraction-static=0.7`** even under turboquant — the OOM guard correctly fired at 6 GB free during a 128K prefill on qwen36 with CTX=270000. The bottleneck is the mlx_vlm + torchcodec + PyTorch import overhead (~5–8 GB resident) crowding the unified-memory budget at peak prefill. Active work #5 (skip mlx_vlm import for text-only models) is the load-bearing fix; once that recovers headroom, 128K and 256K rows here will be backfilled.
+
 **Headline: turboquant works.** Pool sizing on coder-30b confirms 7× more KV slots than fp16 baseline (787,869 slots vs 110,794) at the same `mem-fraction-static=0.7`. Validation `2/2 PASS` — output identical to fp16 within tolerance. Decode tok/s at short context is within 1% of fp16 (58.3 vs 57.9 on coder-30b @128). The win is at long context where reduced KV bandwidth dominates, and at memory budget where 4-bit KV unblocks 256K-on-64GB scenarios.
 
 **Notable: DeltaNet O(1) layers visible at 32K.** Qwen3.6-35B-A3B's MoE+DeltaNet hybrid maintains 1.2 tok/s @ 32K — 2× the speed of the MoE-only coder-30b/qwen3-moe (0.6 tok/s @ 32K). The hybrid linear-attention layers don't pay the full O(n) KV-read cost on every decode token.
