@@ -34,8 +34,33 @@ run_eval_for() {
     local tag="$2"
 
     local results_file="benchmarks/quality/${tag// /_}.json"
-    if [ -f "$results_file" ] && python3 -c "import json,sys; r=json.load(open('$results_file')); sys.exit(0 if all(r.get(k,{}).get('total') for k in ('mmlu','humaneval')) and r.get('labbench',{}).get('_overall',{}).get('total') else 1)" 2>/dev/null; then
-        echo "=== SKIP $tag (results complete) ==="
+    # Skip only if every section matches the requested sample sizes AND results
+    # are plausible (MMLU > 5% — anything ≤5% is below random-guess on 4-choice,
+    # i.e. server-died-mid-eval). Sample-size mismatch or 0%-everywhere means
+    # we should re-run, not silently keep the stale JSON.
+    if [ -f "$results_file" ] && python3 -c "
+import json, sys
+r = json.load(open('$results_file'))
+def cache_ok():
+    mmlu = r.get('mmlu', {})
+    if mmlu.get('total', 0) != 100 or mmlu.get('accuracy', 0) <= 0.05:
+        return False
+    he = r.get('humaneval', {})
+    if he.get('total', 0) != 20:
+        return False
+    lb = r.get('labbench', {})
+    if not lb.get('_overall') or lb['_overall'].get('correct', 0) == 0:
+        return False
+    for bench in ['LitQA2','DbQA','SuppQA','TableQA','ProtocolQA','SeqQA','CloningScenarios']:
+        if lb.get(bench, {}).get('total', 0) != 25:
+            return False
+    needle = r.get('needle', {}).get('results', [])
+    if [n['context'] for n in needle] != [1024, 4096, 16384]:
+        return False
+    return True
+sys.exit(0 if cache_ok() else 1)
+" 2>/dev/null; then
+        echo "=== SKIP $tag (results complete and current) ==="
         return 0
     fi
 
@@ -73,20 +98,29 @@ run_eval_for() {
     echo "Done: $tag"
 }
 
-# Default preset list — override with PRESETS env var
-PRESETS="${PRESETS:-coder-30b devstral gemma4 gemma4-31b qwen35 qwen3-moe qwen3-32b}"
+# Default preset list — override with PRESETS env var.
+# Includes Qwen3.6 dense + MoE which sister teams use as their flagship 256K
+# agentic model, plus the smaller qwen35-9b-8bit fast variant.
+PRESETS="${PRESETS:-coder-30b devstral gemma4 gemma4-31b qwen35 qwen35-9b-8bit qwen3-moe qwen3-32b qwen36 qwen36-27b}"
 
 for preset in $PRESETS; do
+    # Tags reflect the underlying model variant. DWQ presets keep the
+    # -DWQ suffix so the README quality table tracks the actual checkpoint
+    # we're publishing numbers for (run_all_evals shipped tagless before,
+    # which orphaned earlier DWQ-tagged JSONs and forced a full re-eval).
     case "$preset" in
-        devstral)     tag="Devstral-24B" ;;
-        coder-30b)    tag="Coder-30B" ;;
-        coder-next)   tag="Coder-Next-80B" ;;
-        gemma4)       tag="Gemma4-26B" ;;
-        gemma4-31b)   tag="Gemma4-31B" ;;
-        qwen35)       tag="Qwen3.5-27B" ;;
-        qwen3-moe)    tag="Qwen3-30B-MoE" ;;
-        qwen3-32b)    tag="Qwen3-32B" ;;
-        *)            tag="$preset" ;;
+        devstral)        tag="Devstral-24B" ;;
+        coder-30b)       tag="Coder-30B-DWQ" ;;
+        coder-next)      tag="Coder-Next-80B" ;;
+        gemma4)          tag="Gemma4-26B" ;;
+        gemma4-31b)      tag="Gemma4-31B" ;;
+        qwen35)          tag="Qwen3.5-27B" ;;
+        qwen35-9b-8bit)  tag="Qwen3.5-9B-8bit" ;;
+        qwen3-moe)       tag="Qwen3-30B-A3B-DWQ" ;;
+        qwen3-32b)       tag="Qwen3-32B-DWQ" ;;
+        qwen36)          tag="Qwen3.6-35B-A3B" ;;
+        qwen36-27b)      tag="Qwen3.6-27B" ;;
+        *)               tag="$preset" ;;
     esac
     run_eval_for "$preset" "$tag"
 done
