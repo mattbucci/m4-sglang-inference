@@ -45,14 +45,19 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 - **Model status and benchmarks** are in README.md (single source of truth)
 - **OOM guard MANDATORY for long-context (≥64K) work.** macOS doesn't have a
   Linux-style OOM killer; once a process touches a page past physical RAM, the
-  whole system stalls until reboot. Never run a 256K bench without
+  whole system stalls until reboot. Never run a 128K+ bench without
   `bash scripts/common/oom_guard.sh &` running in the background — it pkill's
-  the SGLang server when free+inactive drops below 4 GB.
-- **Long-context launch flags:** for ≥128K, prefer
-  `--kv-cache turboquant` (4-bit, ~3.5x savings vs fp16 vs fp8's 2x) and
-  `--chunked-prefill-size 2048` (halves attention scratch spikes vs 4096).
-  At 64GB unified memory this is the difference between a clean run and a
-  hard freeze.
+  the SGLang server when free+inactive drops below 8 GB.
+- **Long-context launch flags (validated 2026-05-11 on v0.5.11):**
+  For 128K on qwen36-class models (35B weights), the working recipe is:
+  `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.5`.
+  This combination prefills 128K in ~6.5 min on Qwen3.6-35B-A3B; default
+  `--mem-fraction 0.7` or `--chunked-prefill 4096` will OOM-guard-fire at
+  the prefill phase. Bench tooling needs `urllib timeout=1800` for 128K
+  (`scripts/bench/bench_long_context.py` defaults to 120 s — severs the
+  connection mid-decode at long context). OOM root cause clarified: not
+  import bloat (Python imports total ~547 MB resident); the driver is
+  chunked-prefill activation tensors growing with context.
 
 ## Optimization Target
 - **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure
