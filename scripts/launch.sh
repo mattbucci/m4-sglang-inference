@@ -114,12 +114,17 @@ apply_preset() {
             WARMUP="--skip-server-warmup"
             ;;
         qwen3-32b)
-            MODEL="${MODEL:-mlx-community/Qwen3-32B-4bit}"
+            # 4bit-DWQ variant: scanner-clean (449/449 layers healthy),
+            # MMLU 89.5% / HumanEval 95% vs 86.7% / 87.5% on standard 4bit.
+            # Wins on both axes — clean swap.
+            MODEL="${MODEL:-mlx-community/Qwen3-32B-4bit-DWQ}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             ;;
         qwen3-moe)
-            MODEL="${MODEL:-mlx-community/Qwen3-30B-A3B-4bit}"
+            # 4bit-DWQ variant: scanner-clean, MMLU 91.2% vs 83.3% on standard 4bit
+            # (+7.9 pp), HumanEval -5 pp. Net win for general-knowledge agentic work.
+            MODEL="${MODEL:-mlx-community/Qwen3-30B-A3B-4bit-DWQ}"
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             ;;
