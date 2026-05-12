@@ -29,6 +29,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
+# Capture genuine env-var overrides BEFORE we apply any script-level
+# defaults. Without this split, the line below that does
+# `MAX_RUNNING="${MAX_RUNNING:-8}"` materializes the default into the
+# shell variable, so the later ENV_MAX_RUNNING capture (~line 223)
+# reads "8" and applies it as if the user had set it — silently
+# overriding whatever the preset chose. Same bug existed for CTX and
+# CHUNKED; capturing here keeps preset values intact when the user
+# didn't actually pass an env var.
+ENV_CTX="${CTX:-}"
+ENV_MAX_RUNNING="${MAX_RUNNING:-}"
+ENV_CHUNKED="${CHUNKED:-}"
+
 # --- Defaults (overridden by model preset, then env vars, then CLI flags) ---
 MODEL="${MODEL:-}"
 TOKENIZER=""
@@ -218,10 +230,9 @@ fi
 
 # Env-var overrides take precedence over the preset (so callers can do
 # `CTX=80000 MAX_RUNNING=4 ./scripts/launch.sh coder-30b` without editing
-# the preset). CLI flags still beat env vars below.
-ENV_CTX="${CTX:-}"
-ENV_MAX_RUNNING="${MAX_RUNNING:-}"
-ENV_CHUNKED="${CHUNKED:-}"
+# the preset). CLI flags still beat env vars below. The ENV_* values
+# were captured at script entry, BEFORE the script-level defaults were
+# materialised into the shell — see the top-of-file note for why.
 apply_preset "$PRESET"
 [[ -n "$ENV_CTX" ]] && CTX="$ENV_CTX"
 [[ -n "$ENV_MAX_RUNNING" ]] && MAX_RUNNING="$ENV_MAX_RUNNING"
