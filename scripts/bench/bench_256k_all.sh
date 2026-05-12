@@ -23,12 +23,15 @@ BENCH_LOG="benchmarks/bench_256k_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p benchmarks
 
 # Model definitions: preset|display_name|bench_key|max_running|chunked
-DEVSTRAL="devstral|Devstral-24B 4-bit|devstral-24b-4bit|1|4096"
-CODER30B="coder-30b|Coder-30B 4-bit|coder-30b-4bit|1|4096"
+# chunked=2048 + MEM_FRAC=0.5 (set below) per CLAUDE.md long-context recipe.
+# Higher mem-fraction or chunked=4096 OOM-guards on 8K+ probes at 256K
+# pool size (the static pool consumes ~22GB before any prefill activation).
+DEVSTRAL="devstral|Devstral-24B 4-bit|devstral-24b-4bit|1|2048"
+CODER30B="coder-30b|Coder-30B 4-bit|coder-30b-4bit|1|2048"
 CODERNEXT="coder-next|Coder-Next 80B 4-bit|coder-next-80b-4bit|1|2048"
-GEMMA4="gemma4|Gemma 4 26B 4-bit|gemma4-26b-4bit|1|4096"
-GEMMA431B="gemma4-31b|Gemma 4 31B 4-bit|gemma4-31b-4bit|1|4096"
-QWEN35="qwen35|Qwen3.5-27B 4-bit|qwen35-27b-4bit|1|4096"
+GEMMA4="gemma4|Gemma 4 26B 4-bit|gemma4-26b-4bit|1|2048"
+GEMMA431B="gemma4-31b|Gemma 4 31B 4-bit|gemma4-31b-4bit|1|2048"
+QWEN35="qwen35|Qwen3.5-27B 4-bit|qwen35-27b-4bit|1|2048"
 
 ALL_MODELS="${MODELS:-devstral coder-30b coder-next gemma4 gemma4-31b qwen35}"
 CTX=262144
@@ -133,7 +136,7 @@ launch_and_bench() {
     # Launch
     local server_log="/tmp/sglang_256k_${preset}.log"
     log "Launching server..."
-    ./scripts/launch.sh "$preset" \
+    MEM_FRAC="${MEM_FRAC:-0.5}" ./scripts/launch.sh "$preset" \
         --context-length "$CTX" \
         --max-running "$max_run" \
         --chunked-prefill "$chunked" \
