@@ -1,69 +1,78 @@
 {
   "model": "Gemma 4 31B 4-bit",
-  "model_id": "mlx-community/gemma-4-31b-4bit",
+  "model_id": "mlx-community/gemma-4-31b-it-mxfp4",
   "engine": "SGLang + MLX",
   "hardware": "Apple M4 Pro 64GB",
-  "timestamp": "2026-04-13 09:29:19",
+  "timestamp": "2026-05-12 05:00:58",
   "method": "sglang.bench_serving",
   "kv_cache_mode": "turboquant",
-  "context_max": 262144,
+  "context_max": 65536,
   "context_sweep": [
     {
       "context": 128,
-      "tpot_ms": 80.1,
-      "tok_per_sec": 12.5,
-      "ttft_ms": 668.6
+      "tpot_ms": 74.1,
+      "tok_per_sec": 13.5,
+      "ttft_ms": 668.7
     },
     {
       "context": 256,
-      "tpot_ms": 80.1,
-      "tok_per_sec": 12.5,
-      "ttft_ms": 671.4
+      "tpot_ms": 74.1,
+      "tok_per_sec": 13.5,
+      "ttft_ms": 673.5
     },
     {
       "context": 512,
-      "tpot_ms": 80.1,
-      "tok_per_sec": 12.5,
-      "ttft_ms": 670.2
+      "tpot_ms": 74.1,
+      "tok_per_sec": 13.5,
+      "ttft_ms": 669.4
     },
     {
       "context": 1024,
-      "tpot_ms": 80.1,
-      "tok_per_sec": 12.5,
-      "ttft_ms": 671.7
+      "tpot_ms": 74.1,
+      "tok_per_sec": 13.5,
+      "ttft_ms": 669.4
     },
     {
       "context": 2048,
-      "tpot_ms": 98.8,
-      "tok_per_sec": 10.1,
-      "ttft_ms": 11413.0
+      "tpot_ms": 79.6,
+      "tok_per_sec": 12.6,
+      "ttft_ms": 12055.2
     },
     {
       "context": 4096,
-      "tpot_ms": 99.0,
-      "tok_per_sec": 10.1,
-      "ttft_ms": 11714.3
+      "tpot_ms": 78.5,
+      "tok_per_sec": 12.7,
+      "ttft_ms": 11844.2
     },
     {
       "context": 8192,
-      "tpot_ms": 181.1,
-      "tok_per_sec": 5.5,
-      "ttft_ms": 60080.6
+      "tpot_ms": 80.8,
+      "tok_per_sec": 12.4,
+      "ttft_ms": 56332.2
     },
     {
       "context": 16384,
-      "tpot_ms": 347.7,
-      "tok_per_sec": 2.9,
-      "ttft_ms": 170703.6
+      "tpot_ms": 85.2,
+      "tok_per_sec": 11.7,
+      "ttft_ms": 145277.1
     },
     {
       "context": 32768,
-      "error": "timeout_or_crash"
+      "tpot_ms": 0,
+      "tok_per_sec": 0,
+      "ttft_ms": 109.8
     },
     {
       "context": 65536,
-      "error": "timeout_or_crash"
+      "tpot_ms": 0,
+      "tok_per_sec": 0,
+      "ttft_ms": 140.5
     }
   ],
-  "throughput_sweep": []
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "error": "timeout_or_crash"
+    }
+  ]
 }

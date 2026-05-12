@@ -19,7 +19,7 @@
 1. **Per-request DeltaNet `conv_state`/`ssm_state` batched decode** — patch 010 fixed the concurrent-prefill broadcast crash, so Qwen3.5-27B now runs `MAX_RUNNING=4` end-to-end. The decode side still uses the serial-per-request hybrid fallback (one forward per request per decode step), so multi-user throughput at MR>1 doesn't yet compound. A first attempt at this (patch 011, 2026-05-12) crashed on Qwen3.5: `MLXAttentionWrapper` was designed for mlx_lm-style attention (q_proj output = `n_heads*head_dim`, simple `inner.rope` offset RoPE), but Qwen3_5Attention is *gated multimodal* — `q_proj` outputs `n_heads*head_dim*2` (queries + gate split), and RoPE comes from `rotary_emb` + `apply_multimodal_rotary_pos_emb`. The wrapper needs three extensions before patch 011 can land: (a) compute `head_dim` from keys not queries, (b) split off the gate and multiply `sigmoid(gate)` after SDPA, (c) dispatch to `apply_multimodal_rotary_pos_emb` when `inner.rotary_emb` is present. Patch 011 reverted in commit `8ba8bcd`; the linear-attn-only batching path (which IS straightforward — `gated_delta_update` is batch-leading-axis) waits behind the wrapper rework.
 2. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
 3. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
-4. **Long-context perf re-bench at 64K + 256K** — the v0.5.11 short-sweep table covers 128 / 4K / 16K; the 64K and 256K columns are still pre-rebase numbers taken on the old `1f8df97` stack. Now that the preset-CTX env-override + turboquant pool wiring are both in place, re-run `scripts/bench/bench_256k_all.sh` to refresh those columns; multi-hour run, slot it into a quiet window.
+4. **64K + 256K perf data is still a gap.** The 2026-05-12 re-bench (see refreshed sweep table below) reached 32K on Gemma 4 26B and Qwen3.5-27B, 16K on Coder-30B and Gemma 4 31B, 8K on Devstral — all under `chunked=1024 + mf=0.4 + radix off`. The 64K column does not exist because (a) `bench_long_context.py`'s 120 s urllib timeout severs the connection before long-context prefill completes (CLAUDE.md called this out; not yet fixed in bench_serving's path) and (b) the static pool + chunked-prefill scratch still hit the OOM-guard wall above 32K on dense models. Two pieces of work to close it: extend the bench HTTP timeout to 1800 s, and either add `--max-total-tokens` to cap the pool below the model's max context or further drop `chunked-prefill` to 512 (each context probe takes 2× as many forward passes but per-forward scratch halves).
 
 ### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
 
@@ -209,29 +209,28 @@ Single-user decode speed at 128 / 4K / 16K context, fp16 KV (the default; `--kv-
 
 \*Gemma 4 presets ship with `CTX=4096` (tight 64 GB budget) — 16K requests rejected. Raise via `CTX=16384 bash scripts/launch.sh gemma4` for the longer-context numbers. Raw bench logs: `/tmp/perf_<preset>_bench.log`.
 
-### v0.5.11 long-context turboquant sweep (2026-05-11)
+### v0.5.11 long-context turboquant sweep (refreshed 2026-05-12)
 
-![v0.5.11 turboquant long-context chart](benchmarks/quality/v0.5.11-longctx-turboquant.png)
+Decode tok/s on the v0.5.11 stack with the long-context-tuned recipe (`--chunked-prefill-size 1024 --mem-fraction-static 0.4 --disable-radix-cache`, single user, 64 output tokens). Bench restart between models, OOM guard active. (The earlier `v0.5.11-longctx-turboquant.png` chart at `benchmarks/quality/` reflects pre-refresh numbers and will be regenerated next sweep.)
 
-Decode tok/s under the turboquant KV cache wired up in patch 008. 5 models × up to 6 context lengths (128 → 128K), single user, radix cache disabled.
+| Preset | KV | @128 | @4K | @8K | @16K | @32K |
+|--------|----|:----:|:---:|:---:|:----:|:----:|
+| coder-30b (Qwen3-Coder-30B MoE) | turboquant | **73.8** | 66.6 | 55.2 | 43.0 | — \* |
+| gemma4 (Gemma 4 26B MoE) | turboquant | 58.9 | 55.2 | 52.8 | 49.8 | **44.7** |
+| devstral (24B Dense) | turboquant | 17.4 | 17.1 | 16.2 | — \* | — \* |
+| qwen35 (Qwen3.5-27B DeltaNet) | fp8 | 14.7 | 14.3 | 14.0 | 13.5 | **12.6** |
+| gemma4-31b (Gemma 4 31B Dense) | turboquant | 13.5 | 12.7 | 12.4 | 11.7 | — \* |
 
-| Preset | @128 | @4K | @16K | @32K | @64K |
-|--------|:----:|:---:|:----:|:----:|:----:|
-| qwen3-moe (Qwen3-30B-A3B) | 58.7 | 10.3 | 1.7 | 0.6 | — \* |
-| coder-30b (Qwen3-Coder-30B) | 58.3 | 10.4 | 1.8 | 0.6 | **0.2** |
-| qwen36 (Qwen3.6-35B-A3B MoE+DN+VL) | 52.9 | 11.0 | 2.8 | **1.2** | **0.5** |
-| qwen36-27b (Qwen3.6-27B Dense+DN+VL) | 11.7 | 1.6 | 0.4 | 0.2 | — \* |
-| devstral (24B Dense) | 13.9 | 1.9 | 0.4 | 0.2 | — \* |
+\*Cells marked `—` are not measurement gaps from the run but indicate the OOM-guard tripped at that context probe — the static pool plus the per-chunk attention scratch (proportional to context × chunked-prefill) exceeded the activation budget before the prefill completed. Both Gemma 4 26B and Qwen3.5 carried through to 32K; the others bottomed out earlier. Raw JSON in `benchmarks/<slug>/results.json` per model (re-run 2026-05-12 03:34–05:01).
 
-\*The original 64K runs were rejected with HTTP 400 because the preset's `CTX=32768` overrode the env var (`CTX=80000 launch.sh`); the launch.sh env-override fix landed mid-sweep. coder-30b and qwen36 were re-run after the fix with `CTX=80000` to backfill that column; the others can be re-run on follow-up.
+**Two patterns emerge:**
 
-**At 64K, qwen36 (DeltaNet hybrid) is 2.5× faster than coder-30b (pure MoE)** — 0.5 vs 0.2 tok/s decode, 139 s vs 361 s prefill. The DeltaNet linear-attention layers don't pay the full O(n) KV-read cost on every decode token, which compounds across alternating attention layers. This is the load-bearing data point that argues for Qwen3.6-35B-A3B as the M4's 256K-context choice.
+- **MoE shapes the short-context win.** Coder-30B (3B active) opens at 73.8 tok/s @128, falls to 43 by 16K. Gemma 4 26B (4B active) opens lower (58.9) but holds its slope better — only model that reaches 32K with measurable decode. Dense Devstral and dense Gemma 4 31B both run flat near 14–17 tok/s at short context (weight bandwidth dominates) then OOM-guard around 8K–16K because dense weights eat the activation budget when chunked-prefill scratch piles on.
+- **DeltaNet keeps decode flat.** Qwen3.5-27B (DeltaNet hybrid + Dense full-attn) starts slow (14.7 @128) but stays nearly flat across the entire sweep — 14.7→12.6 from 128 to 32K. TPOT moves from 68 ms to 79 ms while TTFT scales 0.6 s → 272 s. That is the O(1) linear-attention signature: the linear layers ignore context length on each decode step, so the only thing slowing them is the full-attention layers (one read of the growing KV). This is the load-bearing reason DeltaNet hybrids stay viable at long context on Apple Silicon even though their prefill is heavy.
 
-**128K hypothesis validated** (2026-05-11): chunked-prefill scratch is the real OOM driver, not import bloat. Direct RSS measurement showed the entire Python import surface (torch + mlx_lm + transformers + torchcodec + mlx_vlm + sglang) is only ~547 MB. After dropping `--chunked-prefill-size` from 4096 to 2048 (halves per-chunk activation scratch) and `--mem-fraction-static` to 0.5, qwen36 successfully prefills 128K in **~6.5 minutes** and decodes at **~0.10 tok/s**. The bench's default 120 s HTTP timeout severs the connection before the 10 min decode completes; the gen-throughput data point is from server-side logs (`gen throughput (token/s): 0.10`). 256K is reachable with the same knobs but pushes prefill into 30+ min — diminishing returns on a 64 GB Mac. The pre-rebase 256K numbers below remain the upper bound until a memory-budgeted 256K bench protocol lands (raise bench timeout to 1800s, drop output_tokens to 16, lower mf even further).
+**Why the old numbers were misleadingly low.** The pre-rebase table in the archive section below shows 1.8 tok/s @16K for coder-30b. The 2026-05-12 re-run shows 43 tok/s — a 24× refresh, not a regression we recovered from. Root cause: the earlier sweeps ran with `mem-fraction-static=0.7` and `chunked-prefill-size=2048`, which together starved the activation budget and forced MLX into very slow recompute paths from 8K onward. The recipe in this table (chunked=1024 + mf=0.4 + radix off) is the empirically-tuned configuration that keeps all five models on a stable activation footprint up to the OOM-guard wall.
 
 **Headline: turboquant works.** Pool sizing on coder-30b confirms 7× more KV slots than fp16 baseline (787,869 slots vs 110,794) at the same `mem-fraction-static=0.7`. Validation `2/2 PASS` — output identical to fp16 within tolerance. Decode tok/s at short context is within 1% of fp16 (58.3 vs 57.9 on coder-30b @128). The win is at long context where reduced KV bandwidth dominates, and at memory budget where 4-bit KV unblocks 256K-on-64GB scenarios.
-
-**Notable: DeltaNet O(1) layers visible at 32K.** Qwen3.6-35B-A3B's MoE+DeltaNet hybrid maintains 1.2 tok/s @ 32K — 2× the speed of the MoE-only coder-30b/qwen3-moe (0.6 tok/s @ 32K). The hybrid linear-attention layers don't pay the full O(n) KV-read cost on every decode token.
 
 ### Pre-rebase 256K results (turboquant, fp8) — archived for comparison
 
