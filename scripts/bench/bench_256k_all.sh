@@ -34,7 +34,12 @@ GEMMA431B="gemma4-31b|Gemma 4 31B 4-bit|gemma4-31b-4bit|1|2048"
 QWEN35="qwen35|Qwen3.5-27B 4-bit|qwen35-27b-4bit|1|2048"
 
 ALL_MODELS="${MODELS:-devstral coder-30b coder-next gemma4 gemma4-31b qwen35}"
-CTX=262144
+# CTX env override lets us split the sweep: a 64K-target pass sizes the
+# KV pool for 64K context so 16K/32K probes have activation headroom,
+# and a 256K-target pass focuses on the 128K/256K columns. Without that
+# split, the 256K-sized pool eats so much memory that probes below 32K
+# OOM-guard before producing useful numbers.
+CTX="${CTX:-262144}"
 
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$BENCH_LOG"; }
 
