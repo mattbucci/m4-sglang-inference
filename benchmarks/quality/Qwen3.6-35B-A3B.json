@@ -1,0 +1,75 @@
+{
+  "tag": "Qwen3.6-35B-A3B",
+  "timestamp": "2026-05-11 19:04",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 86,
+    "total": 100,
+    "accuracy": 0.86
+  },
+  "humaneval": {
+    "passed": 17,
+    "total": 20,
+    "pass_rate": 0.85,
+    "mode": "completions"
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 14,
+      "total": 25,
+      "accuracy": 0.56
+    },
+    "DbQA": {
+      "correct": 4,
+      "total": 25,
+      "accuracy": 0.16
+    },
+    "SuppQA": {
+      "correct": 11,
+      "total": 25,
+      "accuracy": 0.44
+    },
+    "TableQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "ProtocolQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "SeqQA": {
+      "correct": 12,
+      "total": 25,
+      "accuracy": 0.48
+    },
+    "CloningScenarios": {
+      "correct": 5,
+      "total": 25,
+      "accuracy": 0.2
+    },
+    "_overall": {
+      "correct": 60,
+      "total": 175,
+      "accuracy": 0.34285714285714286
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
