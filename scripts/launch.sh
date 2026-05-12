@@ -76,8 +76,13 @@ apply_preset() {
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             ;;
         coder-next)
+            # Qwen3-Coder-Next is a Qwen3-Next DeltaNet hybrid (~80B). See the
+            # "Coder-Next-80B infeasible on M4" memory before retrying — the
+            # weights + PyTorch/mlx_vlm/torchcodec import surface exceed 64GB
+            # in practice. --disable-radix-cache required like other hybrids.
             MODEL="${MODEL:-mlx-community/Qwen3-Coder-Next-4bit}"
             CTX=8192; MAX_RUNNING=1; CHUNKED=4096
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4)
@@ -104,28 +109,30 @@ apply_preset() {
             # Qwen3_5ForConditionalGeneration — DeltaNet hybrid + vision + VIDEO.
             # video_grid_thw / second_per_grid_ts already flow through tp_worker
             # mm_extra_kwargs path (see SGLang commit 2a327f0 for upstream fix).
+            # --disable-radix-cache is load-bearing: hybrid models have
+            # ArraysCache on DeltaNet layers, which _sync_new_kv_to_pool
+            # cannot iterate (no .keys/.values), so first prefill crashes
+            # unless the pool is disabled at the source.
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
-            # MAX_RUNNING=4: hybrid serial-per-request decode fallback
-            # + per-request fresh cache + mlx_vlm position-cache reset on
-            # every prefill_start (fix landed 2026-05-12) unblocks concurrent
-            # serving on the DeltaNet hybrid. Without the position reset,
-            # request B's prefill would broadcast its (1,24,L_B,64) queries
-            # against the stale cos/sin tensor (1,1,L_A,64) from request A
-            # and crash inside apply_multimodal_rotary_pos_emb.
+            # MAX_RUNNING=4: patch 010 reset of mlx_vlm position cache +
+            # patch 011 batched DeltaNet decode + Qwen3_5-aware
+            # MLXAttentionWrapper unblock concurrent serving on this
+            # gated multimodal hybrid (2026-05-12).
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
             WARMUP="--skip-server-warmup"
             ;;
         qwen35-9b-8bit)
             # Smaller Qwen3.5 (9B) at higher precision (8-bit). Same DeltaNet
             # hybrid + vision architecture as qwen35; needs patch 013 for
             # correctness. Better quality/memory tradeoff than 27B-4bit for
-            # most workloads (~10 GB resident vs ~14 GB).
+            # most workloads (~10 GB resident vs ~14 GB). --disable-radix-cache
+            # is required for the same ArraysCache pool-sync reason as qwen35.
             MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
             WARMUP="--skip-server-warmup"
             ;;
         qwen3-32b)
@@ -157,9 +164,11 @@ apply_preset() {
             # Qwen3.6-35B-A3B MoE+DeltaNet+VL. Sister teams (3090/R9700) use
             # this as their flagship 256K agentic model. Vision + VIDEO capable
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
+            # --disable-radix-cache required (hybrid ArraysCache, same as qwen35).
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
             WARMUP="--skip-server-warmup"
             ;;
         qwen36-27b)
@@ -167,9 +176,11 @@ apply_preset() {
             # Qwen3.6 family — smaller weights than 35B-A3B, no MoE indirection
             # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
             # as qwen35 / qwen36 (patches 013/015 load-bearing).
+            # --disable-radix-cache required (hybrid ArraysCache).
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
             WARMUP="--skip-server-warmup"
             ;;
         nemotron-30b)
@@ -185,6 +196,9 @@ apply_preset() {
             # MAX_RUNNING=1 like the other hybrids.
             MODEL="${MODEL:-mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
+            # --disable-radix-cache required: Mamba2 ArraysCache layers
+            # crash _sync_new_kv_to_pool just like Qwen3.5/3.6 DeltaNet.
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         *)
