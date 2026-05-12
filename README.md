@@ -16,11 +16,10 @@
 
 ### Active work
 
-1. **SGLang v0.5.11 rebase — DONE.** Upstream landed the `kv_cache/` subpackage (patch 001) so we dropped it; everything else folded into 9 fresh `.patch` files that apply cleanly via `git apply` — no more `post_apply.py`. **Cross-team mlx-community model gate: 10/10 boot, 10/10 basic, 8/10 thinking** on v0.5.11 (see *v0.5.11 capability gate* table below).
-2. **Activate turboquant on v0.5.11.** Patch 008 ships the `kv_quant.py` module + parameter pass-through. `ContiguousKVCache` and `MlxKVPool` need wiring to `KVQuantizer` before fp8/turboquant actually compress KV — currently they store fp16. Load-bearing for 256K work on Gemma 4 31B / Qwen3-32B.
-3. **Per-request DeltaNet `conv_state`/`ssm_state` plumbing** — the hybrid concurrent-prefill broadcast crash is **fixed in patch 010** (mlx_vlm's `_position_ids`/`_rope_deltas` shared instance state); Qwen3.5-27B now runs `MAX_RUNNING=4` end-to-end. The decode side still uses the serial-per-request hybrid fallback (one forward per request per decode step), so multi-user throughput at MR>1 doesn't compound — proper per-request DeltaNet `conv_state`/`ssm_state` batching in `BatchedDecodeContext` is the next throughput win.
-4. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
-5. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
+1. **Per-request DeltaNet `conv_state`/`ssm_state` batched decode** — patch 010 fixed the concurrent-prefill broadcast crash, so Qwen3.5-27B now runs `MAX_RUNNING=4` end-to-end. The decode side still uses the serial-per-request hybrid fallback (one forward per request per decode step), so multi-user throughput at MR>1 doesn't yet compound — proper per-request DeltaNet `conv_state`/`ssm_state` batching in `BatchedDecodeContext` is the next throughput win.
+2. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
+3. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
+4. **Long-context perf re-bench at 64K + 256K** — the v0.5.11 short-sweep table covers 128 / 4K / 16K; the 64K and 256K columns are still pre-rebase numbers taken on the old `1f8df97` stack. Now that the preset-CTX env-override + turboquant pool wiring are both in place, re-run `scripts/bench/bench_256k_all.sh` to refresh those columns; multi-hour run, slot it into a quiet window.
 
 ### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
 
@@ -173,7 +172,7 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 |-------|:-----:|:-----:|:-----:|:-------------|
 | Devstral-24B (Mistral3) | ✅ | ❌ | ❌ | **Image working** end-to-end (patches 007/010/011/012 + VLM detection). |
 | Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | Image wires through; video supported by arch, needs end-to-end test. |
-| Qwen3.6-35B-A3B | ✅ | ✅ | ❌ | Same arch class as 3.5; preset added, not yet downloaded/tested. |
+| Qwen3.6-35B-A3B | ✅ | ✅ | ❌ | Text path validated end-to-end (capability gate PASS/PASS, MMLU 86, full perf sweep); image/video same status as 3.5 — wires through arch, needs dedicated VLM test. |
 | Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video). **Blocked:** mlx-community 4-bit checkpoints ship without `preprocessor_config.json`. Text-only until a re-uploaded checkpoint lands. |
 | Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B | ❌ | ❌ | ❌ | Text-only by architecture. |
 
@@ -193,7 +192,7 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 
 ![v0.5.11 perf chart](benchmarks/quality/v0.5.11-perf-shortsweep.png)
 
-Single-user decode speed at 128 / 4K / 16K context. fp16 KV (default — turboquant integration still pending on v0.5.11). Output 64 tokens, radix cache disabled.
+Single-user decode speed at 128 / 4K / 16K context, fp16 KV (the default; `--kv-cache-dtype fp8|turboquant` activates the wired-up `KVQuantizer` for 256K work). Output 64 tokens, radix cache disabled.
 
 | Preset | Model | tok/s @128 | tok/s @4K | tok/s @16K |
 |--------|-------|:----------:|:---------:|:----------:|
