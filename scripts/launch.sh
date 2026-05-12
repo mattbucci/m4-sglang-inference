@@ -93,11 +93,14 @@ apply_preset() {
             # video_grid_thw / second_per_grid_ts already flow through tp_worker
             # mm_extra_kwargs path (see SGLang commit 2a327f0 for upstream fix).
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
-            # MAX_RUNNING=4: hybrid serial-per-request decode fallback +
-            # always-fresh hybrid cache (no pool reuse) unblocks concurrent
-            # decode on DeltaNet hybrids. Verified 2026-05-11 with 2-way
-            # concurrent prompts returning correct outputs on Qwen3.5-27B.
-            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
+            # MAX_RUNNING=4: hybrid serial-per-request decode fallback
+            # + per-request fresh cache + mlx_vlm position-cache reset on
+            # every prefill_start (fix landed 2026-05-12) unblocks concurrent
+            # serving on the DeltaNet hybrid. Without the position reset,
+            # request B's prefill would broadcast its (1,24,L_B,64) queries
+            # against the stale cos/sin tensor (1,1,L_A,64) from request A
+            # and crash inside apply_multimodal_rotary_pos_emb.
+            CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
             WARMUP="--skip-server-warmup"

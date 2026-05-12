@@ -1,0 +1,49 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -273,6 +273,27 @@ class MlxModelRunner:
+             for _ in range(self._num_layers)
+         ]
+
++    def _reset_mlx_vlm_position_cache(self) -> None:
++        """Clear mlx_vlm-specific position-id caches on the language model.
++
++        ``mlx_vlm/models/qwen3_5/LanguageModel`` caches ``_position_ids``
++        and ``_rope_deltas`` between forward calls and only invalidates them
++        when a new ``pixel_values`` arrives. For multi-request serving this
++        leaks request A's position tensor into request B's prefill — the
++        ``apply_multimodal_rotary_pos_emb`` call then broadcasts a length-A
++        cos/sin against length-B queries and crashes. Reset at every new
++        prefill (extend_start within the same request keeps the cache live,
++        which is correct for chunked prefill).
++        """
++        targets = [self.model]
++        lm = getattr(self.model, "language_model", None)
++        if lm is not None:
++            targets.append(lm)
++        for t in targets:
++            for attr in ("_position_ids", "_rope_deltas"):
++                if hasattr(t, attr) and getattr(t, attr) is not None:
++                    setattr(t, attr, None)
++
+     def _release_cache(self, cache: list[ContiguousKVCache]) -> None:
+         """Return a cache list to the pool for reuse.
+
+@@ -796,6 +817,17 @@ class MlxModelRunner:
+         num_layers = self._num_layers
+         prefix_len = len(prefix_slot_ids)
+
++        # mlx_vlm/qwen3_5 caches `_position_ids` and `_rope_deltas` on the
++        # LanguageModel instance and only invalidates them when a new image
++        # arrives (pixel_values is not None). With concurrent text requests
++        # under MAX_RUNNING>1, the position_ids tensor from request A leaks
++        # into request B's prefill — slicing it as `[:, :, 0 : L_B]` returns
++        # a (3, 1, L_A) tensor which then drives cos/sin computation at
++        # length L_A, broadcasting against B's queries at length L_B and
++        # crashing in apply_multimodal_rotary_pos_emb. Clear at every new
++        # prefill (chunked extend keeps state intact, which is correct).
++        self._reset_mlx_vlm_position_cache()
++
+         if self.disable_radix_cache:
+             cache = self._acquire_cache()
+             input_ids = mx.array([new_token_ids], dtype=mx.int32)

@@ -16,9 +16,9 @@
 
 ### Active work
 
-1. **SGLang v0.5.11 rebase — DONE.** Upstream landed the `kv_cache/` subpackage (patch 001) so we dropped it; everything else folded into 7 fresh `.patch` files that apply cleanly via `git apply` — no more `post_apply.py`. **Cross-team mlx-community model gate: 10/10 boot, 10/10 basic, 8/10 thinking** on v0.5.11 (see *v0.5.11 capability gate* table below).
+1. **SGLang v0.5.11 rebase — DONE.** Upstream landed the `kv_cache/` subpackage (patch 001) so we dropped it; everything else folded into 9 fresh `.patch` files that apply cleanly via `git apply` — no more `post_apply.py`. **Cross-team mlx-community model gate: 10/10 boot, 10/10 basic, 8/10 thinking** on v0.5.11 (see *v0.5.11 capability gate* table below).
 2. **Activate turboquant on v0.5.11.** Patch 008 ships the `kv_quant.py` module + parameter pass-through. `ContiguousKVCache` and `MlxKVPool` need wiring to `KVQuantizer` before fp8/turboquant actually compress KV — currently they store fp16. Load-bearing for 256K work on Gemma 4 31B / Qwen3-32B.
-3. **Per-request DeltaNet `conv_state`/`ssm_state` plumbing** — current in-tree fallback serializes hybrid decode (MAX_RUNNING=1) for correctness; proper fix stacks per-request state in `caches[i]`. Throughput-only concern now that patch 013 makes the output correct.
+3. **Per-request DeltaNet `conv_state`/`ssm_state` plumbing** — the hybrid concurrent-prefill broadcast crash is **fixed in patch 010** (mlx_vlm's `_position_ids`/`_rope_deltas` shared instance state); Qwen3.5-27B now runs `MAX_RUNNING=4` end-to-end. The decode side still uses the serial-per-request hybrid fallback (one forward per request per decode step), so multi-user throughput at MR>1 doesn't compound — proper per-request DeltaNet `conv_state`/`ssm_state` batching in `BatchedDecodeContext` is the next throughput win.
 4. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
 5. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
 
@@ -63,7 +63,7 @@ Sorted by MMLU (descending). Chart: `benchmarks/quality/quality_comparison.png`.
 † Gemma 4 31B Needle 0% under `enable_thinking=false`. Short MC questions ("Answer with just A/B/C/D") work; long-context retrieval requires thinking. Re-eval with thinking enabled is the next Gemma-specific improvement.
 ¶ Nemotron-3-Nano emits verbose reasoning traces (the model's nano_v3_reasoning_parser isn't yet wired in our launch preset). The 1024-token MC budget gets consumed by `<think>` blocks, so HumanEval (base completions) and LAB-Bench (multi-letter answers) under-score; MMLU (single-letter A/B/C/D) tolerates a brief preamble and lands at 77. Chat-mode HE + a reasoning-parser flag should both bump significantly.
 
-Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 at `MAX_RUNNING=1` despite the in-progress concurrent-decode block (`patches/HYBRID_CONCURRENT_TRACE_PLAN.md`); Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92% and ties Qwen3.5-27B for top LAB-Bench at 41.1%.
+Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 — and as of 2026-05-12 the concurrent-prefill broadcast crash documented in `patches/HYBRID_CONCURRENT_TRACE_PLAN.md` is **resolved by patch 010**, lifting the preset's `MAX_RUNNING` cap from 1 to 4; Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92% and ties Qwen3.5-27B for top LAB-Bench at 41.1%.
 
 ## Quantization scan: 10 dead layers in coder-30b mlx-community upload (2026-05-11)
 
@@ -291,7 +291,7 @@ Manually:
 python3 -m venv .venv && source .venv/bin/activate
 git clone https://github.com/sgl-project/sglang.git components/sglang
 cd components/sglang && git checkout v0.5.11
-for p in ../../patches/00[2-9]-*.patch; do git apply "$p"; done
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
 cd python && cp pyproject_other.toml pyproject.toml
 pip install -e ".[srt_mps]"
 ```

@@ -1,5 +1,44 @@
 # Hybrid concurrent prefill — trace plan
 
+**STATUS: RESOLVED 2026-05-12 — see patch 010 (`010-mlx-vlm-position-cache-reset.patch`).**
+
+> **Root cause:** none of the cache / lazy-graph / packed-prefill / chunked-prefill
+> hypotheses below was correct. The bug was a stale instance attribute on the
+> *VLM language model itself*: `mlx_vlm/models/qwen3_5/LanguageModel` caches
+> `_position_ids` and `_rope_deltas` on `self` and only invalidates them when a
+> new `pixel_values` arrives. Under `MAX_RUNNING>1` with text-only requests,
+> request A's cached `(3, 1, L_A)` position tensor stays on the model when
+> request B's prefill arrives; the cache-hit branch (line 620 of
+> `mlx_vlm/models/qwen3_5/language.py`) slices it as
+> `self._position_ids[:, :, 0 : L_B]` which under MLX's permissive slicing
+> returns the *full* `(3, 1, L_A)` tensor, drives cos/sin computation at length
+> `L_A`, and `apply_multimodal_rotary_pos_emb` broadcasts `(1, 1, L_A, 64)`
+> against B's `(1, 24, L_B, 64)` queries → `ValueError: broadcast_shapes`.
+>
+> **Fix:** `MlxModelRunner._reset_mlx_vlm_position_cache()` nulls
+> `_position_ids` and `_rope_deltas` on both `self.model` and
+> `self.model.language_model` at the top of every `prefill_start`.
+> `extend_start` (chunked-prefill continuation) deliberately leaves the
+> attributes alone so chunk 2+ of the same request reuses the cache.
+>
+> **Affected families** (sharing the same caching pattern in mlx_vlm):
+> qwen3_5, qwen3_5_moe, qwen2_vl, qwen2_5_vl, qwen3_vl, qwen3_vl_moe,
+> qwen3_omni_moe, glm4v, glm4v_moe, glm_ocr, ernie4_5_moe_vl, hunyuan_vl,
+> paddleocr_vl, falcon_ocr, falcon_perception.
+>
+> **Verification (2026-05-12):** Qwen3.5-27B at `MAX_RUNNING=4` with
+> `bench_serving --num-prompts 16 --random-input-len 400 --random-range-ratio 0.5
+> --random-output-len 64` → 16/16 successful, peak concurrent 16, zero
+> broadcast errors. Decode batch sizes reached 1, 2, 3, 4, 5, 6, 7, 8 (via the
+> serial-per-request hybrid decode fallback at lines 968-987 of
+> `model_runner.py`). Correctness checked with `17×23` → `391`.
+>
+> The trace plan below is preserved for historical context — the disproved
+> hypotheses are useful as evidence that the cache / lazy-graph paths really
+> were clean, which made it possible to look outward into mlx_vlm.
+
+---
+
 DeltaNet hybrid models (Qwen3.5/3.6, Coder-Next) crash on `MAX_RUNNING>1` during
 **prefill** with a broadcast shape mismatch. Decode-path serial fallback (lines
 959-972 of model_runner.py) protects the decode side, but prefill goes through

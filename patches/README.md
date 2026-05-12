@@ -1,11 +1,11 @@
 # Patches — SGLang v0.5.11 on Apple Silicon
 
-7 patches on top of SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04) for the MLX backend on Apple M4 Pro. Applied in order by `scripts/setup.sh`:
+9 patches on top of SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04) for the MLX backend on Apple M4 Pro. Applied in order by `scripts/setup.sh`:
 
 ```bash
 cd components/sglang
 git checkout v0.5.11
-for p in ../../patches/00[2-9]-*.patch; do git apply "$p"; done
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
 ```
 
 | # | Patch | Files | Why |
@@ -17,6 +17,8 @@ for p in ../../patches/00[2-9]-*.patch; do git apply "$p"; done
 | 006 | mlx-offsetcache-and-make-mask | `kv_cache/contiguous_cache.py` | `OffsetCache.__getitem__`/`__setitem__`/`__len__`/`lengths`/`advance` stubs so hybrid DeltaNet decode doesn't `AttributeError` (the cache surface, not data). **Patch 014** also lives here: `ContiguousKVCache.make_mask` returns an explicit `(N, offset+N)` causal mask when `offset>0`, unblocking chunked prefill at large context. |
 | 007 | mlx-multimodal-and-mps-shim | `_mps_stub.py`, `managers/mm_utils.py`, `managers/schedule_batch.py` | (a) MPS stub redirects `to('cuda')` → `to('cpu')` so transformers code that defaults to CUDA keeps working on Apple Silicon. (b) `ShmPointerMMData` slice fix — macOS rounds shm allocations up to a 16 KB page, so `torch.frombuffer(shm.buf, ...)` returns a larger-than-logical tensor; slice to `nbytes` on write, to `n_elements` on read. (c) Add `Modality.MULTI_IMAGES` enum member that SGLang's `transformers_auto` references but doesn't define. |
 | 008 | mlx-kv-quant-module | `kv_cache/kv_quant.py` (new), `kv_cache/__init__.py` | KV cache quantization for MLX backend. New `KVCacheMode` enum + `parse_kv_cache_mode` (accepts `fp8` / `mxfp8` / `turboquant` / `tq` / `4bit` aliases) + `bytes_per_element` for pool sizing + `KVQuantizer` with quantize/dequantize on 3D pool buffers and 4D cache buffers. Wired into `MlxModelRunner.__init__` (accepts `kv_cache_mode` + `context_length` kwargs); turboquant is load-bearing for 256K work on the 64 GB Mac (~3.5× savings vs fp16, ~1.75× vs fp8). |
+| 009 | mlx-nemotron-h-support | `kv_cache/attention_wrapper.py`, `kv_cache/model_patching.py`, `model_runner.py` | NemotronH-style hybrids (Mamba2 + Attention + MoE) expose `mixer` on every layer with the type alternating per-layer. `find_attention_layers` now probes `self_attn`/`attention`/`mixer` and accepts `mixer` only when at least one layer's mixer is real attention (q/k/v/o_proj present); `patch_model_attention` skips non-attention mixers; `_get_attn_config` samples the first attention layer instead of `layer_list[0]`. The attention wrapper accepts either `n_heads`/`n_kv_heads` (mlx_lm) or `num_attention_heads`/`num_key_value_heads` (mlx_vlm + NemotronH) and skips the RoPE call when `inner.rope` is absent (NemotronH's attention is position-free — RoPE lives in the interleaved Mamba layers). |
+| 010 | mlx-vlm-position-cache-reset | `model_runner.py` | mlx_vlm's `LanguageModel` for qwen3_5 (and 14 other VLM families that share the same caching pattern: qwen2_vl, qwen2_5_vl, qwen3_vl, qwen3_vl_moe, qwen3_5_moe, qwen3_omni_moe, glm4v, glm4v_moe, glm_ocr, ernie4_5_moe_vl, hunyuan_vl, paddleocr_vl, falcon_ocr, falcon_perception) memoizes `_position_ids` and `_rope_deltas` on the instance and only invalidates them when a new `pixel_values` arrives. Under `MAX_RUNNING>1` with text-only requests, request A's cached `(3, 1, L_A)` position tensor is still on the model when request B's prefill arrives — `apply_multimodal_rotary_pos_emb` then broadcasts `(1, 1, L_A, 64)` cos/sin against `(1, 24, L_B, 64)` queries and crashes. `prefill_start` now nulls these attributes at every new-request boundary; chunked-prefill `extend_start` deliberately leaves them intact (the cache is valid for chunk 2+ of the same request). Unblocks `MAX_RUNNING=4` on Qwen3.5-27B end-to-end (verified 2026-05-12 with 16-prompt mixed-length bench: 16/16 successful, zero broadcast errors). Resolves the long-standing crash documented in `patches/HYBRID_CONCURRENT_TRACE_PLAN.md`. |
 
 ## What was dropped at v0.5.11
 
@@ -29,10 +31,10 @@ for p in ../../patches/00[2-9]-*.patch; do git apply "$p"; done
 ```bash
 # Apply all
 cd components/sglang && git checkout v0.5.11
-for p in ../../patches/00[2-9]-*.patch; do git apply "$p"; done
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
 
 # Verify clean apply on a fresh tree
-for p in ../../patches/00[2-9]-*.patch; do git apply --check "$p" && echo "OK: $(basename $p)"; done
+for p in ../../patches/0[01][0-9]-*.patch; do git apply --check "$p" && echo "OK: $(basename $p)"; done
 ```
 
 ## Open follow-up
