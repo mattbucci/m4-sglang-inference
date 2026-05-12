@@ -41,10 +41,10 @@ index 61e99b46a..4c70b5bd5 100644
          # Apply explicit attn_scale if model passes it (ministral3/Devstral
          # call attn(x, attn_scale, mask, cache); without this, the scale is
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
-index b89bb6e76..722f20c38 100644
+index b89bb6e76..37540ee48 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
 +++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
-@@ -7,20 +7,50 @@ from sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper import (
+@@ -7,20 +7,56 @@ from sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper import (
  )
  
  
@@ -56,7 +56,13 @@ index b89bb6e76..722f20c38 100644
 +    and Mistral Attention all match. Mamba mixers (Mamba2/DeltaNet
 +    linear-attn) have in_proj/out_proj patterns; MoE mixers have
 +    gate + experts. Either of those fails the q_proj test.
++
++    Also accepts an already-installed ``MLXAttentionWrapper`` (probes
++    its ``_inner``) — ``find_attention_layers`` is re-run after
++    ``patch_model_attention``, so this keeps the discovery idempotent.
 +    """
++    if isinstance(m, MLXAttentionWrapper):
++        m = m._inner
 +    return all(hasattr(m, n) for n in ("q_proj", "k_proj", "v_proj", "o_proj"))
 +
 +
@@ -103,7 +109,7 @@ index b89bb6e76..722f20c38 100644
  
      if not layer_list:
          return layer_list, "self_attn"
-@@ -30,9 +60,16 @@ def find_attention_layers(model: Any) -> tuple[list[Any], str]:
+@@ -30,9 +66,16 @@ def find_attention_layers(model: Any) -> tuple[list[Any], str]:
              if hasattr(layer, attr_name):
                  return layer_list, attr_name
  
@@ -122,7 +128,7 @@ index b89bb6e76..722f20c38 100644
      )
  
  
-@@ -45,6 +82,10 @@ def patch_model_attention(model: Any) -> int:
+@@ -45,6 +88,10 @@ def patch_model_attention(model: Any) -> int:
      Layers that don't have the resolved attribute (DeltaNet ``linear_attn``
      layers in a hybrid model, say) are skipped — their cache type lives
      elsewhere and is handled by the model's own ``make_cache``.
@@ -133,7 +139,7 @@ index b89bb6e76..722f20c38 100644
      """
      layer_list, attn_attr = find_attention_layers(model)
      patched = 0
-@@ -52,6 +93,10 @@ def patch_model_attention(model: Any) -> int:
+@@ -52,6 +99,10 @@ def patch_model_attention(model: Any) -> int:
          attn = getattr(layer, attn_attr, None)
          if attn is None or isinstance(attn, MLXAttentionWrapper):
              continue
@@ -144,3 +150,46 @@ index b89bb6e76..722f20c38 100644
          setattr(layer, attn_attr, MLXAttentionWrapper(attn, idx))
          patched += 1
      return patched
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 81a8cb412..754085a40 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -578,18 +578,34 @@ class MlxModelRunner:
+         layer 0 may be a DeltaNet layer with only ``linear_attn`` (no
+         ``self_attn``). Sample the first layer that actually has
+         ``attn_attr`` instead of blindly taking ``layer_list[0]``.
++
++        For NemotronH-style hybrids, every layer shares the ``mixer``
++        attribute but the type alternates (Mamba2 / MoE / MLP / Attention).
++        We must check that the mixer is actually an attention module —
++        unwrap any ``MLXAttentionWrapper`` and verify q/k/v/o_proj are
++        present before sampling.
+         """
+         layer_list, attn_attr = find_attention_layers(self.model)
+         if not layer_list:
+             raise RuntimeError("Cannot determine attention config: no layers found")
+         sample_attn = None
+         for layer in layer_list:
+-            sample_attn = getattr(layer, attn_attr, None)
+-            if sample_attn is not None:
+-                break
++            candidate = getattr(layer, attn_attr, None)
++            if candidate is None:
++                continue
++            # Peek through the patcher wrapper.
++            inner = candidate._inner if isinstance(candidate, MLXAttentionWrapper) else candidate
++            # For mixer-style hybrids, layer 0 may be a Mamba/MoE mixer; skip.
++            if attn_attr == "mixer" and not all(
++                hasattr(inner, n) for n in ("q_proj", "k_proj", "v_proj", "o_proj")
++            ):
++                continue
++            sample_attn = candidate
++            break
+         if sample_attn is None:
+             raise RuntimeError(
+-                f"No layer has attribute {attn_attr!r}; cannot derive attn config"
++                f"No layer has a real attention module under {attn_attr!r}; "
++                f"cannot derive attn config"
+             )
+         if isinstance(sample_attn, MLXAttentionWrapper):
+             sample_attn = sample_attn._inner
