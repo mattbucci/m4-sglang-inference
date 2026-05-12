@@ -1,6 +1,6 @@
 {
   "tag": "Gemma4-31B",
-  "timestamp": "2026-05-11 16:26",
+  "timestamp": "2026-05-11 19:54",
   "max_context": 32768,
   "mmlu": {
     "correct": 92,
@@ -8,9 +8,10 @@
     "accuracy": 0.92
   },
   "humaneval": {
-    "passed": 1,
+    "passed": 10,
     "total": 20,
-    "pass_rate": 0.05
+    "pass_rate": 0.5,
+    "mode": "chat"
   },
   "labbench": {
     "LitQA2": {

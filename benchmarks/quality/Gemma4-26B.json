@@ -1,6 +1,6 @@
 {
   "tag": "Gemma4-26B",
-  "timestamp": "2026-05-11 15:31",
+  "timestamp": "2026-05-11 19:53",
   "max_context": 32768,
   "mmlu": {
     "correct": 85,
@@ -8,9 +8,10 @@
     "accuracy": 0.85
   },
   "humaneval": {
-    "passed": 0,
+    "passed": 12,
     "total": 20,
-    "pass_rate": 0.0
+    "pass_rate": 0.6,
+    "mode": "chat"
   },
   "labbench": {
     "LitQA2": {

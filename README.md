@@ -41,27 +41,27 @@
 
 ### Quality table (v0.5.11, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
 
-Full sweep completed 2026-05-11 19:50 PDT — 3h32min across 10 mlx-community models on the v0.5.11 stack with `--disable-radix-cache`. Qwen3 family runs with `--no-thinking` (CLAUDE.md gate); Gemma 4 family runs with `--humaneval-mode chat` (IT models don't respond to base `/v1/completions`).
+Full sweep completed 2026-05-11 — 10 mlx-community models on the v0.5.11 stack with `--disable-radix-cache`. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
-| Gemma 4 31B-it-mxfp4 | **92%** | 5%\* | 41.1% | 0%† |
+| Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | **41.1%** | 0%† |
 | Qwen3.5-27B-4bit | **90%** | **100%** | **41.1%** | 100% |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
 | Qwen3.6-27B-4bit | 86% | **100%** | 40.0% | 100% |
 | Qwen3.6-35B-A3B-4bit | 86% | 85% | 34.3% | 100% |
+| Gemma 4 26B-A4B-it-4bit | 85% | 60%‡ | 36.0% | 100% |
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
-| Gemma 4 26B-A4B-it-4bit | 85% | 0%\* | 36.0% | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
 | Qwen3.5-9B-MLX-8bit | 80% | 75% | 33.7% | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
 Sorted by MMLU (descending). Chart: `benchmarks/quality/quality_comparison.png`.
 
-\* Gemma 4 HumanEval shown for `--humaneval-mode completions`; chat-mode follow-up in progress (the bare function-signature prefix returns chat sentinel tokens on the raw completions endpoint for IT-tuned Gemma 4).
-† Gemma 4 31B Needle 0% under `enable_thinking=false`. Short MC questions ("Answer with just A/B/C/D") work; long-context retrieval requires thinking. Will revisit alongside chat-HE.
+‡ Gemma 4 HumanEval ran in `--humaneval-mode chat` (not directly comparable to the other rows' base-completions HE — chat-mode prompts the model with an explicit instruction). Going through completions gives Gemma 4 0% / 5% because the IT-tuned chat template intercepts the bare function-signature prefix; the chat-mode path lifts that to 60% / 50%.
+† Gemma 4 31B Needle 0% under `enable_thinking=false`. Short MC questions ("Answer with just A/B/C/D") work; long-context retrieval requires thinking. Re-eval with thinking enabled is the next Gemma-specific improvement.
 
-Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 at `MAX_RUNNING=1` despite the in-progress concurrent-decode block (`patches/HYBRID_CONCURRENT_TRACE_PLAN.md`); Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92%.
+Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 at `MAX_RUNNING=1` despite the in-progress concurrent-decode block (`patches/HYBRID_CONCURRENT_TRACE_PLAN.md`); Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92% and ties Qwen3.5-27B for top LAB-Bench at 41.1%.
 
 ## Quantization scan: 10 dead layers in coder-30b mlx-community upload (2026-05-11)
 
