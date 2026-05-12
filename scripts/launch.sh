@@ -157,6 +157,21 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             WARMUP="--skip-server-warmup"
             ;;
+        nemotron-30b)
+            # NVIDIA Nemotron-3-Nano-30B-A3B (NemotronH hybrid: Mamba2 +
+            # Attention + MoE). 30B total, 3B active (128 experts top-6,
+            # 1 shared), 52 layers, 262K native context. No RoPE — position
+            # info comes from interleaved Mamba layers.
+            #
+            # Block pattern "MEMEM*EMEMEM*..." → ArraysCache for M (Mamba)
+            # layers, KVCache for * (attention), nothing for E (MoE) / -
+            # (MLP). _detect_hybrid catches it via ArraysCache; patch 013
+            # routes make_cache() through language_model. Smoke-test at
+            # MAX_RUNNING=1 like the other hybrids.
+            MODEL="${MODEL:-mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit}"
+            CTX=32768; MAX_RUNNING=1; CHUNKED=4096
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
