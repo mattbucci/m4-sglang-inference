@@ -54,12 +54,14 @@ Full sweep completed 2026-05-11 — 10 mlx-community models on the v0.5.11 stack
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
 | Qwen3.5-9B-MLX-8bit | 80% | 75% | 33.7% | 100% |
+| NVIDIA Nemotron-3-Nano-30B-A3B-4bit | 77% | 10%¶ | 19.4%¶ | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
 Sorted by MMLU (descending). Chart: `benchmarks/quality/quality_comparison.png`.
 
 ‡ Gemma 4 HumanEval ran in `--humaneval-mode chat` (not directly comparable to the other rows' base-completions HE — chat-mode prompts the model with an explicit instruction). Going through completions gives Gemma 4 0% / 5% because the IT-tuned chat template intercepts the bare function-signature prefix; the chat-mode path lifts that to 60% / 50%.
 † Gemma 4 31B Needle 0% under `enable_thinking=false`. Short MC questions ("Answer with just A/B/C/D") work; long-context retrieval requires thinking. Re-eval with thinking enabled is the next Gemma-specific improvement.
+¶ Nemotron-3-Nano emits verbose reasoning traces (the model's nano_v3_reasoning_parser isn't yet wired in our launch preset). The 1024-token MC budget gets consumed by `<think>` blocks, so HumanEval (base completions) and LAB-Bench (multi-letter answers) under-score; MMLU (single-letter A/B/C/D) tolerates a brief preamble and lands at 77. Chat-mode HE + a reasoning-parser flag should both bump significantly.
 
 Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 at `MAX_RUNNING=1` despite the in-progress concurrent-decode block (`patches/HYBRID_CONCURRENT_TRACE_PLAN.md`); Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92% and ties Qwen3.5-27B for top LAB-Bench at 41.1%.
 

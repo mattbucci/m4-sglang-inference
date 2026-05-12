@@ -1,0 +1,75 @@
+{
+  "tag": "Nemotron-3-Nano-30B",
+  "timestamp": "2026-05-11 21:14",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 77,
+    "total": 100,
+    "accuracy": 0.77
+  },
+  "humaneval": {
+    "passed": 2,
+    "total": 20,
+    "pass_rate": 0.1,
+    "mode": "completions"
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "DbQA": {
+      "correct": 1,
+      "total": 25,
+      "accuracy": 0.04
+    },
+    "SuppQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "TableQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "ProtocolQA": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "SeqQA": {
+      "correct": 1,
+      "total": 25,
+      "accuracy": 0.04
+    },
+    "CloningScenarios": {
+      "correct": 3,
+      "total": 25,
+      "accuracy": 0.12
+    },
+    "_overall": {
+      "correct": 34,
+      "total": 175,
+      "accuracy": 0.19428571428571428
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
