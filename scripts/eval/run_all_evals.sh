@@ -61,6 +61,12 @@ run_eval_for() {
     local preset="$1"
     local tag="$2"
 
+    # Per-preset required HumanEval mode (must match eval_cmd_for selection).
+    local required_he_mode="completions"
+    case "$preset" in
+        gemma4|gemma4-31b) required_he_mode="chat" ;;
+    esac
+
     local results_file="benchmarks/quality/${tag// /_}.json"
     # Skip only if every section meets the requested sample bar AND results
     # are plausible (MMLU > 5% — anything ≤5% is below random-guess on 4-choice,
@@ -75,6 +81,11 @@ def cache_ok():
         return False
     he = r.get('humaneval', {})
     if he.get('total', 0) < 20:
+        return False
+    # Mode mismatch — chat-mode HE required but cache has completions-mode
+    # (or vice versa). Force a re-run so the published number reflects the
+    # methodology eval_cmd_for() selected for this preset.
+    if he.get('mode', 'completions') != '$required_he_mode':
         return False
     lb = r.get('labbench', {})
     if not lb.get('_overall') or lb['_overall'].get('correct', 0) == 0:
