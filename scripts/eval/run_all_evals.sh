@@ -26,14 +26,23 @@ EVAL_CMD_BASE="python scripts/eval/eval_and_chart.py --run --port $PORT --worker
 # decode × 1024 tokens × 100 samples ≈ 2h JUST for MMLU on a 27B model).
 eval_cmd_for() {
     local preset="$1"
+    local cmd="$EVAL_CMD_BASE"
     case "$preset" in
         qwen35|qwen35-9b-8bit|qwen3-moe|qwen3-32b|qwen36|qwen36-27b)
-            echo "$EVAL_CMD_BASE --no-thinking"
-            ;;
-        *)
-            echo "$EVAL_CMD_BASE"
+            cmd="$cmd --no-thinking"
             ;;
     esac
+    # Gemma4 IT-tuned models don't respond to raw /v1/completions — the
+    # function-signature prefix returns chat sentinel tokens instead of code.
+    # First full eval pass showed HE=0% (26B) / 5% (31B). Force chat-mode HE
+    # for these presets; the cached JSON's "mode" field invalidates the old
+    # results so they get re-evaluated.
+    case "$preset" in
+        gemma4|gemma4-31b)
+            cmd="$cmd --humaneval-mode chat"
+            ;;
+    esac
+    echo "$cmd"
 }
 
 wait_for_server() {

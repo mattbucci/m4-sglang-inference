@@ -109,8 +109,47 @@ def mmlu_eval(chat_url, n_samples=200, max_workers=1, max_tokens=1024):
     return {"correct": correct, "total": total, "accuracy": correct / total if total else 0}
 
 
-def humaneval_eval(chat_url, n_samples=30, max_workers=1, max_tokens=4096):
-    """HumanEval code generation pass@1."""
+_HUMANEVAL_CHAT_INSTRUCTION = (
+    "Complete the following Python function. Return ONLY the function body "
+    "(no `def` line, no class, no explanation, no markdown). Indent with 4 spaces."
+)
+
+
+def _strip_chat_code(text: str) -> str:
+    """Pull a function body out of a chat reply.
+
+    Handles three common shapes IT models produce:
+    1. Plain indented body (best case — return as-is).
+    2. ```python ... ``` fenced block — extract the contents.
+    3. Full `def name(...)` redefinition — pull out the body only.
+
+    Also removes any `<think>…</think>` traces and leading/trailing prose.
+    """
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
+    fenced = re.search(r"```(?:python|py)?\s*\n?(.*?)```", text, flags=re.DOTALL)
+    if fenced:
+        text = fenced.group(1)
+    # If the model re-emitted the `def` signature, drop it and keep only the body.
+    def_match = re.search(r"^\s*def\s+\w+\s*\([^)]*\)[^:]*:\s*\n(.*)", text, flags=re.DOTALL)
+    if def_match:
+        text = def_match.group(1)
+    return text.rstrip()
+
+
+def humaneval_eval(chat_url, n_samples=30, max_workers=1, max_tokens=4096, mode="completions"):
+    """HumanEval code generation pass@1.
+
+    Two modes:
+    - ``completions`` (default, sister-team compatible): POST to /v1/completions
+      with the function-signature prefix and let the base model continue. Works
+      for coder-tuned models (Coder-30B 95%) but fails for instruction-tuned
+      models that prepend chat tokens to every request (Gemma4 → 0%).
+    - ``chat``: POST to /v1/chat/completions with an explicit "complete this
+      function" instruction. Strips markdown fences and any redefined `def`
+      from the reply before exec'ing. Use for IT-only checkpoints that the
+      base-completions path can't reach.
+    """
     from datasets import load_dataset
     ds = list(load_dataset("openai/openai_humaneval", split="test"))[:n_samples]
     completions_url = chat_url.replace("/chat/completions", "/completions")
@@ -118,14 +157,32 @@ def humaneval_eval(chat_url, n_samples=30, max_workers=1, max_tokens=4096):
 
     def eval_one(item):
         try:
-            r = _post(completions_url, {
-                "prompt": item["prompt"],
-                "max_tokens": min(max_tokens, 4096),
-                "temperature": 0,
-                "stop": ["\ndef ", "\nclass ", "\n#", "\nif __name__"],
-            }, timeout=120)
-            comp = re.sub(r"<think>.*?</think>", "", r["choices"][0]["text"], flags=re.DOTALL)
-            comp = re.sub(r"<think>.*", "", comp, flags=re.DOTALL)
+            if mode == "chat":
+                r = _post(chat_url, {
+                    "model": "default",
+                    "messages": [
+                        {"role": "user",
+                         "content": f"{_HUMANEVAL_CHAT_INSTRUCTION}\n\n```python\n{item['prompt']}```"},
+                    ],
+                    "max_tokens": min(max_tokens, 4096),
+                    "temperature": 0,
+                }, timeout=120)
+                raw = r["choices"][0]["message"]["content"] or ""
+                comp = _strip_chat_code(raw)
+                # If chat model emitted just the body without indent, indent it.
+                if comp and not comp.lstrip().startswith(("    ", "\t")) \
+                        and "\n    " not in comp[:80]:
+                    comp = "\n".join("    " + ln if ln.strip() else ln
+                                     for ln in comp.splitlines())
+            else:
+                r = _post(completions_url, {
+                    "prompt": item["prompt"],
+                    "max_tokens": min(max_tokens, 4096),
+                    "temperature": 0,
+                    "stop": ["\ndef ", "\nclass ", "\n#", "\nif __name__"],
+                }, timeout=120)
+                comp = re.sub(r"<think>.*?</think>", "", r["choices"][0]["text"], flags=re.DOTALL)
+                comp = re.sub(r"<think>.*", "", comp, flags=re.DOTALL)
             g = {}
             exec(item["prompt"] + comp + "\n" + item["test"], g)
             g["check"](g[item["entry_point"]])
@@ -136,7 +193,8 @@ def humaneval_eval(chat_url, n_samples=30, max_workers=1, max_tokens=4096):
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for f in as_completed([ex.submit(eval_one, s) for s in ds]):
             total += 1; passed += f.result()
-    return {"passed": passed, "total": total, "pass_rate": passed / total if total else 0}
+    return {"passed": passed, "total": total, "pass_rate": passed / total if total else 0,
+            "mode": mode}
 
 
 def labbench_eval(chat_url, bench_name, n_samples=50, max_workers=1, max_tokens=1024):
@@ -239,9 +297,15 @@ def _mmlu_cache_ok(d, expected_n):
     return d.get("accuracy", 0) > 0.05
 
 
-def _humaneval_cache_ok(d, expected_n):
-    """Cached HumanEval is reusable when sample size meets the bar."""
+def _humaneval_cache_ok(d, expected_n, mode="completions"):
+    """Cached HumanEval is reusable when sample size meets the bar and the
+    evaluation mode matches. A chat-mode cache must not be reused for a
+    completions-mode request and vice versa — the methodology differs.
+    """
     if not d or d.get("total", 0) < expected_n:
+        return False
+    cached_mode = d.get("mode", "completions")  # legacy JSONs default to completions
+    if cached_mode != mode:
         return False
     # 0% pass@1 is technically possible for a broken model, but combined with
     # 0% on MMLU it indicates a crash. Caller checks MMLU first; if that's
@@ -277,7 +341,8 @@ def _needle_cache_ok(d, expected_lengths):
 
 
 def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50,
-             needle_lengths=[1024, 4096, 16384, 65536], workers=1):
+             needle_lengths=[1024, 4096, 16384, 65536], workers=1,
+             humaneval_mode="completions"):
     base_url = f"http://localhost:{port}"
     chat_url = f"{base_url}/v1/chat/completions"
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -319,13 +384,15 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50,
     else:
         print(f"\nMMLU: {results['mmlu']['accuracy']:.1%} (cached, {results['mmlu']['total']} samples)")
 
-    if not _humaneval_cache_ok(results.get("humaneval"), he_n):
-        print(f"\nHumanEval ({he_n} samples)...")
-        results["humaneval"] = humaneval_eval(chat_url, he_n, max_workers=workers, max_tokens=code_budget)
+    if not _humaneval_cache_ok(results.get("humaneval"), he_n, humaneval_mode):
+        print(f"\nHumanEval ({he_n} samples, mode={humaneval_mode})...")
+        results["humaneval"] = humaneval_eval(chat_url, he_n, max_workers=workers,
+                                              max_tokens=code_budget, mode=humaneval_mode)
         print(f"  {results['humaneval']['pass_rate']:.1%}")
         save()
     else:
-        print(f"\nHumanEval: {results['humaneval']['pass_rate']:.1%} (cached, {results['humaneval']['total']} samples)")
+        print(f"\nHumanEval: {results['humaneval']['pass_rate']:.1%} "
+              f"(cached, {results['humaneval']['total']} samples, mode={humaneval_mode})")
 
     if labbench_n <= 0:
         print(f"\nLAB-Bench: skipped (labbench_n={labbench_n})")
@@ -457,6 +524,14 @@ if __name__ == "__main__":
     parser.add_argument("--invalidate", action="store_true",
                         help="Drop any existing JSON for this tag before running, "
                              "forcing a full re-eval.")
+    parser.add_argument("--humaneval-mode", choices=["completions", "chat"],
+                        default="completions",
+                        help="HumanEval eval style. `completions` (default) uses "
+                             "/v1/completions with the function-signature prefix — "
+                             "compatible with sister-team 3090/R9700 numbers. "
+                             "`chat` uses /v1/chat/completions with an explicit "
+                             "completion instruction — required for IT models "
+                             "like Gemma4 that don't respond to raw base completion.")
     args = parser.parse_args()
 
     if args.no_thinking:
@@ -474,7 +549,8 @@ if __name__ == "__main__":
     if args.run:
         lengths = [int(x) for x in args.needle_lengths.split(",")]
         run_eval(args.port, args.tag, args.mmlu_samples, args.humaneval_samples,
-                 args.labbench_samples, lengths, args.workers)
+                 args.labbench_samples, lengths, args.workers,
+                 humaneval_mode=args.humaneval_mode)
     if args.chart:
         generate_charts()
     if not args.run and not args.chart:
