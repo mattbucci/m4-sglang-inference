@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 7 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11, so the patch set is now 7 instead of 13.
+256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 11 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11, so the patch set is now 7 instead of 13.
 
 ## Current Focus (2026-05-11)
 
@@ -296,7 +296,7 @@ pip install -e ".[srt_mps]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.11** (`612785ffd`) + 7 patches |
+| SGLang | **v0.5.11** (`612785ffd`) + 11 patches |
 | MLX | 0.31.1 |
 | mlx-lm | 0.31.2 |
 | PyTorch | 2.9.1 (MPS) |
@@ -304,7 +304,7 @@ pip install -e ".[srt_mps]"
 
 ## Patches
 
-7 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). All patches apply via `git apply` against a clean v0.5.11 — no more `post_apply.py`. See [patches/README.md](patches/README.md) for the per-patch breakdown and [patches/REBASE-v0.5.11-NOTES.md](patches/REBASE-v0.5.11-NOTES.md) for the rebase narrative.
+11 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups: mlx_vlm position-cache reset for MR>1, hybrid batched decode + Qwen3.5 gated multimodal wrapper, and pool-sync hardening. All patches apply via `git apply` against a clean v0.5.11 — no more `post_apply.py`. See [patches/README.md](patches/README.md) for the per-patch breakdown and [patches/REBASE-v0.5.11-NOTES.md](patches/REBASE-v0.5.11-NOTES.md) for the rebase narrative.
 
 | # | Patch | What |
 |:-:|-------|------|
