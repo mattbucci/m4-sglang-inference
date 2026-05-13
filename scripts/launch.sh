@@ -72,17 +72,23 @@ apply_preset() {
             # — the original 4bit upload has 10 dead layers (model.layers.36/46
             # weight + biases all-zero, attention output collapses through those
             # two layers). check_mlx_quant_scales.py catches it; DWQ is 9/9.
+            # --tool-call-parser qwen3_coder matches the 3090 sister-team
+            # convention on every Qwen3-Coder preset (XML <tool_call> tag
+            # parsing into tool_calls[]); operates on output tokens only so
+            # safe under greedy MLX decode.
             MODEL="${MODEL:-mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ}"
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
+            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen3_coder"
             ;;
         coder-next)
             # Qwen3-Coder-Next is a Qwen3-Next DeltaNet hybrid (~80B). See the
             # "Coder-Next-80B infeasible on M4" memory before retrying — the
             # weights + PyTorch/mlx_vlm/torchcodec import surface exceed 64GB
             # in practice. --disable-radix-cache required like other hybrids.
+            # qwen3_coder tool-call parsing matches the family convention.
             MODEL="${MODEL:-mlx-community/Qwen3-Coder-Next-4bit}"
             CTX=8192; MAX_RUNNING=1; CHUNKED=4096
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4)
@@ -92,8 +98,14 @@ apply_preset() {
             # of the multimodal processors. Text-only for now; multimodal
             # needs a re-upload from the original Gemma weights with the
             # preprocessor + audio config.
+            # --reasoning-parser gemma4 matches both sister teams' convention:
+            # without it, chat_template_kwargs={"enable_thinking": true}
+            # output stays as a raw <think>...</think> block in content
+            # instead of being split into reasoning_content. Required for
+            # downstream probes / evals to see the parsed thinking trace.
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
+            REASONING="--reasoning-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
@@ -101,8 +113,10 @@ apply_preset() {
             # no chat template, no special tokens, no instruction tuning.
             # Chat completions returned garbage start tokens. Switched to
             # the instruction-tuned variant which speaks Gemma turn format.
+            # --reasoning-parser gemma4 — see gemma4 preset comment for why.
             MODEL="${MODEL:-mlx-community/gemma-4-31b-it-mxfp4}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
+            REASONING="--reasoning-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
@@ -198,7 +212,14 @@ apply_preset() {
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             # --disable-radix-cache required: Mamba2 ArraysCache layers
             # crash _sync_new_kv_to_pool just like Qwen3.5/3.6 DeltaNet.
+            # --reasoning-parser nemotron_3 — Nemotron-3-Nano emits verbose
+            # thinking traces; without the parser they consume the 1024-tok
+            # MC eval budget before the model answers. Initial M4 quality
+            # eval landed at MMLU 77 / HE 10 / LAB-Bench 19.4 specifically
+            # because of this (README quality table footnote ¶). Wiring
+            # nemotron_3 should bump HE + LAB-Bench substantially.
             EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
+            REASONING="--reasoning-parser nemotron_3"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         *)
