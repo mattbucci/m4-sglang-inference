@@ -61,10 +61,14 @@ apply_preset() {
             # Mistral3ForConditionalGeneration — vision-capable.
             # --enable-multimodal exposes the image path (patches 007/009/010
             # /011/012 + VLM detection make it actually work).
+            # --tool-call-parser mistral matches 3090 sister-team mapping for
+            # Mistral-arch models (Devstral emits `[TOOL_CALLS]` tags); without
+            # the parser SGLang serves the raw tag as assistant text and any
+            # coding harness silently drops the call.
             MODEL="${MODEL:-mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit}"
             CTX=32768; MAX_RUNNING=16; CHUNKED=8192
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --tool-call-parser mistral"
             WARMUP="--skip-server-warmup"
             ;;
         coder-30b)
@@ -103,6 +107,9 @@ apply_preset() {
             # output stays as a raw <think>...</think> block in content
             # instead of being split into reasoning_content. Required for
             # downstream probes / evals to see the parsed thinking trace.
+            # --tool-call-parser gemma4 matches both sister teams — Gemma 4
+            # emits `<|tool>` tags which need the gemma4 parser to surface as
+            # tool_calls[] instead of plain assistant text.
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             REASONING="--reasoning-parser gemma4"
@@ -115,7 +122,7 @@ apply_preset() {
             # (1,8,64) pool slots and crashes with ValueError. See
             # patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md for the full trace and
             # fix-A/B/C options. Workaround applies to both 26B and 31B.
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
@@ -124,12 +131,13 @@ apply_preset() {
             # Chat completions returned garbage start tokens. Switched to
             # the instruction-tuned variant which speaks Gemma turn format.
             # --reasoning-parser gemma4 — see gemma4 preset comment for why.
+            # --tool-call-parser gemma4 — see gemma4 preset comment for why.
             MODEL="${MODEL:-mlx-community/gemma-4-31b-it-mxfp4}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             REASONING="--reasoning-parser gemma4"
             # --disable-radix-cache REQUIRED — same heterogeneous-attention bug
             # as gemma4 (50 sliding @ (16,256) + 10 full @ (4,512)).
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
@@ -145,9 +153,12 @@ apply_preset() {
             # patch 011 batched DeltaNet decode + Qwen3_5-aware
             # MLXAttentionWrapper unblock concurrent serving on this
             # gated multimodal hybrid (2026-05-12).
+            # --tool-call-parser qwen3_coder per 3090 mapping: every Qwen3.5/3.6
+            # family member emits `<function=NAME>...</function>` XML tool calls
+            # that need the qwen3_coder parser to surface as structured tool_calls.
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
         qwen35-9b-8bit)
@@ -159,23 +170,29 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
         qwen3-32b)
             # 4bit-DWQ variant: scanner-clean (449/449 layers healthy),
             # MMLU 89.5% / HumanEval 95% vs 86.7% / 87.5% on standard 4bit.
             # Wins on both axes — clean swap.
+            # --tool-call-parser qwen25 per 3090 mapping: Qwen3 base/generalist
+            # (non-Coder, non-3.5/3.6) emits JSON-in-tag `<tool_call>{json}</tool_call>`
+            # which the qwen25 parser handles.
             MODEL="${MODEL:-mlx-community/Qwen3-32B-4bit-DWQ}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen25"
             ;;
         qwen3-moe)
             # 4bit-DWQ variant: scanner-clean, MMLU 91.2% vs 83.3% on standard 4bit
             # (+7.9 pp), HumanEval -5 pp. Net win for general-knowledge agentic work.
+            # --tool-call-parser qwen25 — see qwen3-32b for rationale.
             MODEL="${MODEL:-mlx-community/Qwen3-30B-A3B-4bit-DWQ}"
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen25"
             ;;
         smol-docling)
             # VLM smoke test: smallest available MLX VLM (256M params).
@@ -195,7 +212,7 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
         qwen36-27b)
@@ -207,7 +224,7 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
         nemotron-30b)
