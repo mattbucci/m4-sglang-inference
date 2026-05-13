@@ -68,8 +68,8 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone "$SGLANG_REPO" "$SGLANG_DIR"
     cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
 
-    # Apply patches in order. All 11 patches (002-012) are proper git
-    # patches regenerated against v0.5.11 — 001 (radix cache) was upstreamed.
+    # Apply patches in order. All 12 patches (002-013) are proper git
+    # patches against v0.5.11 — 001 (radix cache) was upstreamed.
     if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
         for patch in "$REPO_DIR/patches/"0[01][0-9]-*.patch; do

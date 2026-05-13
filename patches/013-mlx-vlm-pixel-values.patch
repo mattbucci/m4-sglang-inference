@@ -1,0 +1,147 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -712,6 +712,8 @@ class MlxModelRunner:
+         prefix_slot_ids: list[int],
+         new_slot_ids: list[int],
+         req_pool_idx: int,
++        pixel_values=None,
++        mm_kwargs: dict | None = None,
+     ) -> int:
+-        """Prefill a request.  Returns next_token_id."""
++        """Prefill a request.  Returns next_token_id.
++
++        ``pixel_values`` — optional mlx array for VLM image input. When set,
++        passed through to the model's __call__ — TextOnlyVLMShim (see
++        _load_model) routes it to vlm.__call__ instead of language_model.
++        ``mm_kwargs`` — model-specific extras (image_sizes for Mistral3/Pixtral,
++        image_grid_thw for Qwen2-VL, etc.) forwarded as keyword args.
++        Restored 2026-05-13 — the original pixel_values plumbing (Apr-18
++        commit f20ee6e) was lost in the v0.5.11 rebase, which silently
++        broke every VLM image request.
++        """
+         pending = self.prefill_start(
+             req_id=req_id,
+             new_token_ids=new_token_ids,
+@@ -719,6 +731,8 @@ class MlxModelRunner:
+             prefix_slot_ids=prefix_slot_ids,
+             new_slot_ids=new_slot_ids,
+             req_pool_idx=req_pool_idx,
++            pixel_values=pixel_values,
++            mm_kwargs=mm_kwargs,
+         )
+         self._eval_with_cache(pending.lazy_token, pending.cache)
+         return self.prefill_finalize(pending)
+@@ -824,6 +838,8 @@ class MlxModelRunner:
+         prefix_slot_ids: list[int],
+         new_slot_ids: list[int],
+         req_pool_idx: int,
++        pixel_values=None,
++        mm_kwargs: dict | None = None,
+     ) -> MlxPendingPrefill:
+         """Queue a prefill forward pass without evaluating.
+
+@@ -831,9 +847,18 @@ class MlxModelRunner:
+         next-token ``mx.array`` plus everything needed to commit the
+         request in :meth:`prefill_finalize`.  The caller drives the GPU
+         by handing ``lazy_token`` (and cache state) to ``mx.async_eval``.
++
++        ``pixel_values`` / ``mm_kwargs`` — see :meth:`prefill`.
+         """
+         num_layers = self._num_layers
+         prefix_len = len(prefix_slot_ids)
++        # Build kwargs once; passed to every self.model(...) call below so
++        # the VLM multimodal path is unified across the disable_radix and
++        # full-radix branches.
++        _model_kwargs: dict = {}
++        if pixel_values is not None:
++            _model_kwargs["pixel_values"] = pixel_values
++        if mm_kwargs:
++            _model_kwargs.update(mm_kwargs)
+
+         # mlx_vlm/qwen3_5 caches `_position_ids` and `_rope_deltas` on the
+         # LanguageModel instance and only invalidates them when a new image
+@@ -854,7 +879,7 @@ class MlxModelRunner:
+         if self.disable_radix_cache:
+             cache = self._acquire_cache()
+             input_ids = mx.array([new_token_ids], dtype=mx.int32)
+-            model_output = self.model(input_ids, cache=cache)
++            model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+             logits = self._extract_logits(model_output)
+             lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
+             return MlxPendingPrefill(
+@@ -888,7 +913,7 @@ class MlxModelRunner:
+                 c.offset = max(c.offset - 1, 0)
+
+         input_ids = mx.array([extend_tokens], dtype=mx.int32)
+-        model_output = self.model(input_ids, cache=cache)
++        model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+         logits = self._extract_logits(model_output)
+
+         last_logits = logits[:, -1, :]
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -201,6 +201,55 @@ class MlxTpModelWorker(TpModelWorker):
+                     # New prefill
+                     prefix_slot_ids = req.prefix_indices.tolist()
+                     full_token_ids = list(req.fill_ids)
++                    # Patch 013: extract pixel_values from multimodal_inputs
++                    # (set by SGLang's processor when an image is in the
++                    # request). MlxModelRunner.prefill threads it to
++                    # TextOnlyVLMShim which routes to the full vlm.__call__
++                    # when present. The original plumbing landed Apr-18 as
++                    # commit f20ee6e and was lost in the v0.5.11 rebase —
++                    # this patch is the restoration receipt.
++                    pixel_values = None
++                    mm_kwargs: dict = {}
++                    mm = getattr(req, "multimodal_inputs", None)
++                    if mm and getattr(mm, "mm_items", None):
++                        item = mm.mm_items[0]
++                        feature = getattr(item, "feature", None)
++                        if feature is not None:
++                            try:
++                                import mlx.core as _mx
++
++                                # mlx_vlm wants an MLX array. SGLang's
++                                # multimodal processor returns a torch
++                                # tensor; convert via numpy bridge.
++                                pixel_values = _mx.array(
++                                    feature.numpy()
++                                    if hasattr(feature, "numpy")
++                                    else feature
++                                )
++                                # Forward model-specific kwargs that
++                                # individual VLMs need alongside
++                                # pixel_values. Pixtral / Mistral3
++                                # require image_sizes for the patch
++                                # merger; Qwen2-VL uses image_grid_thw;
++                                # Qwen3.5/3.6 use video_grid_thw +
++                                # second_per_grid_ts. Anything in
++                                # model_specific_data gets passed
++                                # through — the model decides what to
++                                # consume via **kwargs.
++                                msd = getattr(item, "model_specific_data", None) or {}
++                                for k, v in msd.items():
++                                    try:
++                                        if hasattr(v, "numpy"):
++                                            mm_kwargs[k] = _mx.array(v.numpy())
++                                        elif isinstance(v, (list, tuple)):
++                                            mm_kwargs[k] = v
++                                        else:
++                                            mm_kwargs[k] = _mx.array(v)
++                                    except Exception:
++                                        mm_kwargs[k] = v
++                            except Exception:
++                                pixel_values = None
+                     next_token = self._mlx_runner.prefill(
+                         req_id=req.rid,
+                         new_token_ids=req_token_ids,
+@@ -208,6 +257,8 @@ class MlxTpModelWorker(TpModelWorker):
+                         prefix_slot_ids=prefix_slot_ids,
+                         new_slot_ids=req_new_slots,
+                         req_pool_idx=req.req_pool_idx,
++                        pixel_values=pixel_values,
++                        mm_kwargs=mm_kwargs,
+                     )
+                     prefill_rids.append((req.rid, next_token))
