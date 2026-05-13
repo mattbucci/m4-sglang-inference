@@ -114,12 +114,15 @@ def _tensor_keys(repo: str) -> list[str]:
     return list(header.keys())
 
 
-# MLX quantized linears store these three tensors per layer.
+# MLX-quantized linears come in two flavors:
+#   - 4-bit / 8-bit (mlx_lm.utils): weight + scales + biases
+#   - mxfp4 (microscaling FP4):     weight + scales  (no biases)
+# Either way the presence of a sibling `.scales` is the load-bearing signal.
 QUANT_SUFFIXES = (".weight", ".scales", ".biases")
 
 
 def _quantized_layers(keys: list[str]) -> set[str]:
-    """Return the set of layer prefixes that have an MLX quantization triple."""
+    """Return the set of layer prefixes whose linear has a sibling .scales tensor."""
     triples: dict[str, set[str]] = {}
     for k in keys:
         for sfx in QUANT_SUFFIXES:
@@ -127,7 +130,7 @@ def _quantized_layers(keys: list[str]) -> set[str]:
                 prefix = k[: -len(sfx)]
                 triples.setdefault(prefix, set()).add(sfx)
                 break
-    return {prefix for prefix, parts in triples.items() if {".scales", ".biases"} <= parts}
+    return {prefix for prefix, parts in triples.items() if ".scales" in parts}
 
 
 def _layer_prefix(key: str) -> str | None:
