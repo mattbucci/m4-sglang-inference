@@ -1,0 +1,35 @@
+repo                                                         bits vis(bf/q)   aud(bf/q)   router(bf/q)  deltanet(bf/q)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit           4 222(222/0  )   0(  0/0  )   0(  0/0    )   0(  0/0)
+mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ             4   0(  0/0  )   0(  0/0  ) 144(  0/48   )   0(  0/0)
+  ⚠ MoE router (mlp.gate) has 48 quantized layers — top-k accuracy degraded
+mlx-community/Qwen3-Coder-Next-4bit                             4   0(  0/0  )   0(  0/0  ) 144(  0/48   )   0(  0/0)
+  ⚠ MoE router (mlp.gate) has 48 quantized layers — top-k accuracy degraded
+mlx-community/gemma-4-26b-a4b-it-4bit                           4 358(352/1  )   0(  0/0  )   0(  0/0    )   0(  0/0)
+  ⚠ vision_tower has 1 INT4/8 layers — silent degradation risk
+mlx-community/gemma-4-31b-it-mxfp4                              4 357(353/0  )   0(  0/0  )   0(  0/0    )   0(  0/0)
+mlx-community/Qwen3.5-27B-4bit                                  4 333(167/0  )   0(  0/0  )   0(  0/0    ) 288(  0/96)
+  ⚠ DeltaNet in_proj_a/b has 96 quantized layers — recurrent state will diverge
+mlx-community/Qwen3.5-9B-MLX-8bit                               8 333(167/0  )   0(  0/0  )   0(  0/0    ) 144(  0/48)
+  ⚠ DeltaNet in_proj_a/b has 48 quantized layers — recurrent state will diverge
+mlx-community/Qwen3-32B-4bit-DWQ                                4   0(  0/0  )   0(  0/0  )   0(  0/0    )   0(  0/0)
+mlx-community/Qwen3-30B-A3B-4bit-DWQ                            4   0(  0/0  )   0(  0/0  ) 144(  0/48   )   0(  0/0)
+  ⚠ MoE router (mlp.gate) has 48 quantized layers — top-k accuracy degraded
+mlx-community/Qwen3.6-35B-A3B-4bit                              4 333(167/0  )   0(  0/0  ) 120(  0/40   ) 180(  0/60)
+  ⚠ MoE router (mlp.gate) has 40 quantized layers — top-k accuracy degraded
+  ⚠ DeltaNet in_proj_a/b has 60 quantized layers — recurrent state will diverge
+mlx-community/Qwen3.6-27B-4bit                                  4 333(167/0  )   0(  0/0  )   0(  0/0    ) 288(  0/96)
+  ⚠ DeltaNet in_proj_a/b has 96 quantized layers — recurrent state will diverge
+mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit               4   0(  0/0  )   0(  0/0  )   0(  0/0    )   0(  0/0)
+
+============================================================
+SUMMARY: 9 issues across 12 repos
+  mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ: MoE router (mlp.gate) has 48 quantized layers — top-k accuracy degraded
+  mlx-community/Qwen3-Coder-Next-4bit: MoE router (mlp.gate) has 48 quantized layers — top-k accuracy degraded
+  mlx-community/gemma-4-26b-a4b-it-4bit: vision_tower has 1 INT4/8 layers — silent degradation risk
+  mlx-community/Qwen3.5-27B-4bit: DeltaNet in_proj_a/b has 96 quantized layers — recurrent state will diverge
+  mlx-community/Qwen3.5-9B-MLX-8bit: DeltaNet in_proj_a/b has 48 quantized layers — recurrent state will diverge
+  mlx-community/Qwen3-30B-A3B-4bit-DWQ: MoE router (mlp.gate) has 48 quantized layers — top-k accuracy degraded
+  mlx-community/Qwen3.6-35B-A3B-4bit: MoE router (mlp.gate) has 40 quantized layers — top-k accuracy degraded
+  mlx-community/Qwen3.6-35B-A3B-4bit: DeltaNet in_proj_a/b has 60 quantized layers — recurrent state will diverge
+  mlx-community/Qwen3.6-27B-4bit: DeltaNet in_proj_a/b has 96 quantized layers — recurrent state will diverge

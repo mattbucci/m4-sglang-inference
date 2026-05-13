@@ -1,0 +1,391 @@
+[
+  {
+    "repo": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
+    "arch": "Mistral3ForConditionalGeneration",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 1145,
+    "total_quantized_layers": 0,
+    "vision": [
+      222,
+      222,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": false,
+    "embed_quantized": false,
+    "findings": []
+  },
+  {
+    "repo": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ",
+    "arch": "Qwen3MoeForCausalLM",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 1351,
+    "total_quantized_layers": 386,
+    "vision": [
+      0,
+      0,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      144,
+      0,
+      48
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "MoE router (mlp.gate) has 48 quantized layers \u2014 top-k accuracy degraded"
+    ]
+  },
+  {
+    "repo": "mlx-community/Qwen3-Coder-Next-4bit",
+    "arch": "Qwen3NextForCausalLM",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 1891,
+    "total_quantized_layers": 542,
+    "vision": [
+      0,
+      0,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      144,
+      0,
+      48
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "MoE router (mlp.gate) has 48 quantized layers \u2014 top-k accuracy degraded"
+    ]
+  },
+  {
+    "repo": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    "arch": "Gemma4ForConditionalGeneration",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 1697,
+    "total_quantized_layers": 327,
+    "vision": [
+      358,
+      352,
+      1
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": false,
+    "embed_quantized": true,
+    "findings": [
+      "vision_tower has 1 INT4/8 layers \u2014 silent degradation risk"
+    ]
+  },
+  {
+    "repo": "mlx-community/gemma-4-31b-it-mxfp4",
+    "arch": "Gemma4ForConditionalGeneration",
+    "quant_bits": 4,
+    "quant_group_size": 32,
+    "total_keys": 1600,
+    "total_quantized_layers": 0,
+    "vision": [
+      357,
+      353,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": false,
+    "embed_quantized": false,
+    "findings": []
+  },
+  {
+    "repo": "mlx-community/Qwen3.5-27B-4bit",
+    "arch": "Qwen3_5ForConditionalGeneration",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 2180,
+    "total_quantized_layers": 498,
+    "vision": [
+      333,
+      167,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      288,
+      0,
+      96
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "DeltaNet in_proj_a/b has 96 quantized layers \u2014 recurrent state will diverge"
+    ]
+  },
+  {
+    "repo": "mlx-community/Qwen3.5-9B-MLX-8bit",
+    "arch": "Qwen3_5ForConditionalGeneration",
+    "quant_bits": 8,
+    "quant_group_size": 64,
+    "total_keys": 1260,
+    "total_quantized_layers": 250,
+    "vision": [
+      333,
+      167,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      144,
+      0,
+      48
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "DeltaNet in_proj_a/b has 48 quantized layers \u2014 recurrent state will diverge"
+    ]
+  },
+  {
+    "repo": "mlx-community/Qwen3-32B-4bit-DWQ",
+    "arch": "Qwen3ForCausalLM",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 1607,
+    "total_quantized_layers": 450,
+    "vision": [
+      0,
+      0,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": []
+  },
+  {
+    "repo": "mlx-community/Qwen3-30B-A3B-4bit-DWQ",
+    "arch": "Qwen3MoeForCausalLM",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 1351,
+    "total_quantized_layers": 386,
+    "vision": [
+      0,
+      0,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      144,
+      0,
+      48
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "MoE router (mlp.gate) has 48 quantized layers \u2014 top-k accuracy degraded"
+    ]
+  },
+  {
+    "repo": "mlx-community/Qwen3.6-35B-A3B-4bit",
+    "arch": "Qwen3_5MoeForConditionalGeneration",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 2090,
+    "total_quantized_layers": 512,
+    "vision": [
+      333,
+      167,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      120,
+      0,
+      40
+    ],
+    "deltanet": [
+      180,
+      0,
+      60
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "MoE router (mlp.gate) has 40 quantized layers \u2014 top-k accuracy degraded",
+      "DeltaNet in_proj_a/b has 60 quantized layers \u2014 recurrent state will diverge"
+    ]
+  },
+  {
+    "repo": "mlx-community/Qwen3.6-27B-4bit",
+    "arch": "Qwen3_5ForConditionalGeneration",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 2180,
+    "total_quantized_layers": 498,
+    "vision": [
+      333,
+      167,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      288,
+      0,
+      96
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": true,
+    "findings": [
+      "DeltaNet in_proj_a/b has 96 quantized layers \u2014 recurrent state will diverge"
+    ]
+  },
+  {
+    "repo": "mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit",
+    "arch": "NemotronHForCausalLM",
+    "quant_bits": 4,
+    "quant_group_size": 64,
+    "total_keys": 729,
+    "total_quantized_layers": 164,
+    "vision": [
+      0,
+      0,
+      0
+    ],
+    "audio": [
+      0,
+      0,
+      0
+    ],
+    "router": [
+      0,
+      0,
+      0
+    ],
+    "deltanet": [
+      0,
+      0,
+      0
+    ],
+    "lm_head_quantized": true,
+    "embed_quantized": false,
+    "findings": []
+  }
+]
