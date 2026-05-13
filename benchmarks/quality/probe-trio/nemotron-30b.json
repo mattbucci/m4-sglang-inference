@@ -1,0 +1,20 @@
+{
+  "preset": "nemotron-30b",
+  "model": "mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit",
+  "timestamp": "2026-05-13T02:46",
+  "with_parser": "nemotron_3",
+  "probes": {
+    "reasoning_parser_smoke": {
+      "verdict": "PARSER_WORKING",
+      "elapsed_s": 4.1,
+      "finish_reason": "stop",
+      "reasoning_tokens": 154,
+      "completion_tokens": 289,
+      "reasoning_content_len": 435,
+      "content_len": 301,
+      "reasoning_content_excerpt": "We need to solve classic puzzle: ball + bat = 1.10, bat = ball + 1.00. Let ball = x, bat = x+1.00. Then x + (x+1.00) = 1.10 => 2x + 1.00 = 1.10 => 2x = 0.10 => x = 0.05. So ball costs $0.05...",
+      "content_excerpt": "Let the cost of the ball be x dollars. Then the bat costs x + 1.00 dollars. According to the problem: x + (x + 1.00) = 1.10... So the ball costs $0.05. 0.05",
+      "notes": "Parser cleanly splits the thinking trace into reasoning_content (435 chars) from the final answer presentation in content (301 chars). Pre-parser the entire thing would have been in content, which is why HE extractor scored 10% before — it was parsing 'We need to solve classic puzzle...' as Python code. Re-eval HE + LAB-Bench should bump substantially."
+    }
+  }
+}

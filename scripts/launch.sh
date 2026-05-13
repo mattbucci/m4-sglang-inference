@@ -106,6 +106,16 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             REASONING="--reasoning-parser gemma4"
+            # --disable-radix-cache is REQUIRED — Gemma 4 has heterogeneous
+            # per-layer attention shapes (25 sliding @ (8,256) + 5 full @
+            # (2,512)). MlxKVPool is sized for ONE shape sampled from layer 0
+            # (sliding), but only full-attention layers write to the pool
+            # (sliding layers stay on native RotatingKVCache). First
+            # full-attention prefill broadcasts (2,128) packed-KV into
+            # (1,8,64) pool slots and crashes with ValueError. See
+            # patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md for the full trace and
+            # fix-A/B/C options. Workaround applies to both 26B and 31B.
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
@@ -117,6 +127,9 @@ apply_preset() {
             MODEL="${MODEL:-mlx-community/gemma-4-31b-it-mxfp4}"
             CTX=4096; MAX_RUNNING=4; CHUNKED=2048
             REASONING="--reasoning-parser gemma4"
+            # --disable-radix-cache REQUIRED — same heterogeneous-attention bug
+            # as gemma4 (50 sliding @ (16,256) + 10 full @ (4,512)).
+            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
