@@ -94,6 +94,28 @@ python scripts/eval/check_mlx_quant_scales.py mlx-community/Qwen3-Coder-30B-A3B-
 
 This is the kind of silent regression the 3090 team caught on Gemma 4 26B v3 in 16 hours; the MLX analog catches it in 30 seconds. Raw scan output in [`benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt`](benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt). Make `check_mlx_quant_scales.py` part of every new-checkpoint gate before adding numbers to the README.
 
+### Calibration metadata audit: 10 latent recipe issues across the model set (2026-05-13)
+
+Ported the 3090 team's [`audit_calib_quality.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/scripts/eval/audit_calib_quality.py) (commit `6f7f2ae`) — pure HF metadata audit, Range-fetches safetensors headers only (no weight download, no model load), flags recipe-level mistakes invisible to the validator. The 3090 version inspects AWQ's `qweight / scales / qzeros` triple; ours [`audit_mlx_quant_metadata.py`](scripts/eval/audit_mlx_quant_metadata.py) inspects MLX's `weight / scales / biases` (4-bit/8-bit) plus mxfp4's `weight / scales`.
+
+First sweep across the 12 mlx-community checkpoints we ship surfaces problems sister teams have lost 16h calibrations to:
+
+| Checkpoint | Recipe-level finding |
+|------------|---------------------|
+| `mlx-community/gemma-4-26b-a4b-it-4bit` | `embed_vision.embedding_projection` is INT4 — **exactly the layer sister teams' 2026-05-06 disaster zero-scaled**. Likely degrades image features even after the missing-preprocessor block resolves. |
+| `mlx-community/gemma-4-31b-it-mxfp4` | Same `embed_vision.embedding_projection` is mxfp4 — same hazard, different format. |
+| `mlx-community/Qwen3.5-27B-4bit` | DeltaNet `linear_attn.in_proj_a`/`in_proj_b` INT4 across all 48 layers (96 total). Sister teams' rule: these are recurrent-state gate scalars that **must** stay BF16; error accumulates under INT4 → recurrent state diverges. **Strong candidate for the root of the known Qwen3.5 infinite-`<think>` loop** (previously attributed solely to greedy decode). |
+| `mlx-community/Qwen3.5-9B-MLX-8bit` | Same DeltaNet quantization at 8-bit (still violates the BF16 rule). |
+| `mlx-community/Qwen3.6-35B-A3B-4bit` | DeltaNet in_proj_a/b INT4 (60 layers) **and** MoE `mlp.gate` router INT4 (40 layers — top-k routing under INT4). |
+| `mlx-community/Qwen3.6-27B-4bit` | DeltaNet in_proj_a/b INT4 (96 layers). |
+| `mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE router `mlp.gate` INT4 (48 layers). Still scores MMLU 89.5 / HE 95 — bounded impact. |
+| `mlx-community/Qwen3-30B-A3B-4bit-DWQ` | Same router quantization (48 layers). |
+| `mlx-community/Qwen3-Coder-Next-4bit` | Same router quantization (48 layers — 80B infeasible on M4 regardless). |
+
+**Clean: Devstral-24B, Qwen3-32B-DWQ, Nemotron-3-Nano-30B-A3B** (no DeltaNet, no MoE routers in the model, vision tower fully BF16 on Devstral).
+
+Raw output: [`benchmarks/quality/mlx-metadata-audit-2026-05-13.txt`](benchmarks/quality/mlx-metadata-audit-2026-05-13.txt) (+ `.json`). Bake this into every new-checkpoint gate alongside `check_mlx_quant_scales.py` — the two are complementary: metadata audit catches **recipe** mistakes (wrong things quantized), scale scanner catches **per-layer** corruption (right things quantized badly).
+
 **Quality lift after swapping to the DWQ variant** (`mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ`, clean: 386/386 layers healthy):
 
 | Metric | Broken 4bit (old) | 4bit-DWQ (new) | Lift |
