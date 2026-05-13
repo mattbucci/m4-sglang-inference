@@ -1,0 +1,15 @@
+{
+  "preset": "devstral",
+  "model": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
+  "timestamp": "2026-05-13T00:59",
+  "probes": {
+    "vision": {
+      "verdict": "FAIL",
+      "response": "A man in a suit and tie is sitting at a desk with a computer monitor and keyboard in front of him.",
+      "color_hit": false,
+      "shape_hit": false,
+      "deg_keywords": [],
+      "notes": "1st request: model hallucinated generic office description — image not delivered to model (#new-token=121 is too low for 256x256 to be image-tokenized). 2nd image request crashed the SGLang MLX bridge (known issue: MLX VLM crashes in the bridge). Contradicts README 'Image working end-to-end' claim; surface this in Known Issues."
+    }
+  }
+}

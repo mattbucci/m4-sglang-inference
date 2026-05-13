@@ -16,6 +16,13 @@
 
 ### Active work
 
+0. **Content-aware probe trio surfaced VLM image regression (2026-05-13).** Ported the 3090 team's `probe_thinking` / `probe_vision` / `probe_codegen` (deeper than `validate_capabilities.py`'s loose keyword grep — STRONG / DEGRADED / FAIL classification). First probe sweep findings:
+   - **`coder-30b` (DWQ): codegen STRONG 8/8.** Matches 3090's `coder-reap-25b` baseline.
+   - **`devstral`: vision FAIL.** Red-circle-on-white prompt returns `"A diagram of a circular flow chart with a central circle labeled '1' surrounded by 12 smaller circles numbered 2 through 13..."` — total fabrication. `prompt_tokens=117` is too low for a 256×256 image to be image-tokenized; image isn't reaching the model. The April 18 commit `4bb3c53` shows Devstral describing the same image as `"I see a red circle with a black outline."` (11 tok) — clear regression since v0.5.11 rebase + patches 010/011/012. Crucially `validate_capabilities.py:check_vision` keyword grep **would have passed** this (response contains "circle") — the probe is what catches the silent regression.
+   - **`qwen35-9b-8bit`: vision FAIL with a different signature.** Returns `"This is a solid image of a pale pink color."` — the reasoning trace narrates "solid block of color, very light pale pink, no objects/text/patterns visible". Vision tower *is* producing features, but they're degraded to a single low-saturation color (normalization / channel-order bug suspected, not image-token misroute like Devstral).
+   - **`gemma4` boot crashed on first attempt** (BrokenPipeError in scheduler init) — was 2/2 PASS on the v0.5.11 gate at `ebe23bb`, so this is flaky rather than uniformly broken; pull the boot diagnostic before flagging.
+   - Per-cell JSON in `benchmarks/quality/probe-trio/*.json`. Investigate VLM regression next (bisect 010/011/012 — patch 010 resets `_position_ids` / `_rope_deltas` on every prefill, which may break image-bearing flows that need cache persistence).
+
 1. **Memory tuning at high `MAX_RUNNING` on Qwen3.5/3.6** — patch 011 (2026-05-12) landed both the hybrid batched-decode path in `decode_batch_start` *and* the MLXAttentionWrapper extensions for Qwen3_5's gated multimodal attention. **Verified across the Qwen3.5/3.6 hybrid family at MR=2 and MR=4:** the 8-prompt random bench completes cleanly on `qwen35`, `qwen36`, and `qwen36-27b` with correct outputs to parallel math queries (`17×23`→`391`, `100-47`→`53`, `7²`→`49`, `1024÷4`→`256`); validate_capabilities matches the pre-patch README (qwen35 / qwen35-9b-8bit 1/2 PASS — known Qwen3 thinking loop, unchanged; qwen36 / qwen36-27b 2/2 PASS). Throughput at MR=2: **qwen35** (27B dense+DeltaNet) peak 34 tok/s (2.3× single-user); **qwen36-27b** (27B dense+DeltaNet) peak 34 tok/s; **qwen36** (35B-A3B MoE+DeltaNet) peak **148 tok/s** — MoE active-params win compounds with batched decode. **Wrapper rework is also backward-compatible on non-hybrid mlx_lm models** at both dense and MoE scales: **Devstral 24B (dense)** at MR=4 gets peak 40 tok/s (2.4× single-user), 8/8 successful; **Qwen3-30B-A3B (MoE 3B-active)** at MR=8 gets peak **160 tok/s** with 16-prompt queue, concurrency 15.11, 16/16 successful — proves the gated-Q detection / RoPE dispatch / args type-discrimination doesn't regress the standard-attention path even under production-style multi-user load. Tested recipe: `MAX_RUNNING={2,4} MEM_FRAC=0.4 EXTRA_ARGS="--disable-radix-cache --chunked-prefill-size 1024 --max-total-tokens 32768"`. The `--max-total-tokens 32768` cap unblocks `MR=4` at 8-prompt depth (the earlier 16-prompt bench at MR=4 still trips the OOM guard — larger queues with full 16-concurrent decode need additional headroom from `mf=0.3` or smaller chunked-prefill).
 2. **Gemma 4 + Qwen3.6 multimodal** — architecturally support image/video/audio, but the mlx-community 4-bit checkpoints ship without `preprocessor_config.json`, so SGLang can't load any multimodal processor. Text-only on M4 until a re-uploaded checkpoint with the preprocessor lands; harness in `scripts/eval/test_audio.py` runs end-to-end the moment one does.
 3. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
@@ -107,7 +114,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 - **Radix cache (patch 001) corrupts repeated prompts.** Identical-prompt cache hits return deterministic garbage on the 2nd+ request. **Workaround:** `EXTRA_ARGS="--disable-radix-cache"` (now the default in `run_all_evals.sh` and `test_thinking.sh`).
 - **Greedy-only sampling.** MLX backend uses `mx.argmax`; temperature/top-p/top-k unsupported. On Qwen3 family this causes `<think>` loops on reasoning-heavy prompts (`validate_capabilities.py` includes a loop-detector).
 - **Qwen3.5-27B / Qwen3-30B-MoE / Qwen3-32B infinite `<think>` loops.** Greedy decode + Qwen3 chat template that always emits `<think>` → loop. Short factual prompts return cleanly; fix blocked on real sampling support.
-- **MLX VLM crashes in the SGLang bridge** (not in mlx_vlm itself). Direct `mlx_vlm.load(...) + generate(...)` on synthetic images works; our image-processor / tensor-handoff path in the SGLang MLX bridge is the problem. Devstral image path verified working through patches 007/010/011/012; other VLMs still blocked.
+- **MLX VLM image path regressed under v0.5.11 stack** (re-discovered 2026-05-13 via content-aware probe). Devstral's red-circle prompt now returns fabricated content (`"A diagram of a circular flow chart..."` — model doesn't see the image, `prompt_tokens=117` is too low for image-tokenization). Qwen3.5-9B-8bit returns `"a solid image of pale pink color"` — vision tower produces features but they're degraded. April-18 commit `4bb3c53` shows Devstral previously described the same image correctly. Likely a v0.5.11 rebase or patch-010/011/012 regression. `validate_capabilities.py` keyword-grep passed both because "circle" / color words appeared — pure substring matching can't distinguish real recognition from fabrication. Use `scripts/eval/probe_vision.py` going forward. Sub-bug: a second image request often crashes the SGLang MLX bridge entirely (server health → 000).
 - **VLM warmup crash on Devstral** — set `--skip-server-warmup` automatically in the preset.
 - **Coder-Next-80B infeasible on current toolchain.** 42 GB weights alone exceed the M4's safe budget — model load itself OOMs (not chunked-prefill scratch). Sister R9700 (2× 32 GB total via TP=2) runs it cleanly. No path forward on a single 64 GB Mac.
 - **macOS has no OOM killer** — once a process touches a page past physical RAM, the system stalls until reboot. **OOM guard mandatory for ≥64K work:** `bash scripts/common/oom_guard.sh &` pkills the SGLang server when free+inactive drops below 8 GB.
@@ -133,7 +140,11 @@ CTX=140000 EXTRA_ARGS="--disable-radix-cache --kv-cache-dtype turboquant \
     --chunked-prefill-size 2048 --mem-fraction-static 0.5" \
     bash scripts/launch.sh qwen36
 
-python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate
+python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate (loose keyword grep)
+python scripts/eval/probe_thinking.py --port 23334          # content-aware reasoning probe
+python scripts/eval/probe_vision.py    --port 23334         # content-aware image probe (STRONG/DEGRADED/FAIL)
+python scripts/eval/probe_codegen.py   --port 23334         # 8-test code-synthesis probe
+bash   scripts/eval/probe_all.sh                            # sweep probe trio across all presets
 python scripts/eval/validate_chat_template.py --model <path>
 bash   scripts/common/oom_guard.sh &                        # MANDATORY before 64K+ benches
 bash   scripts/bench/bench_256k_all.sh                      # 256K single-user sweep
@@ -170,9 +181,9 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 
 | Model | Image | Video | Audio | Status on M4 |
 |-------|:-----:|:-----:|:-----:|:-------------|
-| Devstral-24B (Mistral3) | ✅ | ❌ | ❌ | **Image working** end-to-end (patches 007/010/011/012 + VLM detection). |
-| Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | Image wires through; video supported by arch, needs end-to-end test. |
-| Qwen3.6-35B-A3B | ✅ | ✅ | ❌ | Text path validated end-to-end (capability gate PASS/PASS, MMLU 86, full perf sweep); image/video same status as 3.5 — wires through arch, needs dedicated VLM test. |
+| Devstral-24B (Mistral3) | ⚠️ | ❌ | ❌ | **Regressed 2026-05-13:** image-bearing requests return fabricated content (probe_vision FAIL); was working on Apr 18 stack (`4bb3c53`). Bisect 010/011/012/v0.5.11. |
+| Qwen3.5-27B / 9B-8bit | ⚠️ | ✅ | ❌ | **9B-8bit regressed 2026-05-13:** vision features degrade to "pale pink solid". Video supported by arch, needs end-to-end test. |
+| Qwen3.6-35B-A3B | ⚠️ | ✅ | ❌ | Text path validated end-to-end (capability gate PASS/PASS, MMLU 86, full perf sweep); image probe pending — sibling Qwen3.5-9B-VL on same code path is regressed, expect similar. |
 | Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video). **Blocked:** mlx-community 4-bit checkpoints ship without `preprocessor_config.json`. Text-only until a re-uploaded checkpoint lands. |
 | Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B | ❌ | ❌ | ❌ | Text-only by architecture. |
 

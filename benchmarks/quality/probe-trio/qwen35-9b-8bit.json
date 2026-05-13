@@ -1,0 +1,19 @@
+{
+  "preset": "qwen35-9b-8bit",
+  "model": "mlx-community/Qwen3.5-9B-MLX-8bit",
+  "timestamp": "2026-05-13T01:04",
+  "probes": {
+    "vision": {
+      "verdict": "FAIL",
+      "response": "This is a solid image of a pale pink color.",
+      "reasoning_content": "The user wants a one-sentence description of the image. 1. Analyze the image: solid block of color. 2. Identify: very light pale pink or baby pink. 3. No objects/text/patterns visible. 4-5. Solid image of pale pink.",
+      "color_hit": false,
+      "shape_hit": false,
+      "deg_keywords": [],
+      "prompt_tokens": 84,
+      "completion_tokens": 151,
+      "reasoning_tokens": 138,
+      "notes": "DIFFERENT failure mode from Devstral. Model DOES see something image-tokenish but the vision features are degraded to a single 'pale pink' color — color channels or normalization may be wrong. Devstral fabricated unrelated content (office scene). Both fail probe_vision."
+    }
+  }
+}
