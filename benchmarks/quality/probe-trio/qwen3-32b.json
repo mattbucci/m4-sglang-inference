@@ -1,14 +1,10 @@
 {
-  "preset": "devstral",
-  "timestamp": "2026-05-14T00:41:15",
+  "preset": "qwen3-32b",
+  "timestamp": "2026-05-14T02:58:46",
   "probes": {
     "codegen": {
       "verdict": null,
-      "log": "/tmp/probe-trio-logs/devstral-codegen.log"
-    },
-    "vision": {
-      "verdict": null,
-      "log": "/tmp/probe-trio-logs/devstral-vision.log"
+      "log": "/tmp/probe-trio-logs/qwen3-32b-codegen.log"
     }
   },
   "failure_mode": "oom_guard_fired_during_codegen_probe",

@@ -1,19 +1,5 @@
 {
   "preset": "qwen35-9b-8bit",
-  "model": "mlx-community/Qwen3.5-9B-MLX-8bit",
-  "timestamp": "2026-05-13T03:08",
-  "probes": {
-    "vision": {
-      "verdict": "STRONG",
-      "response": "A red circle with a black outline on a white background.",
-      "reasoning_content_excerpt": "1. Identify the main object: It's a circle. 2. Identify the color: It is red. 3. Identify the background: It is white. 4. Identify details: It has a thin black outline.",
-      "color_hit": true,
-      "shape_hit": true,
-      "deg_keywords": [],
-      "prompt_tokens": 84,
-      "completion_tokens": 186,
-      "reasoning_tokens": 172,
-      "notes": "FIXED 2026-05-13 via patch 013 (pixel_values + mm_kwargs plumbing restored). Pre-fix: 'This is a solid image of a pale pink color.' (vision tower features degraded). Post-fix: explicit reasoning trace correctly identifies all four visual elements. Proves fix is general across VLM architectures (Mistral3 + Qwen3.5)."
-    }
-  }
+  "timestamp": "2026-05-14T03:14:11",
+  "server": "failed_to_boot"
 }
