@@ -21,8 +21,8 @@
 #   GUARD_LOG       — log path (default /tmp/oom_guard.log)
 set -uo pipefail
 
-KILL_GB="${GUARD_KILL_GB:-8}"
-WARN_GB="${GUARD_WARN_GB:-12}"
+KILL_GB="${GUARD_KILL_GB:-4}"
+WARN_GB="${GUARD_WARN_GB:-6}"
 INTERVAL="${GUARD_INTERVAL:-2}"
 LOG="${GUARD_LOG:-/tmp/oom_guard.log}"
 

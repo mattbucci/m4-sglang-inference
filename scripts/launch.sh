@@ -330,9 +330,12 @@ echo "=============================================="
 # --- Memory fraction ---
 # Radix cache pre-allocates the full KV pool at startup. On unified
 # memory (Apple Silicon), this competes with Metal compute buffers.
-# Use 0.7 to leave ~30% headroom for attention intermediates.
+# Default 0.85 — on 64 GB that's ~54 GB for MLX, ~10 GB for system +
+# Metal compute buffers + page cache. The OOM guard at 4 GB free-RAM
+# gives the final safety net. Long-context (128K+) presets override to
+# 0.4-0.5 since chunked-prefill scratch dominates.
 # Override with MEM_FRAC env var or --max-total-tokens for exact control.
-MEM_FRAC="${MEM_FRAC:-0.7}"
+MEM_FRAC="${MEM_FRAC:-0.85}"
 
 # --- Build command ---
 CMD=(python3 -m sglang.launch_server
