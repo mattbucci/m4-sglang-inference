@@ -2,6 +2,20 @@
 
 256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 11 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11, so the patch set is now 7 instead of 13.
 
+## Recommended models (2026-05-14)
+
+Based on the v0.5.11 quality sweep, DWQ measurement variance, today's [metadata audit](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13), and probe-trio verdicts:
+
+| Workload | Preset | Why |
+|----------|--------|-----|
+| **Coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | MMLU 89.5 / HE 95, probe_codegen STRONG 8/8, 68 tok/s peak. DWQ swap fixed 10 dead layers in the standard 4bit. Audit hazard: MoE router INT4 (bounded — scores hold). |
+| **General agentic + thinking** | `qwen3-32b` (Qwen3-32B-4bit-DWQ) | MMLU 89.5 / HE 95, no DeltaNet/MoE — zero audit hazards. Dense, thinking terminates cleanly. Use this when you want clean correctness over peak speed. |
+| **Vision** | `devstral` (Devstral-Small-2-24B-Instruct-2512-4bit) | Only mlx-community VLM with vision tower **fully BF16** + patch 013 image plumbing verified probe_vision STRONG. Qwen3.5-9B-8bit also probe_vision STRONG but has the DeltaNet-INT4 hazard. |
+| **Peak throughput at long context** | `qwen36` (Qwen3.6-35B-A3B-4bit) | 148 tok/s at MR=2 batched decode (patch 011), DeltaNet+MoE wins both axes at 256K. Caveats: DeltaNet in_proj_a/b INT4 + MoE router INT4 in mlx-community; greedy thinking still works on this checkpoint. |
+| **Tightest memory** | `qwen35-9b-8bit` (Qwen3.5-9B-MLX-8bit) | ~10 GB resident, 8-bit weights, probe_vision STRONG. Best for leaving headroom for long-context KV. Same DeltaNet hazard at 8-bit. |
+
+**Avoid for agentic flagship work:** Qwen3.5-27B (thinking gate FAIL, infinite-`<think>` loop on greedy decode); Gemma 4 26B/31B for image use (preprocessor_config missing in mlx-community + `embed_vision.embedding_projection` audit hazard); Coder-Next 80B (infeasible on M4 toolchain, see Known Issues).
+
 ## Current Focus (2026-05-11)
 
 **Primary target: single-user 256K context** for agentic workloads. Decode TPOT at long context > peak batch throughput. Multi-user is secondary.
@@ -195,19 +209,23 @@ Always launch with `--disable-radix-cache` for benches and evals — see Known I
 
 ## Model Support
 
-| Model | Type | Weights | 1-user tok/s | Max context | Launch |
-|-------|------|:-------:|:------------:|:-----------:|:------:|
-| Coder-Next 80B | MoE+DeltaNet | 42 GB | 55.7 | **64K** (18.3 tok/s) | `launch.sh coder-next`* |
-| Coder-30B-A3B | MoE (3B active) | 16 GB | 68.4 | **256K** (3.2 tok/s) | `launch.sh coder-30b` |
-| Qwen3-30B-MoE | MoE (3B active) | 16 GB | 69.0 | **64K** (6.3 tok/s) | `launch.sh qwen3-moe` |
-| Qwen3.6-35B-A3B | MoE+DeltaNet | 17 GB | 51.8 | **256K** (0.1 tok/s) | `launch.sh qwen36` |
-| Gemma 4 26B-A4B-it | MoE (4B active) | 15 GB | 58.8 | **256K** (1.5 tok/s) | `launch.sh gemma4` |
-| Qwen3.5-27B | DeltaNet hybrid | 15 GB | 14.3 | 256K (decode times out) | `launch.sh qwen35` |
-| Devstral-24B | Dense | 14 GB | 17.0 | **256K** (1.8 tok/s) | `launch.sh devstral` |
-| Qwen3-32B | Dense (turboquant) | 18 GB | 12.1 | 16K (bench timeout) | `launch.sh qwen3-32b` |
-| Gemma 4 31B-it | Dense (sliding+full) | 17 GB | 8.6 | 8K (16K OOMs) | `launch.sh gemma4-31b` |
+| Preset | Checkpoint (mlx-community) | Type | Wts | 1-user tok/s | Max ctx | Audit hazards |
+|--------|---------------------------|------|:---:|:------------:|:-------:|:-------------|
+| `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 68.4 | **256K** (3.2) | router INT4 |
+| `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 69.0 | **64K** (6.3) | router INT4 |
+| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 51.8 (148 MR=2) | **256K** (0.1) | router INT4 + DeltaNet INT4 |
+| `gemma4` | `gemma-4-26b-a4b-it-4bit` | MoE (4B active) | 15 GB | 58.8 | **256K** (1.5) | `embed_vision.embedding_projection` INT4 |
+| `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.3 (34 MR=2) | 256K (decode timeout) | DeltaNet `in_proj_a/b` INT4 |
+| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | — | 32K | DeltaNet INT4 (8-bit) |
+| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | — (34 MR=2) | 256K | DeltaNet INT4 |
+| `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 17.0 (40 MR=4) | **256K** (1.8) | **clean** |
+| `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.1 | 16K (bench timeout) | **clean** |
+| `gemma4-31b` | `gemma-4-31b-it-mxfp4` | Dense (sliding+full) | 17 GB | 8.6 | 8K (16K OOMs) | `embed_vision.embedding_projection` INT4 |
+| `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | 32K probe | **clean** |
 
-\*Coder-Next-80B currently infeasible on this toolchain (see Known Issues). All models 4-bit MLX from [`mlx-community/`](https://huggingface.co/mlx-community).
+All checkpoints from [`mlx-community/`](https://huggingface.co/mlx-community). MR=N numbers are batched-decode peaks from patch 011 (2026-05-12). Audit hazards from [the metadata sweep](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13) — `clean` means vision/router/DeltaNet quantization recipe is correct; hazard names are the specific module class violating sister-team rules. Coder-Next-80B is **not** in the active table — see Known Issues.
+
+DWQ variants in 4 presets (`coder-30b`, `qwen3-moe`, `qwen3-32b`, plus `gemma4-31b`'s mxfp4) replaced the standard 4bit uploads after the [DWQ measurement sweep](#quantization-scan-10-dead-layers-in-coder-30b-mlx-community-upload-2026-05-11) — broken-layer fix + MMLU/HE lifts. `qwen36`'s 4bit-DWQ was **not** swapped (-5.5 pp MMLU).
 
 ### Multimodal capability matrix
 
@@ -318,8 +336,8 @@ Radix cache pre-allocates the KV pool at startup; on unified memory it competes 
 
 Three repos share the same SGLang stack; their findings feed back into this README.
 
-- **3090 team** — [`~/AI/2x-3090-GA102-300-A1-sglang-inference`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) (NVIDIA Ampere, AWQ_Marlin, 14 patches, 256K @ 74 tok/s on REAM-30B)
-- **R9700 team** — [`~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) (AMD RDNA4, ROCm 7.2, 14 patches, 256K @ 13 tok/s on Qwen3.6-35B-A3B)
+- **3090 team** — [`~/AI/2x-3090-GA102-300-A1-sglang-inference`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) (NVIDIA Ampere, AWQ_Marlin, 19 patches, 256K @ 107 tok/s on REAM-30B)
+- **R9700 team** — [`~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) (AMD RDNA4, ROCm 7.2, 15 patches, native AWQ converter owner, 256K @ 13 tok/s on Qwen3.6-35B-A3B)
 
 Their kernel patches don't port directly (Marlin/HIP-specific), but their **eval harnesses, calibration insights, and chat-template fixes are portable**. The quality eval suite under `scripts/eval/` is a direct adoption.
 
