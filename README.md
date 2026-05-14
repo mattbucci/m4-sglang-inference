@@ -22,12 +22,11 @@ Based on the v0.5.11 quality sweep, DWQ measurement variance, today's [metadata 
 
 **Hard constraint: every new model must pass `scripts/eval/validate_capabilities.py`** before its numbers land in this README. Sister teams (3090, R9700) repeatedly found silent regressions in checkpoints that pass MMLU/HumanEval but emit `<unk>`, infinite `<think>` loops, or `<pad>` tokens. We adopt the same gate.
 
-### Cross-team updates
+### Cross-team activity
 
-- **All three teams now on SGLang v0.5.11** (2026-05-11). 3090 bumped at `d63e191`, R9700 at `0148071`, M4 at `ebe23bb` (this repo's rebase commit). Sister teams subsequently consolidated REAM-merger patches to top-level and trimmed their resolved-issues sections — see their READMEs for the cleanup. 3090 added `evals/bake-off-2026-05-11.md` (initial cross-cell quality snapshot) and `aggregate_bakeoff` emitting per-cell JSON to their `benchmarks/quality/`; worth pulling structure into our quality flow when we re-run MMLU/HumanEval on v0.5.11.
-- **R9700 (2026-05-09):** Shipped [`mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ) — first in-house REAM merge from upstream BF16 ([`Qwen/Qwen3-Coder-30B-A3B-Instruct`](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct), 128 → 96 experts via Samsung SAIL `merge.py`, ~23 B params / 3 B active). Native AWQ — MLX cannot serve it directly without `mlx_lm.convert`, but the BF16 REAM-merged base could be MLX-quantized fresh if Coder-30B-MoE REAM-pruning lands on the M4 roadmap. **Build-from-scratch rule extension:** R9700 now also prunes themselves from upstream BF16 via Samsung SAIL, not from third-party pre-pruned BF16 (Cerebras / atbender).
-- **R9700 (2026-05-13):** Shipped [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) — second in-house variant of Coder-30B, this time REAP-pruned (drops low-saliency experts) rather than REAM-merged. Built via new homegrown pure-pytorch REAP at [`scripts/quantize/run_reap.py`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/scripts/quantize/run_reap.py) — no vLLM dependency, sidesteps Cerebras's `vllm==0.10` pin and the accelerate single-GPU OOM. Saliency `S_{L,E} = Σ_t (gate × ‖down_proj(x)‖₂)` over 1024 code samples → 128 → 96 experts per layer; then GPTQ W4A16 calibrated 1024 × 2048 on a 40% code / 25% am_thinking / 20% math / 15% chat mix. Replaces the broken 2026-04-29 ship. The pure-pytorch REAP is path-agnostic (`_discover_mlp_modules` finds MoE layers via `named_modules` walk) so the same script will handle Qwen3.6-VL when R9700 tackles task #24. HF commit `d09a18c`.
-- **3090 (2026-04-30):** Cross-checked our patch 013 hybrid-cache-wiring finding (Qwen3.5-27B MMLU 16.7% → 93.0%). **Not a bug class on Ampere SGLang** — `is_hybrid` model config dispatches per-layer cache type before the outer wrapper resolves `make_cache`, so the Ampere path never hits the MLX bridge's fall-through-to-uniform path. Their `qwen3-ream` and `qwen36-27b CT v3` both pass basic+thinking through `validate_capabilities.py` on TP=1 / 4–8K context without a patch-013 equivalent. Confirms the bug is MLX-bridge-specific, not quantization or upstream SGLang.
+All three teams (3090 Ampere, R9700 RDNA4, M4 MLX) are on SGLang v0.5.11. Sister teams ship calibrated AWQ/GPTQ checkpoints to `mattbucci/*-AWQ` on HF; M4 can't load AWQ directly ([mlx-lm #727](https://github.com/ml-explore/mlx-lm/issues/727)) so we run [mlx-community](https://huggingface.co/mlx-community) instead. Current sister-team activity lives in their READMEs:
+[3090](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) ·
+[R9700](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ### Active work
 
@@ -275,55 +274,33 @@ Decode tok/s on the v0.5.11 stack with the long-context-tuned recipe (`--chunked
 - **MoE shapes the short-context win.** Coder-30B (3B active) opens at 73.8 tok/s @128, falls to 43 by 16K. Gemma 4 26B (4B active) opens lower (58.9) but holds its slope better — only model that reaches 32K with measurable decode. Dense Devstral and dense Gemma 4 31B both run flat near 14–17 tok/s at short context (weight bandwidth dominates) then OOM-guard around 8K–16K because dense weights eat the activation budget when chunked-prefill scratch piles on.
 - **DeltaNet keeps decode flat.** Qwen3.5-27B (DeltaNet hybrid + Dense full-attn) starts slow (14.7 @128) but stays nearly flat across the entire sweep — 14.7→12.6 from 128 to 32K. TPOT moves from 68 ms to 79 ms while TTFT scales 0.6 s → 272 s. That is the O(1) linear-attention signature: the linear layers ignore context length on each decode step, so the only thing slowing them is the full-attention layers (one read of the growing KV). This is the load-bearing reason DeltaNet hybrids stay viable at long context on Apple Silicon even though their prefill is heavy.
 
-**Why the old numbers were misleadingly low.** The pre-rebase table in the archive section below shows 1.8 tok/s @16K for coder-30b. The 2026-05-12 re-run shows 43 tok/s — a 24× refresh, not a regression we recovered from. Root cause: the earlier sweeps ran with `mem-fraction-static=0.7` and `chunked-prefill-size=2048`, which together starved the activation budget and forced MLX into very slow recompute paths from 8K onward. The recipe in this table (chunked=1024 + mf=0.4 + radix off) is the empirically-tuned configuration that keeps all five models on a stable activation footprint up to the OOM-guard wall.
+**Headline: turboquant works.** Pool sizing on coder-30b confirms 7× more KV slots than fp16 baseline (787,869 slots vs 110,794) at the same `mem-fraction-static=0.7`. Validation `2/2 PASS` — output identical to fp16 within tolerance. Decode at short context is within 1% of fp16 (58.3 vs 57.9 on coder-30b @128). The win is at long context where reduced KV bandwidth dominates, and at memory budget where 4-bit KV unblocks 256K-on-64GB scenarios.
 
-**Headline: turboquant works.** Pool sizing on coder-30b confirms 7× more KV slots than fp16 baseline (787,869 slots vs 110,794) at the same `mem-fraction-static=0.7`. Validation `2/2 PASS` — output identical to fp16 within tolerance. Decode tok/s at short context is within 1% of fp16 (58.3 vs 57.9 on coder-30b @128). The win is at long context where reduced KV bandwidth dominates, and at memory budget where 4-bit KV unblocks 256K-on-64GB scenarios.
+### Batched-decode peaks (patch 011, single-server multi-prompt)
 
-### Pre-rebase 256K results (turboquant, fp8) — archived for comparison
+Per-preset MR=N peak tok/s, measured 2026-05-12 with the patch-011 batched-decode path on the 8-prompt random bench (recipe in Active work item 1):
 
-| Model | tok/s @128 | tok/s @64K | tok/s @256K | KV pool |
-|-------|:----------:|:----------:|:-----------:|:-------:|
-| Coder-30B (post-patches, turboquant) | 44.4 | OOM @ 64K | — | 80K |
-| Coder-30B (pre-patches, fp8) | 68.4 | 6.3 | **3.2** | 20% |
-| Qwen3-30B-MoE (post-patches, turboquant) | 45.8 | OOM @ 64K | — | 80K |
-| Qwen3.5-27B (post-013, turboquant) | 11.1 | 0.2 | 0.07 @ 250K | 270K |
-| Qwen3.6-35B-A3B | 51.8 | 0.9 | 0.1 @ 250K | 270K |
-| Devstral-24B | 17.0 | 3.4 | **1.8** | 30% |
-| Gemma 4 26B | 58.8 | 3.0 | **1.5** | 48% |
-| Gemma 4 31B-it (post-015, turboquant) | 8.6 | OOM @ 16K | — | 100K |
-
-These pre-rebase numbers were taken on the old `1f8df97` stack with turboquant active. The v0.5.11 turboquant sweep above replaces them up to 32K; the 64K + 256K columns are pending the preset-CTX env-override fix (now in place). The 3.9 tok/s @ 256K Qwen3.5 number we cited pre-patch013 was misleading — that bench ran on broken DeltaNet inference (fluent garbage, MMLU 16.7%); post-013 the real number is 0.07 tok/s @ 250K. Sister R9700 hits 13.3 tok/s @ 262K on Qwen3.6 — discrete-GPU compute advantage at long context dwarfs M4's unified-memory win for MoE+DeltaNet stacks.
-
-### Throughput scaling (256 in / 256 out, 8 K context)
-
-| Model | 1 user | 2 users | 4 users | 8 users |
-|-------|:------:|:-------:|:-------:|:-------:|
-| Coder-30B (MoE) | 82.6 | 89.6 | 97.1 | **107.4** |
-| Devstral-24B (Dense) | 27.0 | 26.8 | 30.4 | 39.2 |
-
-Per-model JSON + charts under `benchmarks/<slug>/`.
+| Preset | Single user | Peak @ MR | Notes |
+|--------|:-----------:|:---------:|:------|
+| `qwen3-moe` (Qwen3-30B-A3B-DWQ) | 69 | **160 @ MR=8** | 16-prompt queue, 16/16 successful, concurrency 15.11 |
+| `qwen36` (35B-A3B MoE+DeltaNet) | 52 | **148 @ MR=2** | MoE active-params × batched decode compound |
+| `devstral` (24B Dense) | 17 | **40 @ MR=4** | 8/8 successful — wrapper backward-compat for dense |
+| `qwen35` / `qwen36-27b` (DeltaNet+attn) | 12–14 | **34 @ MR=2** | DeltaNet batched-state stacking unblocks MR>1 |
 
 ### Memory budget at 256K (64 GB Mac)
 
 Radix cache pre-allocates the KV pool at startup; on unified memory it competes with Metal compute buffers. Use `--mem-fraction-static 0.7` (default).
 
-| Model | Weights | KV @256K fp8 | Total | Headroom | Fits? |
-|-------|:-------:|:------------:|:-----:|:--------:|:------|
-| Coder-30B (MoE) | 16 GB | 12.4 GB | 28 GB | 24 GB | **fp8** |
-| Qwen3-30B (MoE) | 16 GB | 12.4 GB | 28 GB | 24 GB | **fp8** |
-| Devstral-24B | 14 GB | 20.6 GB | 35 GB | 17 GB | **fp8** |
-| Gemma 4 26B (MoE) | 15 GB | 30.9 GB | 46 GB | 6 GB | **fp8** (tight) |
-| Qwen3-32B | 18 GB | 33.0 GB | 51 GB | 1 GB | **turboquant** required |
-| Coder-Next 80B | 42 GB | — | — | — | No (weights alone) |
+| Model | Weights | KV @256K fp8 | Fits? |
+|-------|:-------:|:------------:|:------|
+| MoE 3B-active (Coder-30B, Qwen3-30B-DWQ) | 16 GB | 12 GB | **fp8** comfortably |
+| MoE 4B-active (Gemma 4 26B) | 15 GB | 31 GB | **fp8** (tight, mf=0.5) |
+| MoE+DeltaNet (Qwen3.6-35B-A3B) | 17 GB | varies† | **turboquant** for 256K |
+| Dense+VL (Devstral, Qwen3.5-27B) | 14–15 GB | 21 GB | **fp8** |
+| Dense (Qwen3-32B) | 18 GB | 33 GB | **turboquant** required |
+| Dense (Gemma 4 31B, sliding+full) | 17 GB | varies | **4K preset** (16K OOMs) |
 
-## Cross-team collaboration
-
-Three repos share the same SGLang stack; their findings feed back into this README.
-
-- **3090 team** — [`~/AI/2x-3090-GA102-300-A1-sglang-inference`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) (NVIDIA Ampere, AWQ_Marlin, 19 patches, 256K @ 107 tok/s on REAM-30B)
-- **R9700 team** — [`~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) (AMD RDNA4, ROCm 7.2, 15 patches, native AWQ converter owner, 256K @ 13 tok/s on Qwen3.6-35B-A3B)
-
-Their kernel patches don't port directly (Marlin/HIP-specific), but their **eval harnesses, calibration insights, and chat-template fixes are portable**. The quality eval suite under `scripts/eval/` is a direct adoption.
+† DeltaNet layers don't hold KV (recurrent state instead); MoE only stores KV for full-attention layers. Coder-Next 80B (42 GB weights) doesn't fit on a single 64 GB Mac — see Known Issues.
 
 ## Setup
 
