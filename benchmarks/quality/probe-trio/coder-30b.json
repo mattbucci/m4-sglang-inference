@@ -1,14 +1,10 @@
 {
   "preset": "coder-30b",
-  "model": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ",
-  "timestamp": "2026-05-13T00:57",
+  "timestamp": "2026-05-14T00:40:26",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
-      "is_balanced": "5/5",
-      "merge_intervals": "3/3",
-      "overall": "8/8",
-      "notes": "matches 3090 baseline (coder-reap-25b 8/8 STRONG 2026-05-04)"
+      "log": "/tmp/probe-trio-logs/coder-30b-codegen.log"
     }
   }
 }

@@ -1,30 +1,5 @@
 {
   "preset": "gemma4",
-  "model": "mlx-community/gemma-4-26b-a4b-it-4bit",
-  "timestamp": "2026-05-13T02:56",
-  "with_parser": "gemma4 (reasoning)",
-  "with_flag": "--disable-radix-cache (required, see radix-cache crash analysis)",
-  "probes": {
-    "reasoning_parser_smoke": {
-      "verdict": "PARSER_WORKING",
-      "elapsed_s": 10.1,
-      "finish_reason": "stop",
-      "reasoning_tokens": 365,
-      "completion_tokens": 550,
-      "reasoning_content_len": 864,
-      "content_len": 405,
-      "answer_correct": true,
-      "notes": "Reasoning parser splits Gemma's '*   bullet' thinking trace into reasoning_content cleanly. Content has clean math derivation. Both have the 0.05 answer."
-    },
-    "vision": {
-      "verdict": "FAIL",
-      "response": "Please provide the image you would like me to describe.",
-      "color_hit": false,
-      "shape_hit": false,
-      "deg_keywords": [],
-      "prompt_tokens": 22,
-      "completion_tokens": 12,
-      "notes": "DIFFERENT failure mode from Devstral/Qwen3.5: image is silently dropped at the SGLang multimodal layer (prompt_tokens=22 means no image markers reached the prompt). Root cause: mlx-community 4-bit Gemma 4 checkpoint ships without preprocessor_config.json; SGLang can't construct an image processor. The model itself correctly responds 'please provide the image' because it received only text. Architectural fix: ship preprocessor_config.json alongside the checkpoint (R9700 calibration recipe does this for new builds)."
-    }
-  }
+  "timestamp": "2026-05-14T00:56:40",
+  "server": "failed_to_boot"
 }

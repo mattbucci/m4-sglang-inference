@@ -1,17 +1,14 @@
 {
   "preset": "devstral",
-  "model": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
-  "timestamp": "2026-05-13T03:05",
+  "timestamp": "2026-05-14T00:41:15",
   "probes": {
+    "codegen": {
+      "verdict": null,
+      "log": "/tmp/probe-trio-logs/devstral-codegen.log"
+    },
     "vision": {
-      "verdict": "STRONG",
-      "response": "The image shows a single red circle with a black outline on a white background.",
-      "color_hit": true,
-      "shape_hit": true,
-      "deg_keywords": [],
-      "prompt_tokens": 121,
-      "completion_tokens": 17,
-      "notes": "FIXED 2026-05-13 via patch 013 (pixel_values + mm_kwargs plumbing restored). Pre-fix: fabricated 'A diagram of a circular flow chart...' Post-fix: correct content recognition. Matches Apr-18 commit 4bb3c53 baseline ('I see a red circle with a black outline.')."
+      "verdict": null,
+      "log": "/tmp/probe-trio-logs/devstral-vision.log"
     }
   }
 }
