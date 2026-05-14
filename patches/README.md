@@ -47,3 +47,66 @@ Patch 008 ships the `kv_quant.py` module + `MlxModelRunner.__init__` plumbing fo
 ## v0.5.11 rebase context
 
 See [REBASE-v0.5.11-NOTES.md](REBASE-v0.5.11-NOTES.md) for the strategy that drove this rebase (drop what's upstream, keep only what's load-bearing for the mlx-community model set that mirrors what sister teams run).
+
+## Shipped narrative — resolved post-rebase
+
+Forensics for items that started life on the main README's "Active work" list and have since landed. The patch table above is the canonical reference; this section just keeps the *why* so future debuggers don't have to re-derive it from `git log`.
+
+### Patch 013 — VLM image regression fixed (2026-05-13)
+
+**Symptom:** between the v0.5.11 rebase and the 2026-05-13 probe sweep, every VLM image request silently took the text-only branch of `_TextOnlyVLMShim`. Devstral on a red-circle-on-white prompt returned `"A diagram of a circular flow chart with a central circle labeled '1' surrounded by 12 smaller circles numbered 2 through 13..."` — total fabrication from training prior. `validate_capabilities.py:check_vision` keyword grep happened to pass because the word "circle" appeared. The fabricated-VLM mode escaped detection from Apr 18 → May 13.
+
+**Root cause:** the v0.5.11 rebase silently DROPPED the original Apr-18 `Patch 010: pixel_values plumbing tp_worker → prefill → TextOnlyVLMShim` (commit `f20ee6e`). The patch-010 slot was reused for an unrelated change (the new `mlx-vlm-position-cache-reset`, same number, different purpose). The omission was invisible to `git apply --check` because the new patch 010 applied cleanly — there was no merge conflict to surface.
+
+**Fix:** patch 013 re-threads `pixel_values` + `mm_kwargs` (image_sizes for Mistral3/Pixtral, image_grid_thw for Qwen-VL, video_grid_thw + second_per_grid_ts for Qwen3.5/3.6 video) from `tp_worker._forward_batch_generation_mlx` through `MlxModelRunner.prefill` / `prefill_start` all the way to `self.model(input_ids, cache=cache, **mm_kwargs)`. Devstral + Qwen3.5-9B-8bit both probe_vision STRONG after the patch.
+
+**Lesson:** when a rebase reuses a patch number, re-check the patch *contents*. Trust the probe trio over the keyword-grep validator. Sister teams hit the same lesson on R9700's patch 030 (presharded-w2 detection) — read the number, not just the file count, when validating a rebase.
+
+### Patch 011 — hybrid batched decode + Qwen3.5 gated multimodal attention (2026-05-12)
+
+**Symptom:** at `MAX_RUNNING>1` on any Qwen3.5/3.6 hybrid, decode would either crash or fall back to serial-per-request execution. Pre-patch the 8-prompt random bench gave 1× throughput at MR>1.
+
+**Two co-dependent changes:**
+- `model_runner.decode_batch_start` replaces the serial-per-request hybrid fallback with a mixed per-layer cache. Full-attention (ContiguousKVCache) layers route through `BatchedDecodeContext`+`MLXAttentionWrapper`; linear-attention (ArraysCache) layers stack per-request `conv_state`/`ssm_state` along axis 0 into `(B, ...)` tensors so `gated_delta_update` (already fully batched per `mlx_lm/models/gated_delta.py:262-283`) processes B requests in one forward, then splits back per-request.
+- `MLXAttentionWrapper._batched_decode` extended for `Qwen3_5Attention`: q_proj output is `n_heads*head_dim*2` (queries + gate concatenated), head_dim derived from keys not queries, gate split off and `sigmoid(gate)`-multiplied after SDPA. RoPE dispatches on `hasattr(inner, "rotary_emb")`; `args[0]` type-discriminated (number/0-d mx.array → `attn_scale`, else mask).
+
+**Verification (2026-05-12):** qwen35 (27B+DeltaNet) peak 34 tok/s at MR=2 (2.3×); qwen36-27b (Dense+DeltaNet) peak 34 tok/s at MR=2; **qwen36 (35B-A3B MoE+DeltaNet) peak 148 tok/s at MR=2** — MoE active-params win compounds with batched decode. Wrapper rework is backward-compatible on non-hybrid mlx_lm: Devstral 24B peak 40 tok/s at MR=4 (8/8 successful); Qwen3-30B-A3B peak **160 tok/s at MR=8** (16-prompt queue, concurrency 15.11, 16/16 successful). Recipe: `MAX_RUNNING={2,4} MEM_FRAC=0.4 EXTRA_ARGS="--disable-radix-cache --chunked-prefill-size 1024 --max-total-tokens 32768"`.
+
+**Open follow-up:** 16-prompt queue at MR=4 still trips the OOM guard. Needs mf=0.3 or smaller chunked-prefill — tuning, not a code bug.
+
+### Reasoning + tool-call parsers wired into launch presets (2026-05-13)
+
+**Gap:** 3090 shipped `--tool-call-parser` on every Qwen3-Coder preset; M4 had it only on `coder-30b` and `coder-next`. R9700 also had `--reasoning-parser gemma4`. M4 was missing the reasoning parser on Gemma 4 and the tool-call parser on Devstral, Qwen3-family, Qwen3.5/3.6 family.
+
+**Audit + fix (commit `01f19d3`):** 11 presets gained `--tool-call-parser` per 3090's chat-template grep mapping:
+- Devstral (Mistral arch) → `mistral`
+- Gemma 4 26B / 31B → `gemma4`
+- Qwen3.5 / 3.6 family (every variant) → `qwen3_coder` (XML `<function=NAME>` format)
+- Qwen3 base (qwen3-32b, qwen3-moe) → `qwen25` (JSON-in-tag format)
+
+`gemma4` / `gemma4-31b` also gained `--reasoning-parser gemma4`. `nemotron-30b` gained `--reasoning-parser nemotron_3` to stop verbose thinking traces from consuming the 1024-tok MC eval budget.
+
+**Verification:** `coder-30b-DWQ` tool-call request returns `finish_reason="tool_calls"` with structured `tool_calls[{function:{name,arguments}}]` and `content=None`. probe_codegen STRONG 8/8 with the parser wired in — no regression on plain codegen. `gemma4` reasoning parser splits 365 reasoning_tokens into `reasoning_content` (864 chars, bullet-format Gemma trace), final answer 0.05 in `content`.
+
+### Content-aware probe trio (2026-05-13)
+
+**Adoption:** ported 3090's `probe_thinking` / `probe_vision` / `probe_codegen` (STRONG / DEGRADED / FAIL classification). Replaced the loose keyword-grep validator as the gate for capability claims.
+
+**First sweep findings (since fixed via patches 011/013 + parser wiring):**
+- `coder-30b` (DWQ): codegen STRONG 8/8, matches 3090's `coder-reap-25b` baseline.
+- `devstral`: vision FAIL (fabrication) → root-caused to patch 010 loss, fixed by patch 013 → now STRONG.
+- `qwen35-9b-8bit`: vision FAIL ("pale pink") → same root cause, also STRONG after patch 013.
+- `gemma4`: vision FAIL with a third signature ("Please provide the image") — image dropped at SGLang multimodal layer because mlx-community checkpoint ships without `preprocessor_config.json`. **Still blocked upstream**, tracked in main README Active work.
+- `nemotron-30b`: reasoning parser worked — 154 reasoning_tokens (`"We need to solve classic puzzle: ball + bat = 1.10..."`) split cleanly out of `content`.
+
+Per-cell receipts at `benchmarks/quality/probe-trio/*.json`. probe_all.sh sweeps all presets in one command.
+
+### Gemma 4 radix-cache root-cause (2026-05-13)
+
+**Symptom:** Gemma 4 first prefill crashed with `ValueError: [broadcast_shapes] Shapes (2,128) and (1,8,64) cannot be broadcast` inside `_sync_new_kv_to_pool`. Memory pressure from prior runs could mask this as a scheduler-init BrokenPipe; clean `pkill` + retry surfaces the real shape error.
+
+**Root cause:** `MlxKVPool` assumes homogeneous per-layer attention shapes. Gemma 4 26B has 25 sliding-attention layers @ (8 KV heads × 256 dim) interleaved with 5 full-attention layers @ (2 KV heads × 512 dim — `global_head_dim` / `num_global_key_value_heads`); 31B same pattern (50 + 10). Pool gets sized for whatever `_get_attn_config` sees in layer 0 (a sliding layer) but only the full-attention layers actually write to the pool — sliding ones use `RotatingKVCache` and stay native. First full-attention prefill broadcasts `(2,128)` packed-KV into `(1,8,64)` pool slots → ValueError.
+
+**Workaround:** `--disable-radix-cache` baked into both `gemma4` presets via `launch.sh` (commit `a8a3ff0`). Bypasses pool construction + sync write path entirely. Loses agentic prefix reuse but evals (one-shot prompts) unaffected. Already-published numbers were valid because `run_all_evals.sh` enforces radix off anyway.
+
+**Fix-A / fix-B / fix-C** options documented in [`RADIX_CACHE_GEMMA4_ROOT_CAUSE.md`](RADIX_CACHE_GEMMA4_ROOT_CAUSE.md). Fix-A (sample a full-attention layer in `_get_attn_config`) is the minimum to restore radix support; fix-B (per-layer pool shapes) is the structural fix. Untaken pending the upstream `preprocessor_config.json` block — Gemma 4 multimodal isn't useful for agentic prefix reuse on M4 yet.
