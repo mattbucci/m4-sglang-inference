@@ -20,13 +20,14 @@ Based on the v0.5.11 quality sweep, DWQ measurement variance, today's [metadata 
 
 **Primary target: single-user 256K context** for agentic workloads. Decode TPOT at long context > peak batch throughput. Multi-user is secondary.
 
-**Hard constraint: every new model must pass `scripts/eval/validate_capabilities.py`** before its numbers land in this README. Sister teams (3090, R9700) repeatedly found silent regressions in checkpoints that pass MMLU/HumanEval but emit `<unk>`, infinite `<think>` loops, or `<pad>` tokens. We adopt the same gate.
+**Hard constraint: every new model must pass `scripts/eval/validate_capabilities.py`** before its numbers land in this README. Plus `probe_thinking` / `probe_vision` / `probe_codegen` for content-aware classification, plus `check_mlx_quant_scales.py` (per-layer scale corruption) and `audit_mlx_quant_metadata.py` (recipe-level hazards) on the checkpoint itself.
 
-### Cross-team activity
+### Cross-team links
 
-All three teams (3090 Ampere, R9700 RDNA4, M4 MLX) are on SGLang v0.5.11. Sister teams ship calibrated AWQ/GPTQ checkpoints to `mattbucci/*-AWQ` on HF; M4 can't load AWQ directly ([mlx-lm #727](https://github.com/ml-explore/mlx-lm/issues/727)) so we run [mlx-community](https://huggingface.co/mlx-community) instead. Current sister-team activity lives in their READMEs:
-[3090](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) ·
-[R9700](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+[3090 (Ampere, AWQ_Marlin)](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) ·
+[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+
+What's portable from sister teams: eval/audit scripts (format-translated for MLX), chat-template `--tool-call-parser` mapping, model-behavior findings. What's **not** portable: their `mattbucci/*-AWQ` checkpoints (mlx-lm cannot load AWQ — [#727](https://github.com/ml-explore/mlx-lm/issues/727)), kernel patches (Marlin/HIP), REAM/REAP work (mlx-community uses upstream BF16 directly), TP=2 / 256K performance headlines. M4 runs [mlx-community](https://huggingface.co/mlx-community) checkpoints and optimizes for its own constraints (64 GB unified, greedy-only sampling, no flash-attn-style SDPA).
 
 ### Active work
 
@@ -88,7 +89,7 @@ Ported the [3090 team's `check_awq_scales.py` pattern](https://github.com/mattbu
 python scripts/eval/check_mlx_quant_scales.py mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit
 ```
 
-**Result across the full cross-team model set:** 9 of 10 checkpoints are clean; **`mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit` has 10 broken layers** — both `model.layers.36.*` and `model.layers.46.*` have their `self_attn.{q,k,v,o}_proj` and `mlp.gate` quantized as `weight` payload all-zero AND `biases` all-zero. Dequant produces identically zero output through those layers' attention + routing gate. The capability gate still passes (basic factual answers survive thanks to the surrounding 46 layers and DeltaNet/MoE redundancy), but MMLU 86.7% — slightly below the Qwen3.6-27B at 88% despite Coder-30B being a larger architecture — is consistent with degraded attention at two layers.
+**Result across the M4 mlx-community model set:** 9 of 10 checkpoints are clean; **`mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit` has 10 broken layers** — both `model.layers.36.*` and `model.layers.46.*` have their `self_attn.{q,k,v,o}_proj` and `mlp.gate` quantized as `weight` payload all-zero AND `biases` all-zero. Dequant produces identically zero output through those layers' attention + routing gate. The capability gate still passes (basic factual answers survive thanks to the surrounding 46 layers and DeltaNet/MoE redundancy), but MMLU 86.7% — slightly below the Qwen3.6-27B at 88% despite Coder-30B being a larger architecture — is consistent with degraded attention at two layers.
 
 This is the kind of silent regression the 3090 team caught on Gemma 4 26B v3 in 16 hours; the MLX analog catches it in 30 seconds. Raw scan output in [`benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt`](benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt). Make `check_mlx_quant_scales.py` part of every new-checkpoint gate before adding numbers to the README.
 
@@ -163,7 +164,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 ./scripts/launch.sh qwen3-moe               # Qwen3-30B MoE
 ./scripts/launch.sh qwen3-32b               # Dense
 ./scripts/launch.sh gemma4-31b              # Dense
-./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B (DeltaNet+MoE+VL, sister-team flagship)
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B (DeltaNet+MoE+VL, peak throughput at long ctx)
 ./scripts/launch.sh qwen36-27b              # Qwen3.6-27B Dense+DeltaNet+VL (new)
 
 # Long-context (128K) — qwen36 validated, prefill ~6.5 min, decode ~0.10 tok/s
@@ -206,7 +207,7 @@ Always launch with `--disable-radix-cache` for benches and evals — see Known I
 | `gemma4-31b` | `gemma-4-31b-it-mxfp4` | Dense (sliding+full) | 17 GB | 8.6 | 8K (16K OOMs) | `embed_vision.embedding_projection` INT4 |
 | `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | 32K probe | **clean** |
 
-All checkpoints from [`mlx-community/`](https://huggingface.co/mlx-community). MR=N numbers are batched-decode peaks from patch 011 (2026-05-12). Audit hazards from [the metadata sweep](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13) — `clean` means vision/router/DeltaNet quantization recipe is correct; hazard names are the specific module class violating sister-team rules. Coder-Next-80B is **not** in the active table — see Known Issues.
+All checkpoints from [`mlx-community/`](https://huggingface.co/mlx-community). MR=N numbers are batched-decode peaks from patch 011 (2026-05-12). Audit hazards from [the metadata sweep](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13) — `clean` means vision tower / MoE router / DeltaNet `in_proj_a/b` recipe ignores are correct; hazard names are the specific module class quantized when it shouldn't be. Coder-Next-80B is **not** in the active table — see Known Issues.
 
 DWQ variants in 4 presets (`coder-30b`, `qwen3-moe`, `qwen3-32b`, plus `gemma4-31b`'s mxfp4) replaced the standard 4bit uploads after the [DWQ measurement sweep](#quantization-scan-10-dead-layers-in-coder-30b-mlx-community-upload-2026-05-11) — broken-layer fix + MMLU/HE lifts. `qwen36`'s 4bit-DWQ was **not** swapped (-5.5 pp MMLU).
 
@@ -234,7 +235,7 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 > **Context sweep**: single user, 64 output tokens, radix cache disabled, FP8 or TurboQuant KV cache.
 > **Concurrency sweep**: 256 in / 256 out, 8 K context, scaling concurrent users.
 
-### v0.5.11 short-sweep decode tok/s (2026-05-11, full cross-team set, fp16 KV)
+### v0.5.11 short-sweep decode tok/s (2026-05-11, fp16 KV)
 
 ![v0.5.11 perf chart](benchmarks/quality/v0.5.11-perf-shortsweep.png)
 
