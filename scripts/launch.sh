@@ -328,14 +328,16 @@ echo "Context: $CTX  Port: $PORT  Memory: ${MEM_GB}GB  KV: $KV_CACHE"
 echo "=============================================="
 
 # --- Memory fraction ---
-# Radix cache pre-allocates the full KV pool at startup. On unified
-# memory (Apple Silicon), this competes with Metal compute buffers.
-# Default 0.85 — on 64 GB that's ~54 GB for MLX, ~10 GB for system +
-# Metal compute buffers + page cache. The OOM guard at 4 GB free-RAM
-# gives the final safety net. Long-context (128K+) presets override to
-# 0.4-0.5 since chunked-prefill scratch dominates.
-# Override with MEM_FRAC env var or --max-total-tokens for exact control.
-MEM_FRAC="${MEM_FRAC:-0.85}"
+# Radix cache pre-allocates the full KV pool at startup. On Apple Silicon
+# UNIFIED memory, `--mem-fraction-static` caps the fraction of the WHOLE
+# pool MLX takes — there is no separate VRAM. 0.7 → ~45 GB to MLX,
+# ~19 GB for kernel + Metal compile buffers + page cache + activation
+# scratch + everything else. Pushing this to 0.85 was tested 2026-05-14
+# and crashed the box (compressor + swap effective usage hit ~150 GB
+# before macOS jetsam reaped). DO NOT raise without per-preset
+# validation. Override with MEM_FRAC env var or --max-total-tokens for
+# exact control.
+MEM_FRAC="${MEM_FRAC:-0.7}"
 
 # --- Build command ---
 CMD=(python3 -m sglang.launch_server
