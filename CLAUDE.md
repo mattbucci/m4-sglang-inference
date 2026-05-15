@@ -48,6 +48,14 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   whole system stalls until reboot. Never run a 128K+ bench without
   `bash scripts/common/oom_guard.sh &` running in the background — it pkill's
   the SGLang server when free+inactive drops below 8 GB.
+- **DO NOT raise `MEM_FRAC` / `--mem-fraction-static` above 0.7 default.**
+  On unified memory the flag is a fraction of TOTAL system RAM, not "GPU
+  memory." 0.85 crashed the box on 2026-05-14 (macOS compressor + swap hit
+  ~150 GB effective; jetsam reaped the server; required reboot). The lever
+  moves DOWN for long-context (0.4-0.5 baked into 128K+ presets) — never
+  UP. Right levers for memory pressure: `--max-total-tokens`,
+  `--chunked-prefill-size`, `MAX_RUNNING`, request `max_tokens`,
+  `chat_template_kwargs={"enable_thinking": false}`, `--kv-cache-dtype turboquant`.
 - **Long-context launch flags (validated 2026-05-11 on v0.5.11):**
   For 128K on qwen36-class models (35B weights), the working recipe is:
   `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.5`.

@@ -38,7 +38,33 @@ No vLLM, no llama.cpp, no direct mlx_lm serving — SGLang is the serving layer.
 | Coder-30B MoE | ~16 GB | Yes |
 | Gemma 4 26B MoE | ~15 GB | Yes |
 | Qwen3.5-27B | ~15 GB | Yes |
-| Coder-Next-80B MoE | ~42 GB | Tight — leaves ~13 GB for KV cache + OS |
+| Coder-Next-80B MoE | ~42 GB | No — model load itself OOMs |
+
+### `--mem-fraction-static` on unified memory
+
+**The flag is a fraction of TOTAL system RAM, not "GPU memory."** Discrete-GPU
+intuition does not transfer. On a discrete card, `mem-fraction-static=0.85`
+leaves the rest of dedicated VRAM for activation scratch on the same chip.
+On Apple Silicon there is no separate VRAM — `MEM_FRAC=0.85` means MLX takes
+85% of the whole 64 GB pool, leaving the OS itself ~10 GB for kernel + Metal
+compile buffers + page cache + transient activation + everything else.
+
+**Tested and crashed 2026-05-14:** bumped default 0.7 → 0.85 to "use the 64 GB
+more efficiently." macOS compressor + swap hit ~150 GB effective usage,
+jetsam reaped the server mid-decode, box hard-locked, required reboot.
+Reverted in commit `328bd97`. **Default 0.7 is load-bearing — do not raise.**
+
+The lever moves *down*, not up. Long-context (128K+) presets override
+to 0.4-0.5 because chunked-prefill activation scratch dominates the budget
+when context grows. That direction is validated; the up direction is not.
+
+Levers that actually optimize memory on M4 (not `MEM_FRAC`):
+- `--max-total-tokens N` — caps KV pool bytes directly
+- `--chunked-prefill-size` — caps per-chunk activation scratch
+- `--max-running-requests` / `MAX_RUNNING` — bounds concurrent decode state
+- Request-side `max_tokens` — caps per-request decode activation
+- `chat_template_kwargs={"enable_thinking": false}` — skips the `<think>` channel for non-reasoning workloads, frees the budget for the actual response
+- `--kv-cache-dtype turboquant` — 4-bit KV, 4× pool slots at same MEM_FRAC
 
 ### Memory Bandwidth
 The M4 Pro has ~273 GB/s memory bandwidth. For autoregressive decode, throughput is
