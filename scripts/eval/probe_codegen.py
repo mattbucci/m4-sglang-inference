@@ -12,11 +12,18 @@ This probe:
   - Executes it and runs hand-rolled unit tests.
   - Classifies STRONG (8/8) / PARTIAL (some) / FAIL (none).
 
-M4 note: greedy decode only on MLX backend. We use temperature=0 to stay
-on the supported sampler path (3090's reference uses 0.7/0.95/20).
+M4 notes:
+  - Greedy decode only on MLX backend (temperature=0 to stay on the supported
+    sampler path; 3090's reference uses 0.7/0.95/20).
+  - Thinking is disabled by default (--enable-thinking opts back in). On
+    unified memory a 600-tok think trace + 400-tok code response on the
+    Qwen3 family pushes the workload past macOS jetsam during decode. The
+    codegen probe is testing code synthesis, not reasoning narration.
+  - Default max_tokens=400 (down from 600). Tighter activation scratch budget.
 
 Usage:
   python scripts/eval/probe_codegen.py [--port PORT] [--model MODEL]
+                                       [--max-tokens N] [--enable-thinking]
 """
 import argparse
 import json
@@ -59,12 +66,25 @@ PROMPTS = [
 ]
 
 
-def _call(host_port: str, model: str, prompt: str, max_tokens: int = 600):
+def _call(
+    host_port: str,
+    model: str,
+    prompt: str,
+    max_tokens: int = 400,
+    enable_thinking: bool = False,
+):
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
         "temperature": 0,
+        # Skip the <think> channel: codegen probes test whether the model
+        # can write working code, not whether it can narrate its reasoning
+        # first. On M4 unified memory a 600-token thinking trace + 400-token
+        # code response on Qwen3-family triggers macOS jetsam mid-decode
+        # (see feedback_mem_frac_unified_memory.md). enable_thinking=False
+        # is a no-op for non-thinking models (Devstral, Coder-30B).
+        "chat_template_kwargs": {"enable_thinking": enable_thinking},
     }
     req = Request(
         f"http://{host_port}/v1/chat/completions",
@@ -74,8 +94,8 @@ def _call(host_port: str, model: str, prompt: str, max_tokens: int = 600):
     r = json.loads(urlopen(req, timeout=300).read())
     choice = r["choices"][0]
     msg = choice["message"]
-    # Thinking-mode models emit code into reasoning_content while leaving
-    # content null when finish_reason='stop' fires inside the think channel.
+    # If thinking was forcibly disabled, content is the canonical channel.
+    # Keep the reasoning_content fallback for the --enable-thinking opt-in path.
     text = msg.get("content") or msg.get("reasoning_content") or ""
     return choice.get("finish_reason"), text, r.get("usage")
 
@@ -89,12 +109,21 @@ def _extract_code(text: str) -> str:
     return text
 
 
-def _run_one(host_port: str, model: str, spec: dict) -> tuple[int, int, str]:
+def _run_one(
+    host_port: str,
+    model: str,
+    spec: dict,
+    max_tokens: int,
+    enable_thinking: bool,
+) -> tuple[int, int, str]:
     name = spec["name"]
     fn_name = spec["fn_name"]
     print("=" * 60)
     print(f"PROBE: {name}")
-    finish, content, usage = _call(host_port, model, spec["prompt"])
+    finish, content, usage = _call(
+        host_port, model, spec["prompt"],
+        max_tokens=max_tokens, enable_thinking=enable_thinking,
+    )
     print(f"finish={finish}  usage={usage}")
     print()
     print("--- response (first 400 chars) ---")
@@ -131,6 +160,16 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=23334)
     p.add_argument("--model", default="default")
+    p.add_argument(
+        "--max-tokens", type=int, default=400,
+        help="Per-request max_tokens cap. Lower bounds activation scratch on M4.",
+    )
+    p.add_argument(
+        "--enable-thinking", action="store_true",
+        help="Opt back into the <think> channel. Default off — codegen probe "
+             "tests code synthesis, not reasoning narration, and thinking "
+             "traces compete with the code budget under tight memory.",
+    )
     args = p.parse_args()
 
     host_port = f"localhost:{args.port}"
@@ -138,7 +177,10 @@ def main() -> int:
     total_pass = 0
     total_count = 0
     for spec in PROMPTS:
-        n_pass, n_total, summary = _run_one(host_port, args.model, spec)
+        n_pass, n_total, summary = _run_one(
+            host_port, args.model, spec,
+            max_tokens=args.max_tokens, enable_thinking=args.enable_thinking,
+        )
         summaries.append(summary)
         total_pass += n_pass
         total_count += n_total
