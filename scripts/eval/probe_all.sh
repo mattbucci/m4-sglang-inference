@@ -76,8 +76,19 @@ wait_ready() {
 }
 
 stop_server() {
+    # SGLang spawns several worker processes: the parent (launch_server),
+    # one or more sglang::scheduler workers, sglang::detokenizer workers,
+    # and multiprocessing.resource_tracker shims. The first two pkill
+    # patterns only catch the parents; if we don't also kill the worker
+    # processes by their renamed setproctitle names, they orphan, hold
+    # the model weights resident, and accumulate memory pressure across
+    # successive model swaps. The 2026-05-16 audit found 4 zombie
+    # schedulers from prior sweeps holding ~14 GB RSS.
     pkill -KILL -f "sglang.launch_server" 2>/dev/null || true
     pkill -KILL -f "scripts/launch.sh" 2>/dev/null || true
+    pkill -KILL -f "sglang::scheduler" 2>/dev/null || true
+    pkill -KILL -f "sglang::detokenizer" 2>/dev/null || true
+    pkill -KILL -f "multiprocessing.resource_tracker" 2>/dev/null || true
     sleep 4
     for _ in $(seq 1 20); do
         if ! curl -sf -o /dev/null "http://localhost:$PORT/health" 2>/dev/null; then
