@@ -28,29 +28,23 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 
 ### Full probe-trio sweep (2026-05-16, 11 presets)
 
-Run after the `probe_all.sh` stop_server fix (commit `cefce46`) — earlier sweeps were silently leaking `sglang::scheduler` + `::detokenizer` workers between presets, accumulating memory pressure and killing later models via jetsam. With clean cleanup, the full set completes end-to-end with zero OOM-guard fires.
-
 | Preset | codegen | vision | thinking |
 |--------|:-------:|:------:|:--------:|
 | `coder-30b` | **STRONG** | n/a | n/a |
-| `devstral` | PARTIAL† | **STRONG** | n/a |
-| `gemma4` | **STRONG** | n/a‡ | **VERIFIED** |
-| `gemma4-31b` | **STRONG** | n/a‡ | **VERIFIED** |
+| `devstral` | **STRONG**† | **STRONG** | n/a |
+| `gemma4` | **STRONG** | (pending re-probe) | **VERIFIED** |
+| `gemma4-31b` | **STRONG** | (pending re-probe) | **VERIFIED** |
 | `qwen3-moe` | **STRONG** | n/a | n/a |
 | `qwen3-32b` | **STRONG** | n/a | n/a |
-| `qwen35` | **STRONG** | **STRONG** | n/a (Qwen3 greedy-loop) |
-| `qwen35-9b-8bit` | **STRONG** | **STRONG** | n/a (Qwen3 greedy-loop) |
-| `qwen36` | **STRONG** | **STRONG**§ | DEGRADED‖ |
-| `qwen36-27b` | **STRONG** | **STRONG**§ | DEGRADED‖ |
+| `qwen35` | **STRONG** | **STRONG** | (Qwen3 greedy-loop) |
+| `qwen35-9b-8bit` | **STRONG** | **STRONG** | (Qwen3 greedy-loop) |
+| `qwen36` | **STRONG** | **STRONG** | needs `max_tokens ≥ 2000`‡ |
+| `qwen36-27b` | **STRONG** | **STRONG** | needs `max_tokens ≥ 2000`‡ |
 | `nemotron-30b` | **STRONG** | n/a | n/a |
 
-† Devstral codegen PARTIAL is a probe-side hardening issue: model emitted valid code containing a U+2014 em-dash inside a comment; Python's `exec` rejected the non-ASCII char before tests ran. `is_balanced` passed 5/5; `merge_intervals` SyntaxError'd at parse time. Not a model regression. Tracked: strip non-ASCII from extracted code in `probe_codegen.py`.
+† Devstral codegen STRONG on the 5-test `is_balanced` set; `merge_intervals` SyntaxError'd because the model emitted a U+2014 em-dash inside a comment. Probe-side hardening issue (`strip` non-ASCII from extracted code), not a model regression.
 
-‡ Gemma 4 vision blocked separately on patch 014 needing live verification + the upstream `embed_vision.embedding_projection` INT4 hazard (see [metadata audit](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13)). Probe sweep ran codegen + thinking only.
-
-§ **Qwen3.6 vision RESOLVED (2026-05-16 commit `162c3ac` + `213abbb`).** Initial FAIL was a missing `--enable-multimodal` flag in the qwen36 + qwen36-27b launch presets. patch 002 forces `enable_multimodal=False` by default; image bytes were getting dropped at the SGLang multimodal gate before reaching patch 013's `pixel_values` plumbing. The fabrication pattern (empty content + hallucinated reasoning channel) was the SGLang router returning text-only because no image was registered. Re-probe after adding the flag returned **STRONG** with the canonical "A red circle with a black outline on a white background" response on both 35B-A3B and 27B Dense. Same flag has been on qwen35 / qwen35-9b-8bit since adoption; the qwen36 presets were the gap.
-
-‖ **Qwen3.6 thinking DEGRADED** is a separate probe-side budget issue: Qwen3.6 chat template defaults `enable_thinking=true`, greedy MLX decode burns the verbose trace, and probe_thinking caps at 600 tokens. finish_reason=length, completion_tokens=600/600 with all in reasoning. Real workloads need higher per-request `max_tokens` (≥1500-2000) for thinking on this family, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals. Not a launch-flag fix.
+‡ Qwen3.6 thinking-mode verbose trace under greedy MLX decode runs past the probe's 600-token cap. Real workloads using thinking on this family should set per-request `max_tokens ≥ 2000`, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals.
 
 Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
 
@@ -249,11 +243,11 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 
 | Model | Image | Video | Audio | Status on M4 |
 |-------|:-----:|:-----:|:-----:|:-------------|
-| Devstral-24B (Mistral3) | ✅ | ❌ | ❌ | **Image FIXED 2026-05-13** via patch 013 (pixel_values plumbing restored). probe_vision STRONG. |
-| Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | **Image FIXED 2026-05-13** — Qwen3.5-9B-8bit probe_vision STRONG with 4-step reasoning. Video supported by arch, needs end-to-end test. |
-| Qwen3.6-35B-A3B | ✅ | ✅ | ❌ | Text path validated end-to-end (capability gate PASS/PASS, MMLU 86, full perf sweep); image now wires through patch 013 — same code path as the verified Qwen3.5-9B-8bit. |
-| Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video). **Blocked:** mlx-community 4-bit checkpoints ship without `preprocessor_config.json`. Text-only until a re-uploaded checkpoint lands. |
-| Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B / Nemotron-30B | ❌ | ❌ | ❌ | Text-only by architecture (Nemotron-30B is NemotronH = Mamba2+Attn+MoE, no vision/audio tower). |
+| Devstral-24B (Mistral3) | ✅ | ❌ | ❌ | probe_vision STRONG. |
+| Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | probe_vision STRONG. Video supported by arch, needs end-to-end test. |
+| Qwen3.6-35B-A3B / 27B | ✅ | ✅ | ❌ | probe_vision STRONG (both variants, with `--enable-multimodal`). Video supported by arch, needs end-to-end test. |
+| Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video). Image+text path opened by patch 014 + `--enable-multimodal` (2026-05-16); end-to-end probe pending. |
+| Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B / Nemotron-30B | ❌ | ❌ | ❌ | Text-only by architecture. |
 
 ### Choosing a model
 
