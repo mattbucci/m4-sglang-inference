@@ -41,10 +41,13 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 | `qwen36` | **STRONG** | **STRONG** | needs `max_tokens ≥ 2000`‡ |
 | `qwen36-27b` | **STRONG** | **STRONG** | needs `max_tokens ≥ 2000`‡ |
 | `nemotron-30b` | **STRONG** | n/a | n/a |
+| `nemotron-omni` | **STRONG** | FAIL§ | **VERIFIED** |
 
 † Devstral codegen STRONG on the 5-test `is_balanced` set; `merge_intervals` SyntaxError'd because the model emitted a U+2014 em-dash inside a comment. Probe-side hardening issue (`strip` non-ASCII from extracted code), not a model regression.
 
 ‡ Qwen3.6 thinking-mode verbose trace under greedy MLX decode runs past the probe's 600-token cap. Real workloads using thinking on this family should set per-request `max_tokens ≥ 2000`, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals.
+
+§ `nemotron-omni` (`Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit`) loads end-to-end via mlx-vlm 0.5.0 + patch 015 multi-image plumbing + the librosa runtime dep for `ParakeetExtractor`. SGLang's `nano_nemotron_vl.py` processor recognizes the arch natively; load time 3.62 s, 703K-slot KV pool at fp8. **codegen STRONG 8/8** + **thinking VERIFIED** (clean reasoning_content/content split via `--reasoning-parser nemotron_3`, much better than text-only nemotron-30b's verbose-trace-into-content behavior). Vision FAIL with the patch-013 fabrication pattern ("the word 'Terror' repeated in a grid" for a red-circle-on-white prompt) — image bytes not reaching the model. Probably the NemotronH_Omni processor's `mm_items` have a different shape than Qwen-VL/Pixtral that patch 015 was tuned for; follow-up patch needed before declaring as a replacement for `nemotron-30b`.
 
 Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
 

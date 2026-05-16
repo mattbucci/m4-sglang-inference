@@ -1,0 +1,13 @@
+{
+  "preset": "nemotron-omni",
+  "model": "mlx-community/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit",
+  "timestamp": "2026-05-16T05:20",
+  "with_parser": "nemotron_3",
+  "load_time_s": 3.62,
+  "kv_pool_slots": 703958,
+  "probes": {
+    "codegen": {"verdict": "STRONG", "tests_passed": "8/8"},
+    "vision": {"verdict": "FAIL", "note": "Hallucinates content (e.g. 'the word Terror repeated in a grid' for red circle on white). Same fabrication pattern as pre-patch-013 — image not reaching the model. Likely the NemotronH_Omni processor's mm_items shape differs from Qwen-VL; patch 015 multi-image concat may not match."},
+    "thinking": {"verdict": "THINKING VERIFIED", "reasoning_tokens": 134, "note": "Clean reasoning_content (draft solving) + content (polished answer with correct '11'). --reasoning-parser nemotron_3 splits perfectly. Much better than text-only nemotron-30b's verbose-trace behavior."}
+  }
+}

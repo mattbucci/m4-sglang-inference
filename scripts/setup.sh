@@ -111,6 +111,13 @@ if [ "$SKIP_ENV" = false ]; then
     echo "  Installing additional dependencies..."
     pip install openai requests matplotlib
 
+    # librosa: required by sglang/srt/models/parakeet.py (ParakeetExtractor),
+    # which SGLang's nano_nemotron_vl.py processor unconditionally
+    # instantiates at startup for the NemotronH_Nano_Omni_Reasoning_V3
+    # architecture even when audio inputs aren't used. Without it,
+    # `launch.sh nemotron-omni` ImportErrors at processor init.
+    pip install librosa
+
     # Pin torchcodec to 0.8 — pyproject's 0.11.1 ships dylibs that link
     # against libavutil.{56,57,58,60} (FFmpeg 4/5/6/8). On macOS with brew
     # FFmpeg 7 (libavutil.59) every server boot spams a stack trace per
