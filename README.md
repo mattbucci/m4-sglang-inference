@@ -2,32 +2,20 @@
 
 256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 11 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11, so the patch set is now 7 instead of 13.
 
-## Recommended models (2026-05-14)
+## The four models worth running (2026-05-15)
 
-Based on the v0.5.11 quality sweep, DWQ measurement variance, today's [metadata audit](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13), and probe-trio verdicts:
+Probe-verified on the v0.5.11 stack. Everything else in the [Model Support](#model-support) table is either untested in the latest sweep or fails one of the gates (silent fabrication, infinite-`<think>` loop, doesn't fit, etc.).
 
-| Workload | Preset | Why |
-|----------|--------|-----|
-| **Coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | MMLU 89.5 / HE 95, probe_codegen STRONG 8/8, 68 tok/s peak. DWQ swap fixed 10 dead layers in the standard 4bit. Audit hazard: MoE router INT4 (bounded — scores hold). |
-| **General agentic + thinking** | `qwen3-32b` (Qwen3-32B-4bit-DWQ) | MMLU 89.5 / HE 95, no DeltaNet/MoE — zero audit hazards. Dense, thinking terminates cleanly. Use this when you want clean correctness over peak speed. |
-| **Vision** | `devstral` (Devstral-Small-2-24B-Instruct-2512-4bit) | Only mlx-community VLM with vision tower **fully BF16** + patch 013 image plumbing verified probe_vision STRONG. Qwen3.5-9B-8bit also probe_vision STRONG but has the DeltaNet-INT4 hazard. |
-| **Peak throughput at long context** | `qwen36` (Qwen3.6-35B-A3B-4bit) | 148 tok/s at MR=2 batched decode (patch 011), DeltaNet+MoE wins both axes at 256K. Caveats: DeltaNet in_proj_a/b INT4 + MoE router INT4 in mlx-community; greedy thinking still works on this checkpoint. |
-| **Tightest memory** | `qwen35-9b-8bit` (Qwen3.5-9B-MLX-8bit) | ~10 GB resident, 8-bit weights, probe_vision STRONG. Best for leaving headroom for long-context KV. Same DeltaNet hazard at 8-bit. |
+| Workload | Preset | Verified | Notes |
+|----------|--------|----------|-------|
+| **Coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | `probe_codegen` **STRONG 8/8** | MMLU 89.5 / HE 95, 68 tok/s peak single-user. DWQ swap fixed 10 dead layers in the std 4bit. |
+| **General thinking** | `gemma4` (gemma-4-26b-a4b-it-4bit) | `probe_codegen` **STRONG** + thinking **VERIFIED** | MMLU 85, `<think>` channel terminates cleanly. 15 GB weights — comfortable on 64 GB. Text-only on M4 (mlx-community ships no `preprocessor_config.json`). |
+| **Vision** | `devstral` (Devstral-Small-2-24B-Instruct-2512-4bit) | `probe_vision` **STRONG** | Only mlx-community VLM with vision tower fully BF16 + patch 013 image plumbing verified. |
+| **Peak long-context throughput** | `qwen36` (Qwen3.6-35B-A3B-4bit) | perf-verified, codegen probe pending | 148 tok/s at MR=2 batched decode (patch 011). MoE+DeltaNet hybrid carries inference forward at 256K. |
 
-**Avoid for agentic flagship work:** Qwen3.5-27B (thinking gate FAIL, infinite-`<think>` loop on greedy decode); Gemma 4 26B/31B for image use (preprocessor_config missing in mlx-community + `embed_vision.embedding_projection` audit hazard); Coder-Next 80B (infeasible on M4 toolchain, see Known Issues).
-
-## Current Focus (2026-05-11)
+### Current focus
 
 **Primary target: single-user 256K context** for agentic workloads. Decode TPOT at long context > peak batch throughput. Multi-user is secondary.
-
-**Hard constraint: every new model must pass `scripts/eval/validate_capabilities.py`** before its numbers land in this README. Plus `probe_thinking` / `probe_vision` / `probe_codegen` for content-aware classification, plus `check_mlx_quant_scales.py` (per-layer scale corruption) and `audit_mlx_quant_metadata.py` (recipe-level hazards) on the checkpoint itself.
-
-### Cross-team links
-
-[3090 (Ampere, AWQ_Marlin)](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) ·
-[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
-
-What's portable from sister teams: eval/audit scripts (format-translated for MLX), chat-template `--tool-call-parser` mapping, model-behavior findings. What's **not** portable: their `mattbucci/*-AWQ` checkpoints (mlx-lm cannot load AWQ — [#727](https://github.com/ml-explore/mlx-lm/issues/727)), kernel patches (Marlin/HIP), REAM/REAP work (mlx-community uses upstream BF16 directly), TP=2 / 256K performance headlines. M4 runs [mlx-community](https://huggingface.co/mlx-community) checkpoints and optimizes for its own constraints (64 GB unified, greedy-only sampling, no flash-attn-style SDPA).
 
 ### Active work
 
