@@ -35,24 +35,28 @@ LOG_DIR="${LOG_DIR:-/tmp/probe-trio-logs}"
 RESULTS_DIR="$REPO_DIR/benchmarks/quality/probe-trio"
 mkdir -p "$LOG_DIR" "$RESULTS_DIR"
 
-# Per-preset probe selection: which of {thinking, vision, codegen} to run.
-# Vision probe needs --enable-multimodal and a working VLM bridge; thinking
+# Per-preset probe selection: which of {thinking, vision, video, codegen} to run.
+# Vision/video probes need --enable-multimodal and a working VLM bridge; thinking
 # probe will loop on Qwen3 family (greedy MLX) so we skip those. Codegen is
 # the most universally applicable — it works on any text-completion model.
+# Video probe sends multi-image frames client-side (bypasses SGLang's video
+# processor which pulls in torchcodec/decord); arch must support multi-image
+# input (Qwen-VL, Gemma 4, Devstral) — same patch 013 plumbing as vision.
 probes_for() {
     case "$1" in
         coder-30b)         echo "codegen" ;;
         coder-next)        echo "codegen" ;;
-        devstral)          echo "codegen vision" ;;
-        gemma4)            echo "codegen thinking" ;;
-        gemma4-31b)        echo "codegen thinking" ;;
+        devstral)          echo "codegen vision" ;;  # Devstral arch is image-only, no video
+        gemma4)            echo "codegen thinking vision video" ;;
+        gemma4-31b)        echo "codegen thinking vision video" ;;
         qwen3-moe)         echo "codegen" ;;   # --no-thinking in evals
         qwen3-32b)         echo "codegen" ;;   # --no-thinking in evals
-        qwen35)            echo "codegen vision" ;;  # thinking skipped — known greedy loop
-        qwen35-9b-8bit)    echo "codegen vision" ;;
-        qwen36)            echo "codegen vision thinking" ;;  # thinking terminates per gate
-        qwen36-27b)        echo "codegen vision thinking" ;;
+        qwen35)            echo "codegen vision video" ;;  # thinking skipped — known greedy loop
+        qwen35-9b-8bit)    echo "codegen vision video" ;;
+        qwen36)            echo "codegen vision video thinking" ;;
+        qwen36-27b)        echo "codegen vision video thinking" ;;
         nemotron-30b)      echo "codegen" ;;
+        nemotron-omni)     echo "codegen vision thinking" ;;  # Omni has image, no video
         *)                 echo "codegen" ;;
     esac
 }
