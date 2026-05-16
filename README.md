@@ -40,7 +40,7 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 | gemma4-31b | gemma-4-31b-it-mxfp4 | **PASS** | **PASS** | 12.0 s |
 | qwen36 | Qwen3.6-35B-A3B-4bit | **PASS** | **PASS** | 22.6 s — biggest DeltaNet+MoE+VL test; thinking trace 1326 tok terminates |
 | qwen36-27b | Qwen3.6-27B-4bit | **PASS** | **PASS** | 103.8 s — Dense DeltaNet+VL variant; thinking trace 1311 tok terminates |
-| nemotron-30b | NVIDIA-Nemotron-3-Nano-30B-A3B-4bit | — | — | added to launch.sh post-sweep; verified separately 2026-05-13 via probe (parser smoke PASS, 154 reasoning tokens, finish=stop) |
+| nemotron-30b | NVIDIA-Nemotron-3-Nano-30B-A3B-4bit | **PASS** | **PASS** | added to launch.sh post-2026-05-11 sweep; verified 2026-05-16 via probe_codegen **STRONG 8/8** + 2026-05-13 reasoning-parser smoke (154 reasoning tokens, finish=stop) |
 
 10/10 boot success, 10/10 basic, 8/10 thinking on the v0.5.11 stack. The 2 thinking truncations are the pre-existing Qwen3.5 greedy-decode `<think>` loop (patch 013 still works — basic answers are correct, not garbage). Notably the Qwen3.6-A3B and Qwen3.6-27B Dense variants both terminate thinking cleanly out of the box, validating the new Qwen3.6 chat template. Raw data: [`benchmarks/quality/v0.5.11-rebase-validation.txt`](benchmarks/quality/v0.5.11-rebase-validation.txt).
 
