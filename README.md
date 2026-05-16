@@ -40,15 +40,17 @@ Run after the `probe_all.sh` stop_server fix (commit `cefce46`) — earlier swee
 | `qwen3-32b` | **STRONG** | n/a | n/a |
 | `qwen35` | **STRONG** | **STRONG** | n/a (Qwen3 greedy-loop) |
 | `qwen35-9b-8bit` | **STRONG** | **STRONG** | n/a (Qwen3 greedy-loop) |
-| `qwen36` | **STRONG** | **FAIL** | DEGRADED |
-| `qwen36-27b` | **STRONG** | **FAIL** | DEGRADED |
+| `qwen36` | **STRONG** | **STRONG**§ | DEGRADED‖ |
+| `qwen36-27b` | **STRONG** | **STRONG**§ | DEGRADED‖ |
 | `nemotron-30b` | **STRONG** | n/a | n/a |
 
 † Devstral codegen PARTIAL is a probe-side hardening issue: model emitted valid code containing a U+2014 em-dash inside a comment; Python's `exec` rejected the non-ASCII char before tests ran. `is_balanced` passed 5/5; `merge_intervals` SyntaxError'd at parse time. Not a model regression. Tracked: strip non-ASCII from extracted code in `probe_codegen.py`.
 
 ‡ Gemma 4 vision blocked separately on patch 014 needing live verification + the upstream `embed_vision.embedding_projection` INT4 hazard (see [metadata audit](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13)). Probe sweep ran codegen + thinking only.
 
-**Qwen3.6 vision FAIL is a new finding (2026-05-16).** Both 35B-A3B and 27B Dense variants return empty `content` and fabricated `reasoning_content` (e.g. `"a cartoon character... blue skin/fur, pointy ears, looks like Gumball Watterson"` for a red-circle-on-white image). Same fabrication pattern as pre-patch-013 Devstral but on the reasoning channel — image isn't reaching the model. Qwen3.5 (same DeltaNet+VL arch) probe_vision STRONG, so patch 013's `mm_kwargs` plumbing works for one Qwen-VL generation but not the next. Likely needs additional fields in `mm_kwargs` for Qwen3.6 VL specifically (image preprocessing differs). Thinking also DEGRADED (600/600 tokens burned in `<think>`, finish_reason=length) — separate issue from vision but in the same Qwen3.6 family.
+§ **Qwen3.6 vision RESOLVED (2026-05-16 commit `162c3ac` + `213abbb`).** Initial FAIL was a missing `--enable-multimodal` flag in the qwen36 + qwen36-27b launch presets. patch 002 forces `enable_multimodal=False` by default; image bytes were getting dropped at the SGLang multimodal gate before reaching patch 013's `pixel_values` plumbing. The fabrication pattern (empty content + hallucinated reasoning channel) was the SGLang router returning text-only because no image was registered. Re-probe after adding the flag returned **STRONG** with the canonical "A red circle with a black outline on a white background" response on both 35B-A3B and 27B Dense. Same flag has been on qwen35 / qwen35-9b-8bit since adoption; the qwen36 presets were the gap.
+
+‖ **Qwen3.6 thinking DEGRADED** is a separate probe-side budget issue: Qwen3.6 chat template defaults `enable_thinking=true`, greedy MLX decode burns the verbose trace, and probe_thinking caps at 600 tokens. finish_reason=length, completion_tokens=600/600 with all in reasoning. Real workloads need higher per-request `max_tokens` (≥1500-2000) for thinking on this family, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals. Not a launch-flag fix.
 
 Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
 

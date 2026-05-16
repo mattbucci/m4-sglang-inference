@@ -1,13 +1,13 @@
 {
   "preset": "qwen36-27b",
-  "timestamp": "2026-05-16T04:52:38",
+  "timestamp": "2026-05-16T05:04:34",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/qwen36-27b-codegen.log"
     },
     "vision": {
-      "verdict": "FAIL",
+      "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/qwen36-27b-vision.log"
     },
     "thinking": {
