@@ -122,7 +122,12 @@ apply_preset() {
             # (1,8,64) pool slots and crashes with ValueError. See
             # patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md for the full trace and
             # fix-A/B/C options. Workaround applies to both 26B and 31B.
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser gemma4"
+            # --enable-multimodal: patch 002 forces multimodal=False by default;
+            # patch 014 unblocked the processor construction (Gemma4ImageOnlyProcessor
+            # bypasses missing preprocessor_config.json / video_preprocessor_config.json)
+            # but the SGLang multimodal gate still drops image bytes without this flag.
+            # Same pattern as Qwen3.5/3.6 + Devstral.
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
@@ -137,7 +142,8 @@ apply_preset() {
             REASONING="--reasoning-parser gemma4"
             # --disable-radix-cache REQUIRED — same heterogeneous-attention bug
             # as gemma4 (50 sliding @ (16,256) + 10 full @ (4,512)).
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser gemma4"
+            # --enable-multimodal — see gemma4 preset comment.
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
