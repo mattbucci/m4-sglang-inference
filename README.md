@@ -26,6 +26,32 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 3. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
 4. **64K perf data is structurally infeasible on M4 with current MLX attention.** Targeted single-user 64K probes on 2026-05-12 hit the OOM guard mid-prefill on every hybrid tested — qwen35 (27B dense, fp8 KV) made it to ~32K, qwen36 (35B-A3B MoE, turboquant) to ~50K, qwen35-9b-8bit (9B at 8-bit weights) to ~50K. The wall isn't the model weights or the KV pool; it's the **per-chunk attention-score tensor** that `mx.fast.scaled_dot_product_attention` materializes in full (shape `chunked × current_offset × n_heads × n_layers`). At chunk=1024, offset=50K, with ~30–60 layers × 16 heads × 4 bytes that buffer alone is 30–90 GB — well past the M4's activation headroom even with `mf=0.4`. Without a flash-attention-style block-streaming SDPA in MLX, the 64K column is out of reach for this hardware. **256K is reachable only because DeltaNet hybrids' O(1) linear layers carry the inference forward; the full-attention scratch peaks once per chunk and the bench just absorbs a long prefill time.** Decode at 32K is the practical M4 long-context ceiling for dense + standard-attention models.
 
+### Full probe-trio sweep (2026-05-16, 11 presets)
+
+Run after the `probe_all.sh` stop_server fix (commit `cefce46`) — earlier sweeps were silently leaking `sglang::scheduler` + `::detokenizer` workers between presets, accumulating memory pressure and killing later models via jetsam. With clean cleanup, the full set completes end-to-end with zero OOM-guard fires.
+
+| Preset | codegen | vision | thinking |
+|--------|:-------:|:------:|:--------:|
+| `coder-30b` | **STRONG** | n/a | n/a |
+| `devstral` | PARTIAL† | **STRONG** | n/a |
+| `gemma4` | **STRONG** | n/a‡ | **VERIFIED** |
+| `gemma4-31b` | **STRONG** | n/a‡ | **VERIFIED** |
+| `qwen3-moe` | **STRONG** | n/a | n/a |
+| `qwen3-32b` | **STRONG** | n/a | n/a |
+| `qwen35` | **STRONG** | **STRONG** | n/a (Qwen3 greedy-loop) |
+| `qwen35-9b-8bit` | **STRONG** | **STRONG** | n/a (Qwen3 greedy-loop) |
+| `qwen36` | **STRONG** | **FAIL** | DEGRADED |
+| `qwen36-27b` | **STRONG** | **FAIL** | DEGRADED |
+| `nemotron-30b` | **STRONG** | n/a | n/a |
+
+† Devstral codegen PARTIAL is a probe-side hardening issue: model emitted valid code containing a U+2014 em-dash inside a comment; Python's `exec` rejected the non-ASCII char before tests ran. `is_balanced` passed 5/5; `merge_intervals` SyntaxError'd at parse time. Not a model regression. Tracked: strip non-ASCII from extracted code in `probe_codegen.py`.
+
+‡ Gemma 4 vision blocked separately on patch 014 needing live verification + the upstream `embed_vision.embedding_projection` INT4 hazard (see [metadata audit](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13)). Probe sweep ran codegen + thinking only.
+
+**Qwen3.6 vision FAIL is a new finding (2026-05-16).** Both 35B-A3B and 27B Dense variants return empty `content` and fabricated `reasoning_content` (e.g. `"a cartoon character... blue skin/fur, pointy ears, looks like Gumball Watterson"` for a red-circle-on-white image). Same fabrication pattern as pre-patch-013 Devstral but on the reasoning channel — image isn't reaching the model. Qwen3.5 (same DeltaNet+VL arch) probe_vision STRONG, so patch 013's `mm_kwargs` plumbing works for one Qwen-VL generation but not the next. Likely needs additional fields in `mm_kwargs` for Qwen3.6 VL specifically (image preprocessing differs). Thinking also DEGRADED (600/600 tokens burned in `<think>`, finish_reason=length) — separate issue from vision but in the same Qwen3.6 family.
+
+Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
+
 ### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
 
 | Preset | Model | Basic | Thinking | Notes |

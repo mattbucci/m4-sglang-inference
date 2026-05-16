@@ -1,5 +1,14 @@
 {
   "preset": "qwen35-9b-8bit",
-  "timestamp": "2026-05-14T03:14:11",
-  "server": "failed_to_boot"
+  "timestamp": "2026-05-16T04:49:30",
+  "probes": {
+    "codegen": {
+      "verdict": "STRONG",
+      "log": "/tmp/probe-trio-logs/qwen35-9b-8bit-codegen.log"
+    },
+    "vision": {
+      "verdict": "STRONG",
+      "log": "/tmp/probe-trio-logs/qwen35-9b-8bit-vision.log"
+    }
+  }
 }

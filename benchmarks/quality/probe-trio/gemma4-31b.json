@@ -1,0 +1,14 @@
+{
+  "preset": "gemma4-31b",
+  "timestamp": "2026-05-16T04:46:58",
+  "probes": {
+    "codegen": {
+      "verdict": "STRONG",
+      "log": "/tmp/probe-trio-logs/gemma4-31b-codegen.log"
+    },
+    "thinking": {
+      "verdict": "THINKING VERIFIED",
+      "log": "/tmp/probe-trio-logs/gemma4-31b-thinking.log"
+    }
+  }
+}

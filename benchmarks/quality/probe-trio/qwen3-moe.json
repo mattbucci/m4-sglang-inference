@@ -1,12 +1,10 @@
 {
   "preset": "qwen3-moe",
-  "timestamp": "2026-05-14T02:57:55",
+  "timestamp": "2026-05-16T04:47:37",
   "probes": {
     "codegen": {
-      "verdict": null,
+      "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/qwen3-moe-codegen.log"
     }
-  },
-  "failure_mode": "oom_guard_fired_during_codegen_probe",
-  "note": "probe_codegen max_tokens=600 \u00d7 2 prompts pushes non-coder models past 8GB free-RAM threshold; OOM guard pkilled server mid-decode \u2192 RemoteDisconnected. Not a model regression \u2014 sweep design issue tracked under follow-up."
+  }
 }

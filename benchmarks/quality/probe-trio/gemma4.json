@@ -1,5 +1,14 @@
 {
   "preset": "gemma4",
-  "timestamp": "2026-05-14T00:56:40",
-  "server": "failed_to_boot"
+  "timestamp": "2026-05-16T04:45:26",
+  "probes": {
+    "codegen": {
+      "verdict": "STRONG",
+      "log": "/tmp/probe-trio-logs/gemma4-codegen.log"
+    },
+    "thinking": {
+      "verdict": "THINKING VERIFIED",
+      "log": "/tmp/probe-trio-logs/gemma4-thinking.log"
+    }
+  }
 }

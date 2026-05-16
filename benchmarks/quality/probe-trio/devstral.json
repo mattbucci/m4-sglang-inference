@@ -1,16 +1,14 @@
 {
   "preset": "devstral",
-  "timestamp": "2026-05-14T00:41:15",
+  "timestamp": "2026-05-16T04:44:37",
   "probes": {
     "codegen": {
-      "verdict": null,
+      "verdict": "PARTIAL",
       "log": "/tmp/probe-trio-logs/devstral-codegen.log"
     },
     "vision": {
-      "verdict": null,
+      "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/devstral-vision.log"
     }
-  },
-  "failure_mode": "oom_guard_fired_during_codegen_probe",
-  "note": "probe_codegen max_tokens=600 \u00d7 2 prompts pushes non-coder models past 8GB free-RAM threshold; OOM guard pkilled server mid-decode \u2192 RemoteDisconnected. Not a model regression \u2014 sweep design issue tracked under follow-up."
+  }
 }
