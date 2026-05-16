@@ -210,9 +210,17 @@ apply_preset() {
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
             # --disable-radix-cache required (hybrid ArraysCache, same as qwen35).
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
+            # --enable-multimodal required: patch 002 forces multimodal=False
+            # when unset; without this flag the SGLang multimodal gate drops
+            # incoming images before they reach the model. Probe sweep
+            # 2026-05-16 showed Qwen3.6 vision FAIL with fabricated reasoning
+            # content (e.g. "cartoon character with blue skin and pointy ears"
+            # for a red-circle-on-white prompt). Adding --enable-multimodal
+            # routes image bytes into the patch 013 pixel_values plumbing —
+            # same path that's been STRONG on Qwen3.5-9B-8bit since 2026-05-13.
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser qwen3_coder"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
         qwen36-27b)
@@ -221,10 +229,12 @@ apply_preset() {
             # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
             # as qwen35 / qwen36 (patches 013/015 load-bearing).
             # --disable-radix-cache required (hybrid ArraysCache).
+            # --enable-multimodal required for vision — see qwen36 preset
+            # comment. probe_vision FAIL on 2026-05-16 without it.
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="$EXTRA_ARGS --disable-radix-cache --tool-call-parser qwen3_coder"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
         nemotron-30b)
