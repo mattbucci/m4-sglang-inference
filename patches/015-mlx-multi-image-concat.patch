@@ -1,0 +1,83 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index ec4b41188..17a5a1757 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -201,6 +201,69 @@ class MlxTpModelWorker(TpModelWorker):
+                     # New prefill
+                     prefix_slot_ids = req.prefix_indices.tolist()
+                     full_token_ids = list(req.fill_ids)
++                    # Patch 013: extract pixel_values from multimodal_inputs.
++                    # Patch 015 (2026-05-16): concatenate features across all
++                    # mm_items (was: only the first), so multi-image requests
++                    # work. probe_video sends 6 frames as 6 image_url items;
++                    # before this fix qwen3_5.merge_input_ids_with_image_features
++                    # crashed with "tokens: 384, features 64" because the input
++                    # carried 6 images' worth of placeholder tokens but only
++                    # 1 image's pixel features.
++                    pixel_values = None
++                    mm_kwargs: dict = {}
++                    mm = getattr(req, "multimodal_inputs", None)
++                    if mm and getattr(mm, "mm_items", None):
++                        try:
++                            import mlx.core as _mx
++                            import numpy as _np
++
++                            features: list = []
++                            msd_acc: dict[str, list] = {}
++                            for item in mm.mm_items:
++                                feat = getattr(item, "feature", None)
++                                if feat is None:
++                                    continue
++                                features.append(
++                                    feat.numpy() if hasattr(feat, "numpy") else feat
++                                )
++                                msd = getattr(item, "model_specific_data", None) or {}
++                                for k, v in msd.items():
++                                    msd_acc.setdefault(k, []).append(v)
++
++                            if features:
++                                # Concatenate along axis 0. Each per-image
++                                # feature is (n_patches_i, embed_dim) for
++                                # Qwen-VL or (n_patches_i, n_channels, H, W)
++                                # for Pixtral/Mistral3. axis-0 concat = total
++                                # patches across all images, which matches
++                                # how the VLMs consume multi-image input.
++                                pixel_values = _mx.array(_np.concatenate(features, axis=0))
++
++                                # Forward per-image model-specific kwargs.
++                                # image_grid_thw / video_grid_thw etc. are
++                                # per-image tensors of shape (1, 3) for
++                                # Qwen-VL — stack into (N_images, 3) so the
++                                # vision tower knows the grid for each image.
++                                # image_sizes (Pixtral/Mistral3) is similar.
++                                for k, vs in msd_acc.items():
++                                    try:
++                                        np_arrs = [
++                                            v.numpy() if hasattr(v, "numpy")
++                                            else (_np.asarray(v) if not isinstance(v, (list, tuple))
++                                                  else _np.asarray(v))
++                                            for v in vs
++                                        ]
++                                        mm_kwargs[k] = _mx.array(
++                                            _np.concatenate(np_arrs, axis=0)
++                                            if len(np_arrs) > 1 else np_arrs[0]
++                                        )
++                                    except Exception:
++                                        # Fall back to passing the first
++                                        # value through unmodified — better
++                                        # than dropping the kwarg entirely.
++                                        mm_kwargs[k] = vs[0]
++                        except Exception:
++                            pixel_values = None
+                     next_token = self._mlx_runner.prefill(
+                         req_id=req.rid,
+                         new_token_ids=req_token_ids,
+@@ -208,6 +271,8 @@ class MlxTpModelWorker(TpModelWorker):
+                         prefix_slot_ids=prefix_slot_ids,
+                         new_slot_ids=req_new_slots,
+                         req_pool_idx=req.req_pool_idx,
++                        pixel_values=pixel_values,
++                        mm_kwargs=mm_kwargs,
+                     )
+                     prefill_rids.append((req.rid, next_token))
+ 
