@@ -14,15 +14,35 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # venv, SGLang from main, MLX deps, apply 5 patches
-scripts/launch.sh devstral                        # Devstral 24B 4-bit
-scripts/launch.sh coder-30b                       # Coder-30B MoE 4-bit
-scripts/launch.sh coder-next                      # Coder-Next 80B 4-bit
-scripts/launch.sh gemma4                          # Gemma 4 26B MoE 4-bit
-scripts/launch.sh qwen35                          # Qwen3.5-27B 4-bit
-# Quality + capability gates (run AFTER server is up)
-python scripts/eval/validate_capabilities.py --port 23334    # basic + thinking gate
-python scripts/eval/validate_chat_template.py --model <path> # static template check
+scripts/setup.sh                                  # venv, SGLang v0.5.11, MLX deps, apply 13 patches
+# Production presets (all verified through the v0.5.11 capability gate):
+scripts/launch.sh devstral                        # Devstral 24B + image VLM
+scripts/launch.sh coder-30b                       # Qwen3-Coder-30B-A3B-DWQ MoE
+scripts/launch.sh gemma4                          # Gemma 4 26B MoE (text-only on M4)
+scripts/launch.sh gemma4-31b                      # Gemma 4 31B Dense
+scripts/launch.sh qwen35                          # Qwen3.5-27B DeltaNet hybrid+VL
+scripts/launch.sh qwen35-9b-8bit                  # Qwen3.5-9B 8-bit (tight-memory variant)
+scripts/launch.sh qwen3-32b                       # Qwen3-32B-DWQ Dense
+scripts/launch.sh qwen3-moe                       # Qwen3-30B-A3B-DWQ MoE
+scripts/launch.sh qwen36                          # Qwen3.6-35B-A3B MoE+DeltaNet+VL
+scripts/launch.sh qwen36-27b                      # Qwen3.6-27B Dense+DeltaNet+VL
+scripts/launch.sh nemotron-30b                    # NemotronH (Mamba2+Attn+MoE)
+# coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
+
+# Capability gates (run AFTER server is up on PORT 23334)
+python scripts/eval/validate_capabilities.py --port 23334    # basic + thinking gate (loose grep)
+python scripts/eval/probe_thinking.py        --port 23334    # content-aware reasoning probe
+python scripts/eval/probe_vision.py          --port 23334    # content-aware image probe
+python scripts/eval/probe_codegen.py         --port 23334    # 2-task / 8-test codegen probe
+bash   scripts/eval/probe_all.sh                              # full sweep across presets
+PRESETS="nemotron-30b" bash scripts/eval/probe_all.sh         # single-preset sweep
+
+# Pre-launch checkpoint audits (no server needed)
+python scripts/eval/check_mlx_quant_scales.py    <repo>       # per-layer scale corruption scan
+python scripts/eval/audit_mlx_quant_metadata.py               # recipe-level hazards across M4 set
+python scripts/eval/validate_chat_template.py    --model <path>
+
+# Quality + benchmarks
 python scripts/eval/eval_and_chart.py --run --port 23334 --tag "Coder-30B"
 bash   scripts/eval/run_all_evals.sh              # full quality sweep across presets
 bash   scripts/bench/bench_256k_all.sh            # 256K single-user context sweep

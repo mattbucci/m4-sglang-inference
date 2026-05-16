@@ -145,29 +145,43 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply patches
+./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 13 patches
 
-./scripts/launch.sh coder-30b               # MoE — peak throughput, 256K
-./scripts/launch.sh devstral                # Dense — image-VLM verified
-./scripts/launch.sh qwen35                  # DeltaNet hybrid (32K preset)
-./scripts/launch.sh gemma4                  # MoE 26B (4K preset, tight 64GB)
-./scripts/launch.sh qwen3-moe               # Qwen3-30B MoE
-./scripts/launch.sh qwen3-32b               # Dense
-./scripts/launch.sh gemma4-31b              # Dense
-./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B (DeltaNet+MoE+VL, peak throughput at long ctx)
-./scripts/launch.sh qwen36-27b              # Qwen3.6-27B Dense+DeltaNet+VL (new)
+# Production presets (all verified at v0.5.11 gate; see Recommended models for picks)
+./scripts/launch.sh coder-30b               # MoE — codegen STRONG 8/8, 68 tok/s peak
+./scripts/launch.sh devstral                # Dense+VLM — probe_vision STRONG
+./scripts/launch.sh gemma4                  # MoE 26B — codegen STRONG + thinking VERIFIED (4K preset)
+./scripts/launch.sh gemma4-31b              # Dense (sliding+full) — 4K preset, MMLU 92
+./scripts/launch.sh qwen35                  # DeltaNet hybrid+VL (32K preset)
+./scripts/launch.sh qwen35-9b-8bit          # Tight-memory variant — 10 GB resident, probe_vision STRONG
+./scripts/launch.sh qwen3-moe               # Qwen3-30B MoE (DWQ, MMLU 91)
+./scripts/launch.sh qwen3-32b               # Dense (DWQ, clean audit, no DeltaNet/MoE)
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B — peak long-ctx throughput, 148 tok/s @ MR=2
+./scripts/launch.sh qwen36-27b              # Qwen3.6-27B Dense+DeltaNet+VL
+./scripts/launch.sh nemotron-30b            # NemotronH (Mamba2+Attn+MoE) — codegen STRONG 8/8
+
+# Not in production rotation:
+# ./scripts/launch.sh coder-next            # Coder-Next-80B — infeasible on M4 (see Known Issues)
+# ./scripts/launch.sh smol-docling          # 256M VLM smoke test for the multimodal bridge
 
 # Long-context (128K) — qwen36 validated, prefill ~6.5 min, decode ~0.10 tok/s
 CTX=140000 EXTRA_ARGS="--disable-radix-cache --kv-cache-dtype turboquant \
     --chunked-prefill-size 2048 --mem-fraction-static 0.5" \
     bash scripts/launch.sh qwen36
 
+# Capability gates (run AFTER server is up on PORT 23334)
 python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate (loose keyword grep)
-python scripts/eval/probe_thinking.py --port 23334          # content-aware reasoning probe
-python scripts/eval/probe_vision.py    --port 23334         # content-aware image probe (STRONG/DEGRADED/FAIL)
-python scripts/eval/probe_codegen.py   --port 23334         # 8-test code-synthesis probe
+python scripts/eval/probe_thinking.py        --port 23334   # content-aware reasoning probe
+python scripts/eval/probe_vision.py          --port 23334   # content-aware image probe (STRONG/DEGRADED/FAIL)
+python scripts/eval/probe_codegen.py         --port 23334   # 2-task / 8-test code-synthesis probe
 bash   scripts/eval/probe_all.sh                            # sweep probe trio across all presets
-python scripts/eval/validate_chat_template.py --model <path>
+PRESETS="nemotron-30b qwen3-32b" bash scripts/eval/probe_all.sh   # single-preset / subset sweep
+
+# Pre-launch checkpoint audits (no server needed)
+python scripts/eval/check_mlx_quant_scales.py   <repo-or-path>    # per-layer scale corruption
+python scripts/eval/audit_mlx_quant_metadata.py                    # recipe-level hazards across the M4 set
+python scripts/eval/validate_chat_template.py --model <path>       # static jinja template check
+
 bash   scripts/common/oom_guard.sh &                        # MANDATORY before 64K+ benches
 bash   scripts/bench/bench_256k_all.sh                      # 256K single-user sweep
 ```
