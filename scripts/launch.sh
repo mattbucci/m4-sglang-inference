@@ -243,6 +243,23 @@ apply_preset() {
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
             ;;
+        nemotron-omni)
+            # NVIDIA Nemotron-3-Nano-Omni-30B-A3B-Reasoning (NemotronH_Nano_Omni_Reasoning_V3).
+            # Vision-capable + reasoning-mode variant of nemotron-30b — potentially
+            # replaces it if load + probes pass. Same memory footprint (19.6 GB,
+            # 4 safetensors), conversion via mlx-vlm 0.4.5. Has both
+            # processor_config.json + preprocessor_config.json so AutoProcessor
+            # construction works without the gemma4-style bypass patch.
+            #
+            # Risk: NemotronH_Nano_Omni_Reasoning_V3 is a newer architecture class
+            # than what patch 009 wrapped (Mamba2+Attn+MoE without vision tower).
+            # May need additional wrapping for the vision side.
+            MODEL="${MODEL:-mlx-community/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit}"
+            CTX=32768; MAX_RUNNING=1; CHUNKED=4096
+            REASONING="--reasoning-parser nemotron_3"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache"
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            ;;
         nemotron-30b)
             # NVIDIA Nemotron-3-Nano-30B-A3B (NemotronH hybrid: Mamba2 +
             # Attention + MoE). 30B total, 3B active (128 experts top-6,
