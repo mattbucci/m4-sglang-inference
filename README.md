@@ -39,13 +39,14 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 | gemma4 | gemma-4-26b-a4b-it-4bit | **PASS** | **PASS** | 3.8 s |
 | gemma4-31b | gemma-4-31b-it-mxfp4 | **PASS** | **PASS** | 12.0 s |
 | qwen36 | Qwen3.6-35B-A3B-4bit | **PASS** | **PASS** | 22.6 s — biggest DeltaNet+MoE+VL test; thinking trace 1326 tok terminates |
-| qwen36-27b | **Qwen3.6-27B-4bit (new)** | **PASS** | **PASS** | 103.8 s — Dense DeltaNet+VL variant; thinking trace 1311 tok terminates |
+| qwen36-27b | Qwen3.6-27B-4bit | **PASS** | **PASS** | 103.8 s — Dense DeltaNet+VL variant; thinking trace 1311 tok terminates |
+| nemotron-30b | NVIDIA-Nemotron-3-Nano-30B-A3B-4bit | — | — | added to launch.sh post-sweep; verified separately 2026-05-13 via probe (parser smoke PASS, 154 reasoning tokens, finish=stop) |
 
 10/10 boot success, 10/10 basic, 8/10 thinking on the v0.5.11 stack. The 2 thinking truncations are the pre-existing Qwen3.5 greedy-decode `<think>` loop (patch 013 still works — basic answers are correct, not garbage). Notably the Qwen3.6-A3B and Qwen3.6-27B Dense variants both terminate thinking cleanly out of the box, validating the new Qwen3.6 chat template. Raw data: [`benchmarks/quality/v0.5.11-rebase-validation.txt`](benchmarks/quality/v0.5.11-rebase-validation.txt).
 
 ### Quality table (v0.5.11, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
 
-Full sweep completed 2026-05-11 — 10 mlx-community models on the v0.5.11 stack with `--disable-radix-cache`. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
+Full sweep completed 2026-05-11 — 11 mlx-community models on the v0.5.11 stack with `--disable-radix-cache`. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
@@ -210,7 +211,7 @@ What each architecture *can* do vs what *works through our SGLang+MLX bridge tod
 | Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | **Image FIXED 2026-05-13** — Qwen3.5-9B-8bit probe_vision STRONG with 4-step reasoning. Video supported by arch, needs end-to-end test. |
 | Qwen3.6-35B-A3B | ✅ | ✅ | ❌ | Text path validated end-to-end (capability gate PASS/PASS, MMLU 86, full perf sweep); image now wires through patch 013 — same code path as the verified Qwen3.5-9B-8bit. |
 | Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video). **Blocked:** mlx-community 4-bit checkpoints ship without `preprocessor_config.json`. Text-only until a re-uploaded checkpoint lands. |
-| Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B | ❌ | ❌ | ❌ | Text-only by architecture. |
+| Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B / Nemotron-30B | ❌ | ❌ | ❌ | Text-only by architecture (Nemotron-30B is NemotronH = Mamba2+Attn+MoE, no vision/audio tower). |
 
 ### Choosing a model
 
@@ -242,8 +243,9 @@ Single-user decode speed at 128 / 4K / 16K context, fp16 KV (the default; `--kv-
 | qwen35 | Qwen3.5-27B-4bit (DeltaNet) | 11.8 | 1.7 | 0.4 |
 | gemma4-31b | gemma-4-31b-it-mxfp4 (Dense, ctx=4K preset) | 10.4 | 1.3 | n/a* |
 | qwen3-32b | Qwen3-32B-4bit (Dense) | 10.0 | 1.3 | 0.3 |
+| nemotron-30b | NVIDIA-Nemotron-3-Nano-30B-A3B-4bit (NemotronH) | — | — | — |
 
-\*Gemma 4 presets ship with `CTX=4096` (tight 64 GB budget) — 16K requests rejected. Raise via `CTX=16384 bash scripts/launch.sh gemma4` for the longer-context numbers. Raw bench logs: `/tmp/perf_<preset>_bench.log`.
+\*Gemma 4 presets ship with `CTX=4096` (tight 64 GB budget) — 16K requests rejected. Raise via `CTX=16384 bash scripts/launch.sh gemma4` for the longer-context numbers. Raw bench logs: `/tmp/perf_<preset>_bench.log`. Nemotron added to launch.sh post-sweep — short-sweep perf TBD.
 
 ### v0.5.11 long-context turboquant sweep (refreshed 2026-05-12)
 
@@ -257,7 +259,7 @@ Decode tok/s on the v0.5.11 stack with the long-context-tuned recipe (`--chunked
 | qwen35 (Qwen3.5-27B DeltaNet) | fp8 | 14.7 | 14.3 | 14.0 | 13.5 | **12.6** |
 | gemma4-31b (Gemma 4 31B Dense) | turboquant | 13.5 | 12.7 | 12.4 | 11.7 | — \* |
 
-\*Cells marked `—` are not measurement gaps from the run but indicate the OOM-guard tripped at that context probe — the static pool plus the per-chunk attention scratch (proportional to context × chunked-prefill) exceeded the activation budget before the prefill completed. Both Gemma 4 26B and Qwen3.5 carried through to 32K; the others bottomed out earlier. Raw JSON in `benchmarks/<slug>/results.json` per model (re-run 2026-05-12 03:34–05:01).
+\*Cells marked `—` are not measurement gaps from the run but indicate the OOM-guard tripped at that context probe — the static pool plus the per-chunk attention scratch (proportional to context × chunked-prefill) exceeded the activation budget before the prefill completed. Both Gemma 4 26B and Qwen3.5 carried through to 32K; the others bottomed out earlier. Raw JSON in `benchmarks/<slug>/results.json` per model (re-run 2026-05-12 03:34–05:01). `qwen36`, `qwen36-27b`, `qwen35-9b-8bit`, `qwen3-32b`, `qwen3-moe`, `nemotron-30b` not in this sweep — added or characterized post-2026-05-12; long-context turboquant rerun is TBD.
 
 **Two patterns emerge:**
 
@@ -276,6 +278,8 @@ Per-preset MR=N peak tok/s, measured 2026-05-12 with the patch-011 batched-decod
 | `qwen36` (35B-A3B MoE+DeltaNet) | 52 | **148 @ MR=2** | MoE active-params × batched decode compound |
 | `devstral` (24B Dense) | 17 | **40 @ MR=4** | 8/8 successful — wrapper backward-compat for dense |
 | `qwen35` / `qwen36-27b` (DeltaNet+attn) | 12–14 | **34 @ MR=2** | DeltaNet batched-state stacking unblocks MR>1 |
+
+`coder-30b`, `qwen3-32b`, `gemma4`, `gemma4-31b`, `qwen35-9b-8bit`, `nemotron-30b` not yet benched at MR>1 — patch 011 path is backward-compatible (wrapper rework verified on Devstral and Qwen3-30B as non-hybrid regression checks), so batched decode should work on these too; sweep TBD.
 
 ### Memory budget at 256K (64 GB Mac)
 
