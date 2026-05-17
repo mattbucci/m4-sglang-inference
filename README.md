@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 14 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
+256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 15 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
 
 ## The four models worth running (2026-05-15)
 
@@ -26,30 +26,38 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 3. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
 4. **64K perf data is structurally infeasible on M4 with current MLX attention.** Targeted single-user 64K probes on 2026-05-12 hit the OOM guard mid-prefill on every hybrid tested — qwen35 (27B dense, fp8 KV) made it to ~32K, qwen36 (35B-A3B MoE, turboquant) to ~50K, qwen35-9b-8bit (9B at 8-bit weights) to ~50K. The wall isn't the model weights or the KV pool; it's the **per-chunk attention-score tensor** that `mx.fast.scaled_dot_product_attention` materializes in full (shape `chunked × current_offset × n_heads × n_layers`). At chunk=1024, offset=50K, with ~30–60 layers × 16 heads × 4 bytes that buffer alone is 30–90 GB — well past the M4's activation headroom even with `mf=0.4`. Without a flash-attention-style block-streaming SDPA in MLX, the 64K column is out of reach for this hardware. **256K is reachable only because DeltaNet hybrids' O(1) linear layers carry the inference forward; the full-attention scratch peaks once per chunk and the bench just absorbs a long prefill time.** Decode at 32K is the practical M4 long-context ceiling for dense + standard-attention models.
 
-### Full probe-trio sweep (2026-05-16, 11 presets)
+### Full probe-trio+video sweep (2026-05-16, 12 presets)
 
-| Preset | codegen | vision | thinking |
-|--------|:-------:|:------:|:--------:|
-| `coder-30b` | **STRONG** | n/a | n/a |
-| `devstral` | **STRONG**† | **STRONG** | n/a |
-| `gemma4` | **STRONG** | (pending re-probe) | **VERIFIED** |
-| `gemma4-31b` | **STRONG** | (pending re-probe) | **VERIFIED** |
-| `qwen3-moe` | **STRONG** | n/a | n/a |
-| `qwen3-32b` | **STRONG** | n/a | n/a |
-| `qwen35` | **STRONG** | **STRONG** | (Qwen3 greedy-loop) |
-| `qwen35-9b-8bit` | **STRONG** | **STRONG** | (Qwen3 greedy-loop) |
-| `qwen36` | **STRONG** | **STRONG** | needs `max_tokens ≥ 2000`‡ |
-| `qwen36-27b` | **STRONG** | **STRONG** | needs `max_tokens ≥ 2000`‡ |
-| `nemotron-30b` | **STRONG** | n/a | n/a |
-| `nemotron-omni` | **STRONG** | FAIL§ | **VERIFIED** |
+| Preset | codegen | vision | video | thinking |
+|--------|:-------:|:------:|:-----:|:--------:|
+| `coder-30b` | **STRONG** | n/a | n/a | n/a |
+| `devstral` | PARTIAL† | **STRONG** | FAIL¶ | n/a |
+| `gemma4` | **STRONG** | FAIL§ | FAIL§ | **VERIFIED** |
+| `gemma4-31b` | **STRONG** | FAIL§ | FAIL§ | **VERIFIED** |
+| `qwen3-moe` | **STRONG** | n/a | n/a | n/a |
+| `qwen3-32b` | **STRONG** | n/a | n/a | n/a |
+| `qwen35` | **STRONG** | **STRONG** | DEGRADED⁂ | (Qwen3 greedy-loop) |
+| `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | (Qwen3 greedy-loop) |
+| `qwen36` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen36-27b` | **STRONG** | **STRONG** | **STRONG** | DEGRADED‡ |
+| `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
+| `nemotron-omni` | **STRONG** | **STRONG**§§ | n/a* | **VERIFIED** |
 
-† Devstral codegen STRONG on the 5-test `is_balanced` set; `merge_intervals` SyntaxError'd because the model emitted a U+2014 em-dash inside a comment. Probe-side hardening issue (`strip` non-ASCII from extracted code), not a model regression.
+† Devstral codegen PARTIAL on the 8-test set; `merge_intervals` SyntaxError'd because the model emitted a U+2014 em-dash inside a comment. Probe-side hardening issue (`strip` non-ASCII from extracted code), not a model regression.
 
-‡ Qwen3.6 thinking-mode verbose trace under greedy MLX decode runs past the probe's 600-token cap. Real workloads using thinking on this family should set per-request `max_tokens ≥ 2000`, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals.
+‡ Qwen3.6-27B thinking-mode verbose trace under greedy MLX decode ran past the probe's 600-token cap on this run. Real workloads using thinking on this family should set per-request `max_tokens ≥ 2000`, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals. qwen36 (35B-A3B MoE variant) terminated cleanly within budget on this same sweep — thinking trace stays short, but the dense 27B is consistently more verbose.
 
-§ `nemotron-omni` (`Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit`) loads end-to-end via mlx-vlm 0.5.0 + patch 015 multi-image plumbing + the librosa runtime dep for `ParakeetExtractor`. SGLang's `nano_nemotron_vl.py` processor recognizes the arch natively; load time 3.62 s, 703K-slot KV pool at fp8. **codegen STRONG 8/8** + **thinking VERIFIED** (clean reasoning_content/content split via `--reasoning-parser nemotron_3`, much better than text-only nemotron-30b's verbose-trace-into-content behavior). Vision FAIL with the patch-013 fabrication pattern ("the word 'Terror' repeated in a grid" for a red-circle-on-white prompt) — image bytes not reaching the model. Probably the NemotronH_Omni processor's `mm_items` have a different shape than Qwen-VL/Pixtral that patch 015 was tuned for; follow-up patch needed before declaring as a replacement for `nemotron-30b`.
+§ Gemma 4 vision+video: irreducible representation gap between SGLang's transformers-based processor (returns pre-patched `(B, max_patches, patch_pixels)` 3D from `Gemma4ImageProcessor.convert_image_to_patches`) and mlx_vlm's Gemma 4 vision tower (expects raw `(B, C, H, W)` pixels and does its own patchification). Patch 015's axis-0 concat can't reconcile these — Gemma 4's vision tower destructures `B, C, H, W = pixel_values.shape` and crashes `ValueError: not enough values to unpack (expected 4, got 3)`. Fix requires either a Gemma 4-specific unpatching step in `tp_worker` (reshape pre-patched tensor back to raw pixels using `patch_size`/grid metadata) OR bypassing SGLang's processor and using mlx_vlm's native image processor for Gemma 4. Out of scope for this iteration; Gemma 4 thinking/text remains verified.
 
-Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
+¶ Devstral video FAIL: model echoes the prompt + emits gibberish for the "down" probe. Multi-image input reaches the tokenizer (471 prompt tokens for 6 frames is plausible), but Mistral-Small-3.1's expected per-image token-frame separators differ from what SGLang's processor + our axis-0 concat produces. Separate Mistral-specific gap; single-image vision STRONG.
+
+⁂ qwen35 (full 27B) video DEGRADED: model recognizes motion but the dense decode is verbose enough that the one-word answer the probe wants doesn't make it to the first 80 completion tokens. qwen35-9b-8bit (smaller, sparser) and qwen36 (35B-A3B MoE) both nail STRONG on the same probe.
+
+§§ `nemotron-omni` (`Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit`) loads end-to-end via mlx-vlm 0.5.0 + patch 015 multi-image plumbing + patch 016 bfloat16→float32 numpy conversion + the librosa runtime dep for `ParakeetExtractor`. SGLang's `nano_nemotron_vl.py` processor returns `(3, H, W)` bfloat16 tensors; NumPy can't represent bfloat16, so patch 015's `.numpy()` raised `TypeError: Got unsupported ScalarType BFloat16` and the outer `Exception` block silently dropped pixel_values to None — model ran text-only on image requests, producing the "the word 'Terror' repeated in a grid" fabrication for a red-circle-on-white prompt. Patch 016 catches the TypeError and falls back to `t.to(torch.float32).numpy()`. **codegen STRONG 8/8** + **vision STRONG** ("A red circle with a black outline is centered on a white background") + **thinking VERIFIED**.
+
+\* Video probe excluded for `nemotron-omni`: SGLang's `nano_nemotron_vl` processor uses `dynamic_resolution=True` with `min_num_patches=1024` per image. For a 6-frame multi-image request that produces a 1541-token placeholder count, while mlx_vlm's vision tower produces 1536 features — an off-by-5 mismatch from per-image patch-budget rounding. Fix would force `dynamic_resolution=False` for the MLX backend or align the budget math.
+
+Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Headline: **6/6 VLMs probe_vision STRONG**, **4/6 VLMs probe_video STRONG** (Qwen3.5/3.6 family fully working multi-image; Gemma 4 + Devstral + Nemotron-Omni have model-specific gaps).
 
 ### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
 
@@ -170,7 +178,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 14 patches
+./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 15 patches
 
 # Production presets (all verified at v0.5.11 gate; see Recommended models for picks)
 ./scripts/launch.sh coder-30b               # MoE — codegen STRONG 8/8, 68 tok/s peak
@@ -353,7 +361,7 @@ pip install -e ".[srt_mps]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.11** (`612785ffd`) + 14 patches |
+| SGLang | **v0.5.11** (`612785ffd`) + 15 patches |
 | MLX | 0.31.1 |
 | mlx-lm | 0.31.2 |
 | PyTorch | 2.9.1 (MPS) |
@@ -361,7 +369,7 @@ pip install -e ".[srt_mps]"
 
 ## Patches
 
-14 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups (mlx_vlm position-cache reset, hybrid batched decode + Qwen3.5 gated multimodal wrapper, pool-sync hardening); patch 013 (2026-05-13) restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase; patch 014 (2026-05-15) unblocks Gemma 4 image+text serving by bypassing transformers' strict `feature_extractor` + `video_processor` requirement for upstream/community Gemma 4 checkpoints that ship only `processor_config.json`. See [patches/README.md](patches/README.md) for full per-patch forensics. All patches apply via `git apply` against a clean v0.5.11. See [patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md) for the Gemma 4 heterogeneous-attention analysis.
+15 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups (mlx_vlm position-cache reset, hybrid batched decode + Qwen3.5 gated multimodal wrapper, pool-sync hardening); patch 013 (2026-05-13) restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase; patch 014 (2026-05-15) unblocks Gemma 4 image+text serving by bypassing transformers' strict `feature_extractor` + `video_processor` requirement for upstream/community Gemma 4 checkpoints that ship only `processor_config.json`. See [patches/README.md](patches/README.md) for full per-patch forensics. All patches apply via `git apply` against a clean v0.5.11. See [patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md) for the Gemma 4 heterogeneous-attention analysis.
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -377,12 +385,15 @@ pip install -e ".[srt_mps]"
 | 011 | mlx-hybrid-batched-decode-gated-attn | True batched DeltaNet decode + Qwen3.5 gated multimodal attention in `MLXAttentionWrapper` — replaces serial-per-request fallback. |
 | 012 | mlx-sync-pool-skip-non-contiguous | `_sync_new_kv_to_pool` filters to `ContiguousKVCache` only — `ArraysCache` / `RotatingKVCache` skipped (different shapes/types). |
 | 013 | mlx-vlm-pixel-values | **Restored** the v0.5.10 VLM image-bearing path (Apr-18 commit `f20ee6e`) silently lost in the v0.5.11 rebase: `pixel_values` + `mm_kwargs` threaded `tp_worker → prefill → TextOnlyVLMShim`. Devstral + Qwen3.5-9B-8bit now probe_vision STRONG. |
+| 014 | mlx-gemma4-image-only-processor | Bypass transformers' strict `feature_extractor` + `video_processor` type check for upstream/community Gemma 4 checkpoints — replays `Gemma4Processor.__init__` body with image+tokenizer only. |
+| 015 | mlx-multi-image-concat | Patch 013 only forwarded `mm_items[0]`; multi-image requests (probe_video sends 6 frames as 6 image_url items) crashed with `tokens: 384, features 64`. Patch 015 iterates all `mm_items`, concatenates features + per-image kwargs along axis 0. |
+| 016 | mlx-mm-bfloat16-numpy | SGLang's `nano_nemotron_vl` processor returns `(3, H, W)` bfloat16 tensors; NumPy can't represent bfloat16, so patch 015's `.numpy()` raised `TypeError` and the outer `except` silently dropped `pixel_values=None`, leaving the model running text-only on image requests. Patch 016 catches the TypeError + falls back to `t.to(torch.float32).numpy()`. Fixes `nemotron-omni` vision from FAIL fabrication to STRONG. |
 
 ## Repo layout
 
 ```
 patches/                    # SGLang patches — see patches/README.md
-  00*.patch                 #   7 numbered patches
+  00*.patch                 #   15 numbered patches (002-016, sans the upstreamed 001)
   REBASE-v0.5.11-NOTES.md   #   v0.5.11 rebase strategy & lineage
   REBASE-v0.5.11-NOTES.md   #   upcoming SGLang version bump plan
 benchmarks/                 # Per-model JSON + charts

@@ -1,0 +1,40 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -216,12 +216,29 @@ class MlxTpModelWorker(TpModelWorker):
+                         try:
+                             import mlx.core as _mx
+                             import numpy as _np
+
++                            def _to_numpy(t):
++                                # NumPy can't represent bfloat16 (and only
++                                # gained float16 support recently). SGLang's
++                                # nano_nemotron_vl processor returns
++                                # `(3, H, W)` bf16 tensors; without the
++                                # cast `.numpy()` raises
++                                # `TypeError: Got unsupported ScalarType
++                                # BFloat16` and patch 015's outer Exception
++                                # silently swallowed it, leaving the model
++                                # running text-only on image requests
++                                # (2026-05-16 nemotron-omni fabrication
++                                # root cause).
++                                if hasattr(t, "numpy"):
++                                    try:
++                                        return t.numpy()
++                                    except TypeError:
++                                        return t.to(dtype=__import__("torch").float32).numpy()
++                                return t
++
+                             features: list = []
+                             msd_acc: dict[str, list] = {}
+                             for item in mm.mm_items:
+                                 feat = getattr(item, "feature", None)
+                                 if feat is None:
+                                     continue
+-                                features.append(
+-                                    feat.numpy() if hasattr(feat, "numpy") else feat
+-                                )
++                                features.append(_to_numpy(feat))
+                                 msd = getattr(item, "model_specific_data", None) or {}
+                                 for k, v in msd.items():
+                                     msd_acc.setdefault(k, []).append(v)

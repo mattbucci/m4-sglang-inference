@@ -1,10 +1,14 @@
 {
   "preset": "nemotron-30b",
-  "timestamp": "2026-05-16T04:54:21",
+  "timestamp": "2026-05-16T20:22:59",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/nemotron-30b-codegen.log"
+    },
+    "thinking": {
+      "verdict": "THINKING VERIFIED",
+      "log": "/tmp/probe-trio-logs/nemotron-30b-thinking.log"
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "preset": "gemma4-31b",
-  "timestamp": "2026-05-16T04:46:58",
+  "timestamp": "2026-05-16T20:14:19",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
@@ -9,6 +9,14 @@
     "thinking": {
       "verdict": "THINKING VERIFIED",
       "log": "/tmp/probe-trio-logs/gemma4-31b-thinking.log"
+    },
+    "vision": {
+      "verdict": null,
+      "log": "/tmp/probe-trio-logs/gemma4-31b-vision.log"
+    },
+    "video": {
+      "verdict": null,
+      "log": "/tmp/probe-trio-logs/gemma4-31b-video.log"
     }
   }
 }

@@ -9,12 +9,13 @@
 #
 # Auto-selects probes per preset (skipping irrelevant ones to save time):
 #   - coder-30b / coder-next:               codegen only (non-thinking, text-only)
-#   - devstral:                             codegen + vision (Dense+VLM)
+#   - devstral:                             codegen + vision + video (Mistral-Small-3.1 VLM)
 #   - qwen3-moe / qwen3-32b:                codegen only (no-thinking path used in evals)
-#   - qwen35 / qwen35-9b-8bit:              vision (DeltaNet+VL); thinking skipped (greedy loop)
-#   - qwen36 / qwen36-27b:                  codegen + vision (DeltaNet+MoE+VL); thinking too
-#   - gemma4 / gemma4-31b:                  codegen + thinking (vision blocked, no preprocessor)
-#   - nemotron-30b:                         codegen (thinking-mode; reasoning parser not wired yet)
+#   - qwen35 / qwen35-9b-8bit:              codegen + vision + video (DeltaNet+VL); thinking skipped (greedy loop)
+#   - qwen36 / qwen36-27b:                  codegen + vision + video + thinking (DeltaNet+MoE+VL)
+#   - gemma4 / gemma4-31b:                  codegen + thinking + vision + video
+#   - nemotron-30b:                         codegen + thinking (text-only Mamba2+Attn+MoE)
+#   - nemotron-omni:                        codegen + vision + thinking (video has token-count gap, skipped)
 #
 # Output: JSON-per-preset under benchmarks/quality/probe-trio/<preset>.json with
 # {thinking, vision, codegen} verdicts and per-probe rc.
@@ -46,7 +47,7 @@ probes_for() {
     case "$1" in
         coder-30b)         echo "codegen" ;;
         coder-next)        echo "codegen" ;;
-        devstral)          echo "codegen vision" ;;  # Devstral arch is image-only, no video
+        devstral)          echo "codegen vision video" ;;  # Mistral-Small-3.1 supports multi-image
         gemma4)            echo "codegen thinking vision video" ;;
         gemma4-31b)        echo "codegen thinking vision video" ;;
         qwen3-moe)         echo "codegen" ;;   # --no-thinking in evals
@@ -55,7 +56,7 @@ probes_for() {
         qwen35-9b-8bit)    echo "codegen vision video" ;;
         qwen36)            echo "codegen vision video thinking" ;;
         qwen36-27b)        echo "codegen vision video thinking" ;;
-        nemotron-30b)      echo "codegen" ;;
+        nemotron-30b)      echo "codegen thinking" ;;
         nemotron-omni)     echo "codegen vision thinking" ;;  # Omni has image, no video
         *)                 echo "codegen" ;;
     esac
@@ -194,7 +195,7 @@ if [ -n "${PRESETS:-}" ]; then
 elif [ -n "$PRESETS_ARG" ]; then
     PRESETS_LIST="$PRESETS_ARG"
 else
-    PRESETS_LIST="coder-30b devstral gemma4 gemma4-31b qwen3-moe qwen3-32b qwen35-9b-8bit qwen35 qwen36-27b qwen36"
+    PRESETS_LIST="coder-30b devstral gemma4 gemma4-31b qwen3-moe qwen3-32b qwen35-9b-8bit qwen35 qwen36-27b qwen36 nemotron-30b nemotron-omni"
 fi
 
 for preset in $PRESETS_LIST; do

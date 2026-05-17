@@ -1,6 +1,6 @@
 {
   "preset": "qwen35",
-  "timestamp": "2026-05-16T04:50:42",
+  "timestamp": "2026-05-16T20:18:47",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
@@ -9,6 +9,10 @@
     "vision": {
       "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/qwen35-vision.log"
+    },
+    "video": {
+      "verdict": "DEGRADED",
+      "log": "/tmp/probe-trio-logs/qwen35-video.log"
     }
   }
 }
