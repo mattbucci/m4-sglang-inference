@@ -1,6 +1,6 @@
 {
   "preset": "qwen36-27b",
-  "timestamp": "2026-05-16T20:20:57",
+  "timestamp": "2026-05-17T03:53:13",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
@@ -15,7 +15,7 @@
       "log": "/tmp/probe-trio-logs/qwen36-27b-video.log"
     },
     "thinking": {
-      "verdict": "THINKING DEGRADED",
+      "verdict": "THINKING VERIFIED",
       "log": "/tmp/probe-trio-logs/qwen36-27b-thinking.log"
     }
   }

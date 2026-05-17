@@ -39,13 +39,13 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 | `qwen35` | **STRONG** | **STRONG** | DEGRADED⁂ | (Qwen3 greedy-loop) |
 | `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | (Qwen3 greedy-loop) |
 | `qwen36` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen36-27b` | **STRONG** | **STRONG** | **STRONG** | DEGRADED‡ |
+| `qwen36-27b` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED**‡ |
 | `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
 | `nemotron-omni` | **STRONG** | **STRONG**§§ | **STRONG**※ | **VERIFIED** |
 
 † Devstral codegen PARTIAL on the 8-test set; `merge_intervals` SyntaxError'd because the model emitted a U+2014 em-dash inside a comment. Probe-side hardening issue (`strip` non-ASCII from extracted code), not a model regression.
 
-‡ Qwen3.6-27B thinking-mode verbose trace under greedy MLX decode ran past the probe's 600-token cap on this run. Real workloads using thinking on this family should set per-request `max_tokens ≥ 2000`, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals. qwen36 (35B-A3B MoE variant) terminated cleanly within budget on this same sweep — thinking trace stays short, but the dense 27B is consistently more verbose.
+‡ `probe_thinking` default raised 600 → 2000 tokens (2026-05-17) so Qwen3.6-27B's verbose dense greedy-MLX trace reaches `</think>` cleanly. Real long-thinking workloads on this family should still budget `max_tokens ≥ 2000` per request, or pass `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals.
 
 § Gemma 4 vision+video unblocked 2026-05-16 by patch 018 (`mlx-gemma4-unpatch`). SGLang's transformers `Gemma4ImageProcessor` returns pre-patched `(B, max_patches, patch_pixels)` 3D pixel_values (via `siglip2.convert_image_to_patches`: `reshape(C, npH, pH, npW, pW).permute(1, 3, 2, 4, 0).reshape(npH·npW, pH·pW·C)`) plus an `image_position_ids` `(B, max_patches, 2)` tensor with `-1` padding markers. mlx_vlm's gemma4 vision tower expects raw `(B, C, H, W)` and does its own patchification. Patch 018 detects Gemma 4 by pixel_values shape `(B, max_patches, 768)` + presence of `image_position_ids`, filters padding, sorts patches by row-major grid order, reverses the permute+reshape to reconstruct raw pixels, and drops `image_position_ids` from `mm_kwargs`. Verified: `gemma4-31b` STRONG on both vision (the dense 31B-mxfp4 variant) and video (both "right" / "down" 2-token completions correct); `gemma4` (26B-A4B MoE) vision STRONG, video PARTIAL (says "down" on both probes — model-quality artifact at this smaller variant, not a plumbing issue).
 
