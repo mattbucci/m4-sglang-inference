@@ -40,12 +40,24 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=23334)
     p.add_argument("--model", default="default")
+    p.add_argument(
+        "--max-tokens",
+        type=int,
+        default=2000,
+        help=(
+            "Per-request max_tokens cap. Raised 600 -> 2000 on 2026-05-17 so "
+            "Qwen3.6-27B (dense, verbose under greedy MLX) reaches its "
+            "</think> boundary instead of truncating at DEGRADED. README "
+            "recommendation for thinking on the Qwen3.x family is "
+            "max_tokens >= 2000."
+        ),
+    )
     args = p.parse_args()
 
     payload = {
         "model": args.model,
         "messages": [{"role": "user", "content": PROMPT}],
-        "max_tokens": 600,
+        "max_tokens": args.max_tokens,
         "temperature": 0,
         "skip_special_tokens": False,
         "chat_template_kwargs": {"enable_thinking": True},

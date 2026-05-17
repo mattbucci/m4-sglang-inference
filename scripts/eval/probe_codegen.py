@@ -100,13 +100,34 @@ def _call(
     return choice.get("finish_reason"), text, r.get("usage")
 
 
+_SMART_PUNCT_MAP = str.maketrans({
+    "—": "-",   # em-dash  → ASCII hyphen
+    "–": "-",   # en-dash  → ASCII hyphen
+    "−": "-",   # minus sign → ASCII hyphen
+    "‘": "'",   # left single quote → ASCII apostrophe
+    "’": "'",   # right single quote
+    "“": '"',   # left double quote
+    "”": '"',   # right double quote
+    "…": "...", # horizontal ellipsis
+})
+
+
 def _extract_code(text: str) -> str:
-    """Pull the first ```python ... ``` block (or any ``` block as fallback)."""
+    """Pull the first ```python ... ``` block (or any ``` block as fallback).
+
+    Devstral and other models occasionally emit smart punctuation (U+2014
+    em-dash etc.) inside comments. Python's tokenizer rejects those with
+    SyntaxError before the function body even runs. Translate the common
+    offenders back to ASCII equivalents so the probe measures the model's
+    code correctness, not its UTF-8 hygiene.
+    """
     if "```python" in text:
-        return text.split("```python", 1)[1].split("```", 1)[0]
-    if "```" in text:
-        return text.split("```", 1)[1].split("```", 1)[0]
-    return text
+        code = text.split("```python", 1)[1].split("```", 1)[0]
+    elif "```" in text:
+        code = text.split("```", 1)[1].split("```", 1)[0]
+    else:
+        code = text
+    return code.translate(_SMART_PUNCT_MAP)
 
 
 def _run_one(
