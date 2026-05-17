@@ -3,70 +3,62 @@
   "model_id": "mlx-community/Qwen3.5-27B-4bit",
   "engine": "SGLang + MLX",
   "hardware": "Apple M4 Pro 64GB",
-  "timestamp": "2026-05-12 04:31:24",
+  "timestamp": "2026-05-17 04:15:34",
   "method": "sglang.bench_serving",
   "kv_cache_mode": "fp8",
-  "context_max": 65536,
+  "context_max": 262144,
   "context_sweep": [
     {
       "context": 128,
-      "tpot_ms": 68.2,
-      "tok_per_sec": 14.7,
-      "ttft_ms": 557.0
+      "tpot_ms": 75.6,
+      "tok_per_sec": 13.2,
+      "ttft_ms": 1098.6
     },
     {
       "context": 256,
-      "tpot_ms": 68.3,
-      "tok_per_sec": 14.6,
-      "ttft_ms": 561.0
+      "tpot_ms": 75.0,
+      "tok_per_sec": 13.3,
+      "ttft_ms": 1118.4
     },
     {
       "context": 512,
-      "tpot_ms": 68.5,
-      "tok_per_sec": 14.6,
-      "ttft_ms": 556.4
+      "tpot_ms": 76.5,
+      "tok_per_sec": 13.1,
+      "ttft_ms": 1116.8
     },
     {
       "context": 1024,
-      "tpot_ms": 68.5,
-      "tok_per_sec": 14.6,
-      "ttft_ms": 560.4
+      "tpot_ms": 90.4,
+      "tok_per_sec": 11.1,
+      "ttft_ms": 593.4
     },
     {
       "context": 2048,
-      "tpot_ms": 69.6,
-      "tok_per_sec": 14.4,
-      "ttft_ms": 9032.6
+      "tpot_ms": 105.0,
+      "tok_per_sec": 9.5,
+      "ttft_ms": 19918.4
     },
     {
       "context": 4096,
-      "tpot_ms": 69.8,
-      "tok_per_sec": 14.3,
-      "ttft_ms": 9632.3
+      "tpot_ms": 100.6,
+      "tok_per_sec": 9.9,
+      "ttft_ms": 18862.3
     },
     {
       "context": 8192,
-      "tpot_ms": 71.3,
-      "tok_per_sec": 14.0,
-      "ttft_ms": 46659.6
+      "tpot_ms": 906.6,
+      "tok_per_sec": 1.1,
+      "ttft_ms": 52021.0
     },
     {
       "context": 16384,
-      "tpot_ms": 73.9,
-      "tok_per_sec": 13.5,
-      "ttft_ms": 115057.8
+      "tpot_ms": 99.0,
+      "tok_per_sec": 10.1,
+      "ttft_ms": 231307.9
     },
     {
       "context": 32768,
-      "tpot_ms": 79.1,
-      "tok_per_sec": 12.6,
-      "ttft_ms": 271851.7
-    },
-    {
-      "context": 65536,
-      "tpot_ms": 0,
-      "tok_per_sec": 0,
-      "ttft_ms": 134.1
+      "error": "timeout_or_crash"
     }
   ],
   "throughput_sweep": [
