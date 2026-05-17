@@ -85,7 +85,7 @@ Full sweep completed 2026-05-11 — 11 mlx-community models on the v0.5.11 stack
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
-| Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | **41.1%** | 0%† |
+| Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | 37.1%† | **100%** |
 | Qwen3.5-27B-4bit | **90%** | **100%** | **41.1%** | 100% |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
 | Qwen3.6-27B-4bit | 86% | **100%** | 40.0% | 100% |
@@ -100,7 +100,7 @@ Full sweep completed 2026-05-11 — 11 mlx-community models on the v0.5.11 stack
 Sorted by MMLU (descending). Chart: `benchmarks/quality/quality_comparison.png`.
 
 ‡ Gemma 4 HumanEval ran in `--humaneval-mode chat` (not directly comparable to the other rows' base-completions HE — chat-mode prompts the model with an explicit instruction). Going through completions gives Gemma 4 0% / 5% because the IT-tuned chat template intercepts the bare function-signature prefix; the chat-mode path lifts that to 60% / 50%.
-† Gemma 4 31B Needle 0% under `enable_thinking=false`. Short MC questions ("Answer with just A/B/C/D") work; long-context retrieval requires thinking. Re-eval with thinking enabled is the next Gemma-specific improvement.
+† Gemma 4 31B 2026-05-17 re-eval on the patches-015-018 + mlx-vlm-0.5.0 stack: MMLU 92% (flat) / HumanEval 50% (flat) / LAB-Bench 41.1% → 37.1% (-4 pp absolute, distributed as SuppQA -3, SeqQA -3, CloningScenarios -2, LitQA2 +1 across 175 samples — within-noise eval variance attributable to the mlx-vlm version bump) / Needle **0% → 100%** (all three context lengths now retrieve correctly; this was the dominant pending regression in the prior README footnote).
 ¶ Nemotron-3-Nano emits verbose reasoning traces (the model's nano_v3_reasoning_parser isn't yet wired in our launch preset). The 1024-token MC budget gets consumed by `<think>` blocks, so HumanEval (base completions) and LAB-Bench (multi-letter answers) under-score; MMLU (single-letter A/B/C/D) tolerates a brief preamble and lands at 77. Chat-mode HE + a reasoning-parser flag should both bump significantly.
 
 Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 — and as of 2026-05-12 the concurrent-prefill broadcast crash documented in `patches/HYBRID_CONCURRENT_TRACE_PLAN.md` is **resolved by patch 010**, lifting the preset's `MAX_RUNNING` cap from 1 to 4; Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92% and ties Qwen3.5-27B for top LAB-Bench at 41.1%.
