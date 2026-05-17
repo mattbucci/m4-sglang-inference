@@ -1,0 +1,115 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -278,6 +278,113 @@ class MlxTpModelWorker(TpModelWorker):
+                                         # value through unmodified — better
+                                         # than dropping the kwarg entirely.
+                                         mm_kwargs[k] = vs[0]
++
++                                # Patch 018 (2026-05-16, Gemma 4 only):
++                                # SGLang's transformers Gemma4ImageProcessor
++                                # returns pre-patched pixel_values of shape
++                                # `(B, max_patches, patch_size² × C)` plus
++                                # `image_position_ids` of shape
++                                # `(B, max_patches, 2)` with `-1` padding
++                                # markers. mlx_vlm's gemma4 vision_tower
++                                # destructures `B, C, H, W = pixel_values.shape`
++                                # — incompatible. We have all the info to
++                                # reverse the patchification: position_ids
++                                # tells us each real patch's (x, y) in the
++                                # grid; the patch tensor is the
++                                # `siglip2.convert_image_to_patches` output
++                                # `image.reshape(C, npH, pH, npW, pW)
++                                #  .permute(1, 3, 2, 4, 0)
++                                #  .reshape(npH × npW, pH × pW × C)`.
++                                # Reverse: filter out -1 padding, reshape
++                                # per-patch (pH × pW × C) back to
++                                # `(pH, pW, C)`, place at (y, x) grid
++                                # position, stack into `(C, npH × pH, npW × pW)`.
++                                # No additional normalization — both
++                                # processors leave pixel_values in [0, 1].
++                                if (
++                                    "image_position_ids" in mm_kwargs
++                                    and pixel_values.ndim == 3
++                                    and pixel_values.shape[-1] in (768, 1536)  # 16²×3, 32²×3 leeway
++                                ):
++                                    try:
++                                        ip = mm_kwargs["image_position_ids"]
++                                        ip_np = _np.asarray(
++                                            ip.tolist() if hasattr(ip, "tolist") else ip
++                                        )
++                                        pv_np = _np.asarray(
++                                            pixel_values.tolist()
++                                            if hasattr(pixel_values, "tolist")
++                                            else pixel_values
++                                        )
++                                        # Normalize to (B, max_patches, ...)
++                                        # vs (max_patches, ...) — multi-image
++                                        # patch-15 concat gives 3D for one
++                                        # image OR `(N×max_patches, ...)`.
++                                        if pv_np.ndim == 2:
++                                            pv_np = pv_np[None, ...]
++                                            ip_np = ip_np[None, ...]
++                                        patch_pixels = pv_np.shape[-1]
++                                        patch_size = 16
++                                        C = patch_pixels // (patch_size * patch_size)
++                                        raw_images = []
++                                        for b in range(pv_np.shape[0]):
++                                            positions = ip_np[b]  # (max_patches, 2)
++                                            patches = pv_np[b]    # (max_patches, patch_pixels)
++                                            # Filter real (non-padding) patches:
++                                            # padding rows have positions=(-1, -1).
++                                            real_mask = positions[:, 0] >= 0
++                                            real_pos = positions[real_mask]
++                                            real_patches = patches[real_mask]
++                                            if real_pos.size == 0:
++                                                continue
++                                            npW = int(real_pos[:, 0].max()) + 1
++                                            npH = int(real_pos[:, 1].max()) + 1
++                                            # Sort patches into grid order
++                                            # (row-major: y * npW + x)
++                                            order = real_pos[:, 1] * npW + real_pos[:, 0]
++                                            sorted_idx = _np.argsort(order)
++                                            grid_patches = real_patches[sorted_idx]  # (npH*npW, pH*pW*C)
++                                            # Reverse the permute+reshape:
++                                            # (npH, npW, pH, pW, C) → permute(4,0,2,1,3)
++                                            # → (C, npH, pH, npW, pW) → reshape(C, H, W)
++                                            grid = grid_patches.reshape(
++                                                npH, npW, patch_size, patch_size, C
++                                            )
++                                            grid = grid.transpose(4, 0, 2, 1, 3)
++                                            raw = grid.reshape(
++                                                C, npH * patch_size, npW * patch_size
++                                            )
++                                            raw_images.append(raw)
++                                        if raw_images:
++                                            # Stack into (B, C, H, W). Gemma 4
++                                            # batches require all-same-H,W
++                                            # for vision_tower's
++                                            # `all_same_size` fast path.
++                                            same_shape = all(
++                                                r.shape == raw_images[0].shape
++                                                for r in raw_images
++                                            )
++                                            if same_shape:
++                                                pixel_values = _mx.array(
++                                                    _np.stack(raw_images, axis=0)
++                                                )
++                                            else:
++                                                pixel_values = _mx.array(raw_images[0][None])
++                                            # mlx_vlm's get_input_embeddings
++                                            # doesn't consume image_position_ids;
++                                            # drop it so it doesn't trip a
++                                            # downstream signature mismatch.
++                                            mm_kwargs.pop("image_position_ids", None)
++                                            mm_kwargs.pop("num_soft_tokens", None)
++                                            mm_kwargs.pop("num_soft_tokens_per_image", None)
++                                    except Exception:
++                                        # Leave pre-patched pixel_values
++                                        # untouched on any error; downstream
++                                        # will still fail loudly but we
++                                        # don't lose the original signal.
++                                        pass
+                         except Exception:
+                             pixel_values = None
+                     next_token = self._mlx_runner.prefill(

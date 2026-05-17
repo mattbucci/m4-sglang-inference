@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 16 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
+256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 17 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
 
 ## The four models worth running (2026-05-15)
 
@@ -32,8 +32,8 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 |--------|:-------:|:------:|:-----:|:--------:|
 | `coder-30b` | **STRONG** | n/a | n/a | n/a |
 | `devstral` | PARTIAL† | **STRONG** | FAIL¶ | n/a |
-| `gemma4` | **STRONG** | FAIL§ | FAIL§ | **VERIFIED** |
-| `gemma4-31b` | **STRONG** | FAIL§ | FAIL§ | **VERIFIED** |
+| `gemma4` | **STRONG** | **STRONG**§ | PARTIAL§§§ | **VERIFIED** |
+| `gemma4-31b` | **STRONG** | **STRONG**§ | **STRONG**§ | **VERIFIED** |
 | `qwen3-moe` | **STRONG** | n/a | n/a | n/a |
 | `qwen3-32b` | **STRONG** | n/a | n/a | n/a |
 | `qwen35` | **STRONG** | **STRONG** | DEGRADED⁂ | (Qwen3 greedy-loop) |
@@ -47,7 +47,7 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 
 ‡ Qwen3.6-27B thinking-mode verbose trace under greedy MLX decode ran past the probe's 600-token cap on this run. Real workloads using thinking on this family should set per-request `max_tokens ≥ 2000`, or `chat_template_kwargs={"enable_thinking": false}` for budget-bound MC evals. qwen36 (35B-A3B MoE variant) terminated cleanly within budget on this same sweep — thinking trace stays short, but the dense 27B is consistently more verbose.
 
-§ Gemma 4 vision+video: irreducible representation gap between SGLang's transformers-based processor (returns pre-patched `(B, max_patches, patch_pixels)` 3D from `Gemma4ImageProcessor.convert_image_to_patches`) and mlx_vlm's Gemma 4 vision tower (expects raw `(B, C, H, W)` pixels and does its own patchification). Patch 015's axis-0 concat can't reconcile these — Gemma 4's vision tower destructures `B, C, H, W = pixel_values.shape` and crashes `ValueError: not enough values to unpack (expected 4, got 3)`. Fix requires either a Gemma 4-specific unpatching step in `tp_worker` (reshape pre-patched tensor back to raw pixels using `patch_size`/grid metadata) OR bypassing SGLang's processor and using mlx_vlm's native image processor for Gemma 4. Out of scope for this iteration; Gemma 4 thinking/text remains verified.
+§ Gemma 4 vision+video unblocked 2026-05-16 by patch 018 (`mlx-gemma4-unpatch`). SGLang's transformers `Gemma4ImageProcessor` returns pre-patched `(B, max_patches, patch_pixels)` 3D pixel_values (via `siglip2.convert_image_to_patches`: `reshape(C, npH, pH, npW, pW).permute(1, 3, 2, 4, 0).reshape(npH·npW, pH·pW·C)`) plus an `image_position_ids` `(B, max_patches, 2)` tensor with `-1` padding markers. mlx_vlm's gemma4 vision tower expects raw `(B, C, H, W)` and does its own patchification. Patch 018 detects Gemma 4 by pixel_values shape `(B, max_patches, 768)` + presence of `image_position_ids`, filters padding, sorts patches by row-major grid order, reverses the permute+reshape to reconstruct raw pixels, and drops `image_position_ids` from `mm_kwargs`. Verified: `gemma4-31b` STRONG on both vision (the dense 31B-mxfp4 variant) and video (both "right" / "down" 2-token completions correct); `gemma4` (26B-A4B MoE) vision STRONG, video PARTIAL (says "down" on both probes — model-quality artifact at this smaller variant, not a plumbing issue).
 
 ¶ Devstral video FAIL: model echoes the prompt + emits gibberish for the "down" probe. Multi-image input reaches the tokenizer (471 prompt tokens for 6 frames is plausible), but Mistral-Small-3.1's expected per-image token-frame separators differ from what SGLang's processor + our axis-0 concat produces. Separate Mistral-specific gap; single-image vision STRONG.
 
@@ -57,7 +57,9 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 
 ※ `nemotron-omni` video unblocked 2026-05-16 by patch 017. Two related fixes in `nano_nemotron_vl.py`: (a) force `dynamic_resolution=False` on the MLX backend so the static tile path runs (per-image num_tokens = tiles × 256 exactly matches mlx_vlm's vision-tower feature count); (b) replace each `<image>` placeholder with its own rendered image one at a time — upstream used `replace(..., "".join(rendered_images), 1)` which put the full concatenation into the first `<image>` and left the remaining N-1 `<image>` tokens as stray IMG_CONTEXT placeholders. For 6-frame video that produced 1541 placeholders (1536 inserted + 5 stray) vs 1536 vision-tower features → `_merge_features` ValueError. Per-placeholder replacement gives exact token=feature alignment. Verified STRONG: 3-token completions ("right" / "down"), 1632 prompt tokens (matches expected 6 × 256 + chat-template overhead).
 
-Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Headline: **6/6 VLMs probe_vision STRONG**, **5/6 VLMs probe_video STRONG** (Qwen3.5/3.6 family + Nemotron-Omni fully working multi-image; Gemma 4 + Devstral have model-specific gaps).
+§§§ `gemma4` (26B-A4B MoE) video PARTIAL: vision plumbing fully works (1598-token prompt accepted, 2-token completions), but the smaller MoE variant gave "down" for both right and down probes. Same probe `gemma4-31b` nails both directions — this is a quality regression at the smaller variant, not a plumbing failure.
+
+Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Headline: **8/8 VLMs probe_vision STRONG** (full M4 model set), **6/8 VLMs probe_video STRONG** (Qwen3.5/3.6 + Nemotron-Omni + Gemma 4 31B); only `gemma4` (PARTIAL — quality at small MoE) and `devstral` (Mistral multi-image format gap) remain non-STRONG on video.
 
 ### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
 
@@ -178,7 +180,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 16 patches
+./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 17 patches
 
 # Production presets (all verified at v0.5.11 gate; see Recommended models for picks)
 ./scripts/launch.sh coder-30b               # MoE — codegen STRONG 8/8, 68 tok/s peak
@@ -361,7 +363,7 @@ pip install -e ".[srt_mps]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.11** (`612785ffd`) + 16 patches |
+| SGLang | **v0.5.11** (`612785ffd`) + 17 patches |
 | MLX | 0.31.1 |
 | mlx-lm | 0.31.2 |
 | PyTorch | 2.9.1 (MPS) |
@@ -369,7 +371,7 @@ pip install -e ".[srt_mps]"
 
 ## Patches
 
-16 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups (mlx_vlm position-cache reset, hybrid batched decode + Qwen3.5 gated multimodal wrapper, pool-sync hardening); patch 013 (2026-05-13) restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase; patch 014 (2026-05-15) unblocks Gemma 4 image+text serving by bypassing transformers' strict `feature_extractor` + `video_processor` requirement; patches 015–017 (2026-05-16) unblock the full multi-image / video pipeline: 015 concatenates `mm_items[*]` features for multi-image input; 016 fixes the bf16-numpy TypeError swallow that left `nemotron-omni` running text-only on image requests; 017 forces `dynamic_resolution=False` on MLX + per-placeholder rendered-image replacement so `nemotron-omni` multi-image token/feature counts align (`probe_video` STRONG). See [patches/README.md](patches/README.md) for full per-patch forensics. All patches apply via `git apply` against a clean v0.5.11. See [patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md) for the Gemma 4 heterogeneous-attention analysis.
+17 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups (mlx_vlm position-cache reset, hybrid batched decode + Qwen3.5 gated multimodal wrapper, pool-sync hardening); patch 013 (2026-05-13) restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase; patch 014 (2026-05-15) unblocks Gemma 4 image+text serving by bypassing transformers' strict `feature_extractor` + `video_processor` requirement; patches 015–018 (2026-05-16) unblock the full multi-image / video pipeline: 015 concatenates `mm_items[*]` features for multi-image input; 016 fixes the bf16-numpy TypeError swallow that left `nemotron-omni` running text-only on image requests; 017 forces `dynamic_resolution=False` on MLX + per-placeholder rendered-image replacement so `nemotron-omni` multi-image token/feature counts align; 018 reverses SGLang's transformers `siglip2.convert_image_to_patches` patchification so Gemma 4's mlx_vlm vision tower receives the `(B, C, H, W)` raw pixels it expects (`gemma4-31b` probe_video STRONG, both directions). See [patches/README.md](patches/README.md) for full per-patch forensics. All patches apply via `git apply` against a clean v0.5.11. See [patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md) for the Gemma 4 heterogeneous-attention analysis.
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -389,12 +391,13 @@ pip install -e ".[srt_mps]"
 | 015 | mlx-multi-image-concat | Patch 013 only forwarded `mm_items[0]`; multi-image requests (probe_video sends 6 frames as 6 image_url items) crashed with `tokens: 384, features 64`. Patch 015 iterates all `mm_items`, concatenates features + per-image kwargs along axis 0. |
 | 016 | mlx-mm-bfloat16-numpy | SGLang's `nano_nemotron_vl` processor returns `(3, H, W)` bfloat16 tensors; NumPy can't represent bfloat16, so patch 015's `.numpy()` raised `TypeError` and the outer `except` silently dropped `pixel_values=None`, leaving the model running text-only on image requests. Patch 016 catches the TypeError + falls back to `t.to(torch.float32).numpy()`. Fixes `nemotron-omni` vision from FAIL fabrication to STRONG. |
 | 017 | mlx-nemotron-omni-video-alignment | Two co-dependent fixes in SGLang's `nano_nemotron_vl.py` for multi-image alignment. (a) Force `dynamic_resolution=False` on the MLX backend (env-gated by `SGLANG_USE_MLX=1`) so the static tile path runs — `tiles × num_image_token` placeholders exactly matches mlx_vlm's vision-tower feature count. (b) Replace each `<image>` placeholder with its own rendered image one at a time — upstream's `replace(..., "".join(rendered_images), 1)` left N-1 stray IMG_CONTEXT tokens, producing 1541 placeholders vs 1536 features on 6-frame video. Verified `nemotron-omni` probe_video STRONG with 3-token "right"/"down" completions. |
+| 018 | mlx-gemma4-unpatch | SGLang's transformers `Gemma4ImageProcessor` outputs pre-patched pixel_values `(B, max_patches, patch_size² × C)` via `siglip2.convert_image_to_patches` (`reshape(C, npH, pH, npW, pW).permute(1, 3, 2, 4, 0).reshape(npH·npW, pH·pW·C)`), but mlx_vlm's gemma4 vision tower destructures `B, C, H, W = pixel_values.shape` — incompatible. In `tp_worker`, detect Gemma 4 by `pixel_values.ndim == 3` + `shape[-1] in (768, 1536)` + presence of `image_position_ids` (only Gemma 4 ships these), filter padding (positions = `-1`), sort patches by row-major grid order from position_ids, reverse the permute/reshape to reconstruct raw `(B, C, H, W)` pixels, drop `image_position_ids` from `mm_kwargs` before forwarding. No extra normalization needed (both processors leave pixels in [0, 1]). Verified: `gemma4-31b` (dense mxfp4) probe_vision STRONG + probe_video STRONG (both "right"/"down" directions correct); `gemma4` (26B-A4B MoE) probe_vision STRONG, probe_video PARTIAL (1/2 directions — quality artifact at smaller variant, plumbing works). |
 
 ## Repo layout
 
 ```
 patches/                    # SGLang patches — see patches/README.md
-  00*.patch                 #   16 numbered patches (002-017, sans the upstreamed 001)
+  00*.patch                 #   17 numbered patches (002-018, sans the upstreamed 001)
   REBASE-v0.5.11-NOTES.md   #   v0.5.11 rebase strategy & lineage
   REBASE-v0.5.11-NOTES.md   #   upcoming SGLang version bump plan
 benchmarks/                 # Per-model JSON + charts
