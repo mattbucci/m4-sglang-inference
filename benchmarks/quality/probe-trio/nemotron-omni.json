@@ -1,6 +1,6 @@
 {
   "preset": "nemotron-omni",
-  "timestamp": "2026-05-16T20:23:58",
+  "timestamp": "2026-05-16T22:15:28",
   "probes": {
     "codegen": {
       "verdict": "STRONG",
@@ -9,6 +9,10 @@
     "vision": {
       "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/nemotron-omni-vision.log"
+    },
+    "video": {
+      "verdict": "STRONG",
+      "log": "/tmp/probe-trio-logs/nemotron-omni-video.log"
     },
     "thinking": {
       "verdict": "THINKING VERIFIED",

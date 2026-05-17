@@ -15,7 +15,7 @@
 #   - qwen36 / qwen36-27b:                  codegen + vision + video + thinking (DeltaNet+MoE+VL)
 #   - gemma4 / gemma4-31b:                  codegen + thinking + vision + video
 #   - nemotron-30b:                         codegen + thinking (text-only Mamba2+Attn+MoE)
-#   - nemotron-omni:                        codegen + vision + thinking (video has token-count gap, skipped)
+#   - nemotron-omni:                        codegen + vision + video + thinking (patch 017 aligns multi-image token/feature counts)
 #
 # Output: JSON-per-preset under benchmarks/quality/probe-trio/<preset>.json with
 # {thinking, vision, codegen} verdicts and per-probe rc.
@@ -57,7 +57,7 @@ probes_for() {
         qwen36)            echo "codegen vision video thinking" ;;
         qwen36-27b)        echo "codegen vision video thinking" ;;
         nemotron-30b)      echo "codegen thinking" ;;
-        nemotron-omni)     echo "codegen vision thinking" ;;  # Omni has image, no video
+        nemotron-omni)     echo "codegen vision video thinking" ;;  # patch 017 enables multi-image
         *)                 echo "codegen" ;;
     esac
 }

@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 15 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
+256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 16 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
 
 ## The four models worth running (2026-05-15)
 
@@ -41,7 +41,7 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 | `qwen36` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
 | `qwen36-27b` | **STRONG** | **STRONG** | **STRONG** | DEGRADED‡ |
 | `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
-| `nemotron-omni` | **STRONG** | **STRONG**§§ | n/a* | **VERIFIED** |
+| `nemotron-omni` | **STRONG** | **STRONG**§§ | **STRONG**※ | **VERIFIED** |
 
 † Devstral codegen PARTIAL on the 8-test set; `merge_intervals` SyntaxError'd because the model emitted a U+2014 em-dash inside a comment. Probe-side hardening issue (`strip` non-ASCII from extracted code), not a model regression.
 
@@ -55,9 +55,9 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 
 §§ `nemotron-omni` (`Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit`) loads end-to-end via mlx-vlm 0.5.0 + patch 015 multi-image plumbing + patch 016 bfloat16→float32 numpy conversion + the librosa runtime dep for `ParakeetExtractor`. SGLang's `nano_nemotron_vl.py` processor returns `(3, H, W)` bfloat16 tensors; NumPy can't represent bfloat16, so patch 015's `.numpy()` raised `TypeError: Got unsupported ScalarType BFloat16` and the outer `Exception` block silently dropped pixel_values to None — model ran text-only on image requests, producing the "the word 'Terror' repeated in a grid" fabrication for a red-circle-on-white prompt. Patch 016 catches the TypeError and falls back to `t.to(torch.float32).numpy()`. **codegen STRONG 8/8** + **vision STRONG** ("A red circle with a black outline is centered on a white background") + **thinking VERIFIED**.
 
-\* Video probe excluded for `nemotron-omni`: SGLang's `nano_nemotron_vl` processor uses `dynamic_resolution=True` with `min_num_patches=1024` per image. For a 6-frame multi-image request that produces a 1541-token placeholder count, while mlx_vlm's vision tower produces 1536 features — an off-by-5 mismatch from per-image patch-budget rounding. Fix would force `dynamic_resolution=False` for the MLX backend or align the budget math.
+※ `nemotron-omni` video unblocked 2026-05-16 by patch 017. Two related fixes in `nano_nemotron_vl.py`: (a) force `dynamic_resolution=False` on the MLX backend so the static tile path runs (per-image num_tokens = tiles × 256 exactly matches mlx_vlm's vision-tower feature count); (b) replace each `<image>` placeholder with its own rendered image one at a time — upstream used `replace(..., "".join(rendered_images), 1)` which put the full concatenation into the first `<image>` and left the remaining N-1 `<image>` tokens as stray IMG_CONTEXT placeholders. For 6-frame video that produced 1541 placeholders (1536 inserted + 5 stray) vs 1536 vision-tower features → `_merge_features` ValueError. Per-placeholder replacement gives exact token=feature alignment. Verified STRONG: 3-token completions ("right" / "down"), 1632 prompt tokens (matches expected 6 × 256 + chat-template overhead).
 
-Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Headline: **6/6 VLMs probe_vision STRONG**, **4/6 VLMs probe_video STRONG** (Qwen3.5/3.6 family fully working multi-image; Gemma 4 + Devstral + Nemotron-Omni have model-specific gaps).
+Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Headline: **6/6 VLMs probe_vision STRONG**, **5/6 VLMs probe_video STRONG** (Qwen3.5/3.6 family + Nemotron-Omni fully working multi-image; Gemma 4 + Devstral have model-specific gaps).
 
 ### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
 
@@ -178,7 +178,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 15 patches
+./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 16 patches
 
 # Production presets (all verified at v0.5.11 gate; see Recommended models for picks)
 ./scripts/launch.sh coder-30b               # MoE — codegen STRONG 8/8, 68 tok/s peak
@@ -361,7 +361,7 @@ pip install -e ".[srt_mps]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.11** (`612785ffd`) + 15 patches |
+| SGLang | **v0.5.11** (`612785ffd`) + 16 patches |
 | MLX | 0.31.1 |
 | mlx-lm | 0.31.2 |
 | PyTorch | 2.9.1 (MPS) |
@@ -369,7 +369,7 @@ pip install -e ".[srt_mps]"
 
 ## Patches
 
-15 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups (mlx_vlm position-cache reset, hybrid batched decode + Qwen3.5 gated multimodal wrapper, pool-sync hardening); patch 013 (2026-05-13) restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase; patch 014 (2026-05-15) unblocks Gemma 4 image+text serving by bypassing transformers' strict `feature_extractor` + `video_processor` requirement for upstream/community Gemma 4 checkpoints that ship only `processor_config.json`. See [patches/README.md](patches/README.md) for full per-patch forensics. All patches apply via `git apply` against a clean v0.5.11. See [patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md) for the Gemma 4 heterogeneous-attention analysis.
+16 patches on top of SGLang `v0.5.11` (commit `612785ffd`). Upstream landed patch 001 (the `kv_cache/` subpackage) — we dropped it. The old in-tree mods 008–015 are now folded into proper patch files (006 / 008 / and inside 004). Patches 010–012 are 2026-05-12 follow-ups (mlx_vlm position-cache reset, hybrid batched decode + Qwen3.5 gated multimodal wrapper, pool-sync hardening); patch 013 (2026-05-13) restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase; patch 014 (2026-05-15) unblocks Gemma 4 image+text serving by bypassing transformers' strict `feature_extractor` + `video_processor` requirement; patches 015–017 (2026-05-16) unblock the full multi-image / video pipeline: 015 concatenates `mm_items[*]` features for multi-image input; 016 fixes the bf16-numpy TypeError swallow that left `nemotron-omni` running text-only on image requests; 017 forces `dynamic_resolution=False` on MLX + per-placeholder rendered-image replacement so `nemotron-omni` multi-image token/feature counts align (`probe_video` STRONG). See [patches/README.md](patches/README.md) for full per-patch forensics. All patches apply via `git apply` against a clean v0.5.11. See [patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md) for the Gemma 4 heterogeneous-attention analysis.
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -388,12 +388,13 @@ pip install -e ".[srt_mps]"
 | 014 | mlx-gemma4-image-only-processor | Bypass transformers' strict `feature_extractor` + `video_processor` type check for upstream/community Gemma 4 checkpoints — replays `Gemma4Processor.__init__` body with image+tokenizer only. |
 | 015 | mlx-multi-image-concat | Patch 013 only forwarded `mm_items[0]`; multi-image requests (probe_video sends 6 frames as 6 image_url items) crashed with `tokens: 384, features 64`. Patch 015 iterates all `mm_items`, concatenates features + per-image kwargs along axis 0. |
 | 016 | mlx-mm-bfloat16-numpy | SGLang's `nano_nemotron_vl` processor returns `(3, H, W)` bfloat16 tensors; NumPy can't represent bfloat16, so patch 015's `.numpy()` raised `TypeError` and the outer `except` silently dropped `pixel_values=None`, leaving the model running text-only on image requests. Patch 016 catches the TypeError + falls back to `t.to(torch.float32).numpy()`. Fixes `nemotron-omni` vision from FAIL fabrication to STRONG. |
+| 017 | mlx-nemotron-omni-video-alignment | Two co-dependent fixes in SGLang's `nano_nemotron_vl.py` for multi-image alignment. (a) Force `dynamic_resolution=False` on the MLX backend (env-gated by `SGLANG_USE_MLX=1`) so the static tile path runs — `tiles × num_image_token` placeholders exactly matches mlx_vlm's vision-tower feature count. (b) Replace each `<image>` placeholder with its own rendered image one at a time — upstream's `replace(..., "".join(rendered_images), 1)` left N-1 stray IMG_CONTEXT tokens, producing 1541 placeholders vs 1536 features on 6-frame video. Verified `nemotron-omni` probe_video STRONG with 3-token "right"/"down" completions. |
 
 ## Repo layout
 
 ```
 patches/                    # SGLang patches — see patches/README.md
-  00*.patch                 #   15 numbered patches (002-016, sans the upstreamed 001)
+  00*.patch                 #   16 numbered patches (002-017, sans the upstreamed 001)
   REBASE-v0.5.11-NOTES.md   #   v0.5.11 rebase strategy & lineage
   REBASE-v0.5.11-NOTES.md   #   upcoming SGLang version bump plan
 benchmarks/                 # Per-model JSON + charts

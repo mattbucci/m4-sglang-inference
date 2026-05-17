@@ -14,7 +14,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # venv, SGLang v0.5.11, MLX deps, apply 15 patches
+scripts/setup.sh                                  # venv, SGLang v0.5.11, MLX deps, apply 16 patches
 # Production presets (all verified through the v0.5.11 capability gate):
 scripts/launch.sh devstral                        # Devstral 24B + image VLM
 scripts/launch.sh coder-30b                       # Qwen3-Coder-30B-A3B-DWQ MoE
