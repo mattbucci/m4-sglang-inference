@@ -1,11 +1,11 @@
 {
   "tag": "Gemma4-26B",
-  "timestamp": "2026-05-17 17:04",
+  "timestamp": "2026-05-18 10:11",
   "max_context": 4096,
   "mmlu": {
-    "correct": 84,
+    "correct": 85,
     "total": 100,
-    "accuracy": 0.84
+    "accuracy": 0.85
   },
   "humaneval": {
     "passed": 12,
@@ -15,44 +15,50 @@
   },
   "labbench": {
     "LitQA2": {
-      "correct": 12,
+      "correct": 13,
       "total": 25,
-      "accuracy": 0.48
+      "accuracy": 0.52
     },
     "DbQA": {
-      "correct": 6,
-      "total": 25,
-      "accuracy": 0.24
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375,
+      "server_dead": true
     },
     "SuppQA": {
-      "correct": 7,
-      "total": 25,
-      "accuracy": 0.28
+      "correct": 0,
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "TableQA": {
-      "correct": 6,
-      "total": 25,
-      "accuracy": 0.24
+      "correct": 0,
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "ProtocolQA": {
-      "correct": 9,
-      "total": 25,
-      "accuracy": 0.36
+      "correct": 0,
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "SeqQA": {
-      "correct": 12,
-      "total": 25,
-      "accuracy": 0.48
+      "correct": 0,
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "CloningScenarios": {
-      "correct": 2,
-      "total": 25,
-      "accuracy": 0.08
+      "correct": 0,
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "_overall": {
-      "correct": 54,
-      "total": 175,
-      "accuracy": 0.30857142857142855
+      "correct": 16,
+      "total": 33,
+      "accuracy": 0.48484848484848486
     }
   },
   "needle": {
@@ -70,6 +76,7 @@
         "found": true
       }
     ],
-    "score": 1.0
+    "score": 1.0,
+    "server_dead": false
   }
 }
