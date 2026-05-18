@@ -1,6 +1,6 @@
 {
   "preset": "qwen36-27b",
-  "timestamp": "2026-05-17T03:53:13",
+  "timestamp": "2026-05-18T00:23:08",
   "probes": {
     "codegen": {
       "verdict": "STRONG",

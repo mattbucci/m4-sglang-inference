@@ -1,0 +1,29 @@
+{
+  "model": "Qwen3-30B-A3B 4-bit-DWQ MR4",
+  "model_id": "mlx-community/Qwen3-30B-A3B-4bit-DWQ",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-05-17 17:42:36",
+  "method": "sglang.bench_serving",
+  "kv_cache_mode": "auto",
+  "context_max": 32768,
+  "context_sweep": [],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "tpot_ms": 34.0,
+      "tok_per_sec": 92.4,
+      "ttft_ms": 427.2
+    },
+    {
+      "concurrency": 2,
+      "tpot_ms": 52.7,
+      "tok_per_sec": 107.7,
+      "ttft_ms": 1174.4
+    },
+    {
+      "concurrency": 4,
+      "error": "timeout_or_crash"
+    }
+  ]
+}
