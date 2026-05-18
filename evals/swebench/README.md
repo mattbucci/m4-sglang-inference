@@ -124,7 +124,7 @@ this class.
 **Real resolved rate (M4-local scoring, 2026-05-18):** patch-engagement
 is not the same as resolved. The full qwen36 prediction set scored on M4
 via `score_local.py` (per-instance venv + native pytest, no Docker)
-returned **3/21 = 14.3% resolved overall, 3/10 = 30% resolved on the
+returned **4/21 = 19.0% resolved overall, 4/11 = 36.4% resolved on the
 M4-scorable subset**. Detailed breakdown in
 [`runs/qwen36-score-local-2026-05-18/`](runs/qwen36-score-local-2026-05-18/).
 
@@ -132,19 +132,27 @@ Score categories:
 
 | Category | Count | Meaning |
 |---|:---:|---|
-| RESOLVED | 3 | F2P all pass + no P2P regressions |
+| RESOLVED | 4 | F2P all pass + no P2P regressions |
 | CLOSE | 2 | Partial F2P, no P2P regressions |
 | WRONG LOCATION | 3 | No F2P, no P2P regressions (patch in wrong place) |
 | BROKEN P2P | 4 | Patch caused regressions in existing tests |
-| MODEL PATCH FAIL | 3 | Empty patch or unapplicable (multi-file mismatch) |
+| MODEL PATCH FAIL | 2 | Empty patch (model gave up) |
 | INSTALL FAIL | 8 | M4 can't build the venv (old Python / native deps); needs 3090 Docker |
 
-The 90.5% patch-engagement → 30% resolved gap is the model's "writing
+The 90.5% patch-engagement → 36% resolved gap is the model's "writing
 in the style of" behavior: patches are in the right file, syntactically
-valid, often regression-free, but miss the semantic requirement. The
-3 resolved instances (django-11001, django-11039, pylint-5859) are all
-in repos with heavy qwen36 training exposure; the misses skew toward
-niche libraries (xarray, sphinx, seaborn).
+valid, often regression-free, but miss the semantic requirement in ~64%
+of testable cases. The 4 resolved instances (django-10914, django-11001,
+django-11039, pylint-5859) are all in repos with heavy qwen36 training
+exposure; the misses skew toward niche libraries (xarray, sphinx,
+seaborn).
+
+**score_local.py fix (2026-05-18):** `apply_patch` now strips
+test-file diff blocks from model patches before applying, matching
+SWE-bench's official Docker harness convention. Without it,
+`django-10914` failed to apply because the model correctly pre-empted
+the gold test_patch's edit and `git apply` choked on the overlap.
+The fix unlocked +1 resolved instance.
 
 For the full picture on the 8 INSTALL FAIL instances (astropy×6,
 matplotlib, scikit-learn), ship `exports/qwen36-predictions.jsonl` to

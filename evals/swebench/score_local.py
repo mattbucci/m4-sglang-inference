@@ -82,9 +82,49 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
     return inst_dir
 
 
-def apply_patch(repo_dir: Path, patch: str, name: str) -> tuple[bool, str]:
+def strip_test_files(patch: str) -> str:
+    """Drop per-file diff blocks targeting test files.
+
+    SWE-bench's official Docker harness applies the gold `test_patch`
+    (which is supposed to contain the NEW failing tests) and forbids
+    the model from editing test files — so if a model patch happens to
+    pre-empt the gold test edit, the apply fails on overlapping
+    hunks. Strip those blocks before applying the model patch.
+
+    Heuristic: a block starts with `diff --git a/... b/...`; treat as
+    a test block if the b-path matches the SWE-bench test-file regex
+    used by the official harness (`tests/`, `test_*.py`, `*_test*.py`,
+    `conftest.py`).
+    """
+    import re
+    test_re = re.compile(r'(^|/)(tests?/|test_.*\.py$|.*_tests?\.py$|conftest\.py$)')
+    out_blocks = []
+    cur = []
+    cur_is_test = False
+    for line in patch.splitlines(keepends=True):
+        if line.startswith("diff --git "):
+            if cur and not cur_is_test:
+                out_blocks.append("".join(cur))
+            cur = [line]
+            # parse b-path from `diff --git a/X b/Y`
+            m = re.match(r"diff --git a/\S+ b/(\S+)", line)
+            cur_is_test = bool(m and test_re.search(m.group(1)))
+        else:
+            cur.append(line)
+    if cur and not cur_is_test:
+        out_blocks.append("".join(cur))
+    return "".join(out_blocks)
+
+
+def apply_patch(repo_dir: Path, patch: str, name: str,
+                strip_tests: bool = False) -> tuple[bool, str]:
     if not patch.strip():
         return False, "(empty patch)"
+    if strip_tests:
+        patch = strip_test_files(patch)
+        if not patch.strip():
+            # Model only edited test files — count as no real patch
+            return False, "(model patch only touched test files; stripped)"
     pfile = repo_dir / f".{name}.patch"
     pfile.write_text(patch)
     r = sh(["git", "apply", "--allow-empty", "-v", str(pfile)], cwd=repo_dir)
@@ -322,9 +362,11 @@ def main():
                     fp.write(json.dumps(row) + "\n"); fp.flush()
                     continue
 
-                # 3. Apply model_patch
+                # 3. Apply model_patch (strip test-file edits — SWE-bench
+                # convention forbids the model from editing tests)
                 mlog = log_dir / f"{iid}.model_patch.log"
-                ok_m, msg_m = apply_patch(repo_dir, pred["model_patch"], "model")
+                ok_m, msg_m = apply_patch(repo_dir, pred["model_patch"], "model",
+                                          strip_tests=True)
                 mlog.write_text(msg_m)
                 if not ok_m:
                     print(f"  MODEL PATCH FAIL", flush=True)

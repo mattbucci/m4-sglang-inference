@@ -14,10 +14,20 @@ shipping predictions to the 3090 Docker harness.
 | Metric | Value |
 |---|---|
 | Patch-engagement (qwen36 produced a non-empty patch) | 19/21 = 90.5% |
-| Patch-applies-on-test-worktree (M4 scorable) | 10/21 = 47.6% |
-| Patch-applies / scorable-on-M4 | 10/13 = 77% |
-| **Resolved (all F2P pass + no P2P regressions)** | **3/21 = 14.3%** |
-| **Resolved among M4-scorable patches** | **3/10 = 30.0%** |
+| Patch-applies-on-test-worktree (M4 scorable) | 11/21 = 52.4% |
+| Patch-applies / scorable-on-M4 | 11/13 = 84.6% |
+| **Resolved (all F2P pass + no P2P regressions)** | **4/21 = 19.0%** |
+| **Resolved among M4-scorable patches** | **4/11 = 36.4%** |
+
+**Update 2026-05-18 (score_local fix):** Initial run missed
+`django-10914` due to a score_local bug — the model patched both
+production code AND the test file with the same edit as the gold
+test_patch, causing `git apply` to fail on overlapping hunks when
+the gold test_patch ran first. SWE-bench's official Docker harness
+forbids model edits to test files for exactly this reason. Fixed by
+stripping test-file diff blocks from model patches before applying
+(matches SWE-bench convention). django-10914 now scores RESOLVED
+(1/1 F2P + 98/98 P2P).
 
 The headline number — **3/10 = 30% resolved** — is the real SWE-bench
 Lite score qwen36 produces on the M4 subset. The 8 INSTALL FAILs (mostly
@@ -29,11 +39,11 @@ those rows need to ship to the 3090 stack via the export.
 
 | Category | Count | Instances |
 |---|:--:|---|
-| **RESOLVED** | 3 | `django-11001`, `django-11039`, `pylint-5859` |
+| **RESOLVED** | 4 | `django-10914`, `django-11001`, `django-11039`, `pylint-5859` |
 | **CLOSE** — partial F2P, no P2P regressions | 2 | `requests-1963` (6/7 F2P), `pytest-11143` (1/1 F2P but 4 P2P regressions) |
 | **WRONG LOCATION** — no F2P, no P2P regressions | 3 | `seaborn-2848`, `django-10924`, `sympy-11400` |
 | **BROKEN P2P** — patch causes regressions | 4 | `requests-1963` (1 reg), `xarray-3364` (79 regs), `pytest-11143` (4 regs), `sphinx-10325` (5 regs) |
-| **MODEL PATCH FAIL** — empty or unapplicable | 3 | `flask-4045` (empty), `django-11019` (empty), `django-10914` (multi-file, apply failure) |
+| **MODEL PATCH FAIL** — empty | 2 | `flask-4045` (empty), `django-11019` (empty) |
 | **INSTALL FAIL** — M4 can't build venv | 8 | 6× astropy, matplotlib, scikit-learn |
 
 Note: `requests-1963` and `pytest-11143` appear in both CLOSE and
@@ -83,7 +93,15 @@ reports for ~30B-class models in general — 14-30% is the typical band."
 - **Whether the "close but broke P2P" patches would resolve with a
   retry**: re-rolling those 4 instances might surface the issue.
 
-## The 3 RESOLVED instances (manual review)
+## The 4 RESOLVED instances (manual review)
+
+### `django__django-10914`
+F2P 1/1 + P2P 98/98. 2563B multi-file patch targeting
+`django/conf/global_settings.py` + docs + (intended) tests. The model
+**correctly anticipated the gold test_patch** and pre-applied the
+same edit to the test file. Initial score_local apply failed on the
+overlap; the fix (strip test-file diffs from model patches before
+applying) unblocked it. **Clean resolve.**
 
 ### `django__django-11001`
 F2P 2/2 + P2P 118/118. The model produced a 1368B patch targeting the
@@ -96,9 +114,9 @@ F2P 1/1 + P2P 88/88. 826B patch. **Clean resolve.**
 F2P 1/1 + P2P 10/10. 656B patch. **Clean resolve** — the model fixed
 a pylint warning false-positive correctly.
 
-All 3 resolved instances are in repos where qwen36 has obvious training
-exposure (Django ORM, pylint checks). The CLOSE/BROKEN-P2P instances
-are in more niche libraries (xarray, sphinx, seaborn graph rendering).
+All 4 resolved instances are in repos where qwen36 has obvious training
+exposure (Django ORM/settings, pylint checks). The CLOSE/BROKEN-P2P
+instances are in more niche libraries (xarray, sphinx, seaborn).
 
 ## Files
 
