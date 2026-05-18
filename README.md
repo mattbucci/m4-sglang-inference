@@ -6,14 +6,21 @@
 
 Single-user agentic coding at long context (tool-call-heavy multi-turn sessions, 10K–100K-token codebase prefixes) is what this stack is tuned for. Decode TPOT at long context matters more than peak batch throughput; the right model is one whose decode stays flat as context grows.
 
-### Recommended picks (2026-05-17, all probe-verified on patches-015-018)
+### Recommended picks (2026-05-18, ranked by SWE-bench Lite agentic-coding ability)
 
-| Slot | Preset | Why | Verified |
-|------|--------|-----|----------|
-| **Primary coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Code-specialist + MoE 3B-active = fastest decode (73 tok/s @128) that survives 256K. HE 95 / MMLU 89.5. Tool-call parser `qwen3_coder`. | codegen **STRONG 8/8** |
-| **Long-context flagship + agentic-coding lead** | `qwen36` (Qwen3.6-35B-A3B-4bit) | MoE + DeltaNet hybrid: linear-attn layers ignore context length on decode, so tok/s stays flat from 128→32K. **First M4 model to produce a real SWE-bench Lite patch** (2026-05-18, with `no_thinking_proxy`). Also vision-capable. | codegen + vision + video **STRONG**, thinking **VERIFIED**, SWE-bench `astropy-12907` 506-byte plausible patch |
-| **Quality-first long-context** | `qwen35` (Qwen3.5-27B-4bit) | Highest single-model scores: MMLU 90 / HE 100 / Needle 100. DeltaNet hybrid keeps decode flat. Slower than the MoE picks but the cleanest output. | codegen + vision **STRONG**, video DEGRADED |
-| **Top-MMLU reasoning + vision** | `gemma4-31b` (gemma-4-31b-it-mxfp4) | MMLU 92 (highest in the set) + Needle 100 + vision/video both STRONG after patches 014 + 018. Dense, so ~16K practical ceiling — pick when reasoning quality dominates over context length. | codegen + vision + video **STRONG**, thinking **VERIFIED** |
+The headline change: **`qwen36` is the only configuration verified to
+produce a real SWE-bench Lite patch on M4** (2026-05-18 1-instance smoke,
+506-byte patch on `astropy__astropy-12907` using `no_thinking_proxy`).
+Static HE/MMLU scores do not predict agentic-coding capability on this
+stack. See [`evals/swebench/runs/4pick-scorecard-2026-05-18/`](evals/swebench/runs/4pick-scorecard-2026-05-18/)
+for the comparative data.
+
+| Rank | Preset | Why | Agentic verdict |
+|:----:|--------|-----|-----------------|
+| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | **SWE-bench Lite 1/1**, 125 s, 1 edit + 3 read + 2 glob → 506 B patch |
+| 2 | `qwen35` (Qwen3.5-27B-4bit DeltaNet) | Identified the exact same bug line as qwen36 in its reasoning, but the dense-DeltaNet decode is too slow to reach an `edit` call inside a 600 s timeout. Higher TIMEOUT or smaller instances unlock it. Static scores still lead: MMLU 90 / HE 100 / Needle 100. | 6 tool calls, **0 edits, 603 s timeout** — capable but slow |
+| 3 | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Best static HumanEval (95) and decode speed (73 tok/s @128) — use for **direct chat-completion code generation**, NOT agentic flows. Under greedy MLX + opencode the agent loop gives up after one `glob`, regardless of thinking config. | 1 glob then asks user, 0 edits |
+| 4 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | Top MMLU (92) + Needle 100. Vision/video STRONG via patches 014+018. Agentic config gap: needed `tool_call: true` in `evals/swebench/opencode.json` (fixed 2026-05-18); re-measure after refresh. | 0 tool calls (opencode config gap), pending re-test |
 
 Everything else in [Model Support](#model-support) is either smaller-variant, untested in the latest sweep, or has known regressions (Devstral video FAIL on greedy MLX, Qwen3-32B 16K ceiling, etc.).
 

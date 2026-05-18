@@ -52,7 +52,7 @@
         "gemma4-31b": {
           "name": "gemma-4-31b-it-mxfp4 (Dense)",
           "limit": { "context": 16384, "output": 4096 },
-          "tool_call": false
+          "tool_call": true
         },
         "nemotron-30b": {
           "name": "NVIDIA-Nemotron-3-Nano-30B-A3B-4bit (NemotronH)",
