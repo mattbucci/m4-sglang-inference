@@ -1,11 +1,11 @@
 {
   "tag": "Qwen3.6-27B",
-  "timestamp": "2026-05-17 16:03",
+  "timestamp": "2026-05-18 08:13",
   "max_context": 32768,
   "mmlu": {
-    "correct": 87,
+    "correct": 86,
     "total": 100,
-    "accuracy": 0.87
+    "accuracy": 0.86
   },
   "humaneval": {
     "passed": 20,
@@ -15,62 +15,70 @@
   },
   "labbench": {
     "LitQA2": {
-      "correct": 10,
-      "total": 25,
-      "accuracy": 0.4
-    },
-    "DbQA": {
-      "correct": 10,
-      "total": 25,
-      "accuracy": 0.4
-    },
-    "SuppQA": {
       "correct": 9,
       "total": 25,
       "accuracy": 0.36
     },
-    "TableQA": {
-      "correct": 5,
-      "total": 25,
-      "accuracy": 0.2
-    },
-    "ProtocolQA": {
+    "DbQA": {
       "correct": 7,
       "total": 25,
       "accuracy": 0.28
     },
+    "SuppQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "TableQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "ProtocolQA": {
+      "correct": 12,
+      "total": 25,
+      "accuracy": 0.48
+    },
     "SeqQA": {
       "correct": 0,
-      "total": 25,
-      "accuracy": 0.0
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "CloningScenarios": {
       "correct": 0,
-      "total": 25,
-      "accuracy": 0.0
+      "total": 0,
+      "accuracy": 0,
+      "server_dead": true
     },
     "_overall": {
-      "correct": 41,
-      "total": 175,
-      "accuracy": 0.2342857142857143
+      "correct": 42,
+      "total": 125,
+      "accuracy": 0.336
     }
   },
   "needle": {
     "results": [
       {
         "context": 1024,
-        "found": true
+        "found": false,
+        "server_dead": true,
+        "error": "URLError(ConnectionRefusedError(61, 'Connection refused'))"
       },
       {
         "context": 4096,
-        "found": true
+        "found": false,
+        "server_dead": true,
+        "error": "URLError(ConnectionRefusedError(61, 'Connection refused'))"
       },
       {
         "context": 16384,
-        "found": true
+        "found": false,
+        "server_dead": true,
+        "error": "URLError(ConnectionRefusedError(61, 'Connection refused'))"
       }
     ],
-    "score": 1.0,
-    "server_dead": false
+    "score": 0.0,
+    "server_dead": true
   }
 }

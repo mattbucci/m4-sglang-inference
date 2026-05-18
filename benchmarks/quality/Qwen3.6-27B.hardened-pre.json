@@ -1,0 +1,76 @@
+{
+  "tag": "Qwen3.6-27B",
+  "timestamp": "2026-05-17 16:03",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 87,
+    "total": 100,
+    "accuracy": 0.87
+  },
+  "humaneval": {
+    "passed": 20,
+    "total": 20,
+    "pass_rate": 1.0,
+    "mode": "completions"
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 10,
+      "total": 25,
+      "accuracy": 0.4
+    },
+    "DbQA": {
+      "correct": 10,
+      "total": 25,
+      "accuracy": 0.4
+    },
+    "SuppQA": {
+      "correct": 9,
+      "total": 25,
+      "accuracy": 0.36
+    },
+    "TableQA": {
+      "correct": 5,
+      "total": 25,
+      "accuracy": 0.2
+    },
+    "ProtocolQA": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 41,
+      "total": 175,
+      "accuracy": 0.2342857142857143
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      }
+    ],
+    "score": 1.0,
+    "server_dead": false
+  }
+}
