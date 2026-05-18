@@ -9,15 +9,25 @@ Single-user agentic coding at long context (tool-call-heavy multi-turn sessions,
 ### Recommended picks (2026-05-18, ranked by SWE-bench Lite agentic-coding ability)
 
 The headline: **`qwen36` is the only configuration verified to produce
-real SWE-bench Lite patches on M4, reproducibly, at scale, across
-multiple ecosystems.** 2026-05-18 cumulative with proxy: **15/16
-(93.75%) patches across 7 ecosystems** (astropy, Django, matplotlib,
-sympy, pylint, sphinx, scikit-learn) — all targeting canonical
-upstream-fix locations. Wall time 73-859 s/instance (depends on
-venv-built dependencies + edit complexity). Used with
-`no_thinking_proxy`. The one miss (`django__django-11019`) was a
-convergence failure (model exited after 3 tool calls + 1 text turn at
-45 s), not an infrastructure issue.
+real SWE-bench Lite patches on M4, reproducibly, at scale, across all
+12 ecosystems present in our test set.** 2026-05-18 cumulative with
+proxy + hardened harness: **19/21 (90.5%) patches across 12 ecosystems**
+(astropy, Django, flask, matplotlib, pytest, requests, scikit-learn,
+seaborn, sphinx, sympy, pylint, xarray) — all targeting canonical
+upstream-fix files. Wall time 73-908 s/instance. Used with
+`no_thinking_proxy`. The 2 misses both involve **adding behavior**
+(django-11019 = N-way topological-sort rewrite; flask-4045 = adding
+`name` validation) rather than fixing visible bugs — a real model-class
+ceiling, not a tuning issue.
+
+**Important method note for multi-instance sweeps:** At CTX=131K on M4,
+multi-instance single-server sweeps hit recurring macOS jetsam (the
+SGLang scheduler gets reaped silently). The hardened
+`evals/swebench/run_rollouts.py` (per-instance preflight, landed
+2026-05-18) detects and aborts cleanly on dead upstream. For sweeps
+beyond 1-2 instances use the **per-instance server restart** pattern:
+one fresh `bash evals/swebench/smoke.sh` invocation per instance. Adds
+~30s/instance overhead and fully sidesteps the jetsam floor.
 Static HE/MMLU scores do not predict agentic-coding capability on this
 stack. See
 [`evals/swebench/runs/4pick-scorecard-2026-05-18/`](evals/swebench/runs/4pick-scorecard-2026-05-18/)
@@ -29,7 +39,7 @@ for cross-ecosystem generalization.
 
 | Rank | Preset | Why | Agentic verdict |
 |:----:|--------|-----|-----------------|
-| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context — **at CTX=131072 the same patch produces in 123 s vs 122 s at CTX=32768 (no perf cliff at 4× context)**. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | **SWE-bench Lite 15/16 (93.75%) across 7 ecosystems** (astropy, Django, matplotlib, sympy, pylint, sphinx, scikit-learn), 73-859 s/instance, 516-2563 B patches targeting canonical issue locations; **131K-context validated** |
+| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context — **at CTX=131072 the same patch produces in 123 s vs 122 s at CTX=32768 (no perf cliff at 4× context)**. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). For multi-instance sweeps use per-instance server restart (avoids jetsam at 131K). | **SWE-bench Lite 19/21 (90.5%) across 12 ecosystems** (astropy 6/6, django 4/5, flask 0/1, matplotlib 1/1, pylint 1/1, pytest 1/1, requests 1/1, scikit-learn 1/1, seaborn 1/1, sphinx 1/1, sympy 1/1, xarray 1/1), 73-908 s/instance, 506-2563 B patches targeting canonical issue locations; **131K-context validated**. The 2 misses are model-class ceiling cases (add-behavior, not fix-behavior). |
 | 2 | `qwen35` (Qwen3.5-27B-4bit DeltaNet) | **Capability-equivalent to qwen36, NOT higher-capability.** On qwen36's only real miss (`django__django-11019` — a 4929-byte topological-sort algorithmic rewrite), qwen35 at `TIMEOUT=1800` ALSO produced 0 bytes after timing out at 1803 s with 4 tool calls. Static MMLU 90 (hardened) does not convert to agentic-coding ceiling above qwen36's MoE. qwen35 succeeds where qwen36 succeeds (same 506-byte patch on astropy-12907 at 15× the wall) and fails where qwen36 fails. **No agentic value over qwen36.** Use only when DeltaNet 27B-dense is required for non-agentic reasons. | SWE-bench Lite 1/3 (1 success at TIMEOUT=1800; 2 fails including the algorithmic-instance retest) |
 | 3 | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Best static HumanEval (95) and decode speed (73 tok/s @128) — use for **direct chat-completion code generation**, NOT agentic flows. Under greedy MLX + opencode the agent loop gives up after one `glob`, regardless of thinking config. | 1 glob then asks user, 0 edits |
 | 4 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | Top MMLU (92) + Needle 100. Vision/video STRONG via patches 014+018. **Not usable through opencode for agentic coding** — under tool-call-augmented prompts the model emits zero tokens before timeout (re-tested 2026-05-18 after `tool_call: true` config fix; same 0/0/603s result). Use for direct chat-completion code generation and reasoning, not tool-call flows. | 0 tool calls, 0 emission under opencode tool prompts |

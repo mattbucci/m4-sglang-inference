@@ -85,24 +85,41 @@ upstream of the model.
 opencode.json, gemma4-31b emits 0 tokens under the tool-prompts opencode
 generates. Distinct from the no-think problem — this is the model itself.
 
-**Cross-ecosystem coverage (qwen36, post-proxy):** astropy (8 ✓), django (4 ✓ /
-1 ✗), matplotlib (1 ✓), pylint (1 ✓), scikit-learn (1 ✓), sphinx (1 ✓), sympy
-(1 ✓) — **7 ecosystems, 17/18 patch-engagement rate.**
+**Cross-ecosystem coverage (qwen36, post-proxy, unique-instance, on the
+hardened harness):**
 
-**Missing ecosystems (partial):** seaborn 1/1 ✓ (verified 2026-05-18 in
-`qwen36-missing-ecosystems-JETSAM-2026-05-18/` — only this single instance
-ran on a live server before jetsam fired). flask/pytest/requests/xarray
-remain **not verifiable on this hardware** under the current sweep harness:
-two consecutive 4-5-instance sweeps each had the SGLang server reaped by
-macOS jetsam ~2-10 minutes into the second instance, with subsequent runs
-producing structurally-identical 0-byte "model failures." The jetsam-detect
-harness (`run_rollouts.py` per-instance preflight, landed 2026-05-18)
-catches the dead-server state and aborts the sweep cleanly. To verify the
-remaining 4 missing-ecosystem instances would require either: (a) running
-each in its own server-restart cycle (~30s overhead × 4 = +2 min total),
-(b) closing memory-hungry apps (Firefox/Spotify/Steam observed running)
-before sweep launch, or (c) lowering `CTX` from 131K to 32K so the KV pool
-is smaller and macOS pressure thresholds aren't crossed. Future iteration.
+| Ecosystem | Verified | Notes |
+|---|---|---|
+| astropy | 6/6 | 12907 (×5 dup runs all hit), 14182, 14365, 14995, 6938, 7746 |
+| django | 4/5 | miss = 11019 (algorithmic rewrite, see ceiling note) |
+| matplotlib | 1/1 | 18869 |
+| sympy | 1/1 | 11400 |
+| pylint | 1/1 | 5859 |
+| scikit-learn | 1/1 | 10297 |
+| sphinx | 1/1 | 10325 |
+| seaborn | 1/1 | 2848 (verified pre-jetsam — see `qwen36-seaborn-verified-pre-jetsam`) |
+| requests | 1/1 | 1963 (`qwen36-perinst-missing-ecosystems`) |
+| xarray | 1/1 | 3364 (timeout but worktree captured a 1178B patch) |
+| pytest | 1/1 | 11143 |
+| flask | 0/1 | 4045 (real model ceiling — model gave up after 5 tool calls) |
+| **TOTAL** | **19/21 = 90.5%** | **12 ecosystems** |
+
+**Method note:** the cross-ecosystem result was unlocked by running each
+instance in its own freshly-booted server (`/tmp/run-per-instance.sh` style
+wrapper). Multi-instance single-server sweeps at CTX=131K on this M4 hit
+recurring macOS jetsam — see `qwen36-missing-ecosystems-JETSAM-2026-05-18/`
+and `qwen36-missing-retry-JETSAM-2026-05-18/`. The hardened
+`run_rollouts.py` (per-instance preflight, landed 2026-05-18) cleanly aborts
+on jetsam detection so contaminated 0-byte rows don't get misread as model
+failures. For sweeps beyond a single instance, ALWAYS use the per-instance
+restart pattern.
+
+**Model ceiling characterization:** the 2 misses (django-11019, flask-4045)
+share a signature — both require **adding behavior** (validation logic /
+algorithmic rewrite) rather than **correcting visible behavior**. qwen36
+can fix bugs it can see but struggles to invent missing logic that isn't
+surfaced by failing tests. Plausibly ~5-10% of SWE-bench Lite falls into
+this class.
 
 ## Quickstart
 
