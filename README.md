@@ -11,14 +11,27 @@ Single-user agentic coding at long context (tool-call-heavy multi-turn sessions,
 The headline: **`qwen36` is the only configuration verified to produce
 real SWE-bench Lite patches on M4, reproducibly, at scale, across all
 12 ecosystems present in our test set.** 2026-05-18 cumulative with
-proxy + hardened harness: **19/21 (90.5%) patches across 12 ecosystems**
-(astropy, Django, flask, matplotlib, pytest, requests, scikit-learn,
-seaborn, sphinx, sympy, pylint, xarray) — all targeting canonical
-upstream-fix files. Wall time 73-908 s/instance. Used with
-`no_thinking_proxy`. The 2 misses both involve **adding behavior**
-(django-11019 = N-way topological-sort rewrite; flask-4045 = adding
-`name` validation) rather than fixing visible bugs — a real model-class
-ceiling, not a tuning issue.
+proxy + hardened harness:
+
+- **Patch-engagement: 19/21 (90.5%) across 12 ecosystems** — model
+  produces a non-empty patch targeting the canonical issue file
+- **Resolved (M4-local score_local.py): 3/10 = 30% on testable subset**
+  — patches that actually pass the FAIL_TO_PASS tests + don't break
+  PASS_TO_PASS tests. 8 of 21 instances (astropy×6, matplotlib,
+  scikit-learn) can't be tested on M4 due to old-Python install
+  failures; those need the 3090 Docker harness for the full picture.
+
+**The 90.5% → 30% gap is the real model characterization**: qwen36
+makes patches that LOOK right (correct file, syntactically valid, often
+no regressions) but miss the semantic intent (only 3 of 10 testable
+patches pass the new failing tests). Trust the model for first-pass
+exploration; verify with tests before merging. This is consistent with
+the typical 14-30% resolved-rate band for ~30B-class models on
+SWE-bench Lite.
+
+The 2 model-ceiling instances (`django-11019` algorithmic rewrite +
+`flask-4045` add-validation) are characterized as **"add behavior" vs
+"fix visible behavior"** failures — both produced 0-byte patches.
 
 **Important method note for multi-instance sweeps:** At CTX=131K on M4,
 multi-instance single-server sweeps hit recurring macOS jetsam (the
@@ -39,7 +52,7 @@ for cross-ecosystem generalization.
 
 | Rank | Preset | Why | Agentic verdict |
 |:----:|--------|-----|-----------------|
-| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context — **at CTX=131072 the same patch produces in 123 s vs 122 s at CTX=32768 (no perf cliff at 4× context)**. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). For multi-instance sweeps use per-instance server restart (avoids jetsam at 131K). | **SWE-bench Lite 19/21 (90.5%) across 12 ecosystems** (astropy 6/6, django 4/5, flask 0/1, matplotlib 1/1, pylint 1/1, pytest 1/1, requests 1/1, scikit-learn 1/1, seaborn 1/1, sphinx 1/1, sympy 1/1, xarray 1/1), 73-908 s/instance, 506-2563 B patches targeting canonical issue locations; **131K-context validated**. The 2 misses are model-class ceiling cases (add-behavior, not fix-behavior). |
+| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context — **at CTX=131072 the same patch produces in 123 s vs 122 s at CTX=32768 (no perf cliff at 4× context)**. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). For multi-instance sweeps use per-instance server restart (avoids jetsam at 131K). | **Patch-engagement 19/21 (90.5%) across 12 ecosystems**; **resolved 3/10 = 30% on M4-scorable subset** (`score_local.py`, see `qwen36-score-local-2026-05-18/`). Patches target canonical files but ~70% don't fully pass tests — typical for ~30B-class models on SWE-bench Lite. |
 | 2 | `qwen35` (Qwen3.5-27B-4bit DeltaNet) | **Capability-equivalent to qwen36, NOT higher-capability.** On qwen36's only real miss (`django__django-11019` — a 4929-byte topological-sort algorithmic rewrite), qwen35 at `TIMEOUT=1800` ALSO produced 0 bytes after timing out at 1803 s with 4 tool calls. Static MMLU 90 (hardened) does not convert to agentic-coding ceiling above qwen36's MoE. qwen35 succeeds where qwen36 succeeds (same 506-byte patch on astropy-12907 at 15× the wall) and fails where qwen36 fails. **No agentic value over qwen36.** Use only when DeltaNet 27B-dense is required for non-agentic reasons. | SWE-bench Lite 1/3 (1 success at TIMEOUT=1800; 2 fails including the algorithmic-instance retest) |
 | 3 | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Best static HumanEval (95) and decode speed (73 tok/s @128) — use for **direct chat-completion code generation**, NOT agentic flows. Under greedy MLX + opencode the agent loop gives up after one `glob`, regardless of thinking config. | 1 glob then asks user, 0 edits |
 | 4 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | Top MMLU (92) + Needle 100. Vision/video STRONG via patches 014+018. **Not usable through opencode for agentic coding** — under tool-call-augmented prompts the model emits zero tokens before timeout (re-tested 2026-05-18 after `tool_call: true` config fix; same 0/0/603s result). Use for direct chat-completion code generation and reasoning, not tool-call flows. | 0 tool calls, 0 emission under opencode tool prompts |

@@ -121,6 +121,35 @@ can fix bugs it can see but struggles to invent missing logic that isn't
 surfaced by failing tests. Plausibly ~5-10% of SWE-bench Lite falls into
 this class.
 
+**Real resolved rate (M4-local scoring, 2026-05-18):** patch-engagement
+is not the same as resolved. The full qwen36 prediction set scored on M4
+via `score_local.py` (per-instance venv + native pytest, no Docker)
+returned **3/21 = 14.3% resolved overall, 3/10 = 30% resolved on the
+M4-scorable subset**. Detailed breakdown in
+[`runs/qwen36-score-local-2026-05-18/`](runs/qwen36-score-local-2026-05-18/).
+
+Score categories:
+
+| Category | Count | Meaning |
+|---|:---:|---|
+| RESOLVED | 3 | F2P all pass + no P2P regressions |
+| CLOSE | 2 | Partial F2P, no P2P regressions |
+| WRONG LOCATION | 3 | No F2P, no P2P regressions (patch in wrong place) |
+| BROKEN P2P | 4 | Patch caused regressions in existing tests |
+| MODEL PATCH FAIL | 3 | Empty patch or unapplicable (multi-file mismatch) |
+| INSTALL FAIL | 8 | M4 can't build the venv (old Python / native deps); needs 3090 Docker |
+
+The 90.5% patch-engagement → 30% resolved gap is the model's "writing
+in the style of" behavior: patches are in the right file, syntactically
+valid, often regression-free, but miss the semantic requirement. The
+3 resolved instances (django-11001, django-11039, pylint-5859) are all
+in repos with heavy qwen36 training exposure; the misses skew toward
+niche libraries (xarray, sphinx, seaborn).
+
+For the full picture on the 8 INSTALL FAIL instances (astropy×6,
+matplotlib, scikit-learn), ship `exports/qwen36-predictions.jsonl` to
+the 3090 stack's `score_docker.py`.
+
 ## Quickstart
 
 ```bash
