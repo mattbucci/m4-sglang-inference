@@ -127,6 +127,12 @@ def main() -> int:
     for sub in sorted(runs_root.iterdir()):
         if not sub.is_dir():
             continue
+        # Runs with "JETSAM" in the name are quarantined (e.g. mid-sweep
+        # server death contaminated the per-instance results — see
+        # qwen36-missing-ecosystems-JETSAM-2026-05-18/README.md). Their
+        # predictions are kept for forensics but excluded from totals.
+        if "JETSAM" in sub.name:
+            continue
         run_recs = _load_run(sub)
         # Try to find logs for tool-call counts: looks like <inst>.log next
         # to predictions/<inst>.diff, OR /tmp/<run-name>/logs/<inst>.log

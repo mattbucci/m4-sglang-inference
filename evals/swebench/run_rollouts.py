@@ -312,6 +312,36 @@ def main():
 
             print(f"[{i+1}/{len(ds)}] {iid}  repo={row['repo']}  base={row['base_commit'][:8]}", flush=True)
             t0 = time.time()
+
+            # Per-instance health check: catch jetsam / mid-sweep server death
+            # before burning a 900s+ rollout window. Without this, opencode
+            # hangs waiting for chat-completion responses that will never come,
+            # producing a series of zero-byte "model failures" that are
+            # actually infrastructure failures.
+            #
+            # Discovered 2026-05-18 when a 5-instance cross-ecosystem sweep
+            # of qwen36 had its server jetsam'd ~10 min in; the next 4
+            # instances ran against a dead upstream and all returned 0 bytes
+            # at 900s wall, contaminating the patch-engagement rate.
+            ok, hinfo = preflight_canary(args.server_url, served)
+            if not ok:
+                print(f"  SERVER_DEAD: {hinfo} — aborting sweep", flush=True)
+                fp.write(json.dumps({
+                    "instance_id": iid,
+                    "model_name_or_path": args.model,
+                    "model_patch": "",
+                    "rollout_returncode": -2,
+                    "server_dead": True,
+                    "server_dead_info": hinfo,
+                    "rollout_seconds": round(time.time() - t0, 1),
+                }) + "\n")
+                fp.flush()
+                print(f"\nABORT: server health check failed before instance {i+1}/{len(ds)}. "
+                      f"Subsequent instances would also fail. Restart the server "
+                      f"(and check macOS Activity Monitor for jetsam events) then "
+                      f"rerun with --skip-existing.", flush=True)
+                sys.exit(4)
+
             try:
                 try:
                     inst_dir = ensure_repo(row["repo"], row["base_commit"], workdir, iid)
