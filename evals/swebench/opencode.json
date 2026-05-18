@@ -1,0 +1,65 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "sglang": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local SGLang+MLX (M4)",
+      "options": {
+        "baseURL": "http://127.0.0.1:23334/v1",
+        "apiKey": "not-needed"
+      },
+      "models": {
+        "coder-30b": {
+          "name": "Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ",
+          "limit": { "context": 131072, "output": 8192 },
+          "tool_call": true
+        },
+        "qwen36": {
+          "name": "Qwen3.6-35B-A3B-4bit (MoE+DeltaNet)",
+          "limit": { "context": 131072, "output": 8192 },
+          "tool_call": true
+        },
+        "qwen36-27b": {
+          "name": "Qwen3.6-27B-4bit (Dense+DeltaNet)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen35": {
+          "name": "Qwen3.5-27B-4bit (DeltaNet)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen35-9b-8bit": {
+          "name": "Qwen3.5-9B-MLX-8bit (DeltaNet)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen3-moe": {
+          "name": "Qwen3-30B-A3B-4bit-DWQ (MoE)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen3-32b": {
+          "name": "Qwen3-32B-4bit-DWQ (Dense)",
+          "limit": { "context": 16384, "output": 4096 },
+          "tool_call": true
+        },
+        "devstral": {
+          "name": "Devstral-Small-2-24B-Instruct-2512-4bit",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "gemma4-31b": {
+          "name": "gemma-4-31b-it-mxfp4 (Dense)",
+          "limit": { "context": 16384, "output": 4096 },
+          "tool_call": false
+        },
+        "nemotron-30b": {
+          "name": "NVIDIA-Nemotron-3-Nano-30B-A3B-4bit (NemotronH)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": false
+        }
+      }
+    }
+  }
+}

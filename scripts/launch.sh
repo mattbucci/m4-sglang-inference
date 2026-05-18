@@ -381,8 +381,16 @@ echo "=============================================="
 MEM_FRAC="${MEM_FRAC:-0.7}"
 
 # --- Build command ---
+# Serve the model under a clean preset name (e.g. `coder-30b`) instead of
+# the full HuggingFace path. Clients (opencode, etc.) can refer to the
+# model as `sglang/coder-30b` rather than
+# `sglang/mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ`. Override
+# via `SERVED_NAME=<custom>` if a specific name is needed.
+SERVED_NAME="${SERVED_NAME:-$PRESET}"
+
 CMD=(python3 -m sglang.launch_server
     --model-path "$MODEL"
+    --served-model-name "$SERVED_NAME"
     --context-length "$CTX"
     --max-running-requests "$MAX_RUNNING"
     --chunked-prefill-size "$CHUNKED"
