@@ -59,17 +59,18 @@
     "results": [
       {
         "context": 1024,
-        "found": false
+        "found": true
       },
       {
         "context": 4096,
-        "found": false
+        "found": true
       },
       {
         "context": 16384,
-        "found": false
+        "found": true
       }
     ],
-    "score": 0.0
+    "score": 1.0,
+    "server_dead": false
   }
 }

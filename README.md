@@ -86,15 +86,15 @@ Mixed-date sweep: rows tagged ⓡ were re-evaluated 2026-05-17 on the patches-01
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
 | Gemma 4 31B-it-mxfp4 ⓡ | **92%** | 50%‡ | 37.1%∆ | **100%**† |
-| Qwen3.5-27B-4bit ⓡ | **90%** | **100%** | 34.3%∆ | **0%**△ |
+| Qwen3.5-27B-4bit ⓡ | **90%** | **100%** | 34.3%∆ | **100%**△ |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
-| Qwen3.6-27B-4bit ⓡ | 87% | **100%** | 23.4%∆ | **0%**△ |
+| Qwen3.6-27B-4bit ⓡ | 87% | **100%** | 23.4%∆ | **100%**△ |
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
 | Gemma 4 26B-A4B-it-4bit ⓡ | 84% | 60%‡ | 30.9%∆ | 100% |
 | Qwen3.6-35B-A3B-4bit ⓡ | 82% | 85% | 34.9% | 100% |
 | Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit ⓡ | 82% | 65%★ | 8.6%★ | 100% |
-| Qwen3.5-9B-MLX-8bit ⓡ | 80% | 80% | 30.3%∆ | **0%**△ |
+| Qwen3.5-9B-MLX-8bit ⓡ | 80% | 80% | 30.3%∆ | **100%**△ |
 | NVIDIA Nemotron-3-Nano-30B-A3B-4bit | 77% | 10%¶ | 19.4%¶ | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
@@ -106,7 +106,7 @@ Sorted by MMLU (descending). Chart (still showing 2026-05-11 numbers): `benchmar
 
 † **Gemma 4 31B Needle 0% → 100%** under the patched stack: the dominant pending regression in the prior README is closed. Same `enable_thinking=false` config that previously returned 0% on all three lengths now retrieves correctly at 1K, 4K, and 16K. Attributable to the mlx-vlm 0.4.4 → 0.5.0 upgrade bundled with this patch cycle.
 
-△ **Needle 100% → 0% regression** on Qwen3.5-9B-8bit, Qwen3.5-27B, and Qwen3.6-27B under mlx-vlm 0.5.0. Same `enable_thinking=false` config that retrieved correctly on the 0.4.4 baseline now fails on all three lengths. The Qwen3.5 family was 100%-uniform-affected (both 9B and 27B); Qwen3.6 family is split (27B Dense regressed, 35B-A3B MoE stayed 100%). Worth pinning mlx-vlm at 0.4.4 for any Qwen-family long-context retrieval workload until upstream investigates.
+△ **The "Qwen3.5/3.6 Needle 100% → 0% regression" was a measurement artifact, not a real regression.** Root-caused 2026-05-17: macOS jetsam silently reaped the sglang scheduler mid-LAB-Bench on Qwen3.5/3.6 when a long CloningScenarios prompt (7K+ tokens) accumulated memory past the threshold; every subsequent eval request — including all three Needle lengths — recorded `found=False` purely because the connection was refused. Re-ran Needle on fresh servers for the three affected presets and **all three returned 100%** at 1K/4K/16K. The corrected Needle column above (re-checked on freshly-launched servers) reflects reality. The eval harness now distinguishes server-death from a true model miss (`needle_eval` sets `server_dead=True` on `URLError`/`RemoteDisconnected`/`ConnectionRefusedError`/`socket.timeout` exceptions rather than silently scoring 0%).
 
 ∆ **LAB-Bench cross-family regression** under mlx-vlm 0.5.0: -3 to -17 pp range, median ~-5 pp, distributed unevenly across the 7 LAB-Bench subcategories (SuppQA, SeqQA, CloningScenarios are the consistent drops). Same eval prompts + same `--no-thinking` config, so this is a model-output-level shift from the upstream version bump — not a regression introduced by patches 015-018 (which only touch multimodal extraction).
 
@@ -116,7 +116,7 @@ Sorted by MMLU (descending). Chart (still showing 2026-05-11 numbers): `benchmar
 
 Standouts (post-refresh): **Gemma 4 31B** leads MMLU at 92% and is now the top long-context retrieval model (Needle 100% confirmed); **Qwen3.5-27B** (DeltaNet hybrid) preserves MMLU 90 / HE 100 / LAB 34.3; **Qwen3.6-27B** holds HE 100 under greedy decode without thinking budget; **Nemotron-Omni** is the new HE leader among text-only-comparable models at 65% with full multimodal support.
 
-The headline cost of the patch cycle: **Needle retrieval on Qwen3.5 family is broken on mlx-vlm 0.5.0**. The headline gain: **Gemma 4 31B Needle now works**. Both are real, both are attributable to the bundled mlx-vlm version bump rather than to the SGLang patches.
+The headline gain of the patch cycle: **Gemma 4 31B Needle now works** (the dominant prior footnote regression is closed). The originally-reported "Qwen3.5/3.6 Needle 0%" turned out to be a measurement bug (server jetsam reaping mid-eval) and is corrected to 100% across all three Qwen variants on the patched stack. **No real Needle regression exists.** LAB-Bench cross-family -5 pp drift remains and tracks the mlx-vlm 0.4.4 → 0.5.0 version bump's effect on long-passage tokenization.
 
 ## Quantization scan: 10 dead layers in coder-30b mlx-community upload (2026-05-11)
 

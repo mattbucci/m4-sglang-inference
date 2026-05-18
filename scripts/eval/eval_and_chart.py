@@ -261,7 +261,21 @@ def labbench_suite(chat_url, n_samples=50, max_workers=1, max_tokens=1024):
 
 
 def needle_eval(chat_url, lengths=[1024, 4096, 16384, 65536], max_tokens=512):
-    """Needle-in-a-haystack at various context lengths."""
+    """Needle-in-a-haystack at various context lengths.
+
+    Distinguishes a real model miss (server alive, model didn't include the
+    needle in its answer) from server death (connection refused / remote
+    disconnect / network errors — typically macOS jetsam reaping the
+    sglang scheduler after a memory-pressure spike during a prior eval
+    phase). The 2026-05-17 root cause of the apparent "Qwen3.5 Needle
+    100%->0% regression" was the latter: a long CloningScenarios prompt
+    in the preceding LAB-Bench phase pushed memory past the jetsam
+    threshold; all subsequent eval requests (including every Needle
+    length) recorded `found=False` purely because the connection died.
+    Now those rows are tagged with `server_dead=True` and reported as
+    such instead of being silently scored as misses.
+    """
+    import urllib.error, http.client, socket
     filler = "The quick brown fox jumps over the lazy dog. " * 100
     needle = "The secret password is: BANANA42."
     needle_budget = min(max_tokens, 512)
@@ -270,6 +284,7 @@ def needle_eval(chat_url, lengths=[1024, 4096, 16384, 65536], max_tokens=512):
         mid = ctx * 2
         haystack = filler[:mid] + "\n" + needle + "\n" + filler[:mid]
         prompt = haystack[:ctx * 4] + "\n\nWhat is the secret password? Answer with just the password."
+        entry = {"context": ctx, "found": False}
         try:
             r = _post(chat_url, {
                 "model": "default",
@@ -277,11 +292,20 @@ def needle_eval(chat_url, lengths=[1024, 4096, 16384, 65536], max_tokens=512):
                 "max_tokens": needle_budget, "temperature": 0,
             }, timeout=900)  # long-context prefill on M4 takes a while
             content = r["choices"][0]["message"]["content"] or ""
-            found = "BANANA42" in content
-        except Exception:
-            found = False
-        results.append({"context": ctx, "found": found})
-    return {"results": results, "score": sum(r["found"] for r in results) / len(results)}
+            entry["found"] = "BANANA42" in content
+        except (urllib.error.URLError, http.client.RemoteDisconnected,
+                ConnectionRefusedError, socket.timeout) as e:
+            entry["server_dead"] = True
+            entry["error"] = repr(e)
+        except Exception as e:
+            entry["error"] = repr(e)
+        results.append(entry)
+    server_dead_any = any(r.get("server_dead") for r in results)
+    return {
+        "results": results,
+        "score": sum(r["found"] for r in results) / len(results),
+        "server_dead": server_dead_any,
+    }
 
 
 def _mmlu_cache_ok(d, expected_n):
