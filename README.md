@@ -9,15 +9,20 @@ Single-user agentic coding at long context (tool-call-heavy multi-turn sessions,
 ### Recommended picks (2026-05-18, ranked by SWE-bench Lite agentic-coding ability)
 
 The headline change: **`qwen36` is the only configuration verified to
-produce a real SWE-bench Lite patch on M4** (2026-05-18 1-instance smoke,
-506-byte patch on `astropy__astropy-12907` using `no_thinking_proxy`).
-Static HE/MMLU scores do not predict agentic-coding capability on this
-stack. See [`evals/swebench/runs/4pick-scorecard-2026-05-18/`](evals/swebench/runs/4pick-scorecard-2026-05-18/)
-for the comparative data.
+produce real SWE-bench Lite patches on M4 — reproducibly.** 2026-05-18:
+3-of-3 success on instances 1-3 (`astropy__astropy-12907`,
+`astropy__astropy-14182`, `astropy__astropy-14365`), 476-579 byte
+patches, ~125 s/instance, each targeting different files in different
+modules. Used with `no_thinking_proxy`. Static HE/MMLU scores do not
+predict agentic-coding capability on this stack. See
+[`evals/swebench/runs/4pick-scorecard-2026-05-18/`](evals/swebench/runs/4pick-scorecard-2026-05-18/)
+for the comparative data and
+[`evals/swebench/runs/qwen36-3instance-2026-05-18/`](evals/swebench/runs/qwen36-3instance-2026-05-18/)
+for the reproducibility evidence.
 
 | Rank | Preset | Why | Agentic verdict |
 |:----:|--------|-----|-----------------|
-| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | **SWE-bench Lite 1/1**, 125 s, 1 edit + 3 read + 2 glob → 506 B patch |
+| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | **SWE-bench Lite 3/3** (instances 1-3, all astropy), ~125 s/instance, 476-579 B patches |
 | 2 | `qwen35` (Qwen3.5-27B-4bit DeltaNet) | Identified the exact same bug line as qwen36 in its reasoning, but the dense-DeltaNet decode is too slow to reach an `edit` call inside a 600 s timeout. Higher TIMEOUT or smaller instances unlock it. Static scores still lead: MMLU 90 / HE 100 / Needle 100. | 6 tool calls, **0 edits, 603 s timeout** — capable but slow |
 | 3 | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Best static HumanEval (95) and decode speed (73 tok/s @128) — use for **direct chat-completion code generation**, NOT agentic flows. Under greedy MLX + opencode the agent loop gives up after one `glob`, regardless of thinking config. | 1 glob then asks user, 0 edits |
 | 4 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | Top MMLU (92) + Needle 100. Vision/video STRONG via patches 014+018. Agentic config gap: needed `tool_call: true` in `evals/swebench/opencode.json` (fixed 2026-05-18); re-measure after refresh. | 0 tool calls (opencode config gap), pending re-test |
