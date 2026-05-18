@@ -10,11 +10,14 @@ Single-user agentic coding at long context (tool-call-heavy multi-turn sessions,
 
 The headline: **`qwen36` is the only configuration verified to produce
 real SWE-bench Lite patches on M4, reproducibly, across multiple
-ecosystems.** 2026-05-18 cumulative: **6/6 patches across astropy,
-Django, matplotlib, sympy** — all targeting the canonical bug locations
-from the upstream issues (FILE_UPLOAD_PERMISSIONS default, `_print_sinc`
-in ccode.py, `__version_info__` parsing, `_cstack` matrix initialization,
-etc). Wall time 120-490 s/instance. Used with `no_thinking_proxy`.
+ecosystems.** 2026-05-18 cumulative: **9/9 patches across 7 ecosystems**
+(astropy, Django, matplotlib, sympy, pylint, sphinx, scikit-learn) — all
+targeting canonical upstream-fix locations (regex `\b` → `(?:\W|$)` for
+fixme detection, missing constructor parameter pass-through, type-changing
+refactor with downstream call-site updates, `FILE_UPLOAD_PERMISSIONS`
+default, `_print_sinc` Piecewise, `_cstack` matrix initialization). Wall
+time 120-725 s/instance (depends on venv-built dependencies). Used with
+`no_thinking_proxy`.
 Static HE/MMLU scores do not predict agentic-coding capability on this
 stack. See
 [`evals/swebench/runs/4pick-scorecard-2026-05-18/`](evals/swebench/runs/4pick-scorecard-2026-05-18/)
@@ -26,7 +29,7 @@ for cross-ecosystem generalization.
 
 | Rank | Preset | Why | Agentic verdict |
 |:----:|--------|-----|-----------------|
-| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | **SWE-bench Lite 6/6 cross-ecosystem** (astropy + Django + matplotlib + sympy), 120-490 s/instance, 476-2563 B patches targeting canonical issue locations |
+| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop. MoE keeps decode fast; DeltaNet keeps it flat at long context. Vision-capable too. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | **SWE-bench Lite 9/9 across 7 ecosystems** (astropy, Django, matplotlib, sympy, pylint, sphinx, scikit-learn), 120-725 s/instance, 476-2563 B patches targeting canonical issue locations |
 | 2 | `qwen35` (Qwen3.5-27B-4bit DeltaNet) | **Confirmed equivalently capable but ~15× slower** — given `TIMEOUT=1800` on `astropy__astropy-12907`, qwen35 produced the identical 506-byte patch as qwen36 (1810 s wall, 11 tool calls including 1 edit). The DeltaNet 27B dense decode is the bottleneck; qwen36's MoE 3B-active gets the same result in 125 s. Use qwen35 for overnight/batch agentic runs where wall time doesn't matter. Static scores still lead: MMLU 90 / HE 100 / Needle 100. | SWE-bench Lite 1/1 with TIMEOUT=1800, same patch as qwen36 |
 | 3 | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Best static HumanEval (95) and decode speed (73 tok/s @128) — use for **direct chat-completion code generation**, NOT agentic flows. Under greedy MLX + opencode the agent loop gives up after one `glob`, regardless of thinking config. | 1 glob then asks user, 0 edits |
 | 4 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | Top MMLU (92) + Needle 100. Vision/video STRONG via patches 014+018. **Not usable through opencode for agentic coding** — under tool-call-augmented prompts the model emits zero tokens before timeout (re-tested 2026-05-18 after `tool_call: true` config fix; same 0/0/603s result). Use for direct chat-completion code generation and reasoning, not tool-call flows. | 0 tool calls, 0 emission under opencode tool prompts |
