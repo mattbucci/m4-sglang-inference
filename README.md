@@ -2,29 +2,32 @@
 
 256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 17 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
 
-## The four models worth running (2026-05-15)
+## Primary target: long-context agentic coding
 
-Probe-verified on the v0.5.11 stack. Everything else in the [Model Support](#model-support) table is either untested in the latest sweep or fails one of the gates (silent fabrication, infinite-`<think>` loop, doesn't fit, etc.).
+Single-user agentic coding at long context (tool-call-heavy multi-turn sessions, 10K–100K-token codebase prefixes) is what this stack is tuned for. Decode TPOT at long context matters more than peak batch throughput; the right model is one whose decode stays flat as context grows.
 
-| Workload | Preset | Verified | Notes |
-|----------|--------|----------|-------|
-| **Coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | `probe_codegen` **STRONG 8/8** | MMLU 89.5 / HE 95, 68 tok/s peak single-user. DWQ swap fixed 10 dead layers in the std 4bit. |
-| **General thinking** | `gemma4` (gemma-4-26b-a4b-it-4bit) | `probe_codegen` **STRONG** + thinking **VERIFIED** | MMLU 85, `<think>` channel terminates cleanly. 15 GB weights — comfortable on 64 GB. Text-only on M4 (mlx-community ships no `preprocessor_config.json`). |
-| **Vision** | `devstral` (Devstral-Small-2-24B-Instruct-2512-4bit) | `probe_vision` **STRONG** | Only mlx-community VLM with vision tower fully BF16 + patch 013 image plumbing verified. |
-| **Peak long-context throughput** | `qwen36` (Qwen3.6-35B-A3B-4bit) | perf-verified, codegen probe pending | 148 tok/s at MR=2 batched decode (patch 011). MoE+DeltaNet hybrid carries inference forward at 256K. |
+### Recommended picks (2026-05-17, all probe-verified on patches-015-018)
 
-### Current focus
+| Slot | Preset | Why | Verified |
+|------|--------|-----|----------|
+| **Primary coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Code-specialist + MoE 3B-active = fastest decode (73 tok/s @128) that survives 256K. HE 95 / MMLU 89.5. Tool-call parser `qwen3_coder`. | codegen **STRONG 8/8** |
+| **Long-context flagship** | `qwen36` (Qwen3.6-35B-A3B-4bit) | MoE + DeltaNet hybrid: linear-attn layers ignore context length on decode, so tok/s stays flat from 128→32K. **Best choice for 100K+ agentic sessions.** Also vision-capable. | codegen + vision + video **STRONG**, thinking **VERIFIED** |
+| **Quality-first long-context** | `qwen35` (Qwen3.5-27B-4bit) | Highest single-model scores: MMLU 90 / HE 100 / Needle 100. DeltaNet hybrid keeps decode flat. Slower than the MoE picks but the cleanest output. | codegen + vision **STRONG**, video DEGRADED |
+| **Top-MMLU reasoning + vision** | `gemma4-31b` (gemma-4-31b-it-mxfp4) | MMLU 92 (highest in the set) + Needle 100 + vision/video both STRONG after patches 014 + 018. Dense, so ~16K practical ceiling — pick when reasoning quality dominates over context length. | codegen + vision + video **STRONG**, thinking **VERIFIED** |
 
-**Primary target: single-user 256K context** for agentic workloads. Decode TPOT at long context > peak batch throughput. Multi-user is secondary.
+Everything else in [Model Support](#model-support) is either smaller-variant, untested in the latest sweep, or has known regressions (Devstral video FAIL on greedy MLX, Qwen3-32B 16K ceiling, etc.).
 
-### Active work
+### Active work (2026-05-17)
 
-Resolved items (VLM regression / patch 013, batched decode / patch 011, parser wiring, probe trio adoption, Gemma 4 radix root-cause) have been moved to [patches/README.md → Shipped narrative](patches/README.md#shipped-narrative--resolved-post-rebase). The list below is the *current* backlog only.
+Resolved items moved to [patches/README.md → Shipped narrative](patches/README.md). The list below is the *current* backlog only.
 
-1. **MAX_RUNNING headroom at 16-prompt queue depth** — patch 011 unblocked batched decode for hybrids and non-hybrids alike (peaks: qwen36 148 tok/s @ MR=2, Qwen3-30B-A3B 160 tok/s @ MR=8). The remaining tuning is the 16-prompt × MR=4 case which still trips the OOM guard. Likely needs `--mem-fraction-static 0.3` or `--chunked-prefill-size 512`; not a code bug, just headroom. Recipe baseline that works: `MAX_RUNNING={2,4} MEM_FRAC=0.4 EXTRA_ARGS="--disable-radix-cache --chunked-prefill-size 1024 --max-total-tokens 32768"`.
-2. **Gemma 4 multimodal** — root-caused 2026-05-15: not a filename mismatch in mlx-community. `processor_config.json` IS present (903 bytes, declares `processor_class: Gemma4Processor`, embedded `image_processor` block, `image_seq_length: 280`, `audio_seq_length: 750`). The actual blocker is `Gemma4Processor.__init__` strictly requires four arguments — `feature_extractor`, `image_processor`, `tokenizer`, `video_processor` — and on transformers 5.5.3, `AutoProcessor.from_pretrained` calls `AutoFeatureExtractor.from_pretrained` (which demands `preprocessor_config.json`) and `AutoVideoProcessor.from_pretrained` (which demands `video_preprocessor_config.json`). Neither file is shipped by **upstream Google** (`google/gemma-4-26b-a4b-it`), so this is an upstream transformers + Google checkpoint gap, not an mlx-community oversight. Mitigation paths inside our stack: (a) synthesize stub configs from upstream defaults and place them in the cache pre-launch, (b) extend SGLang's `_build_processor_manually` to bypass missing sub-components when image-only is sufficient, or (c) subclass `Gemma4Processor` to allow `feature_extractor=None` + `video_processor=None` for image+text-only serving. Secondary hazard from the metadata audit: `embed_vision.embedding_projection` is INT4 on both 26B and 31B uploads — even when (a)/(b)/(c) land, vision features may still degrade.
-3. **Chunked-prefill scratch memory at 128K+** — direct measurement (2026-05-11) shows the Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Knobs: drop `--chunked-prefill-size` from 4096 → 2048 (halves the per-chunk scratch) and `--mem-fraction-static` from 0.7 → 0.4. Each tradeoff pushes 256K prefill into the 30+ min regime; long-context is bandwidth-bound either way on a 64 GB Mac.
-4. **64K perf data is structurally infeasible on M4 with current MLX attention.** Targeted single-user 64K probes on 2026-05-12 hit the OOM guard mid-prefill on every hybrid tested — qwen35 (27B dense, fp8 KV) made it to ~32K, qwen36 (35B-A3B MoE, turboquant) to ~50K, qwen35-9b-8bit (9B at 8-bit weights) to ~50K. The wall isn't the model weights or the KV pool; it's the **per-chunk attention-score tensor** that `mx.fast.scaled_dot_product_attention` materializes in full (shape `chunked × current_offset × n_heads × n_layers`). At chunk=1024, offset=50K, with ~30–60 layers × 16 heads × 4 bytes that buffer alone is 30–90 GB — well past the M4's activation headroom even with `mf=0.4`. Without a flash-attention-style block-streaming SDPA in MLX, the 64K column is out of reach for this hardware. **256K is reachable only because DeltaNet hybrids' O(1) linear layers carry the inference forward; the full-attention scratch peaks once per chunk and the bench just absorbs a long prefill time.** Decode at 32K is the practical M4 long-context ceiling for dense + standard-attention models.
+1. **Eval harness hardening — server-death detection across all eval functions.** Patched `needle_eval` 2026-05-17 to tag connection-class exceptions with `server_dead=True` after root-causing the apparent Qwen3.5/3.6 Needle regression (turned out to be macOS jetsam silently reaping the sglang scheduler mid-LAB-Bench when a 7K+ token CloningScenarios prompt pushed peak memory past the threshold). `mmlu_eval`, `humaneval_eval`, `labbench_eval` still have bare `except: return False` patterns and may produce the same silent ghost regressions. `run_all_evals.sh` should also restart the server between phases so a mid-eval scheduler death doesn't poison every subsequent metric. Memory: [project_eval_jetsam_artifact.md](~/.claude/projects/-Users-letsrtfm-AI/memory/project_eval_jetsam_artifact.md).
+
+2. **LAB-Bench cross-family drift verification.** Median -5 pp drop on LAB-Bench from the mlx-vlm 0.4.4 → 0.5.0 bundled with the patch cycle. Currently treated as real tokenization drift, but the Needle false alarm proved jetsam can contaminate sequential evals — the LAB drift could be partial server-degradation too. Won't know until #1 is hardened and the comparisons re-run.
+
+3. **Chunked-prefill scratch memory at 128K+.** Python import surface is only ~547 MB; the OOMs at 128K/256K are from chunked-prefill activation tensors, not import bloat. Working knobs: `--chunked-prefill-size 2048` (halves per-chunk scratch) + `--mem-fraction-static 0.4` (long-context preset default). Each push deeper into context costs prefill time — 256K prefill is ~30 min on the patched stack; long-context is bandwidth-bound either way on a 64 GB Mac.
+
+4. **64K dense-attention ceiling is structural.** The per-chunk attention-score tensor `mx.fast.scaled_dot_product_attention` materializes (shape `chunked × current_offset × n_heads × n_layers`) hits 30–90 GB before completing at offset=50K. Without flash-attention-style block-streaming SDPA in MLX, **decode at 32K is the practical M4 ceiling for dense + standard-attention models.** 256K is reachable only because DeltaNet hybrids' O(1) linear layers carry inference forward; the full-attention scratch peaks once per chunk and the bench just absorbs the long prefill. Picking a DeltaNet model (`qwen35`, `qwen36`, `qwen36-27b`) is the practical workaround for now.
 
 ### Full probe-trio+video sweep (2026-05-16, 12 presets)
 
@@ -61,25 +64,7 @@ Resolved items (VLM regression / patch 013, batched decode / patch 011, parser w
 
 Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Headline: **8/8 VLMs probe_vision STRONG** (full M4 model set), **6/8 VLMs probe_video STRONG** (Qwen3.5/3.6 + Nemotron-Omni + Gemma 4 31B); only `gemma4` (PARTIAL — quality at small MoE) and `devstral` (Mistral multi-image format gap) remain non-STRONG on video.
 
-### v0.5.11 capability gate (2026-05-11, full mlx-community model set)
-
-| Preset | Model | Basic | Thinking | Notes |
-|--------|-------|:-----:|:--------:|-------|
-| coder-30b | Qwen3-Coder-30B-A3B-Instruct-4bit | **PASS** | **PASS** | 3.5 s — non-thinking model |
-| qwen3-moe | Qwen3-30B-A3B-4bit | **PASS** | **PASS** | 10.2 s — thinking trace terminates cleanly (568 tok) |
-| qwen3-32b | Qwen3-32B-4bit | **PASS** | **PASS** | 62.0 s — thinking trace terminates (584 tok) |
-| devstral | Devstral-Small-2-24B-Instruct-2512-4bit | **PASS** | **PASS** | 14.2 s — image VLM path verified |
-| qwen35 | Qwen3.5-27B-4bit | **PASS** | FAIL | 156.9 s — basic PASS confirms patch 013 hybrid-cache fix on v0.5.11; thinking truncates on known greedy-decode `<think>` loop |
-| qwen35-9b-8bit | Qwen3.5-9B-MLX-8bit | **PASS** | FAIL | 85.3 s — same as above, smaller variant |
-| gemma4 | gemma-4-26b-a4b-it-4bit | **PASS** | **PASS** | 3.8 s |
-| gemma4-31b | gemma-4-31b-it-mxfp4 | **PASS** | **PASS** | 12.0 s |
-| qwen36 | Qwen3.6-35B-A3B-4bit | **PASS** | **PASS** | 22.6 s — biggest DeltaNet+MoE+VL test; thinking trace 1326 tok terminates |
-| qwen36-27b | Qwen3.6-27B-4bit | **PASS** | **PASS** | 103.8 s — Dense DeltaNet+VL variant; thinking trace 1311 tok terminates |
-| nemotron-30b | NVIDIA-Nemotron-3-Nano-30B-A3B-4bit | **PASS** | **PASS** | added to launch.sh post-2026-05-11 sweep; verified 2026-05-16 via probe_codegen **STRONG 8/8** + 2026-05-13 reasoning-parser smoke (154 reasoning tokens, finish=stop) |
-
-10/10 boot success, 10/10 basic, 8/10 thinking on the v0.5.11 stack. The 2 thinking truncations are the pre-existing Qwen3.5 greedy-decode `<think>` loop (patch 013 still works — basic answers are correct, not garbage). Notably the Qwen3.6-A3B and Qwen3.6-27B Dense variants both terminate thinking cleanly out of the box, validating the new Qwen3.6 chat template. Raw data: [`benchmarks/quality/v0.5.11-rebase-validation.txt`](benchmarks/quality/v0.5.11-rebase-validation.txt).
-
-### Quality table (v0.5.11+18 patches, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
+### Quality table (v0.5.11+17 patches, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
 
 Mixed-date sweep: rows tagged ⓡ were re-evaluated 2026-05-17 on the patches-015-018 + mlx-vlm-0.5.0 stack; untagged rows are the 2026-05-11 baseline still pending refresh. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
 
@@ -187,6 +172,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 - **Gemma 4 needs `--disable-radix-cache`** (baked into both gemma4 presets). `MlxKVPool` assumes homogeneous attention shapes that Gemma 4's heterogeneous sliding+full layout doesn't satisfy. Workaround unblocks one-shot evals; agentic prefix reuse loses the radix cache. Full root-cause + fix options in [patches/README.md → Gemma 4 radix-cache](patches/README.md#gemma-4-radix-cache-root-cause-2026-05-13) + [`patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md`](patches/RADIX_CACHE_GEMMA4_ROOT_CAUSE.md).
 - **Coder-Next-80B infeasible on current toolchain.** 42 GB weights alone exceed the M4's safe budget — model load itself OOMs (not chunked-prefill scratch). Sister R9700 (2× 32 GB total via TP=2) runs it cleanly. No path forward on a single 64 GB Mac.
 - **macOS has no OOM killer** — once a process touches a page past physical RAM, the system stalls until reboot. **OOM guard mandatory for ≥64K work:** `bash scripts/common/oom_guard.sh &` pkills the SGLang server when free+inactive drops below 8 GB.
+- **macOS jetsam can silently reap the sglang scheduler mid-eval.** Root-caused 2026-05-17: a long LAB-Bench `CloningScenarios` prompt (7K+ tokens) pushed peak memory past jetsam's threshold on Qwen3.5/3.6 under mlx-vlm 0.5.0. No traceback, no log line — just `Connection refused` on every subsequent request. `needle_eval` now tags `server_dead=True` on `URLError`/`RemoteDisconnected` to distinguish this from a real model miss; `mmlu_eval`/`humaneval_eval`/`labbench_eval` still don't. When you see a Needle/LAB-Bench section drop to ~0% in `benchmarks/quality/<Tag>.json`, suspect jetsam before suspecting model regression: re-launch the server fresh and re-run just that eval section. Memory: [project_eval_jetsam_artifact.md](~/.claude/projects/-Users-letsrtfm-AI/memory/project_eval_jetsam_artifact.md).
 - **`--mem-fraction-static` is a fraction of TOTAL system RAM on unified memory, not "GPU memory".** Discrete-GPU intuition does not transfer. `MEM_FRAC=0.85` means MLX takes 85% of the *whole* 64 GB pool, leaving the OS itself ~10 GB for kernel + Metal compile buffers + page cache + transient activation + everything else; tested 2026-05-14 → macOS compressor + swap hit ~150 GB effective usage and jetsam reaped the server, hard-locked the box. **The default 0.7 ceiling is load-bearing.** Long-context presets override it *down* to 0.4-0.5 because activation scratch dominates — that direction is the validated lever; the *up* direction is not.
 - **HDMI display blackout** — brief screen blank when the server starts heavy Metal compute. M4 Pro HDMI quirk, not an SGLang bug.
 
@@ -195,7 +181,7 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 ```bash
 ./scripts/setup.sh                          # venv, SGLang clone, MLX deps, apply 17 patches
 
-# Production presets (all verified at v0.5.11 gate; see Recommended models for picks)
+# Production presets (all in the probe-trio sweep; see Recommended picks for highlights)
 ./scripts/launch.sh coder-30b               # MoE — codegen STRONG 8/8, 68 tok/s peak
 ./scripts/launch.sh devstral                # Dense+VLM — probe_vision STRONG
 ./scripts/launch.sh gemma4                  # MoE 26B — codegen STRONG + thinking VERIFIED (4K preset)
@@ -216,6 +202,21 @@ Qwen3.5-27B-4bit-DWQ exists but the mlx-community upload ships without `preproce
 CTX=140000 EXTRA_ARGS="--disable-radix-cache --kv-cache-dtype turboquant \
     --chunked-prefill-size 2048 --mem-fraction-static 0.5" \
     bash scripts/launch.sh qwen36
+
+# Agentic coding recipe — long-context multi-turn, tool-call-heavy, prefix reuse matters
+#
+# Primary pick: coder-30b (Qwen3-Coder-30B-A3B-DWQ MoE, 3B active → fast decode at long ctx).
+# Tool-call parser `qwen3_coder` is baked into the launch preset. Radix cache is the only
+# way to make multi-turn at 100K+ usable (re-prefilling 100K tokens per turn is 20+ min);
+# patch 001 corrupts identical-prompt repeats, so use `EXTRA_ARGS="--disable-radix-cache"`
+# for eval correctness but keep radix ON for true agentic sessions (slightly different
+# prompts per turn — the corruption only fires on bit-exact repeats).
+CTX=131072 EXTRA_ARGS="--kv-cache-dtype turboquant --chunked-prefill-size 2048 \
+    --mem-fraction-static 0.5" bash scripts/launch.sh coder-30b
+
+# Long-context flagship for non-coding agentic work (DeltaNet decode stays flat at 256K):
+CTX=131072 EXTRA_ARGS="--kv-cache-dtype turboquant --chunked-prefill-size 2048 \
+    --mem-fraction-static 0.5" bash scripts/launch.sh qwen36
 
 # Capability gates (run AFTER server is up on PORT 23334)
 python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate (loose keyword grep)
@@ -256,24 +257,28 @@ Always launch with `--disable-radix-cache` for benches and evals — see Known I
 | `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | — (34 MR=2) | 256K | DeltaNet INT4 |
 | `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 17.0 (40 MR=4) | **256K** (1.8) | **clean** |
 | `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.1 | 16K (bench timeout) | **clean** |
-| `gemma4-31b` | `gemma-4-31b-it-mxfp4` | Dense (sliding+full) | 17 GB | 8.6 | 8K (16K OOMs) | `embed_vision.embedding_projection` INT4 |
+| `gemma4-31b` | `gemma-4-31b-it-mxfp4` | Dense (sliding+full) | 17 GB | 11.7 (16K) | 16K | `embed_vision.embedding_projection` INT4 |
 | `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | 32K probe | **clean** |
 
 All checkpoints from [`mlx-community/`](https://huggingface.co/mlx-community). MR=N numbers are batched-decode peaks from patch 011 (2026-05-12). Audit hazards from [the metadata sweep](#calibration-metadata-audit-10-latent-recipe-issues-across-the-model-set-2026-05-13) — `clean` means vision tower / MoE router / DeltaNet `in_proj_a/b` recipe ignores are correct; hazard names are the specific module class quantized when it shouldn't be. Coder-Next-80B is **not** in the active table — see Known Issues.
 
 DWQ variants in 4 presets (`coder-30b`, `qwen3-moe`, `qwen3-32b`, plus `gemma4-31b`'s mxfp4) replaced the standard 4bit uploads after the [DWQ measurement sweep](#quantization-scan-10-dead-layers-in-coder-30b-mlx-community-upload-2026-05-11) — broken-layer fix + MMLU/HE lifts. `qwen36`'s 4bit-DWQ was **not** swapped (-5.5 pp MMLU).
 
-### Multimodal capability matrix
+### Multimodal capability matrix (2026-05-17, end-to-end probe-verified)
 
-What each architecture *can* do vs what *works through our SGLang+MLX bridge today*:
+| Preset | Image | Video | Status |
+|--------|:-----:|:-----:|:-------|
+| `devstral` (Mistral-Small-3.1) | ✅ | ⚠️ | probe_vision STRONG (single-image). Video FAIL — model echoes prompt under greedy MLX decode on 6-frame input (model-side, not plumbing). |
+| `qwen35` (Qwen3.5-27B DeltaNet+VL) | ✅ | ⚠️ | probe_vision STRONG, probe_video DEGRADED (recognizes motion, picks wrong direction). |
+| `qwen35-9b-8bit` (Qwen3.5-9B) | ✅ | ✅ | probe_vision + probe_video STRONG. |
+| `qwen36` (Qwen3.6-35B-A3B+DeltaNet+VL) | ✅ | ✅ | probe_vision + probe_video STRONG (both directions). |
+| `qwen36-27b` (Qwen3.6-27B Dense+DeltaNet+VL) | ✅ | ✅ | probe_vision + probe_video STRONG. |
+| `gemma4-31b` (gemma-4-31b-it-mxfp4) | ✅ | ✅ | probe_vision + probe_video STRONG via patches 014 + 018. |
+| `gemma4` (gemma-4-26b-a4b-it-4bit) | ✅ | ⚠️ | probe_vision STRONG, probe_video PARTIAL (1/2 directions — quality at the smaller MoE variant; plumbing works). |
+| `nemotron-omni` (NemotronH_Omni 30B-A3B) | ✅ | ✅ | probe_vision + probe_video STRONG via patches 016 + 017. |
+| `coder-30b` / `qwen3-moe` / `qwen3-32b` / `nemotron-30b` | ❌ | ❌ | Text-only by architecture. |
 
-| Model | Image | Video | Audio | Status on M4 |
-|-------|:-----:|:-----:|:-----:|:-------------|
-| Devstral-24B (Mistral3) | ✅ | ❌ | ❌ | probe_vision STRONG. |
-| Qwen3.5-27B / 9B-8bit | ✅ | ✅ | ❌ | probe_vision STRONG. Video supported by arch, needs end-to-end test. |
-| Qwen3.6-35B-A3B / 27B | ✅ | ✅ | ❌ | probe_vision STRONG (both variants, with `--enable-multimodal`). Video supported by arch, needs end-to-end test. |
-| Gemma 4 26B / 31B | ✅ | ✅ | ✅ | Architecturally [image+video+audio](https://ai.google.dev/gemma/docs/capabilities/vision/video). Image+text path opened by patch 014 + `--enable-multimodal` (2026-05-16); end-to-end probe pending. |
-| Coder-30B / Coder-Next / Qwen3-30B-MoE / Qwen3-32B / Nemotron-30B | ❌ | ❌ | ❌ | Text-only by architecture. |
+Headline: **8/8 VLMs probe_vision STRONG, 6/8 probe_video STRONG.** Per-preset JSON in [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
 
 ### Choosing a model
 
@@ -412,7 +417,6 @@ pip install -e ".[srt_mps]"
 patches/                    # SGLang patches — see patches/README.md
   00*.patch                 #   17 numbered patches (002-018, sans the upstreamed 001)
   REBASE-v0.5.11-NOTES.md   #   v0.5.11 rebase strategy & lineage
-  REBASE-v0.5.11-NOTES.md   #   upcoming SGLang version bump plan
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle (chart)
   <slug>/                   #   throughput + long-context sweeps
