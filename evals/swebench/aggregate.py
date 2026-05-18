@@ -102,6 +102,20 @@ def main() -> int:
         action="store_true",
         help="Also emit a Markdown leaderboard table.",
     )
+    ap.add_argument(
+        "--export",
+        default=None,
+        help=(
+            "Write a consolidated predictions.jsonl to this path, deduplicated "
+            "by (model_name_or_path, instance_id) — most-recent run wins on dup. "
+            "Output format matches what the 3090 stack's score_docker.py expects."
+        ),
+    )
+    ap.add_argument(
+        "--model-filter",
+        default=None,
+        help="When exporting, only include records for this model name (e.g. 'sglang/qwen36').",
+    )
     args = ap.parse_args()
 
     runs_root = Path(args.runs)
@@ -168,6 +182,38 @@ def main() -> int:
         mean_wall = sum(r.get("rollout_seconds", 0) for r in recs) / max(1, len(recs))
         ecos = sorted(set(r["_ecosystem"] for r in recs))
         print(f"{model:<22} {len(recs):<10} {patches:<10} {rate:<8} {mean_wall:>8.0f}s   {','.join(ecos)}")
+
+    # ---- Export consolidated predictions.jsonl ----
+    if args.export:
+        # Dedup by (model, instance) — keep the most-recent run (by sorting
+        # run_dir alphabetically since names embed the date).
+        by_key: dict[tuple[str, str], dict] = {}
+        for r in sorted(all_recs, key=lambda x: x.get("run_dir", "")):
+            model = r.get("model_name_or_path", "?")
+            inst = r.get("instance_id", "?")
+            if args.model_filter and model != args.model_filter:
+                continue
+            key = (model, inst)
+            # last-write-wins → sort puts newer dates last
+            by_key[key] = r
+        out_path = Path(args.export)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with out_path.open("w") as fh:
+            for (model, inst), r in sorted(by_key.items()):
+                # Strip aggregator-internal fields before writing.
+                rec = {
+                    k: v for k, v in r.items()
+                    if not k.startswith("_") and k != "run_dir"
+                }
+                fh.write(json.dumps(rec) + "\n")
+        with_patch = sum(1 for r in by_key.values() if r["_has_patch"])
+        print()
+        print(f"Wrote {len(by_key)} unique predictions to {out_path} "
+              f"({with_patch} with non-empty patches)")
+        if args.model_filter:
+            print(f"  filtered to model={args.model_filter}")
+        print(f"  next: scp {out_path} to the 3090 stack, then run "
+              f"`python evals/swebench/score_docker.py --predictions <path>`")
 
     # ---- Markdown emission ----
     if args.markdown:
