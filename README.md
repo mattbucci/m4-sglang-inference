@@ -11,7 +11,7 @@ Single-user agentic coding at long context (tool-call-heavy multi-turn sessions,
 | Slot | Preset | Why | Verified |
 |------|--------|-----|----------|
 | **Primary coding** | `coder-30b` (Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ) | Code-specialist + MoE 3B-active = fastest decode (73 tok/s @128) that survives 256K. HE 95 / MMLU 89.5. Tool-call parser `qwen3_coder`. | codegen **STRONG 8/8** |
-| **Long-context flagship** | `qwen36` (Qwen3.6-35B-A3B-4bit) | MoE + DeltaNet hybrid: linear-attn layers ignore context length on decode, so tok/s stays flat from 128→32K. **Best choice for 100K+ agentic sessions.** Also vision-capable. | codegen + vision + video **STRONG**, thinking **VERIFIED** |
+| **Long-context flagship + agentic-coding lead** | `qwen36` (Qwen3.6-35B-A3B-4bit) | MoE + DeltaNet hybrid: linear-attn layers ignore context length on decode, so tok/s stays flat from 128→32K. **First M4 model to produce a real SWE-bench Lite patch** (2026-05-18, with `no_thinking_proxy`). Also vision-capable. | codegen + vision + video **STRONG**, thinking **VERIFIED**, SWE-bench `astropy-12907` 506-byte plausible patch |
 | **Quality-first long-context** | `qwen35` (Qwen3.5-27B-4bit) | Highest single-model scores: MMLU 90 / HE 100 / Needle 100. DeltaNet hybrid keeps decode flat. Slower than the MoE picks but the cleanest output. | codegen + vision **STRONG**, video DEGRADED |
 | **Top-MMLU reasoning + vision** | `gemma4-31b` (gemma-4-31b-it-mxfp4) | MMLU 92 (highest in the set) + Needle 100 + vision/video both STRONG after patches 014 + 018. Dense, so ~16K practical ceiling — pick when reasoning quality dominates over context length. | codegen + vision + video **STRONG**, thinking **VERIFIED** |
 
@@ -203,20 +203,29 @@ CTX=140000 EXTRA_ARGS="--disable-radix-cache --kv-cache-dtype turboquant \
     --chunked-prefill-size 2048 --mem-fraction-static 0.5" \
     bash scripts/launch.sh qwen36
 
-# Agentic coding recipe — long-context multi-turn, tool-call-heavy, prefix reuse matters
+# Agentic coding recipe (VERIFIED 2026-05-18: first M4 SWE-bench Lite patch)
 #
-# Primary pick: coder-30b (Qwen3-Coder-30B-A3B-DWQ MoE, 3B active → fast decode at long ctx).
-# Tool-call parser `qwen3_coder` is baked into the launch preset. Radix cache is the only
-# way to make multi-turn at 100K+ usable (re-prefilling 100K tokens per turn is 20+ min);
-# patch 001 corrupts identical-prompt repeats, so use `EXTRA_ARGS="--disable-radix-cache"`
-# for eval correctness but keep radix ON for true agentic sessions (slightly different
-# prompts per turn — the corruption only fires on bit-exact repeats).
-CTX=131072 EXTRA_ARGS="--kv-cache-dtype turboquant --chunked-prefill-size 2048 \
-    --mem-fraction-static 0.5" bash scripts/launch.sh coder-30b
+# The Qwen3 family's <think>...</think> chat-template blocks break the
+# opencode agent loop (model reasons into reasoning_content where opencode
+# can't see it, OR </think> tags leak into content and confuse the tool-call
+# parser). Workaround: run requests through evals/swebench/no_thinking_proxy.py
+# which injects chat_template_kwargs={"enable_thinking": false} server-side.
+#
+# Primary pick for SWE-bench-style coding: qwen36 (Qwen3.6-35B-A3B
+# MoE+DeltaNet). With the proxy, produced a real 506-byte patch on
+# astropy__astropy-12907 — the first M4 success.
+CTX=32768 EXTRA_ARGS="--disable-radix-cache --kv-cache-dtype turboquant \
+    --chunked-prefill-size 2048 --mem-fraction-static 0.5 --enable-multimodal \
+    --tool-call-parser qwen3_coder" bash scripts/launch.sh qwen36 &
+python evals/swebench/no_thinking_proxy.py &     # opencode → 23335 → SGLang :23334
+# (Edit ~/.config/opencode/opencode.jsonc to point baseURL at :23335.)
+# Or use the wrapped smoke script which orchestrates all of this:
+bash evals/swebench/smoke.sh   # defaults: qwen36, 1 instance, proxy on
 
-# Long-context flagship for non-coding agentic work (DeltaNet decode stays flat at 256K):
-CTX=131072 EXTRA_ARGS="--kv-cache-dtype turboquant --chunked-prefill-size 2048 \
-    --mem-fraction-static 0.5" bash scripts/launch.sh qwen36
+# coder-30b alternative — fast single-user decode, BUT under greedy MLX +
+# opencode the agent loop gives up after 1 glob call (2026-05-18 finding).
+# Use coder-30b for direct chat-completion code generation (HumanEval 95);
+# use qwen36 for tool-call-driven agentic flows.
 
 # Capability gates (run AFTER server is up on PORT 23334)
 python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate (loose keyword grep)

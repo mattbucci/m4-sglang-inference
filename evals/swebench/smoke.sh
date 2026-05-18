@@ -39,8 +39,19 @@ INSTANCES="${INSTANCES:-1}"
 TIMEOUT="${TIMEOUT:-600}"
 CTX="${CTX:-131072}"
 PORT=23334
+PROXY_PORT="${PROXY_PORT:-23335}"
 OUT="${OUT:-/tmp/swebench-smoke}"
 EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.5}"
+# NO_THINKING_PROXY=1 (default): start no_thinking_proxy.py on $PROXY_PORT
+# and route opencode through it. The proxy injects
+# chat_template_kwargs={"enable_thinking": false} on every chat-completion
+# POST, which stops Qwen3-family models from emitting <think> blocks that
+# either go to reasoning_content (invisible to opencode) or leak </think>
+# markers into the content stream (breaks the agent loop). Verified
+# 2026-05-18: this turned qwen36 from "9 tool calls, 0-byte diff" into
+# "6 tool calls including 1 edit, 506-byte plausible patch" on
+# astropy__astropy-12907. Set NO_THINKING_PROXY=0 to disable.
+NO_THINKING_PROXY="${NO_THINKING_PROXY:-1}"
 
 mkdir -p "$OUT"
 LOG="$OUT/launch.log"
@@ -99,6 +110,31 @@ if [ "$SERVED" != "$PRESET" ]; then
     echo "WARN: opencode key '$MODEL_KEY' will not match served name '$SERVED' — set SERVED_NAME=$MODEL_KEY when launching."
 fi
 
+# --- Optionally start the no-thinking proxy + repoint opencode config ---
+PROXY_PID=""
+OPENCODE_CFG="$HOME/.config/opencode/opencode.jsonc"
+OPENCODE_CFG_BACKUP="$HOME/.config/opencode/opencode.jsonc.smoke-backup"
+if [ "$NO_THINKING_PROXY" = "1" ]; then
+    echo "[$(date +%H:%M:%S)] Starting no_thinking_proxy on :$PROXY_PORT..."
+    PORT="$PROXY_PORT" UPSTREAM="http://127.0.0.1:$PORT" \
+        nohup python3 "$SWE_SCRIPT_DIR/no_thinking_proxy.py" > "$OUT/proxy.log" 2>&1 &
+    PROXY_PID=$!
+    disown
+    # Wait for proxy to accept connections
+    for _ in $(seq 1 20); do
+        if curl -sf "http://127.0.0.1:$PROXY_PORT/health" > /dev/null 2>&1; then break; fi
+        sleep 0.5
+    done
+    # Repoint opencode at the proxy
+    cp "$OPENCODE_CFG" "$OPENCODE_CFG_BACKUP"
+    python3 -c "
+import json, sys
+src = open('$OPENCODE_CFG').read()
+open('$OPENCODE_CFG', 'w').write(src.replace('http://127.0.0.1:$PORT/v1', 'http://127.0.0.1:$PROXY_PORT/v1'))
+"
+    echo "[$(date +%H:%M:%S)] Proxy ready (PID=$PROXY_PID), opencode config repointed to :$PROXY_PORT"
+fi
+
 # --- Run opencode rollout (1 instance by default) ---
 echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout..."
 
@@ -117,6 +153,16 @@ python3 run_rollouts.py \
 RC=$?
 set -e
 cd "$REPO_DIR"
+
+# --- Tear down proxy (if started) + restore opencode config ---
+if [ -n "$PROXY_PID" ]; then
+    echo "[$(date +%H:%M:%S)] Tearing down proxy..."
+    kill "$PROXY_PID" 2>/dev/null || true
+    pkill -KILL -f "no_thinking_proxy" 2>/dev/null || true
+    if [ -f "$OPENCODE_CFG_BACKUP" ]; then
+        mv "$OPENCODE_CFG_BACKUP" "$OPENCODE_CFG"
+    fi
+fi
 
 # --- Tear down server ---
 echo "[$(date +%H:%M:%S)] Tearing down server..."
