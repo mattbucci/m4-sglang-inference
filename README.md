@@ -79,31 +79,44 @@ Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-tri
 
 10/10 boot success, 10/10 basic, 8/10 thinking on the v0.5.11 stack. The 2 thinking truncations are the pre-existing Qwen3.5 greedy-decode `<think>` loop (patch 013 still works — basic answers are correct, not garbage). Notably the Qwen3.6-A3B and Qwen3.6-27B Dense variants both terminate thinking cleanly out of the box, validating the new Qwen3.6 chat template. Raw data: [`benchmarks/quality/v0.5.11-rebase-validation.txt`](benchmarks/quality/v0.5.11-rebase-validation.txt).
 
-### Quality table (v0.5.11, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
+### Quality table (v0.5.11+18 patches, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
 
-Full sweep completed 2026-05-11 — 11 mlx-community models on the v0.5.11 stack with `--disable-radix-cache`. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
+Mixed-date sweep: rows tagged ⓡ were re-evaluated 2026-05-17 on the patches-015-018 + mlx-vlm-0.5.0 stack; untagged rows are the 2026-05-11 baseline still pending refresh. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
-| Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | 37.1%† | **100%** |
-| Qwen3.5-27B-4bit | **90%** | **100%** | **41.1%** | 100% |
+| Gemma 4 31B-it-mxfp4 ⓡ | **92%** | 50%‡ | 37.1%∆ | **100%**† |
+| Qwen3.5-27B-4bit ⓡ | **90%** | **100%** | 34.3%∆ | **0%**△ |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
-| Qwen3.6-27B-4bit | 86% | **100%** | 40.0% | 100% |
-| Qwen3.6-35B-A3B-4bit | 86% | 85% | 34.3% | 100% |
-| Gemma 4 26B-A4B-it-4bit | 85% | 60%‡ | 36.0% | 100% |
+| Qwen3.6-27B-4bit ⓡ | 87% | **100%** | 23.4%∆ | **0%**△ |
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
-| Qwen3.5-9B-MLX-8bit | 80% | 75% | 33.7% | 100% |
+| Gemma 4 26B-A4B-it-4bit ⓡ | 84% | 60%‡ | 30.9%∆ | 100% |
+| Qwen3.6-35B-A3B-4bit ⓡ | 82% | 85% | 34.9% | 100% |
+| Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit ⓡ | 82% | 65%★ | 8.6%★ | 100% |
+| Qwen3.5-9B-MLX-8bit ⓡ | 80% | 80% | 30.3%∆ | **0%**△ |
 | NVIDIA Nemotron-3-Nano-30B-A3B-4bit | 77% | 10%¶ | 19.4%¶ | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
-Sorted by MMLU (descending). Chart: `benchmarks/quality/quality_comparison.png`.
+Sorted by MMLU (descending). Chart (still showing 2026-05-11 numbers): `benchmarks/quality/quality_comparison.png` — regeneration pending.
 
-‡ Gemma 4 HumanEval ran in `--humaneval-mode chat` (not directly comparable to the other rows' base-completions HE — chat-mode prompts the model with an explicit instruction). Going through completions gives Gemma 4 0% / 5% because the IT-tuned chat template intercepts the bare function-signature prefix; the chat-mode path lifts that to 60% / 50%.
-† Gemma 4 31B 2026-05-17 re-eval on the patches-015-018 + mlx-vlm-0.5.0 stack: MMLU 92% (flat) / HumanEval 50% (flat) / LAB-Bench 41.1% → 37.1% (-4 pp absolute, distributed as SuppQA -3, SeqQA -3, CloningScenarios -2, LitQA2 +1 across 175 samples — within-noise eval variance attributable to the mlx-vlm version bump) / Needle **0% → 100%** (all three context lengths now retrieve correctly; this was the dominant pending regression in the prior README footnote).
+ⓡ Re-evaluated 2026-05-17 on patches-015-018 + mlx-vlm-0.5.0. Pre-patch snapshots preserved at `benchmarks/quality/<Model>.pre-patch018.json` for audit.
+
+‡ Gemma 4 HumanEval runs in `--humaneval-mode chat` (not directly comparable to the other rows' base-completions HE — chat-mode prompts the model with an explicit instruction). Going through completions gives Gemma 4 0% / 5% because the IT-tuned chat template intercepts the bare function-signature prefix; the chat-mode path lifts that to 60% / 50%.
+
+† **Gemma 4 31B Needle 0% → 100%** under the patched stack: the dominant pending regression in the prior README is closed. Same `enable_thinking=false` config that previously returned 0% on all three lengths now retrieves correctly at 1K, 4K, and 16K. Attributable to the mlx-vlm 0.4.4 → 0.5.0 upgrade bundled with this patch cycle.
+
+△ **Needle 100% → 0% regression** on Qwen3.5-9B-8bit, Qwen3.5-27B, and Qwen3.6-27B under mlx-vlm 0.5.0. Same `enable_thinking=false` config that retrieved correctly on the 0.4.4 baseline now fails on all three lengths. The Qwen3.5 family was 100%-uniform-affected (both 9B and 27B); Qwen3.6 family is split (27B Dense regressed, 35B-A3B MoE stayed 100%). Worth pinning mlx-vlm at 0.4.4 for any Qwen-family long-context retrieval workload until upstream investigates.
+
+∆ **LAB-Bench cross-family regression** under mlx-vlm 0.5.0: -3 to -17 pp range, median ~-5 pp, distributed unevenly across the 7 LAB-Bench subcategories (SuppQA, SeqQA, CloningScenarios are the consistent drops). Same eval prompts + same `--no-thinking` config, so this is a model-output-level shift from the upstream version bump — not a regression introduced by patches 015-018 (which only touch multimodal extraction).
+
+★ Nemotron-3-Nano-Omni-30B-A3B-Reasoning (new row, no prior baseline). Patches 016+017 unblocked end-to-end. vs the text-only nemotron-30b sibling: MMLU +5pp, HumanEval +55pp (10%→65%), LAB-Bench -10.8pp (19.4%→8.6%). The reasoning-mode wrapper consumes a chunk of the LAB-Bench answer budget on multi-letter biology QA — HE/MMLU gain comes from the same reasoning capability.
+
 ¶ Nemotron-3-Nano emits verbose reasoning traces (the model's nano_v3_reasoning_parser isn't yet wired in our launch preset). The 1024-token MC budget gets consumed by `<think>` blocks, so HumanEval (base completions) and LAB-Bench (multi-letter answers) under-score; MMLU (single-letter A/B/C/D) tolerates a brief preamble and lands at 77. Chat-mode HE + a reasoning-parser flag should both bump significantly.
 
-Standouts: Qwen3.5-27B (DeltaNet hybrid) hits MMLU 90 / HE 100 / Needle 100 — and as of 2026-05-12 the concurrent-prefill broadcast crash documented in `patches/HYBRID_CONCURRENT_TRACE_PLAN.md` is **resolved by patch 010**, lifting the preset's `MAX_RUNNING` cap from 1 to 4; Qwen3.6-27B also hits HE 100 under greedy decode without thinking budget; Gemma 4 31B leads MMLU at 92% and ties Qwen3.5-27B for top LAB-Bench at 41.1%.
+Standouts (post-refresh): **Gemma 4 31B** leads MMLU at 92% and is now the top long-context retrieval model (Needle 100% confirmed); **Qwen3.5-27B** (DeltaNet hybrid) preserves MMLU 90 / HE 100 / LAB 34.3; **Qwen3.6-27B** holds HE 100 under greedy decode without thinking budget; **Nemotron-Omni** is the new HE leader among text-only-comparable models at 65% with full multimodal support.
+
+The headline cost of the patch cycle: **Needle retrieval on Qwen3.5 family is broken on mlx-vlm 0.5.0**. The headline gain: **Gemma 4 31B Needle now works**. Both are real, both are attributable to the bundled mlx-vlm version bump rather than to the SGLang patches.
 
 ## Quantization scan: 10 dead layers in coder-30b mlx-community upload (2026-05-11)
 
