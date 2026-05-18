@@ -1,6 +1,6 @@
 {
   "tag": "Qwen3.5-27B",
-  "timestamp": "2026-05-18 08:44",
+  "timestamp": "2026-05-17 17:23",
   "max_context": 32768,
   "mmlu": {
     "correct": 90,
@@ -15,14 +15,14 @@
   },
   "labbench": {
     "LitQA2": {
-      "correct": 15,
+      "correct": 17,
       "total": 25,
-      "accuracy": 0.6
+      "accuracy": 0.68
     },
     "DbQA": {
-      "correct": 9,
+      "correct": 6,
       "total": 25,
-      "accuracy": 0.36
+      "accuracy": 0.24
     },
     "SuppQA": {
       "correct": 10,
@@ -30,9 +30,9 @@
       "accuracy": 0.4
     },
     "TableQA": {
-      "correct": 9,
+      "correct": 10,
       "total": 25,
-      "accuracy": 0.36
+      "accuracy": 0.4
     },
     "ProtocolQA": {
       "correct": 10,
@@ -41,44 +41,36 @@
     },
     "SeqQA": {
       "correct": 7,
-      "total": 10,
-      "accuracy": 0.7,
-      "server_dead": true
+      "total": 25,
+      "accuracy": 0.28
     },
     "CloningScenarios": {
       "correct": 0,
-      "total": 0,
-      "accuracy": 0,
-      "server_dead": true
+      "total": 25,
+      "accuracy": 0.0
     },
     "_overall": {
       "correct": 60,
-      "total": 135,
-      "accuracy": 0.4444444444444444
+      "total": 175,
+      "accuracy": 0.34285714285714286
     }
   },
   "needle": {
     "results": [
       {
         "context": 1024,
-        "found": false,
-        "server_dead": true,
-        "error": "URLError(ConnectionRefusedError(61, 'Connection refused'))"
+        "found": true
       },
       {
         "context": 4096,
-        "found": false,
-        "server_dead": true,
-        "error": "URLError(ConnectionRefusedError(61, 'Connection refused'))"
+        "found": true
       },
       {
         "context": 16384,
-        "found": false,
-        "server_dead": true,
-        "error": "URLError(ConnectionRefusedError(61, 'Connection refused'))"
+        "found": true
       }
     ],
-    "score": 0.0,
-    "server_dead": true
+    "score": 1.0,
+    "server_dead": false
   }
 }
