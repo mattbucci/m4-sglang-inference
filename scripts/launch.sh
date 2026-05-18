@@ -195,8 +195,16 @@ apply_preset() {
             # 4bit-DWQ variant: scanner-clean, MMLU 91.2% vs 83.3% on standard 4bit
             # (+7.9 pp), HumanEval -5 pp. Net win for general-knowledge agentic work.
             # --tool-call-parser qwen25 — see qwen3-32b for rationale.
+            #
+            # Concurrent batched decode verified 2026-05-17: MAX_RUNNING=4 +
+            # default chunk=4096 + mem-fraction-static=0.7 handles 16 in-flight
+            # prompts cleanly. Peak observed throughput ~158 tok/s at
+            # 13 concurrent decode on Qwen3-30B-A3B-4bit-DWQ. MAX_RUNNING
+            # bumped 8 → 16 since SGLang's cap doesn't actually limit MLX's
+            # batched decode path (patch 011); the real ceiling is set by
+            # what fits in the activation budget, and 16 fits.
             MODEL="${MODEL:-mlx-community/Qwen3-30B-A3B-4bit-DWQ}"
-            CTX=32768; MAX_RUNNING=8; CHUNKED=4096
+            CTX=32768; MAX_RUNNING=16; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen25"
             ;;
