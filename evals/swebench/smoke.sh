@@ -32,6 +32,12 @@ REPO_DIR="$(cd "$SWE_SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_DIR"
 
 source "$REPO_DIR/scripts/common.sh"
+# common.sh defines activate_venv but doesn't call it. Without an explicit
+# call, `python3` inside this subshell resolves to system Python (which
+# doesn't have the `swebench` HF dataset module — run_rollouts.py would
+# crash with `ModuleNotFoundError`). launch.sh handles its own activation
+# on line 360 of that script, so this is only needed for run_rollouts.py.
+activate_venv
 
 PRESET="${PRESET:-coder-30b}"
 MODEL_KEY="${MODEL_KEY:-$PRESET}"
