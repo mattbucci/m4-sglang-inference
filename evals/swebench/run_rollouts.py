@@ -178,11 +178,19 @@ exercise it correctly, stop — your final state will be captured as a `git diff
 PROMPT_NO_VENV = """\
 You are working on a GitHub issue in this repository. The repo's dependencies
 could NOT be installed locally, so `pytest` and `import` will not work — you
-must reason about correctness from the source alone. Read the problem
-carefully, locate the relevant code, and write the minimal patch that fixes
-the bug. Do not modify tests. Do not add new files unless strictly required.
-When you're confident the fix is correct, stop — your final state will be
-captured as a `git diff`.
+must reason about correctness from the source alone.
+
+**You have direct file-system access via tool calls.** The working directory
+is the cloned repo at the relevant base commit. Use the `read` tool to view
+any file's contents, the `glob` and `grep` tools to navigate, and the `edit`
+or `write` tools to apply your fix. **Never ask the user for file contents —
+you can read them yourself.** Iterate: read the file, understand the bug,
+edit it, then verify by re-reading. Do not stop after a single tool call.
+
+Read the problem carefully, locate the relevant code, and write the minimal
+patch that fixes the bug. Do not modify tests. Do not add new files unless
+strictly required. When you're confident the fix is correct, stop — your
+final state will be captured as a `git diff`.
 
 # Problem
 
