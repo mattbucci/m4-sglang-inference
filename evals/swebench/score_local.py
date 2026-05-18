@@ -387,6 +387,29 @@ def main():
 
                 # 5. Run tests using per-repo test_cmd
                 test_cmd = spec["test_cmd"]
+                # SWE-bench's specs use the legacy tox 3.x `--current-env`
+                # flag (from the `tox-current-env` plugin). In tox 4.x that
+                # plugin no longer redirects: tox falls back to creating
+                # `.tox/py39/` which lacks pytest, so all tests fail with
+                # "No module named pytest." Rewrite to tox 4.x's built-in
+                # equivalent (`--runner current-env`) which honors the
+                # ambient venv. Discovered 2026-05-18 on sphinx-10325
+                # (P2P 0/5 → 5/5 after this fix).
+                # Also inject `-rA` after the tox `--` separator so pytest
+                # prints `PASSED test_name` per-test lines (the swebench
+                # log parser expects this; default pytest dot-style is
+                # unparseable).
+                if "tox " in test_cmd and "--current-env" in test_cmd:
+                    test_cmd = test_cmd.replace("--current-env", "--runner current-env")
+                if "tox " in test_cmd and " -rA " not in test_cmd:
+                    # Inject -rA after the tox-args / pytest-args separator
+                    # (`--`). swebench specs typically end the test_cmd with
+                    # the bare `--` (no trailing space) before directives
+                    # get appended; both forms need handling.
+                    if test_cmd.rstrip().endswith("--"):
+                        test_cmd = test_cmd.rstrip() + " -rA"
+                    elif " -- " in test_cmd:
+                        test_cmd = test_cmd.replace(" -- ", " -- -rA ", 1)
                 directives = get_test_directives(inst)
                 f2p = json.loads(inst["FAIL_TO_PASS"]) if isinstance(inst["FAIL_TO_PASS"], str) else inst["FAIL_TO_PASS"]
                 p2p = json.loads(inst["PASS_TO_PASS"]) if isinstance(inst["PASS_TO_PASS"], str) else inst["PASS_TO_PASS"]

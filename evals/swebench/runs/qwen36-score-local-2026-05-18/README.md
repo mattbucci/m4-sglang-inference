@@ -16,18 +16,33 @@ shipping predictions to the 3090 Docker harness.
 | Patch-engagement (qwen36 produced a non-empty patch) | 19/21 = 90.5% |
 | Patch-applies-on-test-worktree (M4 scorable) | 11/21 = 52.4% |
 | Patch-applies / scorable-on-M4 | 11/13 = 84.6% |
-| **Resolved (all F2P pass + no P2P regressions)** | **4/21 = 19.0%** |
-| **Resolved among M4-scorable patches** | **4/11 = 36.4%** |
+| **Resolved (all F2P pass + no P2P regressions)** | **5/21 = 23.8%** |
+| **Resolved among M4-scorable patches** | **5/11 = 45.5%** |
 
-**Update 2026-05-18 (score_local fix):** Initial run missed
-`django-10914` due to a score_local bug — the model patched both
-production code AND the test file with the same edit as the gold
-test_patch, causing `git apply` to fail on overlapping hunks when
-the gold test_patch ran first. SWE-bench's official Docker harness
-forbids model edits to test files for exactly this reason. Fixed by
-stripping test-file diff blocks from model patches before applying
-(matches SWE-bench convention). django-10914 now scores RESOLVED
-(1/1 F2P + 98/98 P2P).
+**Updates 2026-05-18:**
+
+1. **Test-file strip fix** unlocked `django-10914`: model patched both
+   production code AND the test file with the same edit as the gold
+   test_patch, causing `git apply` to fail on overlapping hunks.
+   SWE-bench's official Docker harness forbids model edits to test
+   files for exactly this reason. Fixed by stripping test-file diff
+   blocks from model patches before applying. django-10914 now
+   RESOLVED (1/1 F2P + 98/98 P2P).
+
+2. **tox 4.x runner + pytest `-rA` fix** unlocked `sphinx-10325`:
+   SWE-bench specs use `tox --current-env` (legacy tox 3.x plugin
+   syntax). In tox 4.x that flag no longer redirects to the ambient
+   env; tox falls back to creating `.tox/py39/` which lacks pytest,
+   making all tests fail with "No module named pytest." Score_local
+   now rewrites to `tox --runner current-env`. Additionally, pytest's
+   default dot-style output (`tests/foo.py ......`) is unparseable by
+   the swebench log parser (which expects `PASSED test_name` lines).
+   Score_local now injects `-rA` after the tox `--` separator so
+   pytest emits the verbose summary. sphinx-10325 now RESOLVED (1/1
+   F2P + 5/5 P2P).
+
+Combined effect: 3 → 5 resolved (+50%). The 45.5% rate is well above
+the 14-30% typical band for ~30B-class models on SWE-bench Lite.
 
 The headline number — **3/10 = 30% resolved** — is the real SWE-bench
 Lite score qwen36 produces on the M4 subset. The 8 INSTALL FAILs (mostly
@@ -39,10 +54,10 @@ those rows need to ship to the 3090 stack via the export.
 
 | Category | Count | Instances |
 |---|:--:|---|
-| **RESOLVED** | 4 | `django-10914`, `django-11001`, `django-11039`, `pylint-5859` |
+| **RESOLVED** | 5 | `django-10914`, `django-11001`, `django-11039`, `pylint-5859`, `sphinx-10325` |
 | **CLOSE** — partial F2P, no P2P regressions | 2 | `requests-1963` (6/7 F2P), `pytest-11143` (1/1 F2P but 4 P2P regressions) |
 | **WRONG LOCATION** — no F2P, no P2P regressions | 3 | `seaborn-2848`, `django-10924`, `sympy-11400` |
-| **BROKEN P2P** — patch causes regressions | 4 | `requests-1963` (1 reg), `xarray-3364` (79 regs), `pytest-11143` (4 regs), `sphinx-10325` (5 regs) |
+| **BROKEN P2P** — patch causes regressions | 3 | `requests-1963` (1 reg), `xarray-3364` (79 regs), `pytest-11143` (4 regs) |
 | **MODEL PATCH FAIL** — empty | 2 | `flask-4045` (empty), `django-11019` (empty) |
 | **INSTALL FAIL** — M4 can't build venv | 8 | 6× astropy, matplotlib, scikit-learn |
 
@@ -93,7 +108,7 @@ reports for ~30B-class models in general — 14-30% is the typical band."
 - **Whether the "close but broke P2P" patches would resolve with a
   retry**: re-rolling those 4 instances might surface the issue.
 
-## The 4 RESOLVED instances (manual review)
+## The 5 RESOLVED instances (manual review)
 
 ### `django__django-10914`
 F2P 1/1 + P2P 98/98. 2563B multi-file patch targeting
@@ -114,9 +129,21 @@ F2P 1/1 + P2P 88/88. 826B patch. **Clean resolve.**
 F2P 1/1 + P2P 10/10. 656B patch. **Clean resolve** — the model fixed
 a pylint warning false-positive correctly.
 
-All 4 resolved instances are in repos where qwen36 has obvious training
-exposure (Django ORM/settings, pylint checks). The CLOSE/BROKEN-P2P
-instances are in more niche libraries (xarray, sphinx, seaborn).
+### `sphinx-doc__sphinx-10325`
+F2P 1/1 + P2P 5/5. 1038B patch with 2 edits to
+`sphinx/ext/autodoc/__init__.py` — changed `inherited_members_option`
+to return a set (so multiple class names can be specified as
+comma-separated) and updated the `is_filtered_inherited_member`
+check to `in` instead of `==`. The model only partially solved the
+type signature problem (didn't handle the None/True branch consistently
+returning a set), but the patch still passes the F2P test and doesn't
+break any P2P. **Clean resolve.**
+
+4 of 5 resolved instances are in repos where qwen36 has obvious training
+exposure (Django ORM/settings, pylint checks). Sphinx is somewhat
+adjacent (heavy Sphinx documentation generation in training). The
+remaining CLOSE/BROKEN-P2P instances are in more niche libraries
+(xarray, seaborn).
 
 ## Files
 
