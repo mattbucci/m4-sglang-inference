@@ -38,6 +38,57 @@ LAB_BENCH_BENCHMARKS = ["LitQA2", "DbQA", "SuppQA", "TableQA", "ProtocolQA", "Se
 # loop under greedy MLX otherwise).
 _chat_template_kwargs = None
 
+# Server-death detection — set to True once mmlu/humaneval/labbench/needle
+# sees a connection-class exception (server reaped by macOS jetsam mid-eval,
+# scheduler crashed, etc). Once True, remaining samples short-circuit
+# instead of accumulating false misses + the eval result is tagged
+# `server_dead: True` so consumers can distinguish "server died" from
+# "model genuinely got 0%". Patched 2026-05-18 across all four functions
+# after the 2026-05-17 Qwen Needle "regression" root cause showed jetsam
+# can silently zero out an entire eval section.
+import http.client as _http_client
+import socket as _socket
+import urllib.error as _urllib_error
+_SERVER_DEAD_EXCEPTIONS = (
+    _urllib_error.URLError,
+    _http_client.RemoteDisconnected,
+    ConnectionRefusedError,
+    _socket.timeout,
+)
+_server_dead_flag = {"dead": False}
+
+
+def _is_server_dead_exc(exc: BaseException) -> bool:
+    """True if `exc` indicates the SGLang server is unreachable, not that
+    the model produced bad output. URLError wraps many transport-level
+    failures; tighten the check by looking at the wrapped reason.
+    """
+    if isinstance(exc, _SERVER_DEAD_EXCEPTIONS):
+        return True
+    # Some library wraps RemoteDisconnected inside URLError; the str
+    # representation usually contains "Connection refused" /
+    # "Remote end closed connection" / "Can't assign requested address".
+    msg = repr(exc).lower()
+    for token in (
+        "connection refused",
+        "remote end closed",
+        "can't assign requested",
+        "broken pipe",
+    ):
+        if token in msg:
+            return True
+    return False
+
+
+def _server_dead_check_and_set(exc: BaseException) -> bool:
+    """Set the module-level dead flag on any matching exception and return
+    True. Returns False if `exc` is something else (model output bug, etc).
+    """
+    if _is_server_dead_exc(exc):
+        _server_dead_flag["dead"] = True
+        return True
+    return False
+
 
 def _post(url: str, payload: dict, timeout: int = 300) -> dict:
     if _chat_template_kwargs is not None and "chat/completions" in url:
@@ -85,6 +136,8 @@ def mmlu_eval(chat_url, n_samples=200, max_workers=1, max_tokens=1024):
     correct = total = 0
 
     def eval_one(item):
+        if _server_dead_flag["dead"]:
+            return None  # server gone — short-circuit, don't count
         q, choices, answer_idx = item["question"], item["choices"], item["answer"]
         prompt = f"Question: {q}\n"
         for i, c in enumerate(choices):
@@ -100,13 +153,22 @@ def mmlu_eval(chat_url, n_samples=200, max_workers=1, max_tokens=1024):
             content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
             matches = re.findall(r"\b[ABCD]\b", content)
             return (matches[-1] if matches else "") == choices_map[answer_idx]
-        except Exception:
+        except Exception as e:
+            if _server_dead_check_and_set(e):
+                return None
             return False
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for f in as_completed([ex.submit(eval_one, s) for s in samples]):
-            total += 1; correct += f.result()
-    return {"correct": correct, "total": total, "accuracy": correct / total if total else 0}
+            result = f.result()
+            if result is None:
+                # server died; don't count this sample
+                continue
+            total += 1; correct += int(result)
+    out = {"correct": correct, "total": total, "accuracy": correct / total if total else 0}
+    if _server_dead_flag["dead"]:
+        out["server_dead"] = True
+    return out
 
 
 _HUMANEVAL_CHAT_INSTRUCTION = (
@@ -156,6 +218,8 @@ def humaneval_eval(chat_url, n_samples=30, max_workers=1, max_tokens=4096, mode=
     passed = total = 0
 
     def eval_one(item):
+        if _server_dead_flag["dead"]:
+            return None
         try:
             if mode == "chat":
                 r = _post(chat_url, {
@@ -187,14 +251,22 @@ def humaneval_eval(chat_url, n_samples=30, max_workers=1, max_tokens=4096, mode=
             exec(item["prompt"] + comp + "\n" + item["test"], g)
             g["check"](g[item["entry_point"]])
             return True
-        except Exception:
+        except Exception as e:
+            if _server_dead_check_and_set(e):
+                return None
             return False
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for f in as_completed([ex.submit(eval_one, s) for s in ds]):
-            total += 1; passed += f.result()
-    return {"passed": passed, "total": total, "pass_rate": passed / total if total else 0,
-            "mode": mode}
+            result = f.result()
+            if result is None:
+                continue
+            total += 1; passed += int(result)
+    out = {"passed": passed, "total": total, "pass_rate": passed / total if total else 0,
+           "mode": mode}
+    if _server_dead_flag["dead"]:
+        out["server_dead"] = True
+    return out
 
 
 def labbench_eval(chat_url, bench_name, n_samples=50, max_workers=1, max_tokens=1024):
@@ -207,7 +279,13 @@ def labbench_eval(chat_url, bench_name, n_samples=50, max_workers=1, max_tokens=
         ds = random.sample(ds, n_samples)
     correct = total = 0
 
+    # Sentinel to disambiguate "no distractors, skip" (=None) from
+    # "server dead, abort" (=_SERVER_DEAD).
+    _SERVER_DEAD = object()
+
     def eval_one(item):
+        if _server_dead_flag["dead"]:
+            return _SERVER_DEAD
         q = item["question"]
         ideal = item["ideal"]
         distractors = item.get("distractors") or []
@@ -233,15 +311,21 @@ def labbench_eval(chat_url, bench_name, n_samples=50, max_workers=1, max_tokens=
             content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
             matches = re.findall(r"\b[A-Z]\b", content)
             return (matches[-1] if matches else "") == correct_letter
-        except Exception:
+        except Exception as e:
+            if _server_dead_check_and_set(e):
+                return _SERVER_DEAD
             return False
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for f in as_completed([ex.submit(eval_one, s) for s in ds]):
             result = f.result()
-            if result is not None:
-                total += 1; correct += result
-    return {"correct": correct, "total": total, "accuracy": correct / total if total else 0}
+            if result is None or result is _SERVER_DEAD:
+                continue
+            total += 1; correct += int(result)
+    out = {"correct": correct, "total": total, "accuracy": correct / total if total else 0}
+    if _server_dead_flag["dead"]:
+        out["server_dead"] = True
+    return out
 
 
 def labbench_suite(chat_url, n_samples=50, max_workers=1, max_tokens=1024):
@@ -367,6 +451,9 @@ def _needle_cache_ok(d, expected_lengths):
 def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50,
              needle_lengths=[1024, 4096, 16384, 65536], workers=1,
              humaneval_mode="completions"):
+    # Reset the jetsam flag — a previous run in the same Python process
+    # shouldn't leave us tagged "dead" for a fresh server.
+    _server_dead_flag["dead"] = False
     base_url = f"http://localhost:{port}"
     chat_url = f"{base_url}/v1/chat/completions"
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
