@@ -111,6 +111,10 @@ if [ "$SKIP_ENV" = false ]; then
     echo "  Installing additional dependencies..."
     pip install openai requests matplotlib
 
+    # swebench: SWE-bench Lite dataset + harness for evals/swebench/run_rollouts.py.
+    # Required to load `princeton-nlp/SWE-bench_Lite` for the agentic-coding probe.
+    pip install swebench
+
     # librosa: required by sglang/srt/models/parakeet.py (ParakeetExtractor),
     # which SGLang's nano_nemotron_vl.py processor unconditionally
     # instantiates at startup for the NemotronH_Nano_Omni_Reasoning_V3

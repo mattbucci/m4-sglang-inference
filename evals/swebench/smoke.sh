@@ -26,8 +26,9 @@
 #   OUT              output directory for predictions/logs (default: /tmp/swebench-smoke)
 
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Save our own dir before sourcing common.sh — it redefines SCRIPT_DIR.
+SWE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SWE_SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_DIR"
 
 source "$REPO_DIR/scripts/common.sh"
@@ -104,7 +105,7 @@ echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout..."
 # opencode reads ./opencode.json from the cwd OR --config-file. We have
 # evals/swebench/opencode.json; the rollout driver doesn't take a config
 # path so we run with cwd=evals/swebench.
-cd "$SCRIPT_DIR"
+cd "$SWE_SCRIPT_DIR"
 set +e
 python3 run_rollouts.py \
     --model "sglang/$MODEL_KEY" \
