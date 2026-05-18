@@ -340,6 +340,9 @@ fi
 # were captured at script entry, BEFORE the script-level defaults were
 # materialised into the shell — see the top-of-file note for why.
 apply_preset "$PRESET"
+# REASONING_OFF=1 strips --reasoning-parser, useful for agent harnesses
+# (opencode) that don't surface reasoning_content into the agent loop.
+[[ "${REASONING_OFF:-}" = "1" ]] && REASONING=""
 [[ -n "$ENV_CTX" ]] && CTX="$ENV_CTX"
 [[ -n "$ENV_MAX_RUNNING" ]] && MAX_RUNNING="$ENV_MAX_RUNNING"
 [[ -n "$ENV_CHUNKED" ]] && CHUNKED="$ENV_CHUNKED"
