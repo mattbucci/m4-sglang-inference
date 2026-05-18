@@ -1,0 +1,2 @@
+{"instance_id": "pallets__flask-4045", "model_name_or_path": "sglang/qwen36", "model_patch": "", "rollout_returncode": 124, "rollout_seconds": 902.5}
+{"instance_id": "psf__requests-1963", "model_name_or_path": "sglang/qwen36", "model_patch": "", "rollout_returncode": -2, "server_dead": true, "server_dead_info": "URLError: <urlopen error [Errno 61] Connection refused>", "rollout_seconds": 0.0}

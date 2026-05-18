@@ -89,6 +89,21 @@ generates. Distinct from the no-think problem — this is the model itself.
 1 ✗), matplotlib (1 ✓), pylint (1 ✓), scikit-learn (1 ✓), sphinx (1 ✓), sympy
 (1 ✓) — **7 ecosystems, 17/18 patch-engagement rate.**
 
+**Missing ecosystems (partial):** seaborn 1/1 ✓ (verified 2026-05-18 in
+`qwen36-missing-ecosystems-JETSAM-2026-05-18/` — only this single instance
+ran on a live server before jetsam fired). flask/pytest/requests/xarray
+remain **not verifiable on this hardware** under the current sweep harness:
+two consecutive 4-5-instance sweeps each had the SGLang server reaped by
+macOS jetsam ~2-10 minutes into the second instance, with subsequent runs
+producing structurally-identical 0-byte "model failures." The jetsam-detect
+harness (`run_rollouts.py` per-instance preflight, landed 2026-05-18)
+catches the dead-server state and aborts the sweep cleanly. To verify the
+remaining 4 missing-ecosystem instances would require either: (a) running
+each in its own server-restart cycle (~30s overhead × 4 = +2 min total),
+(b) closing memory-hungry apps (Firefox/Spotify/Steam observed running)
+before sweep launch, or (c) lowering `CTX` from 131K to 32K so the KV pool
+is smaller and macOS pressure thresholds aren't crossed. Future iteration.
+
 ## Quickstart
 
 ```bash
