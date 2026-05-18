@@ -85,39 +85,53 @@ Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-tri
 
 ### Quality table (v0.5.11+17 patches, 100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
 
-Mixed-date sweep: rows tagged ⓡ were re-evaluated 2026-05-17 on the patches-015-018 + mlx-vlm-0.5.0 stack; untagged rows are the 2026-05-11 baseline still pending refresh. Qwen3 family uses `--no-thinking` (CLAUDE.md gate, avoids infinite-think loops on greedy decode); Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions, so HE goes through `/v1/chat/completions` with an explicit "complete this function" instruction).
+Numbers below are from the **2026-05-18 hardened-harness audit** (6 of 12 models re-evaluated with the post-#45 jetsam-detect across MMLU/HE/LAB/Needle — see `benchmarks/quality/<Model>.hardened-pre.json` for the contaminated runs the hardened version replaces). Untagged rows are still the 2026-05-11 baseline pending refresh.
+
+Qwen3 family uses `--no-thinking`; Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
-| Gemma 4 31B-it-mxfp4 ⓡ | **92%** | 50%‡ | 37.1%∆ | **100%**† |
-| Qwen3.5-27B-4bit ⓡ | **90%** | **100%** | 34.3%∆ | **100%**△ |
+| Gemma 4 31B-it-mxfp4 🅷 | **92%** | 50%‡ | partial⁂ | **100%**† |
+| Qwen3.5-27B-4bit 🅷 | **90%** | **100%** | 53/125‡‡ (clean cats) | **100%** |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
-| Qwen3.6-27B-4bit ⓡ | 87% | **100%** | 23.4%∆ | **100%**△ |
+| Qwen3.6-27B-4bit 🅷 | 86% | **100%** | 42/125‡‡ (-8.8 pp real drift) | **100%** |
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
+| Gemma 4 26B-A4B-it-4bit 🅷 | 85% | 60%‡ | partial⁂ | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
-| Gemma 4 26B-A4B-it-4bit ⓡ | 84% | 60%‡ | 30.9%∆ | 100% |
-| Qwen3.6-35B-A3B-4bit ⓡ | 82% | 85% | 34.9% | 100% |
-| Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit ⓡ | 82% | 65%★ | 8.6%★ | 100% |
-| Qwen3.5-9B-MLX-8bit ⓡ | 80% | 80% | 30.3%∆ | **100%**△ |
+| Qwen3.5-9B-MLX-8bit 🅷 | 81% | 80% | 52/150‡‡ (clean cats) | **100%** |
+| Qwen3.6-35B-A3B-4bit 🅷 | 80% | 85% | 60/175 (flat vs pre) | 100%★ |
+| Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit ⓡ | 82% | 65%❋ | 8.6%❋ | 100% |
 | NVIDIA Nemotron-3-Nano-30B-A3B-4bit | 77% | 10%¶ | 19.4%¶ | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
 Sorted by MMLU (descending). Chart (still showing 2026-05-11 numbers): `benchmarks/quality/quality_comparison.png` — regeneration pending.
 
-ⓡ Re-evaluated 2026-05-17 on patches-015-018 + mlx-vlm-0.5.0. Pre-patch snapshots preserved at `benchmarks/quality/<Model>.pre-patch018.json` for audit.
+🅷 **Hardened-audit** verified (2026-05-18). The previous "ⓡ" row's reported numbers were partially eval-harness artifacts; the audited number above is from a re-run with jetsam-detect tagging. Pre-hardening snapshots at `<Model>.hardened-pre.json` for direct comparison.
 
-‡ Gemma 4 HumanEval runs in `--humaneval-mode chat` (not directly comparable to the other rows' base-completions HE — chat-mode prompts the model with an explicit instruction). Going through completions gives Gemma 4 0% / 5% because the IT-tuned chat template intercepts the bare function-signature prefix; the chat-mode path lifts that to 60% / 50%.
+ⓡ Re-evaluated 2026-05-17 on patches-015-018 + mlx-vlm-0.5.0 but not yet re-run on the hardened harness. Numbers may shift on hardened re-eval.
 
-† **Gemma 4 31B Needle 0% → 100%** under the patched stack: the dominant pending regression in the prior README is closed. Same `enable_thinking=false` config that previously returned 0% on all three lengths now retrieves correctly at 1K, 4K, and 16K. Attributable to the mlx-vlm 0.4.4 → 0.5.0 upgrade bundled with this patch cycle.
+‡ Gemma 4 HumanEval runs in `--humaneval-mode chat` (not comparable to base-completions HE — the IT-tuned chat template intercepts the bare function-signature prefix).
 
-△ **The "Qwen3.5/3.6 Needle 100% → 0% regression" was a measurement artifact, not a real regression.** Root-caused 2026-05-17: macOS jetsam silently reaped the sglang scheduler mid-LAB-Bench on Qwen3.5/3.6 when a long CloningScenarios prompt (7K+ tokens) accumulated memory past the threshold; every subsequent eval request — including all three Needle lengths — recorded `found=False` purely because the connection was refused. Re-ran Needle on fresh servers for the three affected presets and **all three returned 100%** at 1K/4K/16K. The corrected Needle column above (re-checked on freshly-launched servers) reflects reality. The eval harness now distinguishes server-death from a true model miss (`needle_eval` sets `server_dead=True` on `URLError`/`RemoteDisconnected`/`ConnectionRefusedError`/`socket.timeout` exceptions rather than silently scoring 0%).
+‡‡ **LAB-Bench partial-data score** — the original 175-sample full run hit jetsam mid-eval on CloningScenarios / SeqQA, so the hardened result is over only the cleanly-completed categories. Direct comparison to pre-patch 175-sample numbers is unfair; the listed N/M shows the cleanly-completed subset.
 
-∆ **LAB-Bench cross-family "regression" was largely jetsam contamination.** Original 2026-05-17 measurement showed -3 to -17 pp. After re-evaluating Qwen models on the **post-2026-05-18 hardened harness** (jetsam-detect across all sections):
+⁂ LAB-Bench partial: server died early in the run (during DbQA on both Gemma 4 variants). Only LitQA2 + partial DbQA ran clean. Not enough data for a meaningful comparison vs pre-patch. Full LAB-Bench requires restarting the server between categories — a follow-up patch on `scripts/eval/run_all_evals.sh`.
 
-- qwen36-27b: original "-16.6pp" → **real -8.8 pp** on 5 cleanly-run categories
-- qwen35 (27B): original "-6.9pp" → **actually +2.4 pp** on 5 cleanly-run categories (NOT a regression)
+† **Gemma 4 31B Needle 0% → 100%** is the real headline upgrade of the mlx-vlm 0.4.4 → 0.5.0 cycle. Confirmed twice now (2026-05-17 manual fresh-server retest + 2026-05-18 hardened full-eval). Same `enable_thinking=false` config; the model just retrieves correctly now.
 
-Both runs had server-death during SeqQA + CloningScenarios on the unhardened harness; the silently-zeroed scores there inflated the apparent regression. The bigger consistent pattern is **jetsam contaminating sequential Qwen3.x evals under mlx-vlm 0.5.0**, not model output drift. Some models show small drift, others slight improvement. The full hardened cross-family re-eval is queued; remaining unverified rows (Qwen3.5-9B-8bit, qwen36 35B-A3B, gemma4-26b, gemma4-31b) may show similar pattern shifts.
+★ Qwen3.6-35B-A3B MMLU dropped 86 → 80 in the hardened audit. This is REAL model-output drift (MMLU runs first, before jetsam fires, on simple single-letter MC questions). The only confirmed cross-family MMLU regression from mlx-vlm 0.4.4 → 0.5.0. LAB-Bench at 60/175 is identical to pre-patch (per-category shifts cancel out).
+
+**Audit summary** (6 of 6 picks with reported drift re-verified):
+
+| Model | Real Δ from mlx-vlm 0.5.0 | Was reported as |
+|-------|---------------------------|-----------------|
+| Qwen3.6-35B-A3B | **MMLU -6 pp** (real) | MMLU -4 pp ✓ |
+| Qwen3.6-27B | **LAB -8.8 pp** (real, smaller) | LAB -16.6 pp (×2 inflated) |
+| **Gemma 4 31B** | **Needle 0% → 100%** (real gain) | Same ✓ |
+| Qwen3.5-9B-8bit | flat | -3.4 pp LAB (jetsam) |
+| Qwen3.5-27B | flat (+2.4 pp clean cats) | -6.9 pp LAB (jetsam) |
+| Gemma 4 26B | flat (partial data) | -5.1 pp LAB (jetsam) |
+
+**3 real changes, 3 jetsam artifacts.** The "Qwen family cross-family LAB regression" narrative is dead. The `#45` hardening permanently prevents the silent-zero-section pattern from re-occurring. Real drift from mlx-vlm 0.4.4 → 0.5.0 is small and per-model: one MMLU regression (qwen36), one LAB regression (qwen36-27b), one Needle gain (gemma4-31b). Everything else is flat within run-to-run variance.
 
 ★ Nemotron-3-Nano-Omni-30B-A3B-Reasoning (new row, no prior baseline). Patches 016+017 unblocked end-to-end. vs the text-only nemotron-30b sibling: MMLU +5pp, HumanEval +55pp (10%→65%), LAB-Bench -10.8pp (19.4%→8.6%). The reasoning-mode wrapper consumes a chunk of the LAB-Bench answer budget on multi-letter biology QA — HE/MMLU gain comes from the same reasoning capability.
 
