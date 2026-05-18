@@ -36,6 +36,8 @@ source "$REPO_DIR/scripts/common.sh"
 PRESET="${PRESET:-coder-30b}"
 MODEL_KEY="${MODEL_KEY:-$PRESET}"
 INSTANCES="${INSTANCES:-1}"
+# Optional space-separated list of specific instance IDs (overrides INSTANCES).
+INSTANCE_IDS="${INSTANCE_IDS:-}"
 TIMEOUT="${TIMEOUT:-600}"
 CTX="${CTX:-131072}"
 PORT=23334
@@ -116,7 +118,10 @@ OPENCODE_CFG="$HOME/.config/opencode/opencode.jsonc"
 OPENCODE_CFG_BACKUP="$HOME/.config/opencode/opencode.jsonc.smoke-backup"
 if [ "$NO_THINKING_PROXY" = "1" ]; then
     echo "[$(date +%H:%M:%S)] Starting no_thinking_proxy on :$PROXY_PORT..."
-    PORT="$PROXY_PORT" UPSTREAM="http://127.0.0.1:$PORT" \
+    # Bash env-prefix scoping bites here — $PORT inside UPSTREAM resolves
+    # incorrectly, so build the URL in a plain var first.
+    upstream_url="http://127.0.0.1:$PORT"
+    PORT="$PROXY_PORT" UPSTREAM="$upstream_url" \
         nohup python3 "$SWE_SCRIPT_DIR/no_thinking_proxy.py" > "$OUT/proxy.log" 2>&1 &
     PROXY_PID=$!
     disown
@@ -143,13 +148,23 @@ echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout..."
 # path so we run with cwd=evals/swebench.
 cd "$SWE_SCRIPT_DIR"
 set +e
-python3 run_rollouts.py \
-    --model "sglang/$MODEL_KEY" \
-    --instances "$INSTANCES" \
-    --timeout "$TIMEOUT" \
-    --out "$OUT" \
-    --server-url "http://127.0.0.1:$PORT" \
-    --served-name "$PRESET" 2>&1 | tee "$OUT/rollout.log"
+if [ -n "$INSTANCE_IDS" ]; then
+    python3 run_rollouts.py \
+        --model "sglang/$MODEL_KEY" \
+        --instance-ids $INSTANCE_IDS \
+        --timeout "$TIMEOUT" \
+        --out "$OUT" \
+        --server-url "http://127.0.0.1:$PORT" \
+        --served-name "$PRESET" 2>&1 | tee "$OUT/rollout.log"
+else
+    python3 run_rollouts.py \
+        --model "sglang/$MODEL_KEY" \
+        --instances "$INSTANCES" \
+        --timeout "$TIMEOUT" \
+        --out "$OUT" \
+        --server-url "http://127.0.0.1:$PORT" \
+        --served-name "$PRESET" 2>&1 | tee "$OUT/rollout.log"
+fi
 RC=$?
 set -e
 cd "$REPO_DIR"
