@@ -185,8 +185,11 @@ def main() -> int:
 
     # ---- Export consolidated predictions.jsonl ----
     if args.export:
-        # Dedup by (model, instance) — keep the most-recent run (by sorting
-        # run_dir alphabetically since names embed the date).
+        # Dedup by (model, instance) — prefer the record with a non-empty
+        # patch when one exists, otherwise fall back to the most-recent run.
+        # Without this preference, alphabetic last-write-wins picks 0-byte
+        # diagnostic runs (e.g. `qwen36-thinking-*`) over real runs for
+        # the same instance.
         by_key: dict[tuple[str, str], dict] = {}
         for r in sorted(all_recs, key=lambda x: x.get("run_dir", "")):
             model = r.get("model_name_or_path", "?")
@@ -194,8 +197,17 @@ def main() -> int:
             if args.model_filter and model != args.model_filter:
                 continue
             key = (model, inst)
-            # last-write-wins → sort puts newer dates last
-            by_key[key] = r
+            existing = by_key.get(key)
+            if existing is None:
+                by_key[key] = r
+                continue
+            # Prefer records with non-empty patches; among equals, newer wins
+            # (sort order already enforces "newer last", so simple replace
+            # is correct when the incoming record is at least as good).
+            if r["_has_patch"] and not existing["_has_patch"]:
+                by_key[key] = r
+            elif r["_has_patch"] == existing["_has_patch"]:
+                by_key[key] = r  # newer run wins ties
         out_path = Path(args.export)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as fh:
