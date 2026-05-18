@@ -41,7 +41,7 @@ Run `python evals/swebench/aggregate.py --markdown` to refresh:
 | Model | Rollouts | Patches | Rate | Mean wall | Ecosystems |
 |-------|:--------:|:-------:|:----:|:---------:|------------|
 | `qwen36` | 21 | 18 | **18/21** | 288 s | astropy, django, matplotlib, **pylint, scikit-learn, sphinx**, sympy |
-| `qwen35` | 2 | 1 | **1/2** | 1206 s | astropy |
+| `qwen35` | 3 | 1 | **1/3** | 1404 s | astropy, django |
 | `coder-30b` | 3 | 0 | **0/3** | 34 s | astropy |
 | `gemma4-31b` | 2 | 0 | **0/2** | 606 s | astropy |
 
@@ -53,15 +53,28 @@ The 3 non-patch qwen36 rollouts breakdown:
   proxy.
 - 1 actual rollout failure (`qwen36-scale/django__django-11019`) — model
   produced 0 bytes in 45 s. The rest of `qwen36-scale` was 6/7 with patches up
-  to 1714 B.
+  to 1714 B. **2026-05-18 follow-up**: re-tried with qwen35 at TIMEOUT=1800
+  (`qwen35-django11019-1800s-2026-05-18/`) — same outcome (0 bytes), different
+  failure mode (timeout after 1803 s with 4 tool calls). Gold patch is a
+  4929-byte algorithmic rewrite of `Media.merge` from binary to N-way using
+  topological sort + new `OrderedSet` import. **This instance is out of the
+  envelope of both 27B-class MLX models** — not a tuning miss.
 
-**qwen35 1/2** is the new finding from `qwen35-1800s-2026-05-18`: at the default
-600 s timeout qwen35 doesn't finish (it makes tool calls but can't close the
-loop in time at its ~15× slower decode rate). At `TIMEOUT=1800`, qwen35 produces
-the **same 506-byte patch as qwen36 on astropy__astropy-12907 in 1810 s**.
-Capability-equivalent, latency-prohibitive at default settings. Use qwen36 for
-agentic coding; qwen35 only when its DeltaNet hybrid is required for some other
-reason and you can afford the wall.
+**qwen35 1/3** is more nuanced than originally framed:
+
+- `qwen35-1800s-2026-05-18/` (astropy__astropy-12907, TIMEOUT=1800): SUCCESS
+  with the same 506-byte patch as qwen36, but at 1810 s wall (15× slower).
+- `4pick-scorecard-2026-05-18/` (astropy__astropy-12907, TIMEOUT=600): FAIL
+  — model still mid-loop when timeout fired.
+- `qwen35-django11019-1800s-2026-05-18/` (django-11019, TIMEOUT=1800): FAIL
+  — same algorithmic-class instance qwen36 missed.
+
+**Refined recommendation**: qwen35 is **capability-equivalent to qwen36, not
+higher-capability**. The static-MMLU-90 advantage (per the hardened audit;
+qwen36 is MMLU 80) does NOT convert to agentic-coding capability beyond what
+qwen36 already has. qwen35 = slower wall + same ceiling. Use qwen36 for
+agentic coding; qwen35 only when DeltaNet 27B-dense is required for non-
+agentic reasons.
 
 **coder-30b 0/3** is the structural failure: even with the stronger prompt
 (`coder-30b-stronger-prompt-2026-05-18`), coder-30b emits 0 tool calls and 0
