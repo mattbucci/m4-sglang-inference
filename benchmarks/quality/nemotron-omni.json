@@ -1,0 +1,75 @@
+{
+  "tag": "nemotron-omni",
+  "timestamp": "2026-05-17 16:12",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 82,
+    "total": 100,
+    "accuracy": 0.82
+  },
+  "humaneval": {
+    "passed": 13,
+    "total": 20,
+    "pass_rate": 0.65,
+    "mode": "completions"
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 4,
+      "total": 25,
+      "accuracy": 0.16
+    },
+    "DbQA": {
+      "correct": 3,
+      "total": 25,
+      "accuracy": 0.12
+    },
+    "SuppQA": {
+      "correct": 5,
+      "total": 25,
+      "accuracy": 0.2
+    },
+    "TableQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "ProtocolQA": {
+      "correct": 3,
+      "total": 25,
+      "accuracy": 0.12
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 15,
+      "total": 175,
+      "accuracy": 0.08571428571428572
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}
