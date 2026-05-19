@@ -1,0 +1,68 @@
+From: M4 SGLang+MLX Patch Chain
+Subject: [PATCH 019] mlx: partial-cache fallback for NemotronH-style hybrids
+
+NemotronH's `make_cache()` only emits caches for `M` (Mamba2) and `*`
+(Attention) layers — `MoE` ("E") and `MLP` ("-") layers get nothing.
+So `len(sample_cache) < num_layers` for these architectures.
+
+In `decode_batch_start` at `model_runner.py:1043` onwards, the batched
+hybrid-decode path builds `is_full_attn = [isinstance(c, ContiguousKVCache)
+for c in sample_cache]` then iterates `for layer_idx in range(num_layers):
+if is_full_attn[layer_idx]: ...` This IndexErrors past the end of the
+cache list when num_layers > len(sample_cache).
+
+Detected 2026-05-18 on `nemotron-omni` (Nemotron-3-Nano-Omni-30B-A3B-
+Reasoning-4bit) at the first decode-batch after preflight + first
+opencode request triggered batch_size > 1.
+
+Fix: extend the existing "pure-linear / Mamba-only" serial-fallback
+trigger condition to also fire when len(sample_cache) != num_layers.
+The serial-per-request path calls `self.model(input_ids, cache=caches[i])`
+which lets the model's own forward() handle the cache-position vs
+layer-index mapping internally (NemotronH increments a `cache_counter`
+only for M/* layers in its `__call__`).
+
+batch_size==1 fast path was already fine; this only affects the
+hybrid batched path.
+
+After this patch nemotron-omni decodes cleanly. The model itself still
+doesn't engage opencode's tool-call protocol (chat-template gap, same
+class as coder-30b/devstral) — see
+`evals/swebench/runs/nemotron-omni-mlx-patched-2026-05-19/`.
+
+---
+ python/sglang/srt/hardware_backend/mlx/model_runner.py | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1048,10 +1048,18 @@ class MlxModelRunner:
+             full_attn_idx = next(
+                 (i for i, ok in enumerate(is_full_attn) if ok), None
+             )
+
+-            if full_attn_idx is None:
+-                # Pure-linear / Mamba-only model with no attention layers.
+-                # Not observed in our model set yet; keep the serial
+-                # fallback so we don't silently break a future model.
++            # NemotronH-style: make_cache returns one cache per M/* layer
++            # only — MoE ("E") and MLP ("-") layers get nothing, so
++            # len(sample_cache) < num_layers. The batched path below
++            # iterates `range(num_layers)` and indexes is_full_attn /
++            # caches[i] by layer_idx, which IndexErrors past the cache
++            # list. Detected 2026-05-18 on nemotron-omni at first decode.
++            # Fall back to the serial-per-request path until the batched
++            # path is taught about partial-cache layouts.
++            cache_layer_mismatch = len(sample_cache) != num_layers
++
++            if full_attn_idx is None or cache_layer_mismatch:
++                # Pure-linear / Mamba-only model with no attention layers,
++                # OR hybrid model whose make_cache emits caches for only a
++                # subset of layers (NemotronH). Either way the batched
++                # path's layer_idx indexing assumption breaks; fall back
++                # to serial-per-request. The model's own forward() handles
++                # the cache-position vs layer-index mapping internally.
+                 per_req_logits = []
+                 for i, rid in enumerate(req_ids):
+                     last_token = self._req_token_ids[rid][-1]
