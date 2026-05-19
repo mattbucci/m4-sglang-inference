@@ -75,8 +75,13 @@ def _load_run(run_dir: Path) -> list[dict]:
                 rec["run_dir"] = run_dir.name
                 out.append(rec)
     # Pattern B: alternate naming (4pick-scorecard had one .jsonl per model)
+    # but ONLY pick records that look like predictions (have a model_patch
+    # field). scores.jsonl from score_local.py shares the same .jsonl
+    # extension but stores scoring records with no model_patch, no model
+    # name, and `rollout_seconds: null` — those would mis-load as
+    # predictions and crash the aggregator at table-print time.
     for jf in run_dir.glob("*.jsonl"):
-        if jf.name == "predictions.jsonl":
+        if jf.name in ("predictions.jsonl", "scores.jsonl"):
             continue
         with jf.open() as fh:
             for line in fh:
@@ -84,6 +89,8 @@ def _load_run(run_dir: Path) -> list[dict]:
                 if not line:
                     continue
                 rec = json.loads(line)
+                if "model_patch" not in rec:
+                    continue  # not a prediction record
                 rec["run_dir"] = run_dir.name
                 rec.setdefault("model_name_or_path", f"sglang/{jf.stem}")
                 out.append(rec)

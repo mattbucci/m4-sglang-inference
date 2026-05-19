@@ -11,13 +11,21 @@ shipping predictions to the 3090 Docker harness.
 
 ## Bottom line
 
-| Metric | Value |
-|---|---|
-| Patch-engagement (qwen36 produced a non-empty patch) | 19/21 = 90.5% |
-| Patch-applies-on-test-worktree (M4 scorable) | 11/21 = 52.4% |
-| Patch-applies / scorable-on-M4 | 11/13 = 84.6% |
-| **Resolved (all F2P pass + no P2P regressions)** | **5/21 = 23.8%** |
-| **Resolved among M4-scorable patches** | **5/11 = 45.5%** |
+| Metric | Value (N=21) | Value (N=26 corrected) |
+|---|---|---|
+| Patch-engagement (qwen36 produced a non-empty patch) | 19/21 = 90.5% | **21/26 = 80.8%** |
+| Patches applied (model_patch + test_patch both clean) | 11/21 = 52.4% | **13/26 = 50.0%** |
+| **Resolved (all F2P pass + no P2P regressions)** | 5/21 = 23.8% | **5/26 = 19.2%** |
+| **Resolved among M4-scorable patches** | 5/11 = 45.5% | **5/13 = 38.5%** |
+
+**N=26 came from the widening sweep
+(`qwen36-widening-N5-2026-05-18/`):** added 5 fresh instances spread
+across already-covered M4-scorable ecosystems (sphinx, pytest, pylint,
+requests, sympy — each had only N=1 at the original 21). The new batch
+returned 2/5 patch-engagement and 0/5 resolved, dragging both headline
+rates down by ~10pp. **The original numbers were sample-biased** — the
+first-instance-per-ecosystem picks were systematically easier than
+ecosystem averages.
 
 **Updates 2026-05-18:**
 

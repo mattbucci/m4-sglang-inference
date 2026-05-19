@@ -121,23 +121,29 @@ can fix bugs it can see but struggles to invent missing logic that isn't
 surfaced by failing tests. Plausibly ~5-10% of SWE-bench Lite falls into
 this class.
 
-**Real resolved rate (M4-local scoring, 2026-05-18):** patch-engagement
-is not the same as resolved. The full qwen36 prediction set scored on M4
-via `score_local.py` (per-instance venv + native pytest, no Docker)
-returned **5/21 = 23.8% resolved overall, 5/11 = 45.5% resolved on the
-M4-scorable subset**. Detailed breakdown in
-[`runs/qwen36-score-local-2026-05-18/`](runs/qwen36-score-local-2026-05-18/).
+**Real resolved rate (M4-local scoring, 2026-05-18, N=26):**
+patch-engagement is not the same as resolved. The full qwen36
+prediction set scored on M4 via `score_local.py` (per-instance venv +
+native pytest, no Docker) returned **5/26 = 19.2% resolved overall,
+5/13 = 38.5% resolved on the M4-scorable subset**. Note this is the
+sample-bias-corrected number — the original 21-instance scorecard
+(45.5%) had favorable picks; the 5-instance widening sweep returned
+2/5 patch-engagement and 0/5 resolved, refining the numbers down ~10pp.
+Detailed breakdown in
+[`runs/qwen36-score-local-2026-05-18/`](runs/qwen36-score-local-2026-05-18/)
+and [`runs/qwen36-widening-N5-2026-05-18/`](runs/qwen36-widening-N5-2026-05-18/).
 
 Score categories:
 
 | Category | Count | Meaning |
 |---|:---:|---|
 | RESOLVED | 5 | F2P all pass + no P2P regressions |
-| CLOSE | 2 | Partial F2P, no P2P regressions |
+| CLOSE | 3 | Partial F2P, no P2P regressions |
 | WRONG LOCATION | 3 | No F2P, no P2P regressions (patch in wrong place) |
-| BROKEN P2P | 3 | Patch caused regressions in existing tests |
-| MODEL PATCH FAIL | 2 | Empty patch (model gave up) |
+| BROKEN P2P | 4 | Patch caused regressions in existing tests |
+| MODEL PATCH FAIL | 5 | Empty patch (model gave up) — flask, django-11019, sphinx-10451, requests-2148, sympy-11870 |
 | INSTALL FAIL | 8 | M4 can't build the venv (old Python / native deps); needs 3090 Docker |
+| Total (N=26) | 28 | (some instances span CLOSE + BROKEN P2P) |
 
 The 90.5% patch-engagement → 45% resolved gap is the model's "writing
 in the style of" behavior: patches are in the right file, syntactically

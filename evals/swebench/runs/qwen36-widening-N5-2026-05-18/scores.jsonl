@@ -1,0 +1,5 @@
+{"instance_id": "psf__requests-2148", "rollout_seconds": 903.1, "resolved": false, "patch_applied": false}
+{"instance_id": "pylint-dev__pylint-6506", "rollout_seconds": 492.2, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 2, "p2p_passed": 0, "p2p_total": 6, "score_seconds": 8.2}
+{"instance_id": "pytest-dev__pytest-11148", "rollout_seconds": 903.7, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 2, "p2p_passed": 128, "p2p_total": 129, "score_seconds": 11.6}
+{"instance_id": "sphinx-doc__sphinx-10451", "rollout_seconds": 911.6, "resolved": false, "patch_applied": false}
+{"instance_id": "sympy__sympy-11870", "rollout_seconds": 911.1, "resolved": false, "patch_applied": false}

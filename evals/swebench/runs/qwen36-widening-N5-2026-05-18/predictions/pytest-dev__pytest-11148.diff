@@ -1,0 +1,13 @@
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..208bec39a 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -645,7 +645,7 @@ def insert_missing_modules(modules: Dict[str, ModuleType], module_name: str) ->
+                 # ourselves to fall back to creating a dummy module.
+                 if not sys.meta_path:
+                     raise ModuleNotFoundError
+-                module = importlib.import_module(module_name)
++                importlib.import_module(module_name)
+             except ModuleNotFoundError:
+                 module = ModuleType(
+                     module_name,
