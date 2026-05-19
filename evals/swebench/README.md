@@ -100,7 +100,7 @@ generates. Distinct from the no-think problem — this is the model itself.
 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | ✗ | 0 tokens emitted under tool prompts |
 | `nemotron-30b` (Nemotron-3-Nano-30B-A3B) | ✗ | TIMEOUT, model couldn't converge |
 | `nemotron-omni` (NemotronH+VLM 30B-A3B) | ✗ | MLX bug patched 2026-05-19 (partial-cache fallback in `decode_batch_start`); model now decodes cleanly but emits only 23 output tokens then signals stop — chat-template gap, same class as coder-30b |
-| `gemma4` (26B-A4B MoE) | ⚠ | MLX backend patched 2026-05-19 (patch 020). Now engages strongly with agent loop: 43 tool calls on pylint-5859 (36 bash, 3 read, 2 glob, 2 grep) including creating a reproduction file, but ran out of TIMEOUT=900 before writing the canonical fix to `pylint/checkers/misc.py`. Score: applied=True, F2P 0/1, P2P 10/10. Same "engages-but-runs-out-of-time" class as qwen35-9b-8bit. Worth retrying with TIMEOUT=1800. |
+| `gemma4` (26B-A4B MoE) @ TIMEOUT=1800 | **✓ RESOLVES** | MLX backend patched 2026-05-19 (patch 020). At TIMEOUT=1800: 48 tool calls (35 bash, 6 read, 3 glob, 2 grep, 1 edit, 1 write), 1003-byte patch in 1324s. **Score: F2P 1/1, P2P 10/10, resolved=True** on pylint-5859. First non-Qwen RESOLVED patch on M4. See `gemma4-moe-pylint-T1800-RESOLVED-2026-05-19/`. The model used `(?!\w)` instead of gold's `(?=(:|\s|\Z))` — functionally equivalent regex. Works as a Gemma-family agentic alternative at ~2.5× qwen36's wall time. At TIMEOUT=900 still produces a small patch but can't synthesize the canonical fix in time. |
 | `qwen35-9b-8bit` (Qwen3.5 9B 8-bit) | ✗ | Engages (13 tool calls) but **can't synthesize an edit** — 9B capacity ceiling |
 
 **Only qwen36 + qwen35 work.** Both use Qwen3-Coder tool-call parser +
