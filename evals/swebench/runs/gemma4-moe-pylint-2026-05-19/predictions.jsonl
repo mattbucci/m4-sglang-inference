@@ -1,0 +1,1 @@
+{"instance_id": "pylint-dev__pylint-5859", "model_name_or_path": "sglang/gemma4", "model_patch": "diff --git a/reproduction.py b/reproduction.py\nnew file mode 100644\nindex 000000000..0f4eee0d1\n--- /dev/null\n+++ b/reproduction.py\n@@ -0,0 +1,2 @@\n+# YES: yes\n+# ???: no\n", "rollout_returncode": 124, "rollout_seconds": 903.5}

@@ -1,0 +1,8 @@
+diff --git a/reproduction.py b/reproduction.py
+new file mode 100644
+index 000000000..0f4eee0d1
+--- /dev/null
++++ b/reproduction.py
+@@ -0,0 +1,2 @@
++# YES: yes
++# ???: no
