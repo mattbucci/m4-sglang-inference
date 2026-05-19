@@ -154,6 +154,14 @@ echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout..."
 # path so we run with cwd=evals/swebench.
 cd "$SWE_SCRIPT_DIR"
 set +e
+# Optional: skip the tool-call-round-trip canary (some chat templates,
+# notably Mistral/Devstral, reject the canary's strict user→assistant
+# (tool_calls)→tool→user sequence even when the model itself can do
+# agentic flows fine).
+preflight_arg=""
+if [ "${SKIP_PREFLIGHT:-0}" = "1" ]; then
+    preflight_arg="--skip-preflight"
+fi
 if [ -n "$INSTANCE_IDS" ]; then
     python3 run_rollouts.py \
         --model "sglang/$MODEL_KEY" \
@@ -161,7 +169,8 @@ if [ -n "$INSTANCE_IDS" ]; then
         --timeout "$TIMEOUT" \
         --out "$OUT" \
         --server-url "http://127.0.0.1:$PORT" \
-        --served-name "$PRESET" 2>&1 | tee "$OUT/rollout.log"
+        --served-name "$PRESET" \
+        $preflight_arg 2>&1 | tee "$OUT/rollout.log"
 else
     python3 run_rollouts.py \
         --model "sglang/$MODEL_KEY" \
@@ -169,7 +178,8 @@ else
         --timeout "$TIMEOUT" \
         --out "$OUT" \
         --server-url "http://127.0.0.1:$PORT" \
-        --served-name "$PRESET" 2>&1 | tee "$OUT/rollout.log"
+        --served-name "$PRESET" \
+        $preflight_arg 2>&1 | tee "$OUT/rollout.log"
 fi
 RC=$?
 set -e

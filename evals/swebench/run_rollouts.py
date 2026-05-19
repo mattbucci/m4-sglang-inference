@@ -60,6 +60,10 @@ def parse_args():
     p.add_argument("--no-venv", action="store_true",
                    help="Skip pre-rollout venv setup — agent runs read-edit-pray "
                         "without a working test loop. Compatible with v1 runs.")
+    p.add_argument("--skip-preflight", action="store_true",
+                   help="Skip the tool-call-round-trip canary. Required for chat "
+                        "templates that don't accept the canary's user→assistant"
+                        "(tool_calls)→tool→user message sequence (e.g. Mistral).")
     return p.parse_args()
 
 
@@ -268,13 +272,17 @@ def main():
     args = parse_args()
 
     served = args.served_name or args.model.split("/", 1)[-1]
-    print(f"Preflight: canary chat completion against {args.server_url} (model={served})...", flush=True)
-    ok, info = preflight_canary(args.server_url, served)
-    if not ok:
-        print(f"  PREFLIGHT FAILED: {info}", flush=True)
-        print(f"  refusing to start rollout — fix the server / chat template first", flush=True)
-        sys.exit(2)
-    print(f"  preflight {info}", flush=True)
+    if args.skip_preflight:
+        print(f"Preflight: SKIPPED (--skip-preflight). Server health unchecked.", flush=True)
+    else:
+        print(f"Preflight: canary chat completion against {args.server_url} (model={served})...", flush=True)
+        ok, info = preflight_canary(args.server_url, served)
+        if not ok:
+            print(f"  PREFLIGHT FAILED: {info}", flush=True)
+            print(f"  refusing to start rollout — fix the server / chat template first", flush=True)
+            print(f"  (use --skip-preflight if you know the model's template doesn't accept the canary)", flush=True)
+            sys.exit(2)
+        print(f"  preflight {info}", flush=True)
 
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
@@ -323,7 +331,19 @@ def main():
             # of qwen36 had its server jetsam'd ~10 min in; the next 4
             # instances ran against a dead upstream and all returned 0 bytes
             # at 900s wall, contaminating the patch-engagement rate.
-            ok, hinfo = preflight_canary(args.server_url, served)
+            #
+            # Uses the lightweight /health endpoint rather than the full
+            # tool-call-canary so the check is liveness-only and decoupled
+            # from chat-template validation (Mistral-arch templates reject
+            # the canary even when the server is healthy).
+            import urllib.request
+            try:
+                with urllib.request.urlopen(f"{args.server_url}/health", timeout=10) as r:
+                    ok = (r.status == 200)
+                    hinfo = f"/health HTTP/{r.status}"
+            except Exception as e:
+                ok = False
+                hinfo = f"{type(e).__name__}: {e}"
             if not ok:
                 print(f"  SERVER_DEAD: {hinfo} — aborting sweep", flush=True)
                 fp.write(json.dumps({
