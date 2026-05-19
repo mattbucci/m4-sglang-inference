@@ -105,14 +105,22 @@ hardened harness):**
 | **TOTAL** | **19/21 = 90.5%** | **12 ecosystems** |
 
 **Method note:** the cross-ecosystem result was unlocked by running each
-instance in its own freshly-booted server (`/tmp/run-per-instance.sh` style
-wrapper). Multi-instance single-server sweeps at CTX=131K on this M4 hit
-recurring macOS jetsam — see `qwen36-missing-ecosystems-JETSAM-2026-05-18/`
-and `qwen36-missing-retry-JETSAM-2026-05-18/`. The hardened
-`run_rollouts.py` (per-instance preflight, landed 2026-05-18) cleanly aborts
-on jetsam detection so contaminated 0-byte rows don't get misread as model
-failures. For sweeps beyond a single instance, ALWAYS use the per-instance
-restart pattern.
+instance in its own freshly-booted server via
+[`evals/swebench/perinst.sh`](perinst.sh). Multi-instance single-server
+sweeps at CTX=131K on this M4 hit recurring macOS jetsam — see
+`qwen36-missing-ecosystems-JETSAM-2026-05-18/` and
+`qwen36-missing-retry-JETSAM-2026-05-18/`. The hardened `run_rollouts.py`
+(per-instance preflight, landed 2026-05-18) cleanly aborts on jetsam
+detection so contaminated 0-byte rows don't get misread as model
+failures. For sweeps beyond a single instance, ALWAYS use the
+per-instance restart pattern:
+
+```bash
+bash evals/swebench/perinst.sh pallets__flask-4045 psf__requests-1963 ...
+```
+
+The script handles fresh-server boot per instance, OS memory reclaim
+pause, predictions merging, and optional score_local pass.
 
 **Model ceiling characterization:** the 2 misses (django-11019, flask-4045)
 share a signature — both require **adding behavior** (validation logic /
@@ -185,14 +193,23 @@ bash evals/swebench/smoke.sh
 # 2. Run a specific instance
 INSTANCE_IDS="django__django-10914" bash evals/swebench/smoke.sh
 
-# 3. Run the first N instances
-INSTANCES=5 bash evals/swebench/smoke.sh
+# 3. Run multiple instances on a fresh server per instance (jetsam-immune)
+bash evals/swebench/perinst.sh \
+    pallets__flask-4045 \
+    psf__requests-1963 \
+    pydata__xarray-3364
 
 # 4. Compare across the 4 README picks
 bash evals/swebench/bakeoff.sh
 
 # 5. Refresh the leaderboard from all archived runs
 python evals/swebench/aggregate.py --markdown
+
+# 6. Score predictions locally (no Docker) — see "Real resolved rate" below
+python evals/swebench/score_local.py \
+    --predictions evals/swebench/runs/<your-run>/predictions.jsonl \
+    --workdir /tmp/score-work --venvdir /tmp/score-venvs \
+    --out evals/swebench/runs/<your-run>/scores.jsonl
 ```
 
 ## Workflow
@@ -224,6 +241,7 @@ evals/swebench/
 ├── score_local.py                  # local-venv scoring (when Docker unavailable)
 ├── smoke.sh                        # single-preset orchestrator
 ├── bakeoff.sh                      # multi-preset comparison
+├── perinst.sh                      # per-instance fresh-server sweep (jetsam-immune)
 ├── aggregate.py                    # leaderboard aggregator
 └── runs/                           # archived rollout artifacts
     └── <model>-<tag>-<date>/
