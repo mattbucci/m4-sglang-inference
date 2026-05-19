@@ -99,6 +99,7 @@ generates. Distinct from the no-think problem — this is the model itself.
 | `devstral` (Mistral-arch 24B) | ✗ | Preflight canary blocked by Mistral template strictness |
 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | ✗ | 0 tokens emitted under tool prompts |
 | `nemotron-30b` (Nemotron-3-Nano-30B-A3B) | ✗ | TIMEOUT, model couldn't converge |
+| `nemotron-omni` (NemotronH+VLM 30B-A3B) | ✗ | MLX backend bug — `is_full_attn` IndexError in decode_batch_start |
 
 **Only qwen36 + qwen35 work.** Both use Qwen3-Coder tool-call parser +
 DeltaNet+VL architecture; neither factor alone is enough (qwen36-27b is

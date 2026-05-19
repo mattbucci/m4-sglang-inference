@@ -58,6 +58,11 @@
           "name": "NVIDIA-Nemotron-3-Nano-30B-A3B-4bit (NemotronH)",
           "limit": { "context": 32768, "output": 4096 },
           "tool_call": false
+        },
+        "nemotron-omni": {
+          "name": "Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit (VLM)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
         }
       }
     }
