@@ -85,6 +85,32 @@ upstream of the model.
 opencode.json, gemma4-31b emits 0 tokens under the tool-prompts opencode
 generates. Distinct from the no-think problem — this is the model itself.
 
+**The complete int4 agentic verdict (2026-05-18 bakeoff,
+[`int4-bakeoff-2026-05-18/`](runs/int4-bakeoff-2026-05-18/)):**
+
+| Model | Verdict | Failure mode |
+|---|---|---|
+| `qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet+VL) | ✓ **WORKS** | — |
+| `qwen35` (Qwen3.5-27B-4bit DeltaNet+VL) | ✓ Works @ TIMEOUT=1800 | 15× slower wall |
+| `qwen36-27b` (Qwen3.6-27B Dense+DeltaNet+VL) | ✗ | TIMEOUT, model couldn't converge |
+| `qwen3-32b` (Qwen3-32B-DWQ Dense) | ✗ | TIMEOUT, model couldn't converge |
+| `qwen3-moe` (Qwen3-30B-A3B-DWQ) | ✗ | Emits malformed `<\|name>...` tags — parser mismatch |
+| `coder-30b` (Qwen3-Coder-30B-A3B-DWQ) | ✗ | 1 glob then asks user — chat template gives up |
+| `devstral` (Mistral-arch 24B) | ✗ | Preflight canary blocked by Mistral template strictness |
+| `gemma4-31b` (gemma-4-31b-it-mxfp4) | ✗ | 0 tokens emitted under tool prompts |
+| `nemotron-30b` (Nemotron-3-Nano-30B-A3B) | ✗ | TIMEOUT, model couldn't converge |
+
+**Only qwen36 + qwen35 work.** Both use Qwen3-Coder tool-call parser +
+DeltaNet+VL architecture; neither factor alone is enough (qwen36-27b is
+Dense+DeltaNet+VL+Coder-parser but couldn't converge). The MoE-3B-active
+decode speed of qwen36 appears to be what keeps the agent loop alive at
+M4's decode rates.
+
+**FP8 retry verdict (negative)**: most failures aren't quantization-sensitive
+— gemma4-31b emits 0 tokens (chat-template gap), qwen3-moe emits unparseable
+tags (template/parser mismatch), the rest TIMEOUT during legitimate decode
+(more precision won't reduce wall time). Not worth 32GB downloads.
+
 **Cross-ecosystem coverage (qwen36, post-proxy, unique-instance, on the
 hardened harness):**
 
