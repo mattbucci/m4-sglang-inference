@@ -1,0 +1,317 @@
+diff --git a/repro_test.py b/repro_test.py
+new file mode 100644
+index 00000000..b2caef31
+--- /dev/null
++++ b/repro_test.py
+@@ -0,0 +1,128 @@
++import requests
++from unittest.mock import Mock
++
++def test_bug_repro():
++    # The bug is in SessionRedirectMixin.resolve_redirects
++    # It uses 'req.copy()' where 'req' is the original request.
++    # In a redirect chain, 'req' should be the request that triggered the redirect.
++
++    class MockSession:
++        def __init__(self):
++            self.max_redirects = 5
++            self.cookies = Mock()
++        
++        def send(self, prepared_request, **kwargs):
++            # This is a simplified mock of the send method
++            # In reality, it would return a response
++            return prepared_request.response
++
++    # We need to simulate the loop in resolve_redirects
++    # Let's use the actual Session class but mock the 'send' method
++    
++    class MockResponse:
++        def __init__(self, status_code, url, is_redirect=False, headers=None, request=None):
++            self.status_code = status_code
++            self.url = url
++            self.is_redirect = is_redirect
++            self.headers = headers or {}
++            self.request = request
++            self.content = b""
++            self.raw = Mock()
++            self.history = []
++            self.close = Mock()
++
++    # Setup
++    session = requests.Session()
++    session.max_redirects = 5
++
++    # 1. Original Request: POST to /start
++    # 2. /start returns 303 -> redirects to /intermediate (GET)
++    # 3. /intermediate returns 307 -> redirects to /final (GET)
++    
++    # If the bug exists, the 307 will use the original POST method because 
++    # it copies 'req' (the original POST) instead of the request from the 303.
++
++    # We'll mock 'session.send' to return our mock responses
++    responses = [
++        # Response from 1st request (POST /start)
++        MockResponse(status_code=303, url='http://httpbin.org/start', is_redirect=True, 
++                     headers={'location': 'http://httpbin.org/intermediate'}, request=None),
++        # Response from 2nd request (GET /intermediate)
++        MockResponse(status_code=307, url='http://httpbin.org/intermediate', is_redirect=True, 
++                     headers={'location': 'http://httpbin.org/final'}, request=None),
++        # Response from 3rd request (GET /final)
++        MockResponse(status_code=200, url='http://httpbin.org/final', is_redirect=False, 
++                     headers={}, request=None),
++    ]
++
++    # We need to make sure the 'request' attribute of the response is set correctly
++    # because resolve_redirects uses it for some logic (e.g. line 160)
++    
++    # Let's manually trigger the loop
++    
++    # Initial request
++    initial_req = requests.Request(method='POST', url='http://httpbin.org/start').prepare()
++    
++    # First response (303)
++    resp1 = responses[0]
++    resp1.request = initial_req
++    
++    # Second response (307)
++    resp2 = responses[1]
++    resp2.request = initial_req # This is what we want to change to the request that caused the redirect
++    
++    # Third response (200)
++    resp3 = responses[2]
++    resp3.request = initial_req
++
++    # We'll mock session.send to return the next response in the list
++    original_send = session.send
++    call_count = 0
++
++    def mocked_send(prepared_request, **kwargs):
++        nonlocal call_count
++        res = responses[call_count]
++        # Update the response's request to be the prepared_request that was sent
++        res.request = prepared_request
++        call_count += 1
++        return res
++
++    session.send = mocked_send
++
++    # Start the redirect loop
++    # We need to pass the first response to resolve_redirects
++    # But resolve_redirects is a generator.
++    
++    print("Starting redirect loop...")
++    
++    # The first call to resolve_redirects will be with resp1 and initial_req
++    # The loop will then call session.send
++    
++    try:
++        # We need to simulate the loop. 
++        # In the real code, the loop is:
++        # while resp.is_redirect:
++        #    prepared_request = req.copy()
++        #    ...
++        #    resp = self.send(prepared_request, ...)
++        #    yield resp
++        
++        # Let's run it.
++        gen = session.resolve_redirects(resp1, initial_req)
++        
++        for r in gen:
++            print(f"Redirected to: {r.url} with method: {r.request.method}")
++            # In a correct implementation:
++            # 1. POST /start -> 303 -> GET /intermediate
++            # 2. GET /intermediate -> 307 -> GET /final
++            # The method for the 3rd request should be GET.
++            
++    except Exception as e:
++        print(f"Error: {e}")
++
++    # If the bug is present, the 3rd request (to /final) will have method='POST'
++    # because it copies 'initial_req' (the original POST) instead of the 
++    # request that was sent to /intermediate.
++
++if __name__ == "__main__":
++    test_bug_repro()
+diff --git a/test_repro.py b/test_repro.py
+new file mode 100644
+index 00000000..09917292
+--- /dev/null
++++ b/test_repro.py
+@@ -0,0 +1,177 @@
++import requests
++from requests.models import PreparedRequest
++from unittest.mock import MagicMock
++
++def test_redirection_chain_bug():
++    """
++    Test the redirection chain described in the problem.
++    
++    1. POST /do_something -> 303 See Other -> GET /new_thing_1513
++    2. GET /new_thing_1513 -> 307 Temporary Redirect -> GET //failover.example.com/new_thing_1513
++    
++    The 307 should preserve the GET method from the first redirect.
++    If it's bugged, it might revert to POST.
++    """
++    
++    # Mocking the response objects
++    # Response 1: The initial POST
++    resp1 = MagicMock()
++    resp1.is_redirect = False
++    resp1.status_code = 200
++    resp1.history = []
++    resp1.request = MagicMock(spec=PreparedRequest)
++    resp1.request.method = 'POST'
++    resp1.request.url = 'http://server.example.com/do_something'
++    resp1.url = 'http://server.example.com/do_something'
++    resp1.headers = {}
++    resp1.raw = MagicMock()
++
++    # Response 2: The 303 See Other
++    resp2 = MagicMock()
++    resp2.is_redirect = True
++    resp2.status_code = 303
++    resp2.history = [resp1]
++    resp2.request = resp1 # In reality, it would be the request that led to this response
++    resp2.url = 'http://server.example.com/new_thing_1513'
++    resp2.headers = {'location': '/new_thing_1513'}
++    resp2.raw = MagicMock()
++
++    # Response 3: The 307 Temporary Redirect
++    resp3 = MagicMock()
++    resp3.is_redirect = True
++    resp3.status_code = 307
++    resp3.history = [resp1, resp2]
++    resp3.request = resp2
++    resp3.url = 'http://failover.example.com/new_thing_1513'
++    resp3.headers = {'location': '//failover.example.com/new_thing_1513'}
++    resp3.raw = MagicMock()
++
++    # Final Response: The end of the chain
++    resp4 = MagicMock()
++    resp4.is_redirect = False
++    resp4.status_code = 200
++    resp4.history = [resp1, resp2, resp3]
++    resp4.request = resp3
++    resp4.url = 'http://failover.example.com/new_thing_1513'
++    resp4.headers = {}
++    resp4.raw = MagicMock()
++
++    # We need to simulate the Session.resolve_redirects behavior.
++    # In the real world, this is handled by the session.send() loop.
++    
++    # Let's use a real session but mock the send method to simulate the chain.
++    session = requests.Session()
++    
++    # We'll mock session.send to return the responses in sequence.
++    # The first call to send will be for the initial POST.
++    # The second call will be for the 303 redirect.
++    # The third call will be for the 307 redirect.
++    
++    call_count = 0
++    def side_effect(request, **kwargs):
++        nonlocal call_count
++        call_count += 1
++        if call_count == 1:
++            return resp1
++        elif call_count == 2:
++            return resp2
++        elif call_count == 3:
++            return resp3
++        elif call_count == 4:
++            return resp4
++        else:
++            raise Exception(f"Unexpected call count: {call_count}")
++
++    session.send = MagicMock(side_effect=side_effect)
++
++    # Initial request
++    initial_req = PreparedRequest()
++    initial_req.method = 'POST'
++    initial_req.url = 'http://server.example.com/do_something'
++    initial_req.headers = {}
++    initial_req.body = 'some data'
++    initial_req._cookies = requests.cookies.RequestsCookieJar()
++
++    # The session.send call will trigger resolve_redirects
++    # We need to make sure the mock responses have the right attributes for resolve_redirects
++    # resolve_redirects uses resp.is_redirect, resp.status_code, resp.headers['location'], etc.
++    
++    # Let's refine the mocks to be more compatible with resolve_redirects
++    # It uses resp.is_redirect, resp.status_code, resp.headers['location'], resp.url, resp.close(), resp.raw, resp.request
++    
++    # Actually, let's just use the real session.send logic but with a mock adapter.
++    # But the problem is in resolve_redirects itself.
++    
++    # Let's try to run a simplified version of the loop.
++    
++    # The problem states:
++    # "The intermediate 303 See Other has caused the POST to be converted to a GET.
++    #  The subsequent 307 should preserve the GET.
++    #  However, because `Session.resolve_redirects` starts each iteration by copying the _original_
++    #  request object, Requests will issue a POST!"
++    
++    # Let's look at resolve_redirects again.
++    # line 91: prepared_request = req.copy()
++    # req is the request that was sent to get the current resp.
++    # In the first iteration (i=0), req is the original request (POST).
++    # resp is the response to the original request.
++    # If resp is a redirect, it enters the loop.
++    # In the next iteration (i=1), req is the request that was sent to get resp (the 303 redirect).
++    # But wait, line 91 says prepared_request = req.copy().
++    # If req is the original request, then it's always copying the original request.
++    
++    # Let's trace:
++    # 1. session.send(initial_req)
++    #    - adapter.send(initial_req) -> returns resp1
++    #    - resolve_redirects(resp1, initial_req)
++    #      - while resp1.is_redirect:
++    #        - prepared_request = initial_req.copy() (POST)
++    #        - ...
++    #        - method = initial_req.method (POST)
++    #        - if resp1.status_code == 303 and method != 'HEAD': method = 'GET'
++    #        - prepared_request.method = 'GET'
++    #        - resp = session.send(prepared_request) -> returns resp2 (303)
++    #        - yield resp2
++    # 2. The generator yields resp2.
++    # 3. The loop in session.send continues with the next iteration of resolve_redirects? 
++    #    No, the loop is inside resolve_redirects.
++    #    Wait, the generator is:
++    #    while resp.is_redirect:
++    #       ...
++    #       resp = self.send(prepared_request, ...)
++    #       yield resp
++    
++    # Let's re-read.
++    # session.send calls resolve_redirects.
++    # resolve_redirects is a generator.
++    # It yields the response.
++    
++    # If we have a chain: POST -> 303 -> GET -> 307 -> GET
++    # 1. session.send(POST_req)
++    #    - adapter.send(POST_req) -> returns resp_303
++    #    - resolve_redirects(resp_303, POST_req)
++    #      - prepared_request = POST_req.copy()
++    #      - method = POST_req.method (POST)
++    #      - if 303 and POST != HEAD: method = GET
++    #      - prepared_request.method = GET
++    #      - resp = session.send(GET_req) -> returns resp_307
++    #      - yield resp_307
++    #      - loop continues with resp = resp_307
++    #      - prepared_request = POST_req.copy()  <-- BUG! It should be the request that led to resp_307 (the GET_req)
++    #      - method = POST_req.method (POST)
++    #      - if 307 and POST != HEAD: method = POST (307 doesn'=- GET)
++    #      - prepared_request.method = POST
++    #      - resp = session.send(POST_req) ...
++    
++    # Yes, line 91: prepared_request = req.copy()
++    # req is the argument to resolve_redirects.
++    # In the first iteration, req is the original request.
++    # In the second iteration, req is the response to the first redirect (the 303 response).
++    # Wait, the loop is `while resp.is_redirect:`.
++    # The `req` passed to `resolve_redirects` is the request that was sent to get the *initial* response.
++    # But inside the loop, `resp` is updated to the new response.
++    # However, `req` is NOT updated to the new request.
++    # So `prepared_request = req.copy()` always copies the original request.
++    
++    # Let'EOF
++    pass
