@@ -1,0 +1,108 @@
+From: M4 SGLang+MLX Patch Chain
+Subject: [PATCH 020] mlx: gemma4 sliding-window (RotatingKVCache) support
+
+Gemma 4's heterogeneous attention layout mixes ContiguousKVCache (full
+attention layers) with RotatingKVCache (sliding-window layers, max_size
+typically 1024). The MLX batched-decode path had two assumptions that
+broke under this layout:
+
+1. `attention_wrapper._batched_decode` called `cache.write_token(k, v)`
+   then `cache.get_kv()`. These methods exist only on ContiguousKVCache;
+   RotatingKVCache (and every other mlx_lm cache) uses the canonical
+   `update_and_fetch(keys, values)` instead. First decode AttributeError'd.
+
+2. After (1) was switched to `update_and_fetch`, `model_runner`'s
+   non-hybrid batched path derived a single `seq_lens[i]` per request
+   from `caches[i][0].offset`, then assumed ALL layers' K/V would have
+   that length after fetch. RotatingKVCache returns at most `max_size`
+   (rotating window), so per-request K/V across layers had different
+   shapes and `mx.concatenate(axis=0)` ValueErrored:
+   shapes `(1,8,7426,256)` vs `(1,8,1024,256)`.
+
+Detected 2026-05-18/19 on gemma4 (26B-A4B MoE) in the MoE-rescue queue.
+
+Fix:
+
+A. `attention_wrapper.py:186` — replace `write_token(k, v)` + `get_kv()`
+   with the single `update_and_fetch(keys, values)` call. Works for
+   every mlx_lm cache type; behavior unchanged for ContiguousKVCache.
+
+B. `model_runner.py` — both the hybrid batched path (patch 019) and
+   the non-hybrid batched path detect `any(isinstance(c, RotatingKVCache)
+   for c in caches[0])` and fall back to serial-per-request decode.
+   The serial path calls `self.model(input_ids, cache=caches[i])`
+   which lets the model's own forward() handle per-layer cache types
+   internally (no batched K/V concatenation required).
+
+After this patch gemma4 MoE serves cleanly. Verified 2026-05-19:
+4 tool calls (1 glob + 1 read + 2 bash) over 108 s. The model still
+doesn't produce an edit — same "engages but can't synthesize" pattern
+as qwen35-9b-8bit (model-side ceiling, not stack). See
+`evals/swebench/runs/gemma4-moe-mlx-patched-2026-05-19/` for the
+post-patch verdict.
+
+Failure class for Gemma 4 MoE upgrades from "MLX backend crash" to
+"model synthesis ceiling" — future Gemma 4 variants with better
+agentic training would now work through the harness.
+
+---
+ python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py | 14 ++++++++++++--
+ python/sglang/srt/hardware_backend/mlx/model_runner.py               | 26 ++++++++++++++++++++++++++
+ 2 files changed, 38 insertions(+), 2 deletions(-)
+
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -183,9 +183,17 @@ class MLXAttentionWrapper(nn.Module):
+         all_v = []
+
+         for i in range(B):
+-            layer_caches[i].write_token(keys[i : i + 1], values[i : i + 1])
+-
+-            k_all, v_all = layer_caches[i].get_kv()
++            # Use update_and_fetch (canonical mlx_lm cache API) instead of
++            # write_token + get_kv. update_and_fetch exists on every cache
++            # type — including RotatingKVCache (sliding-window, used by
++            # Gemma 4's sliding-attention layers), which lacks the
++            # write_token / get_kv pair. Crash detected 2026-05-18 on
++            # gemma4 MoE: AttributeError on RotatingKVCache.write_token at
++            # this line. Behavior unchanged for ContiguousKVCache.
++            k_all, v_all = layer_caches[i].update_and_fetch(
++                keys[i : i + 1], values[i : i + 1]
++            )
+
+             pad = pad_sizes[i]
+
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1167,6 +1167,32 @@ class MlxModelRunner:
+             )
+
++        # Non-hybrid batched path: assumes all layers share the same KV
++        # cache shape. Breaks for Gemma 4-style heterogeneous attention
++        # (mix of ContiguousKVCache + RotatingKVCache) — sliding layers'
++        # update_and_fetch returns at most max_size tokens while full
++        # layers return offset tokens, so per-request K/V have different
++        # seq_lens across layers and mx.concatenate ValueErrors at the
++        # batch step. Detect and fall back to serial-per-request decode.
++        # Discovered 2026-05-19 on gemma4 MoE.
++        from mlx_lm.models.cache import RotatingKVCache
++        if any(isinstance(c, RotatingKVCache) for c in caches[0]):
++            per_req_logits = []
++            for i, rid in enumerate(req_ids):
++                last_token = self._req_token_ids[rid][-1]
++                input_ids = mx.array([[last_token]], dtype=mx.int32)
++                out = self.model(input_ids, cache=caches[i])
++                per_req_logits.append(self._extract_logits(out)[:, -1, :])
++            stacked = mx.concatenate(per_req_logits, axis=0)
++            lazy_tokens = mx.argmax(stacked, axis=-1)
++            return MlxPendingDecode(
++                lazy_tokens=lazy_tokens,
++                req_ids=list(req_ids),
++                caches=caches,
++            )
++
+         seq_lens = [caches[i][0].offset for i in range(batch_size)]
+         layer_caches = [
+             [caches[i][layer_idx] for i in range(batch_size)]
