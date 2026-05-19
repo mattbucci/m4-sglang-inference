@@ -94,7 +94,7 @@ generates. Distinct from the no-think problem — this is the model itself.
 | `qwen35` (Qwen3.5-27B-4bit DeltaNet+VL) | ✓ Works @ TIMEOUT=1800 | 15× slower wall |
 | `qwen36-27b` (Qwen3.6-27B Dense+DeltaNet+VL) | ✗ | TIMEOUT, model couldn't converge |
 | `qwen3-32b` (Qwen3-32B-DWQ Dense) | ✗ | TIMEOUT, model couldn't converge |
-| `qwen3-moe` (Qwen3-30B-A3B-DWQ) | ✗ | Emits malformed `<\|name>...` tags — parser mismatch |
+| `qwen3-moe` (Qwen3-30B-A3B-DWQ) | ✗ | Emits CORRUPTED tool-call tags (`<\|name>read>...</read>` half-tokens + malformed JSON) — special-token mis-mapping from MLX-DWQ conversion, not a parser issue |
 | `coder-30b` (Qwen3-Coder-30B-A3B-DWQ) | ✗ | 1 glob then asks user — chat template gives up |
 | `devstral` (Mistral-arch 24B) | ✗ | Preflight canary blocked by Mistral template strictness |
 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | ✗ | 0 tokens emitted under tool prompts |
