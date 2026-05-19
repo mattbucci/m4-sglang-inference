@@ -54,6 +54,11 @@
           "limit": { "context": 16384, "output": 4096 },
           "tool_call": true
         },
+        "gemma4": {
+          "name": "Gemma 4 26B-A4B-it-4bit (MoE)",
+          "limit": { "context": 16384, "output": 4096 },
+          "tool_call": true
+        },
         "nemotron-30b": {
           "name": "NVIDIA-Nemotron-3-Nano-30B-A3B-4bit (NemotronH)",
           "limit": { "context": 32768, "output": 4096 },
