@@ -1,0 +1,2468 @@
+diff --git a/python/sglang/_mps_stub.py b/python/sglang/_mps_stub.py
+index 8a090b398..118795a65 100644
+--- a/python/sglang/_mps_stub.py
++++ b/python/sglang/_mps_stub.py
+@@ -208,16 +208,27 @@ def _patch_non_blocking() -> None:
+ 
+     @functools.wraps(_original_to)
+     def _patched_to(self, *args, **kwargs):
+-        if kwargs.get("non_blocking"):
+-            # Detect target device from positional or keyword args
+-            device = None
+-            if args and isinstance(args[0], (str, torch.device)):
+-                device = torch.device(args[0]) if isinstance(args[0], str) else args[0]
+-            elif "device" in kwargs:
+-                d = kwargs["device"]
+-                device = torch.device(d) if isinstance(d, str) else d
+-            if device is not None and device.type == "mps":
++        # Detect target device from positional or keyword args.
++        device = None
++        if args and isinstance(args[0], (str, torch.device)):
++            device = torch.device(args[0]) if isinstance(args[0], str) else args[0]
++        elif "device" in kwargs:
++            d = kwargs["device"]
++            device = torch.device(d) if isinstance(d, str) else d
++
++        if device is not None:
++            if device.type == "cuda":
++                # No CUDA on Apple Silicon. Redirect cuda→cpu so SGLang's
++                # multimodal image processor (and other transformers code
++                # defaulting to .to('cuda')) keeps working without crashing
++                # in CUDA's _lazy_init.
++                if args and isinstance(args[0], (str, torch.device)):
++                    args = ("cpu",) + args[1:]
++                else:
++                    kwargs = {**kwargs, "device": "cpu"}
++            elif device.type == "mps" and kwargs.get("non_blocking"):
+                 kwargs = {**kwargs, "non_blocking": False}
++
+         return _original_to(self, *args, **kwargs)
+ 
+     torch.Tensor.to = _patched_to
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 111145ef6..8e1db0f9f 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -340,8 +340,11 @@ class ModelConfig:
+         # Update hybrid model
+         self._derive_hybrid_model()
+ 
+-        # Verify quantization
+-        self._verify_quantization()
++        # Verify quantization (skip when MLX backend handles it)
++        from sglang.srt.utils.tensor_bridge import use_mlx
++
++        if not use_mlx():
++            self._verify_quantization()
+ 
+         self._verify_transformers_version()
+ 
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
+index 208e64452..f18175d00 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
+@@ -13,6 +13,12 @@ from sglang.srt.hardware_backend.mlx.kv_cache.contiguous_cache import (
+     PoolBackedCache,
+ )
+ from sglang.srt.hardware_backend.mlx.kv_cache.kv_pool import MlxKVPool
++from sglang.srt.hardware_backend.mlx.kv_cache.kv_quant import (
++    KVCacheMode,
++    KVQuantizer,
++    bytes_per_element,
++    parse_kv_cache_mode,
++)
+ from sglang.srt.hardware_backend.mlx.kv_cache.model_patching import (
+     find_attention_layers,
+     get_num_layers,
+@@ -21,14 +27,18 @@ from sglang.srt.hardware_backend.mlx.kv_cache.model_patching import (
+ 
+ __all__ = [
+     "BatchedDecodeContext",
++    "bytes_per_element",
+     "clear_context",
+     "ContiguousKVCache",
+     "find_attention_layers",
+     "get_context",
+     "get_num_layers",
++    "KVCacheMode",
++    "KVQuantizer",
+     "MLXAttentionWrapper",
+     "MlxKVPool",
+     "OffsetCache",
++    "parse_kv_cache_mode",
+     "patch_model_attention",
+     "PoolBackedCache",
+     "set_context",
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+index d9524ab11..90d8df84e 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import importlib
+ import threading
+ from dataclasses import dataclass, field
+ from typing import Any, Optional
+@@ -67,13 +68,33 @@ class MLXAttentionWrapper(nn.Module):
+         object.__setattr__(self, "_inner", inner)
+         object.__setattr__(self, "_layer_idx", layer_idx)
+ 
+-    def __call__(self, x: mx.array, mask: Any = None, cache: Any = None) -> mx.array:
++    def __call__(self, x: mx.array, *args, **kwargs) -> mx.array:
+         ctx = get_context()
+         if ctx is None:
+-            return self._inner(x, mask=mask, cache=cache)
+-        return self._batched_decode(x, ctx)
+-
+-    def _batched_decode(self, x: mx.array, ctx: BatchedDecodeContext) -> mx.array:
++            return self._inner(x, *args, **kwargs)
++        # Two attention conventions live behind this wrapper:
++        #   mlx_lm style: attn(x, attn_scale=None, mask=None, cache=None)
++        #                 — args[0] is a scalar or None
++        #   mlx_vlm/Qwen3.5 style: attn(x, mask=None, cache=None, position_ids=None)
++        #                          — args[0] is an mx.array (causal mask) or None
++        # Discriminate by type: only treat args[0] as attn_scale when it is a
++        # Python number or a 0-d mx.array. Multi-dim arrays (masks) are
++        # ignored — the wrapper builds its own padding mask from ctx.
++        attn_scale = None
++        if args:
++            first = args[0]
++            if isinstance(first, (int, float)) or (
++                isinstance(first, mx.array) and first.ndim == 0
++            ):
++                attn_scale = first
++        return self._batched_decode(x, ctx, attn_scale=attn_scale)
++
++    def _batched_decode(
++        self,
++        x: mx.array,
++        ctx: BatchedDecodeContext,
++        attn_scale: Any = None,
++    ) -> mx.array:
+         inner = self._inner
+         layer_idx = self._layer_idx
+         B = ctx.batch_size
+@@ -82,10 +103,35 @@ class MLXAttentionWrapper(nn.Module):
+         keys = inner.k_proj(x)
+         values = inner.v_proj(x)
+ 
+-        head_dim = queries.shape[-1] // inner.n_heads
+-        queries = queries.reshape(B, 1, inner.n_heads, head_dim)
+-        keys = keys.reshape(B, 1, inner.n_kv_heads, head_dim)
+-        values = values.reshape(B, 1, inner.n_kv_heads, head_dim)
++        # mlx_lm uses n_heads/n_kv_heads; mlx_vlm and NemotronH use
++        # num_attention_heads/num_key_value_heads. Accept either.
++        n_heads = getattr(inner, "n_heads", None) or inner.num_attention_heads
++        n_kv_heads = (
++            getattr(inner, "n_kv_heads", None) or inner.num_key_value_heads
++        )
++
++        # head_dim from KEYS (always single, never doubled). Qwen3.5's
++        # q_proj is gated — output is n_heads * head_dim * 2 (queries + gate
++        # concatenated along the last axis). k_proj/v_proj are standard.
++        # Deriving head_dim from queries would yield 2*head_dim and corrupt
++        # every subsequent reshape.
++        head_dim = keys.shape[-1] // n_kv_heads
++
++        # Detect gated Q: queries.shape[-1] == n_heads * head_dim * 2 when the
++        # model is Qwen3.5 / Qwen3.6 style; equal to n_heads * head_dim for
++        # mlx_lm style.
++        q_per_head = queries.shape[-1] // n_heads
++        gated = q_per_head == 2 * head_dim
++        gate: Optional[mx.array] = None
++        if gated:
++            q_full = queries.reshape(B, 1, n_heads, q_per_head)
++            queries, gate_per_head = mx.split(q_full, 2, axis=-1)
++            # Flatten gate for final post-SDPA multiply: (B, 1, n_heads*head_dim)
++            gate = gate_per_head.reshape(B, 1, -1)
++        else:
++            queries = queries.reshape(B, 1, n_heads, head_dim)
++        keys = keys.reshape(B, 1, n_kv_heads, head_dim)
++        values = values.reshape(B, 1, n_kv_heads, head_dim)
+ 
+         if hasattr(inner, "q_norm"):
+             queries = inner.q_norm(queries)
+@@ -96,13 +142,38 @@ class MLXAttentionWrapper(nn.Module):
+         keys = keys.transpose(0, 2, 1, 3)
+         values = values.transpose(0, 2, 1, 3)
+ 
+-        # Vectorized RoPE with per-batch offsets
+-        offsets = ctx.offsets
+-        queries = inner.rope(queries, offset=offsets)
+-        keys = inner.rope(keys, offset=offsets)
++        # RoPE dispatch:
++        #   inner.rope(q, offset=...)  — mlx_lm style (Llama/Mistral/Qwen3)
++        #   inner.rotary_emb + apply_multimodal_rotary_pos_emb — mlx_vlm style
++        #                                                       (Qwen3.5/3.6)
++        # NemotronHAttention has neither (position encoding lives in the
++        # interleaved Mamba layers) — skip RoPE entirely.
++        if hasattr(inner, "rope"):
++            offsets = ctx.offsets
++            queries = inner.rope(queries, offset=offsets)
++            keys = inner.rope(keys, offset=offsets)
++        elif hasattr(inner, "rotary_emb"):
++            # Build per-request position_ids of shape (3, B, 1): the
++            # multimodal RoPE expects 3 axes (text / spatial / temporal). For
++            # text-only decode all three axes are the same offset.
++            position_ids = mx.broadcast_to(
++                ctx.offsets[None, :, None], (3, B, 1)
++            )
++            cos, sin = inner.rotary_emb(values, position_ids)
++            # apply_multimodal_rotary_pos_emb is model-specific (defined in
++            # each mlx_vlm model's language.py). Import from the inner
++            # module so the wrapper works for any mlx_vlm family.
++            mod = importlib.import_module(type(inner).__module__)
++            apply_fn = mod.apply_multimodal_rotary_pos_emb
++            queries, keys = apply_fn(queries, keys, cos, sin)
++
++        # Apply explicit attn_scale if model passes it (ministral3/Devstral
++        # call attn(x, attn_scale, mask, cache); without this, the scale is
++        # silently dropped and outputs are off by a constant factor).
++        if attn_scale is not None:
++            queries = queries * attn_scale
+ 
+         layer_caches = ctx.layer_caches[layer_idx]
+-        max_len = ctx.max_len
+         pad_sizes = ctx.pad_sizes
+ 
+         # TODO: replace per-request loop with native batched/ragged
+@@ -112,17 +183,26 @@ class MLXAttentionWrapper(nn.Module):
+         all_v = []
+ 
+         for i in range(B):
+-            layer_caches[i].write_token(keys[i : i + 1], values[i : i + 1])
+-
+-            k_all, v_all = layer_caches[i].get_kv()
++            # Use update_and_fetch (canonical mlx_lm cache API) instead of
++            # write_token + get_kv. update_and_fetch exists on every cache
++            # type — including RotatingKVCache (sliding-window, used by
++            # Gemma 4's sliding-attention layers), which lacks the
++            # write_token / get_kv pair. Crash detected 2026-05-18 on
++            # gemma4 MoE: AttributeError on RotatingKVCache.write_token at
++            # this line. Behavior unchanged for ContiguousKVCache (its
++            # update_and_fetch internally does the same offset-slice that
++            # the old write_token+get_kv pair did).
++            k_all, v_all = layer_caches[i].update_and_fetch(
++                keys[i : i + 1], values[i : i + 1]
++            )
+ 
+             pad = pad_sizes[i]
+             if pad > 0:
+                 k_pad = mx.zeros(
+-                    (1, inner.n_kv_heads, pad, head_dim), dtype=k_all.dtype
++                    (1, n_kv_heads, pad, head_dim), dtype=k_all.dtype
+                 )
+                 v_pad = mx.zeros(
+-                    (1, inner.n_kv_heads, pad, head_dim), dtype=v_all.dtype
++                    (1, n_kv_heads, pad, head_dim), dtype=v_all.dtype
+                 )
+                 k_all = mx.concatenate([k_all, k_pad], axis=2)
+                 v_all = mx.concatenate([v_all, v_pad], axis=2)
+@@ -147,4 +227,9 @@ class MLXAttentionWrapper(nn.Module):
+         )
+ 
+         output = output.transpose(0, 2, 1, 3).reshape(B, 1, -1)
++        # Gated multimodal attention multiplies the attention output by
++        # sigmoid(gate) before o_proj. For non-gated models gate is None
++        # and this is a no-op.
++        if gate is not None:
++            output = output * mx.sigmoid(gate)
+         return inner.o_proj(output)
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
+index 254d2be08..0b9d39c8b 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
+@@ -13,9 +13,18 @@ if TYPE_CHECKING:
+ class OffsetCache:
+     """Data-free shim satisfying mlx-lm's cache protocol.
+ 
+-    Provides ``make_mask`` and ``state`` without storing actual K/V.
++    Provides ``make_mask``, ``state``, ``__getitem__``, ``__setitem__``,
++    ``lengths``, and ``advance`` without storing actual K/V. The subscript
++    + lengths + advance stubs are required by hybrid models like
++    Qwen3.5 / Coder-Next whose ``linear_attn`` layers probe these
++    attributes. Without them, batched decode on those models crashes with
++    ``TypeError: 'OffsetCache' object is not subscriptable``.
+     """
+ 
++    # DeltaNet linear_attn probes `cache.lengths is not None` to decide
++    # whether to advance the conv_state pointer. None = cold path.
++    lengths = None
++
+     def __init__(self, offset: int = 0):
+         self.offset = offset
+ 
+@@ -23,6 +32,23 @@ class OffsetCache:
+     def state(self):
+         return ()  # Empty — safe for mx.eval unpacking
+ 
++    def __getitem__(self, key):
++        # Return None — signals "no cached state" to hybrid layers; they
++        # fall back to a zero-initialized state.
++        return None
++
++    def __setitem__(self, key, value):
++        # Accept and discard — DeltaNet writes state back here, but
++        # OffsetCache by design doesn't persist data.
++        pass
++
++    def __len__(self):
++        return 0
++
++    def advance(self, S):
++        """No-op stub — DeltaNet calls this after writing state."""
++        pass
++
+     def make_mask(self, N, **kwargs):
+         return None if N == 1 else "causal"
+ 
+@@ -76,7 +102,27 @@ class ContiguousKVCache:
+         return (self.keys, self.values)
+ 
+     def make_mask(self, N, **kwargs):
+-        return None if N == 1 else "causal"
++        """Return a mask for ``N`` new query tokens against cached keys.
++
++        For chunked-prefill with ``offset > 0`` (second+ chunk), mlx-lm's
++        default ``"causal"`` shorthand produces a square ``(N, N)`` mask
++        that doesn't broadcast against scores of shape
++        ``(1, n_heads, N, offset+N)`` — explicit causal mask required.
++        Sliding-window models pass ``window_size``; we honour it by
++        bit-anding the within-window check into the causal mask.
++        """
++        if N == 1:
++            return None
++        if self.offset > 0:
++            S = self.offset + N
++            window = kwargs.get("window_size")
++            q_idx = self.offset + mx.arange(N)
++            k_idx = mx.arange(S)
++            mask = q_idx[:, None] >= k_idx[None, :]
++            if window is not None:
++                mask = mask & (q_idx[:, None] - k_idx[None, :] < window)
++            return mask
++        return "causal"
+ 
+     def _grow(self, required: int) -> None:
+         """Double the buffer until it can hold *required* tokens."""
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py
+index 636c20d98..9efeb45ac 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_pool.py
+@@ -1,12 +1,23 @@
+ """Flat KV pool with per-layer buffers of shape (pool_size, n_kv_heads, head_dim).
+ 
+ Slot 0 is reserved as padding (1-based indexing).
++
++When ``kv_cache_mode`` is ``FP8`` or ``TURBOQUANT`` the per-layer buffers
++are quantized via ``KVQuantizer`` — bytes/element drops from 2.0 (fp16) to
++~1.03 (fp8) or ~0.56 (turboquant), and reads dequantize on the fly. fp16
++keeps the original raw layout for zero overhead.
+ """
+ 
+ import logging
+ 
+ import mlx.core as mx
+ 
++from sglang.srt.hardware_backend.mlx.kv_cache.kv_quant import (
++    KVCacheMode,
++    KVQuantizer,
++    bytes_per_element,
++)
++
+ logger = logging.getLogger(__name__)
+ 
+ 
+@@ -20,45 +31,74 @@ class MlxKVPool:
+         n_kv_heads: int,
+         head_dim: int,
+         dtype: mx.Dtype = mx.float16,
++        kv_cache_mode: KVCacheMode = KVCacheMode.FP16,
+     ):
+         self.pool_size = pool_size
+         self.num_layers = num_layers
+         self.n_kv_heads = n_kv_heads
+         self.head_dim = head_dim
+         self.dtype = dtype
++        self.kv_cache_mode = kv_cache_mode
++        self._quantizer = KVQuantizer(kv_cache_mode, original_dtype=dtype)
+ 
+-        # Per-layer buffers: (pool_size, n_kv_heads, head_dim)
+-        self.k_buffer: list[mx.array] = [
+-            mx.zeros((pool_size, n_kv_heads, head_dim), dtype=dtype)
++        # Per-layer buffers — dict-of-arrays under quantization, single
++        # array under fp16.
++        self._k_buffers: list[dict] = [
++            self._quantizer.create_pool_buffers(pool_size, n_kv_heads, head_dim)
+             for _ in range(num_layers)
+         ]
+-        self.v_buffer: list[mx.array] = [
+-            mx.zeros((pool_size, n_kv_heads, head_dim), dtype=dtype)
++        self._v_buffers: list[dict] = [
++            self._quantizer.create_pool_buffers(pool_size, n_kv_heads, head_dim)
+             for _ in range(num_layers)
+         ]
+ 
+-        mem_mb = (pool_size * n_kv_heads * head_dim * 2 * num_layers * dtype.size) / (
++        # Backward-compat: expose raw fp16 buffers when not quantizing so
++        # callers reading ``self.k_buffer[i]`` directly keep working.
++        if kv_cache_mode is KVCacheMode.FP16:
++            self.k_buffer = [b["data"] for b in self._k_buffers]
++            self.v_buffer = [b["data"] for b in self._v_buffers]
++
++        bpe = bytes_per_element(kv_cache_mode)
++        mem_mb = (pool_size * n_kv_heads * head_dim * 2 * num_layers * bpe) / (
+             1024 * 1024
+         )
+         logger.info(
+             f"MlxKVPool: {pool_size} slots × {num_layers} layers "
+             f"× {n_kv_heads} heads × {head_dim} dim, "
+-            f"dtype={dtype}, ~{mem_mb:.1f} MB"
++            f"dtype={dtype}, mode={kv_cache_mode.value}, ~{mem_mb:.1f} MB"
+         )
+ 
++    def _is_quant(self) -> bool:
++        return self._quantizer.is_quantized
++
+     def set_kv(self, layer_id: int, slots: mx.array, k: mx.array, v: mx.array) -> None:
+-        """Scatter K/V into *slots* for one layer."""
+-        self.k_buffer[layer_id][slots] = k
+-        self.v_buffer[layer_id][slots] = v
++        """Scatter K/V into *slots* for one layer (quantize-on-write)."""
++        if not self._is_quant():
++            self._k_buffers[layer_id]["data"][slots] = k
++            self._v_buffers[layer_id]["data"][slots] = v
++            # Keep the backward-compat alias in sync — same backing storage,
++            # but reassign the python reference after the in-place write.
++            self.k_buffer[layer_id] = self._k_buffers[layer_id]["data"]
++            self.v_buffer[layer_id] = self._v_buffers[layer_id]["data"]
++            return
++        kq = self._quantizer.quantize_pool(k)
++        vq = self._quantizer.quantize_pool(v)
++        for key in kq:
++            self._k_buffers[layer_id][key][slots] = kq[key]
++            self._v_buffers[layer_id][key][slots] = vq[key]
+ 
+     def get_kv(self, layer_id: int, slots: mx.array) -> tuple[mx.array, mx.array]:
+-        """Gather K/V from *slots* for one layer."""
+-        return self.k_buffer[layer_id][slots], self.v_buffer[layer_id][slots]
++        """Gather K/V from *slots* for one layer (dequantize-on-read)."""
++        if not self._is_quant():
++            return self._k_buffers[layer_id]["data"][slots], self._v_buffers[layer_id]["data"][slots]
++        k_dict = {key: self._k_buffers[layer_id][key][slots] for key in self._k_buffers[layer_id]}
++        v_dict = {key: self._v_buffers[layer_id][key][slots] for key in self._v_buffers[layer_id]}
++        return self._quantizer.dequantize_pool(k_dict), self._quantizer.dequantize_pool(v_dict)
+ 
+     def get_kv_all_layers(self, slots: mx.array) -> tuple[mx.array, mx.array]:
+         """Gather K/V from *slots* across all layers."""
+-        k_all = mx.stack([self.k_buffer[i][slots] for i in range(self.num_layers)])
+-        v_all = mx.stack([self.v_buffer[i][slots] for i in range(self.num_layers)])
++        k_all = mx.stack([self.get_kv(i, slots)[0] for i in range(self.num_layers)])
++        v_all = mx.stack([self.get_kv(i, slots)[1] for i in range(self.num_layers)])
+         return k_all, v_all
+ 
+     def set_kv_all_layers(
+@@ -70,11 +110,21 @@ class MlxKVPool:
+ 
+     def all_buffers(self) -> list[mx.array]:
+         """Return all buffer arrays (for ``mx.eval``)."""
+-        return self.k_buffer + self.v_buffer
++        out: list[mx.array] = []
++        for layer_buffers in (self._k_buffers, self._v_buffers):
++            for buf in layer_buffers:
++                out.extend(buf.values())
++        return out
+ 
+     def clear(self) -> None:
+         """Zero all buffers."""
+-        shape = (self.pool_size, self.n_kv_heads, self.head_dim)
+         for i in range(self.num_layers):
+-            self.k_buffer[i] = mx.zeros(shape, dtype=self.dtype)
+-            self.v_buffer[i] = mx.zeros(shape, dtype=self.dtype)
++            self._k_buffers[i] = self._quantizer.create_pool_buffers(
++                self.pool_size, self.n_kv_heads, self.head_dim
++            )
++            self._v_buffers[i] = self._quantizer.create_pool_buffers(
++                self.pool_size, self.n_kv_heads, self.head_dim
++            )
++            if self.kv_cache_mode is KVCacheMode.FP16:
++                self.k_buffer[i] = self._k_buffers[i]["data"]
++                self.v_buffer[i] = self._v_buffers[i]["data"]
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py
+new file mode 100644
+index 000000000..a0dc817f8
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py
+@@ -0,0 +1,250 @@
++"""KV cache quantization for MLX backend.
++
++Supports three modes:
++  - fp16:       Full-precision float16 (default, no quantization)
++  - fp8:        MXFP8 quantization (~2x memory savings, minimal quality loss)
++  - turboquant: Affine 4-bit quantization (~3.5x memory savings)
++
++Both quantized modes store KV cache data in compressed form and dequantize
++on read, trading compute for memory to enable longer context windows.
++"""
++
++from __future__ import annotations
++
++import enum
++import logging
++
++import mlx.core as mx
++
++logger = logging.getLogger(__name__)
++
++# MXFP8: group_size=32, bits=8
++_FP8_GROUP_SIZE = 32
++_FP8_BITS = 8
++
++# TurboQuant: affine, group_size=64, bits=4
++_TQ_GROUP_SIZE = 64
++_TQ_BITS = 4
++
++
++class KVCacheMode(enum.Enum):
++    FP16 = "fp16"
++    FP8 = "fp8"
++    TURBOQUANT = "turboquant"
++
++
++def parse_kv_cache_mode(value: str) -> KVCacheMode:
++    """Parse a string into a KVCacheMode, accepting common aliases."""
++    v = value.lower().strip()
++    aliases = {
++        "fp16": KVCacheMode.FP16,
++        "float16": KVCacheMode.FP16,
++        "auto": KVCacheMode.FP16,
++        "fp8": KVCacheMode.FP8,
++        "mxfp8": KVCacheMode.FP8,
++        "fp8_e4m3": KVCacheMode.FP8,
++        "fp8_e5m2": KVCacheMode.FP8,
++        "turboquant": KVCacheMode.TURBOQUANT,
++        "turbo": KVCacheMode.TURBOQUANT,
++        "tq": KVCacheMode.TURBOQUANT,
++        "4bit": KVCacheMode.TURBOQUANT,
++    }
++    if v not in aliases:
++        raise ValueError(
++            f"Unknown KV cache mode: {value!r}. "
++            f"Valid options: fp16, fp8, turboquant"
++        )
++    return aliases[v]
++
++
++def bytes_per_element(mode: KVCacheMode) -> float:
++    """Effective bytes per KV element (including scale/bias overhead).
++
++    Used for pool sizing calculations.
++    """
++    if mode is KVCacheMode.FP16:
++        return 2.0  # float16
++    elif mode is KVCacheMode.FP8:
++        # MXFP8: 1 byte per element + 1 uint8 scale per group of 32
++        return 1.0 + 1.0 / _FP8_GROUP_SIZE
++    elif mode is KVCacheMode.TURBOQUANT:
++        # Affine 4-bit: 0.5 bytes per element + scale (2 bytes) + bias (2 bytes) per group of 64
++        return 0.5 + 4.0 / _TQ_GROUP_SIZE
++    raise ValueError(f"Unknown mode: {mode}")
++
++
++class KVQuantizer:
++    """Handles quantization and dequantization of KV cache data.
++
++    Provides buffer creation, quantize-on-write, and dequantize-on-read
++    for both 3D pool buffers and 4D per-request cache buffers.
++    """
++
++    def __init__(self, mode: KVCacheMode, original_dtype: mx.Dtype = mx.float16):
++        self.mode = mode
++        self.original_dtype = original_dtype
++
++    @property
++    def is_quantized(self) -> bool:
++        return self.mode is not KVCacheMode.FP16
++
++    # -- 3D pool buffers: (pool_size, n_kv_heads, head_dim) --
++
++    def create_pool_buffers(
++        self, pool_size: int, n_kv_heads: int, head_dim: int
++    ) -> dict[str, mx.array]:
++        """Create pre-allocated buffers for one K or V pool layer.
++
++        Returns a dict with keys depending on mode:
++          fp16:       {"data": array}
++          fp8:        {"data": array, "scales": array}
++          turboquant: {"data": array, "scales": array, "biases": array}
++        """
++        if self.mode is KVCacheMode.FP16:
++            return {
++                "data": mx.zeros(
++                    (pool_size, n_kv_heads, head_dim), dtype=self.original_dtype
++                )
++            }
++        elif self.mode is KVCacheMode.FP8:
++            data_dim = head_dim // 4  # 4 fp8 values per uint32
++            scale_dim = head_dim // _FP8_GROUP_SIZE
++            return {
++                "data": mx.zeros((pool_size, n_kv_heads, data_dim), dtype=mx.uint32),
++                "scales": mx.zeros(
++                    (pool_size, n_kv_heads, scale_dim), dtype=mx.uint8
++                ),
++            }
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            data_dim = head_dim // 8  # 8 4-bit values per uint32
++            meta_dim = head_dim // _TQ_GROUP_SIZE
++            return {
++                "data": mx.zeros((pool_size, n_kv_heads, data_dim), dtype=mx.uint32),
++                "scales": mx.zeros(
++                    (pool_size, n_kv_heads, meta_dim), dtype=mx.float16
++                ),
++                "biases": mx.zeros(
++                    (pool_size, n_kv_heads, meta_dim), dtype=mx.float16
++                ),
++            }
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def quantize_pool(self, data: mx.array) -> dict[str, mx.array]:
++        """Quantize a 3D tensor (slots, n_kv_heads, head_dim) for pool storage."""
++        if self.mode is KVCacheMode.FP16:
++            return {"data": data}
++        elif self.mode is KVCacheMode.FP8:
++            w_q, scales = mx.quantize(data, mode="mxfp8")
++            return {"data": w_q, "scales": scales}
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            w_q, scales, biases = mx.quantize(
++                data, group_size=_TQ_GROUP_SIZE, bits=_TQ_BITS
++            )
++            return {"data": w_q, "scales": scales, "biases": biases}
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def dequantize_pool(self, buffers: dict[str, mx.array]) -> mx.array:
++        """Dequantize pool buffers back to original dtype."""
++        if self.mode is KVCacheMode.FP16:
++            return buffers["data"]
++        elif self.mode is KVCacheMode.FP8:
++            result = mx.dequantize(buffers["data"], buffers["scales"], mode="mxfp8")
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            result = mx.dequantize(
++                buffers["data"],
++                buffers["scales"],
++                buffers["biases"],
++                group_size=_TQ_GROUP_SIZE,
++                bits=_TQ_BITS,
++            )
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    # -- 4D cache buffers: (1, n_kv_heads, seq_len, head_dim) --
++
++    def create_cache_buffers(
++        self, batch: int, n_kv_heads: int, max_seq_len: int, head_dim: int
++    ) -> dict[str, mx.array]:
++        """Create pre-allocated buffers for one K or V contiguous cache."""
++        if self.mode is KVCacheMode.FP16:
++            return {
++                "data": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, head_dim),
++                    dtype=self.original_dtype,
++                )
++            }
++        elif self.mode is KVCacheMode.FP8:
++            data_dim = head_dim // 4
++            scale_dim = head_dim // _FP8_GROUP_SIZE
++            return {
++                "data": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, data_dim), dtype=mx.uint32
++                ),
++                "scales": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, scale_dim), dtype=mx.uint8
++                ),
++            }
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            data_dim = head_dim // 8
++            meta_dim = head_dim // _TQ_GROUP_SIZE
++            return {
++                "data": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, data_dim), dtype=mx.uint32
++                ),
++                "scales": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, meta_dim), dtype=mx.float16
++                ),
++                "biases": mx.zeros(
++                    (batch, n_kv_heads, max_seq_len, meta_dim), dtype=mx.float16
++                ),
++            }
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def quantize_cache(self, data: mx.array) -> dict[str, mx.array]:
++        """Quantize a 4D tensor (B, n_kv_heads, S, head_dim) for cache storage."""
++        if self.mode is KVCacheMode.FP16:
++            return {"data": data}
++        elif self.mode is KVCacheMode.FP8:
++            w_q, scales = mx.quantize(data, mode="mxfp8")
++            return {"data": w_q, "scales": scales}
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            w_q, scales, biases = mx.quantize(
++                data, group_size=_TQ_GROUP_SIZE, bits=_TQ_BITS
++            )
++            return {"data": w_q, "scales": scales, "biases": biases}
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def dequantize_cache(self, buffers: dict[str, mx.array]) -> mx.array:
++        """Dequantize cache buffers back to original dtype."""
++        if self.mode is KVCacheMode.FP16:
++            return buffers["data"]
++        elif self.mode is KVCacheMode.FP8:
++            result = mx.dequantize(buffers["data"], buffers["scales"], mode="mxfp8")
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        elif self.mode is KVCacheMode.TURBOQUANT:
++            result = mx.dequantize(
++                buffers["data"],
++                buffers["scales"],
++                buffers["biases"],
++                group_size=_TQ_GROUP_SIZE,
++                bits=_TQ_BITS,
++            )
++            if result.dtype != self.original_dtype:
++                result = result.astype(self.original_dtype)
++            return result
++        raise ValueError(f"Unknown mode: {self.mode}")
++
++    def pool_buffer_arrays(self, buffers: dict[str, mx.array]) -> list[mx.array]:
++        """Return all arrays from a pool buffer dict (for mx.eval)."""
++        return list(buffers.values())
++
++    def cache_buffer_arrays(self, buffers: dict[str, mx.array]) -> list[mx.array]:
++        """Return all arrays from a cache buffer dict (for mx.eval state)."""
++        return list(buffers.values())
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
+index 1d1b5065f..37540ee48 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/model_patching.py
+@@ -7,20 +7,76 @@ from sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper import (
+ )
+ 
+ 
++def _is_attention_module(m: Any) -> bool:
++    """True iff *m* looks like a standard self-attention module.
++
++    Standard attention has q_proj/k_proj/v_proj/o_proj projections.
++    NemotronHAttention, Qwen3NextAttention, Llama-family Attention,
++    and Mistral Attention all match. Mamba mixers (Mamba2/DeltaNet
++    linear-attn) have in_proj/out_proj patterns; MoE mixers have
++    gate + experts. Either of those fails the q_proj test.
++
++    Also accepts an already-installed ``MLXAttentionWrapper`` (probes
++    its ``_inner``) — ``find_attention_layers`` is re-run after
++    ``patch_model_attention``, so this keeps the discovery idempotent.
++    """
++    if isinstance(m, MLXAttentionWrapper):
++        m = m._inner
++    return all(hasattr(m, n) for n in ("q_proj", "k_proj", "v_proj", "o_proj"))
++
++
+ def find_attention_layers(model: Any) -> tuple[list[Any], str]:
+-    """Find transformer layers and the attention attribute name."""
++    """Find transformer layers and the canonical attention attribute name.
++
++    Hybrid models alternate "attention" and "non-attention" mixers.
++    Examples:
++      - Qwen3.5 / Qwen3.6: ``self_attn`` (standard) vs ``linear_attn``
++        (DeltaNet); layer 0 may be DeltaNet-only.
++      - NemotronH (Nemotron-3-Nano-30B-A3B): all layers expose ``mixer``;
++        block_type "*" → NemotronHAttention, "M" → NemotronHMamba2Mixer,
++        "E" → NemotronHMoE, "-" → NemotronHMLP.
++      - Coder-Next-80B mamba: similar pattern.
++
++    Probe order:
++      1. ``self_attn`` (Qwen/Llama/Mistral)
++      2. ``attention`` (some Qwen variants)
++      3. ``mixer`` *if* at least one layer's mixer is a standard
++         attention module (q_proj/k_proj/v_proj/o_proj all present).
++
++    Raises ValueError only when none of these match — that means the
++    architecture is genuinely new and needs another probe added here.
++    """
+     root = getattr(model, "language_model", model)
+     container = getattr(root, "model", root)
+-    layer_list = getattr(container, "layers", None) or getattr(root, "layers", [])
++    layer_list = (
++        getattr(container, "layers", None)
++        or getattr(root, "layers", [])
++    )
++    if not layer_list:
++        # Some models route the layer list through a `backbone` (NemotronH).
++        backbone = getattr(container, "backbone", None) or getattr(root, "backbone", None)
++        if backbone is not None:
++            layer_list = getattr(backbone, "layers", [])
++
++    if not layer_list:
++        return layer_list, "self_attn"
++
++    for attr_name in ("self_attn", "attention"):
++        for layer in layer_list:
++            if hasattr(layer, attr_name):
++                return layer_list, attr_name
++
++    # NemotronH-style: layers expose `.mixer` and we need to confirm at
++    # least one is real attention (not Mamba/MoE).
++    for layer in layer_list:
++        m = getattr(layer, "mixer", None)
++        if m is not None and _is_attention_module(m):
++            return layer_list, "mixer"
+ 
+-    if layer_list:
+-        sample = layer_list[0]
+-        if hasattr(sample, "self_attn"):
+-            return layer_list, "self_attn"
+-        if hasattr(sample, "attention"):
+-            return layer_list, "attention"
+-        raise ValueError(f"No attention attribute in layer type {type(sample)}")
+-    return layer_list, "self_attn"
++    raise ValueError(
++        f"No attention attribute (self_attn / attention / mixer) found "
++        f"on any layer in {type(layer_list[0])}"
++    )
+ 
+ 
+ def patch_model_attention(model: Any) -> int:
+@@ -28,12 +84,24 @@ def patch_model_attention(model: Any) -> int:
+ 
+     The wrapper delegates to the inner module when no BatchedDecodeContext
+     is set, so it is always installed and never removed.
++
++    Layers that don't have the resolved attribute (DeltaNet ``linear_attn``
++    layers in a hybrid model, say) are skipped — their cache type lives
++    elsewhere and is handled by the model's own ``make_cache``.
++
++    For ``attn_attr == "mixer"`` (NemotronH-style), each layer's mixer is
++    additionally type-checked: only real attention mixers (q/k/v/o_proj
++    all present) get the wrapper; Mamba/MoE/MLP mixers are left alone.
+     """
+     layer_list, attn_attr = find_attention_layers(model)
+     patched = 0
+     for idx, layer in enumerate(layer_list):
+-        attn = getattr(layer, attn_attr)
+-        if isinstance(attn, MLXAttentionWrapper):
++        attn = getattr(layer, attn_attr, None)
++        if attn is None or isinstance(attn, MLXAttentionWrapper):
++            continue
++        # When iterating `mixer`, the same attribute is shared by Mamba/MoE
++        # layers — skip those so we don't wrap non-attention mixers.
++        if attn_attr == "mixer" and not _is_attention_module(attn):
+             continue
+         setattr(layer, attn_attr, MLXAttentionWrapper(attn, idx))
+         patched += 1
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 1fb5bb33b..379447e5c 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -27,12 +27,15 @@ from mlx_lm.utils import quantize_model as mlx_lm_quantize_model
+ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     BatchedDecodeContext,
+     ContiguousKVCache,
++    KVCacheMode,
+     MLXAttentionWrapper,
+     OffsetCache,
+     PoolBackedCache,
++    bytes_per_element,
+     clear_context,
+     find_attention_layers,
+     get_num_layers,
++    parse_kv_cache_mode,
+     patch_model_attention,
+     set_context,
+ )
+@@ -93,7 +96,7 @@ class MlxPendingDecode:
+ 
+ 
+ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
+-    # name -> (bits, group_size). group_size=64 matches the mlx-community convention.
++    # name -> (bits, group_size). group_size=64 matches mlx-community convention.
+     "mlx_q4": (4, 64),
+     "mlx_q8": (8, 64),
+ }
+@@ -110,21 +113,28 @@ class MlxModelRunner:
+         pool_size: int | None = None,
+         mem_fraction_static: float = 0.8,
+         quantization: str | None = None,
++        kv_cache_mode: str | KVCacheMode = "fp16",
++        context_length: int | None = None,
+     ):
+         self.model_path = model_path
+         self.trust_remote_code = trust_remote_code
+         self.model = None
+         self.disable_radix_cache = disable_radix_cache
+         self._mem_fraction_static = mem_fraction_static
++        if isinstance(kv_cache_mode, str):
++            self._kv_cache_mode = parse_kv_cache_mode(kv_cache_mode)
++        else:
++            self._kv_cache_mode = kv_cache_mode
++        self._context_length = context_length
+         # Counter used to trigger periodic mx.clear_cache() calls.
+         self._decode_step_ct: int = 0
+-        # On-the-fly quantization preset (e.g. "mlx_q4"). None = no on-load quantization.
+-        # Pre-quantized HF repos (e.g. mlx-community/Qwen3-0.6B-4bit) load correctly
+-        # regardless of this setting — mlx_lm.load() detects the config and instantiates
+-        # QuantizedLinear modules directly.
++        # On-the-fly quantization preset (e.g. "mlx_q4"). None = no on-load
++        # quantization. Pre-quantized HF repos load correctly regardless.
+         self._quantization: str | None = quantization
+ 
+         self._load_model()
++        if self._context_length is not None:
++            self._apply_rope_scaling()
+ 
+         # Pin MLX allocations to prevent OS paging
+         device_info = mx.device_info()
+@@ -138,6 +148,12 @@ class MlxModelRunner:
+         self._num_layers = get_num_layers(self.model)
+         self._max_seq_len = 4096  # doubles on overflow
+ 
++        # Detect hybrid (DeltaNet / mamba / GDN) models — their layers
++        # alternate per-layer cache types, so the batched-decode path's
++        # uniform OffsetCache shim breaks the recurrent state. Falls
++        # back to serial-per-request decode at batch > 1.
++        self._is_hybrid_model = self._detect_hybrid()
++
+         self._req_caches: dict[str, list[ContiguousKVCache | PoolBackedCache]] = {}
+         self._req_token_ids: dict[str, list[int]] = {}
+         self._cache_pool: list[list[ContiguousKVCache]] = []  # reusable caches
+@@ -156,22 +172,204 @@ class MlxModelRunner:
+             return model_output[0]
+         return model_output
+ 
+-    def _acquire_cache(self) -> list[ContiguousKVCache]:
+-        """Get a reusable cache list from the pool, or create a new one."""
++    def _acquire_cache(self) -> list:
++        """Get a reusable cache list from the pool, or create a new one.
++
++        Hybrid models (Qwen3.5 DeltaNet, Qwen3.6 GDN, Coder-Next mamba)
++        provide ``make_cache()`` which returns a heterogeneous cache list
++        per layer — ``ArraysCache`` for DeltaNet recurrent state,
++        ``RotatingKVCache`` for sliding attention, ``KVCache`` for full
++        attention. For VLM-wrapped hybrids loaded via ``mlx_vlm.load``,
++        ``make_cache`` lives on ``self.model.language_model`` rather than
++        the outer wrapper.
++
++        Hybrid models also bypass the pool: ``ArraysCache`` carries enough
++        internal state (``cache`` list, ``lengths``, possible internal
++        positional buffers we don't introspect) that pool-reuse repeatedly
++        crashes with broadcast-shape errors of the form
++        ``(B, heads, S_stale, D) vs (B, 1, S_new, D)``. Always-fresh
++        ``make_cache()`` per request is a small per-prefill allocation cost
++        and avoids the class of bug entirely. The fp16/turboquant
++        non-hybrid pool reuse path is unaffected.
++        """
++        if self._is_hybrid_model:
++            return self._build_fresh_cache()
++
+         if self._cache_pool:
+             cache = self._cache_pool.pop()
++            # Reset any state the cache type allows so a returned cache
++            # from a previous request doesn't leak state into a new one.
+             for c in cache:
+-                c.offset = 0
++                if hasattr(c, "offset"):
++                    c.offset = 0  # ContiguousKVCache / KVCache / RotatingKVCache
++                    # RotatingKVCache has a ring-buffer write index (_idx)
++                    # that also needs reset; otherwise the next request
++                    # writes at the prior request's wrap-around position.
++                    if hasattr(c, "_idx"):
++                        c._idx = 0
++                    # RotatingKVCache also keeps the prior keys/values
++                    # tensors — drop them so the next prefill re-allocates
++                    # fresh (skip our ContiguousKVCache which uses pool
++                    # buffers, not bare arrays).
++                    if (
++                        hasattr(c, "keys")
++                        and c.keys is not None
++                        and not hasattr(c, "_k_buffers")
++                    ):
++                        c.keys = None
++                        c.values = None
++                elif hasattr(c, "reset"):
++                    c.reset()
++                elif hasattr(c, "cache"):
++                    # ArraysCache (DeltaNet recurrent state) — drop arrays
++                    # so the next prefill rebuilds. Without this the next
++                    # request inherits the previous request's conv_state /
++                    # ssm_state and produces garbage.
++                    try:
++                        c.cache = [None for _ in c.cache]
++                    except Exception:
++                        pass
++                    # Also reset the length tracker — DeltaNet's GatedDeltaNet
++                    # branches on ``cache.lengths is not None`` to decide
++                    # whether to advance the conv_state pointer. A stale
++                    # tensor from a prior request causes a broadcast
++                    # mismatch on the next prefill (e.g. (1,24,26,64) vs
++                    # (1,1,24,64) — the cache thinks it already has 2
++                    # tokens cached but we just gave it 24 fresh ones).
++                    if hasattr(c, "lengths"):
++                        try:
++                            c.lengths = None
++                        except Exception:
++                            pass
+             return cache
++
++        # Check if model has make_cache (hybrid models like DeltaNet).
++        # For VLM-wrapped hybrids loaded via mlx_vlm.load on Qwen3.5/3.6,
++        # make_cache lives on `language_model`, not the outer wrapper —
++        # without this fallback, the loop below builds uniform
++        # ContiguousKVCache for every layer and DeltaNet layers receive
++        # the wrong cache type, producing fluent-looking garbage tokens.
++        # (MMLU regressed to 16.7% pre-fix; recovered to 93.0% with it.)
++        native_maker = None
++        if hasattr(self.model, "make_cache"):
++            native_maker = self.model.make_cache
++        elif hasattr(self.model, "language_model") and hasattr(
++            self.model.language_model, "make_cache"
++        ):
++            native_maker = self.model.language_model.make_cache
++
++        if native_maker is not None:
++            native_cache = native_maker()
++            # Replace ONLY plain KVCache (full attention) with our
++            # quantized ContiguousKVCache. Keep RotatingKVCache NATIVE —
++            # its rotating-ring-buffer semantics are load-bearing for
++            # sliding-attention layers (Gemma 4 sliding_window=1024).
++            # Replacing it with non-rotating ContiguousKVCache means
++            # chunk 2 stores 2× chunk_size keys instead of the expected
++            # window_size, and the model's make_mask (which assumes
++            # rotating) computes a mask shape that doesn't match →
++            # broadcast_shapes ValueError. Sliding KV is tiny (capped at
++            # sliding_window) so losing fp8/turboquant on those layers
++            # doesn't meaningfully hurt the 64 GB budget.
++            cache = []
++            for nc in native_cache:
++                if type(nc).__name__ == "KVCache":
++                    cache.append(ContiguousKVCache(max_seq_len=self._max_seq_len))
++                else:
++                    # Native cache (RotatingKVCache for sliding,
++                    # ArraysCache for DeltaNet, etc.) — keep as-is.
++                    cache.append(nc)
++            return cache
++
+         return [
+             ContiguousKVCache(max_seq_len=self._max_seq_len)
+             for _ in range(self._num_layers)
+         ]
+ 
++    def _reset_mlx_vlm_position_cache(self) -> None:
++        """Clear mlx_vlm-specific position-id caches on the language model.
++
++        ``mlx_vlm/models/qwen3_5/LanguageModel`` caches ``_position_ids``
++        and ``_rope_deltas`` between forward calls and only invalidates them
++        when a new ``pixel_values`` arrives. For multi-request serving this
++        leaks request A's position tensor into request B's prefill — the
++        ``apply_multimodal_rotary_pos_emb`` call then broadcasts a length-A
++        cos/sin against length-B queries and crashes. Reset at every new
++        prefill (extend_start within the same request keeps the cache live,
++        which is correct for chunked prefill).
++        """
++        targets = [self.model]
++        lm = getattr(self.model, "language_model", None)
++        if lm is not None:
++            targets.append(lm)
++        for t in targets:
++            for attr in ("_position_ids", "_rope_deltas"):
++                if hasattr(t, attr) and getattr(t, attr) is not None:
++                    setattr(t, attr, None)
++
+     def _release_cache(self, cache: list[ContiguousKVCache]) -> None:
+-        """Return a cache list to the pool for reuse."""
++        """Return a cache list to the pool for reuse.
++
++        No-op for hybrid models — those always build fresh (see
++        ``_acquire_cache`` for rationale).
++        """
++        if self._is_hybrid_model:
++            return
+         self._cache_pool.append(cache)
+ 
++    def _build_fresh_cache(self) -> list:
++        """Build a fresh per-request cache. Always-fresh path for hybrid
++        models; equivalent to the no-pool branch of ``_acquire_cache``."""
++        native_maker = None
++        if hasattr(self.model, "make_cache"):
++            native_maker = self.model.make_cache
++        elif hasattr(self.model, "language_model") and hasattr(
++            self.model.language_model, "make_cache"
++        ):
++            native_maker = self.model.language_model.make_cache
++
++        if native_maker is not None:
++            native_cache = native_maker()
++            cache = []
++            for nc in native_cache:
++                if type(nc).__name__ == "KVCache":
++                    cache.append(ContiguousKVCache(max_seq_len=self._max_seq_len))
++                else:
++                    cache.append(nc)
++            return cache
++
++        return [
++            ContiguousKVCache(max_seq_len=self._max_seq_len)
++            for _ in range(self._num_layers)
++        ]
++
++    def _detect_hybrid(self) -> bool:
++        """Return True if the model has DeltaNet / mamba / GDN layers.
++
++        Hybrid models alternate per-layer cache types — the standard
++        attention layers use ``KVCache``, the linear-attention / SSM
++        layers use ``ArraysCache``. The batched-decode path's uniform
++        ``OffsetCache`` shim doesn't carry conv_state / ssm_state, so
++        DeltaNet layers produce garbage at batch > 1 without per-request
++        ArraysCache routing. This flag triggers a serial-per-request
++        decode fallback in ``decode_batch_start``.
++        """
++        try:
++            maker = getattr(self.model, "make_cache", None) or getattr(
++                getattr(self.model, "language_model", None), "make_cache", None
++            )
++            if maker is None:
++                return False
++            sample = maker()
++            for layer_cache in sample:
++                name = type(layer_cache).__name__
++                if name in ("ArraysCache", "MambaCache", "RecurrentCache"):
++                    return True
++            return False
++        except Exception as e:
++            logger.debug(f"_detect_hybrid failed ({e}); assuming non-hybrid")
++            return False
++
+     @staticmethod
+     def _eval_with_cache(
+         token_result: mx.array, cache: list[ContiguousKVCache | PoolBackedCache]
+@@ -194,38 +392,172 @@ class MlxModelRunner:
+             for s in cache.state
+         ]
+ 
++    def _is_vlm_config(self) -> bool:
++        """Detect VLM architecture from config.json.
++
++        ``mlx_lm`` *can* load some VLMs (Qwen2-VL, Qwen3-VL) but the
++        loaded ``Model.__call__`` accepts only text inputs — image
++        features must come through ``input_embeddings`` which we don't
++        compute. ``mlx_vlm`` wraps the same model with an image-aware
++        ``__call__``. So when the architecture IS a VLM, prefer
++        ``mlx_vlm`` even if ``mlx_lm`` would have worked.
++        """
++        try:
++            import json as _json
++            from huggingface_hub import hf_hub_download
++
++            cfg_path = hf_hub_download(repo_id=self.model_path, filename="config.json")
++            with open(cfg_path) as f:
++                cfg = _json.load(f)
++            return any(
++                k in cfg
++                for k in ("vision_config", "image_token_id", "image_token_index")
++            )
++        except Exception as _e:
++            logger.debug(
++                f"_is_vlm_config: detection failed ({_e}); assuming text-only"
++            )
++            return False
++
+     def _load_model(self):
+-        """Load model using mlx_lm. If ``self._quantization`` requests a preset
+-        (e.g. ``mlx_q4``), quantize fp16 weights in-place via
+-        :func:`mlx_lm.utils.quantize_model` after load.
++        """Load via ``mlx_vlm`` if the architecture is a VLM, else ``mlx_lm``.
++
++        Falls back across loaders if either raises so we still get the
++        model loaded one way or another. Image-bearing requests are
++        routed through the VLM's full forward (with ``pixel_values``);
++        text-only requests skip vision via ``language_model``. See
++        patches 010–012 for the per-architecture multimodal-data
++        forwarding contract.
+         """
+         logger.info(f"Loading MLX model: {self.model_path}")
+         start_time = time.time()
+ 
+-        # We need the config dict to pass into quantize_model so it knows tied/embedding
+-        # layout. return_config=True is cheap and ignored when no quantization is requested.
+-        loaded = mlx_lm_load(
+-            self.model_path,
+-            tokenizer_config={"trust_remote_code": self.trust_remote_code},
+-            return_config=True,
+-        )
+-        self.model, _tokenizer, config = loaded
++        prefer_vlm = self._is_vlm_config()
++        if prefer_vlm:
++            logger.info(
++                "Detected VLM architecture; loading via mlx_vlm (image-aware __call__)."
++            )
++            try:
++                from mlx_vlm import load as mlx_vlm_load
++
++                vlm_model, self.processor = mlx_vlm_load(self.model_path)
++                self.is_vlm = True
++                # Probe the VLM's __call__ signature once so we know which
++                # extra positional args it needs. Mistral3 takes a required
++                # `mask` after pixel_values; Qwen2-VL has it as
++                # keyword-default-None; Idefics3 doesn't take it at all.
++                import inspect as _insp
++
++                _vlm_sig = _insp.signature(vlm_model.__call__)
++                _vlm_params = list(_vlm_sig.parameters.values())
++                _needs_mask_positional = any(
++                    p.name == "mask" and p.default is _insp.Parameter.empty
++                    for p in _vlm_params
++                )
++
++                class _TextOnlyVLMShim:
++                    """Route ``model(input_ids, cache=...)`` to the VLM's
++                    ``language_model`` for text-only and to the VLM's
++                    full ``__call__`` for image-bearing requests."""
++
++                    def __init__(self, vlm):
++                        self._vlm = vlm
++
++                    def __call__(
++                        self, input_ids, cache=None, pixel_values=None, **kwargs
++                    ):
++                        if pixel_values is not None:
++                            # Forward all extra kwargs (image_grid_thw etc.)
++                            # so per-architecture multimodal data reaches
++                            # the VLM's get_input_embeddings.
++                            if _needs_mask_positional:
++                                out = self._vlm(
++                                    input_ids,
++                                    pixel_values,
++                                    None,
++                                    cache=cache,
++                                    **kwargs,
++                                )
++                            else:
++                                out = self._vlm(
++                                    input_ids,
++                                    pixel_values,
++                                    cache=cache,
++                                    **kwargs,
++                                )
++                        else:
++                            out = self._vlm.language_model(input_ids, cache=cache)
++                        return getattr(out, "logits", out)
++
++                    def __getattr__(self, name):
++                        return getattr(self._vlm, name)
++
++                self.model = _TextOnlyVLMShim(vlm_model)
++                mx.eval(self.model.parameters())
++                load_time = time.time() - start_time
++                logger.info(
++                    f"MLX model loaded in {load_time:.2f}s (vlm=True via mlx_vlm)"
++                )
++                return
++            except Exception as e:
++                logger.warning(
++                    f"mlx_vlm.load failed for VLM model {self.model_path}: {e}. "
++                    f"Falling back to mlx_lm (text-only path)."
++                )
+ 
+-        if self._quantization in _MLX_QUANTIZATION_PRESETS:
++        try:
++            # return_config=True is cheap and gives us the config dict needed
++            # for the v0.5.12 on-the-fly quantization preset (mlx_q4 / mlx_q8).
++            loaded = mlx_lm_load(
++                self.model_path,
++                tokenizer_config={"trust_remote_code": self.trust_remote_code},
++                return_config=True,
++            )
++            self.model, _tokenizer, config = loaded
++            self.is_vlm = False
++        except ValueError as e:
++            # mlx_lm raises ValueError("Model type X not supported.") for
++            # VLMs (Idefics3, SmolVLM, etc.); try mlx_vlm fallback.
++            if "not supported" not in str(e):
++                raise
++            logger.warning(
++                f"mlx_lm cannot load {self.model_path} ({e}); "
++                f"falling back to mlx_vlm. Text-only path."
++            )
++            try:
++                from mlx_vlm import load as mlx_vlm_load
++            except ImportError as imp_err:
++                raise RuntimeError(
++                    f"Model {self.model_path} requires mlx_vlm but it isn't "
++                    f"installed. Run `pip install mlx-vlm`."
++                ) from imp_err
++            vlm_model, self.processor = mlx_vlm_load(self.model_path)
++            self.is_vlm = True
++
++            class _TextOnlyVLMShim:
++                def __init__(self, vlm):
++                    self._vlm = vlm
++
++                def __call__(self, input_ids, cache=None, **kwargs):
++                    out = self._vlm.language_model(input_ids, cache=cache)
++                    return getattr(out, "logits", out)
++
++                def __getattr__(self, name):
++                    return getattr(self._vlm, name)
++
++            self.model = _TextOnlyVLMShim(vlm_model)
++            config = None
++
++        # Apply on-the-fly quantization preset (v0.5.12 feature) — only on
++        # the mlx_lm path; VLM-wrapped models keep their own quant strategy.
++        if self.is_vlm is False and self._quantization in _MLX_QUANTIZATION_PRESETS:
+             bits, group_size = _MLX_QUANTIZATION_PRESETS[self._quantization]
+-            # Skip if the model was already loaded quantized (pre-quantized HF repo);
+-            # mlx_lm.load detects the config and instantiates QuantizedLinear directly,
+-            # so applying the preset on top would be redundant.
+             if "quantization" in (config or {}):
+                 logger.info(
+                     "MLX model is already quantized by the HF repo; "
+                     f"ignoring --quantization={self._quantization}"
+                 )
+             else:
+-                # Read weight-tensor totals from MLX array metadata (shape + dtype).
+-                # This is zero-cost — neither materializes the lazy fp16 weights nor
+-                # forces them to be peak-resident in memory at once (which on a 64 GB
+-                # Mac running a 32 B model would put us within a few GB of OOM).
+                 bytes_before = sum(
+                     p.size * p.itemsize
+                     for _, p in tree_flatten(self.model.parameters())
+@@ -258,17 +590,110 @@ class MlxModelRunner:
+         mx.eval(self.model.parameters())
+ 
+         load_time = time.time() - start_time
+-        logger.info(f"MLX model loaded in {load_time:.2f}s")
++        logger.info(
++            f"MLX model loaded in {load_time:.2f}s "
++            f"(vlm={getattr(self, 'is_vlm', False)})"
++        )
++
++    def _apply_rope_scaling(self):
++        """Apply linear RoPE scaling if context_length exceeds the model's native max.
++
++        Lets models trained at e.g. 40K serve 256K via linear interpolation.
++        Cheaper than re-training; quality drops at the very long end but
++        the radix-cache + long-context regime is bandwidth-bound either way.
++        """
++        if self._context_length is None:
++            return
++
++        root = getattr(self.model, "language_model", self.model)
++        model_obj = getattr(root, "model", root)
++        config = getattr(model_obj, "args", None) or getattr(root, "args", None)
++        if config is None:
++            return
++
++        native_max = getattr(config, "max_position_embeddings", None)
++        if native_max is None or self._context_length <= native_max:
++            return
++
++        factor = self._context_length / native_max
++        scale = 1.0 / factor
++        logger.info(
++            f"RoPE scaling: context_length={self._context_length} > "
++            f"max_position_embeddings={native_max}, applying linear "
++            f"scale={scale:.4f} (factor={factor:.2f})"
++        )
++
++        import mlx.nn as nn
++
++        layer_list = getattr(model_obj, "layers", [])
++        patched = 0
++        for layer in layer_list:
++            for attr_name in ("self_attn", "attention"):
++                attn = getattr(layer, attr_name, None)
++                if attn is None:
++                    continue
++                inner = attn._inner if isinstance(attn, MLXAttentionWrapper) else attn
++                rope = getattr(inner, "rope", None)
++                if rope is not None and isinstance(rope, nn.RoPE):
++                    inner.rope = nn.RoPE(
++                        dims=rope.dims,
++                        traditional=rope.traditional,
++                        base=rope.base,
++                        scale=scale,
++                    )
++                    patched += 1
++        if patched > 0:
++            logger.info(f"Patched {patched} RoPE modules with scale={scale:.4f}")
++        else:
++            logger.warning("No RoPE modules found to patch")
+ 
+     def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
+-        """Return (n_kv_heads, head_dim, dtype) from the model."""
++        """Return (n_kv_heads, head_dim, dtype) from the model.
++
++        For hybrid models (Qwen3.5 DeltaNet / Qwen3.6 GDN / Coder-Next),
++        layer 0 may be a DeltaNet layer with only ``linear_attn`` (no
++        ``self_attn``). Sample the first layer that actually has
++        ``attn_attr`` instead of blindly taking ``layer_list[0]``.
++
++        For NemotronH-style hybrids, every layer shares the ``mixer``
++        attribute but the type alternates (Mamba2 / MoE / MLP / Attention).
++        We must check that the mixer is actually an attention module —
++        unwrap any ``MLXAttentionWrapper`` and verify q/k/v/o_proj are
++        present before sampling.
++        """
+         layer_list, attn_attr = find_attention_layers(self.model)
+         if not layer_list:
+             raise RuntimeError("Cannot determine attention config: no layers found")
+-        sample_attn = getattr(layer_list[0], attn_attr)
++        sample_attn = None
++        for layer in layer_list:
++            candidate = getattr(layer, attn_attr, None)
++            if candidate is None:
++                continue
++            # Peek through the patcher wrapper.
++            inner = candidate._inner if isinstance(candidate, MLXAttentionWrapper) else candidate
++            # For mixer-style hybrids, layer 0 may be a Mamba/MoE mixer; skip.
++            if attn_attr == "mixer" and not all(
++                hasattr(inner, n) for n in ("q_proj", "k_proj", "v_proj", "o_proj")
++            ):
++                continue
++            sample_attn = candidate
++            break
++        if sample_attn is None:
++            raise RuntimeError(
++                f"No layer has a real attention module under {attn_attr!r}; "
++                f"cannot derive attn config"
++            )
+         if isinstance(sample_attn, MLXAttentionWrapper):
+             sample_attn = sample_attn._inner
+-        n_kv_heads = sample_attn.n_kv_heads
++        # mlx_lm uses ``n_kv_heads`` / ``n_heads``; mlx_vlm uses
++        # ``num_key_value_heads`` / ``num_attention_heads``. Accept either.
++        n_kv_heads = getattr(sample_attn, "n_kv_heads", None) or getattr(
++            sample_attn, "num_key_value_heads", None
++        )
++        if n_kv_heads is None:
++            raise RuntimeError(
++                f"Cannot find n_kv_heads / num_key_value_heads on {type(sample_attn)}"
++            )
+         if hasattr(sample_attn, "head_dim"):
+             head_dim = sample_attn.head_dim
+         elif hasattr(sample_attn, "k_proj") and hasattr(sample_attn.k_proj, "weight"):
+@@ -297,15 +722,19 @@ class MlxModelRunner:
+             max(mlx_usable - mlx_used, 0),
+             int(sys_available * self._mem_fraction_static),
+         )
+-        bytes_per_slot = 2 * num_layers * n_kv_heads * head_dim * dtype.size
++        # Account for KV-cache-mode memory savings: fp16=2.0 B/elem,
++        # fp8=~1.03, turboquant=~0.56 (incl. scales/biases overhead).
++        bpe = bytes_per_element(self._kv_cache_mode)
++        bytes_per_slot = int(2 * num_layers * n_kv_heads * head_dim * bpe)
+         pool_size = max(kv_budget // bytes_per_slot, 256)
+         logger.info(
+-            f"Auto-sized KV pool: "
++            f"Auto-sized KV pool (mode={self._kv_cache_mode.value}): "
+             f"sys_available={sys_available / (1024**3):.2f} GB, "
+             f"mlx_limit={mlx_limit / (1024**3):.1f} GB, "
+             f"mlx_used={mlx_used / (1024**3):.2f} GB, "
+             f"kv_budget={kv_budget / (1024**3):.2f} GB, "
+-            f"bytes_per_slot={bytes_per_slot}, pool_size={pool_size}"
++            f"bytes_per_slot={bytes_per_slot} ({bpe:.3f} B/elem), "
++            f"pool_size={pool_size}"
+         )
+         return pool_size
+ 
+@@ -326,11 +755,13 @@ class MlxModelRunner:
+             n_kv_heads=n_kv_heads,
+             head_dim=head_dim,
+             dtype=dtype,
++            kv_cache_mode=self._kv_cache_mode,
+         )
+         logger.info(
+             f"KV pool initialized: pool_size={self._pool_size} "
+             f"(buffer size {self._pool_size + 1} incl. padding slot 0), "
+-            f"{self._num_layers} layers, {n_kv_heads} kv_heads, {head_dim} head_dim"
++            f"{self._num_layers} layers, {n_kv_heads} kv_heads, {head_dim} head_dim, "
++            f"mode={self._kv_cache_mode.value}"
+         )
+ 
+     def prefill(
+@@ -341,8 +772,20 @@ class MlxModelRunner:
+         prefix_slot_ids: list[int],
+         new_slot_ids: list[int],
+         req_pool_idx: int,
++        pixel_values=None,
++        mm_kwargs: dict | None = None,
+     ) -> int:
+-        """Prefill a request.  Returns next_token_id."""
++        """Prefill a request.  Returns next_token_id.
++
++        ``pixel_values`` — optional mlx array for VLM image input. When set,
++        passed through to the model's __call__ — TextOnlyVLMShim (see
++        _load_model) routes it to vlm.__call__ instead of language_model.
++        ``mm_kwargs`` — model-specific extras (image_sizes for Mistral3/Pixtral,
++        image_grid_thw for Qwen2-VL, etc.) forwarded as keyword args.
++        Restored 2026-05-13 — the original pixel_values plumbing (Apr-18
++        commit f20ee6e) was lost in the v0.5.11 rebase, which silently
++        broke every VLM image request. See patches/013-mlx-vlm-pixel-values.patch.
++        """
+         pending = self.prefill_start(
+             req_id=req_id,
+             new_token_ids=new_token_ids,
+@@ -350,6 +793,8 @@ class MlxModelRunner:
+             prefix_slot_ids=prefix_slot_ids,
+             new_slot_ids=new_slot_ids,
+             req_pool_idx=req_pool_idx,
++            pixel_values=pixel_values,
++            mm_kwargs=mm_kwargs,
+         )
+         self._eval_with_cache(pending.lazy_token, pending.cache)
+         return self.prefill_finalize(pending)
+@@ -367,31 +812,38 @@ class MlxModelRunner:
+ 
+     def _sync_new_kv_to_pool(
+         self,
+-        cache: list[ContiguousKVCache],
++        cache: list,
+         cache_start: int,
+         slot_ids: list[int],
+     ) -> None:
+-        """Sync KV from contiguous cache to pool at the given slot IDs."""
++        """Sync KV from contiguous cache to pool at the given slot IDs.
++
++        For hybrid models, the per-layer cache list is heterogeneous —
++        ContiguousKVCache for full-attention layers, ArraysCache for
++        DeltaNet/Mamba2 recurrent state, RotatingKVCache for sliding
++        attention. Only ContiguousKVCache layers have the
++        ``(1, n_kv_heads, S, head_dim)`` shape the pool expects; the
++        others either don't carry per-token KV at all (linear/SSM) or
++        carry it in a wrap-around buffer with different shape. Filter
++        to ContiguousKVCache layers only and write each per-layer via
++        ``set_kv``. Non-attention pool buffers stay zero-initialised —
++        radix prefix reuse for hybrid models would still produce wrong
++        outputs on those layers (the linear state can't be cached
++        per-token), so the user must keep ``--disable-radix-cache`` on
++        for correctness. This change is just defence in depth so the
++        write side doesn't crash when radix happens to be enabled.
++        """
+         if not slot_ids or self._kv_pool is None:
+             return
+-        num_layers = len(cache)
+         end = cache_start + len(slot_ids)
+         slot_ids_mx = mx.array(slot_ids, dtype=mx.int32)
+-        # TODO: Standardize ContiguousKVCache size to avoid transpose
+-        # Transpose cache (1, n_kv_heads, S, head_dim) → pool (S, n_kv_heads, head_dim)
+-        k_all = mx.stack(
+-            [
+-                cache[i].keys[0, :, cache_start:end, :].transpose(1, 0, 2)
+-                for i in range(num_layers)
+-            ]
+-        )
+-        v_all = mx.stack(
+-            [
+-                cache[i].values[0, :, cache_start:end, :].transpose(1, 0, 2)
+-                for i in range(num_layers)
+-            ]
+-        )
+-        self._kv_pool.set_kv_all_layers(slot_ids_mx, k_all, v_all)
++        # Transpose cache (1, n_kv_heads, S, head_dim) → pool (S, n_kv_heads, head_dim).
++        for layer_idx, layer_cache in enumerate(cache):
++            if not isinstance(layer_cache, ContiguousKVCache):
++                continue
++            k = layer_cache.keys[0, :, cache_start:end, :].transpose(1, 0, 2)
++            v = layer_cache.values[0, :, cache_start:end, :].transpose(1, 0, 2)
++            self._kv_pool.set_kv(layer_idx, slot_ids_mx, k, v)
+ 
+     def _sync_decode_kv_to_pool(self, req_id: str) -> None:
+         """Sync un-flushed decode KV for *req_id* to the shared pool."""
+@@ -446,6 +898,8 @@ class MlxModelRunner:
+         prefix_slot_ids: list[int],
+         new_slot_ids: list[int],
+         req_pool_idx: int,
++        pixel_values=None,
++        mm_kwargs: dict | None = None,
+     ) -> MlxPendingPrefill:
+         """Queue a prefill forward pass without evaluating.
+ 
+@@ -453,14 +907,35 @@ class MlxModelRunner:
+         next-token ``mx.array`` plus everything needed to commit the
+         request in :meth:`prefill_finalize`.  The caller drives the GPU
+         by handing ``lazy_token`` (and cache state) to ``mx.async_eval``.
++
++        ``pixel_values`` / ``mm_kwargs`` — see :meth:`prefill`.
+         """
+         num_layers = self._num_layers
+         prefix_len = len(prefix_slot_ids)
++        # Build kwargs once; passed to every self.model(...) call below so
++        # the VLM multimodal path is unified across the disable_radix and
++        # full-radix branches.
++        _model_kwargs: dict = {}
++        if pixel_values is not None:
++            _model_kwargs["pixel_values"] = pixel_values
++        if mm_kwargs:
++            _model_kwargs.update(mm_kwargs)
++
++        # mlx_vlm/qwen3_5 caches `_position_ids` and `_rope_deltas` on the
++        # LanguageModel instance and only invalidates them when a new image
++        # arrives (pixel_values is not None). With concurrent text requests
++        # under MAX_RUNNING>1, the position_ids tensor from request A leaks
++        # into request B's prefill — slicing it as `[:, :, 0 : L_B]` returns
++        # a (3, 1, L_A) tensor which then drives cos/sin computation at
++        # length L_A, broadcasting against B's queries at length L_B and
++        # crashing in apply_multimodal_rotary_pos_emb. Clear at every new
++        # prefill (chunked extend keeps state intact, which is correct).
++        self._reset_mlx_vlm_position_cache()
+ 
+         if self.disable_radix_cache:
+             cache = self._acquire_cache()
+             input_ids = mx.array([new_token_ids], dtype=mx.int32)
+-            model_output = self.model(input_ids, cache=cache)
++            model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+             logits = self._extract_logits(model_output)
+             lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
+             return MlxPendingPrefill(
+@@ -494,7 +969,7 @@ class MlxModelRunner:
+                 c.offset = max(c.offset - 1, 0)
+ 
+         input_ids = mx.array([extend_tokens], dtype=mx.int32)
+-        model_output = self.model(input_ids, cache=cache)
++        model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+         logits = self._extract_logits(model_output)
+ 
+         last_logits = logits[:, -1, :]
+@@ -610,6 +1085,167 @@ class MlxModelRunner:
+                 caches=caches,
+             )
+ 
++        # Hybrid models (DeltaNet / mamba / GDN) have alternating
++        # standard-attention and linear-attention layers. Standard layers
++        # use ContiguousKVCache and route through the existing
++        # MLXAttentionWrapper + OffsetCache shim path. Linear layers carry
++        # per-request conv_state + ssm_state in an ArraysCache; we stack
++        # those along axis 0 into (B, ...) tensors so the existing
++        # gated_delta_update kernel (already batch-leading-axis per
++        # mlx_lm.models.gated_delta:262-283) processes all B requests in
++        # one forward pass. After the forward we split each updated
++        # batched state back into the per-request ArraysCache.
++        if self._is_hybrid_model:
++            sample_cache = caches[0]
++            is_full_attn = [
++                isinstance(c, ContiguousKVCache) for c in sample_cache
++            ]
++            full_attn_idx = next(
++                (i for i, ok in enumerate(is_full_attn) if ok), None
++            )
++
++            # NemotronH-style: make_cache returns one cache per M/* layer
++            # only — MoE ("E") and MLP ("-") layers get nothing, so
++            # len(sample_cache) < num_layers. The batched path below
++            # iterates `range(num_layers)` and indexes is_full_attn /
++            # caches[i] by layer_idx, which IndexErrors past the cache
++            # list. Detected 2026-05-18 on nemotron-omni at first decode.
++            # Fall back to the serial-per-request path until the batched
++            # path is taught about partial-cache layouts.
++            cache_layer_mismatch = len(sample_cache) != num_layers
++
++            # Gemma 4-style: layers mix ContiguousKVCache (full attention)
++            # and RotatingKVCache (sliding-window). The batched path's
++            # pad_sizes math derives a single seq_lens per request from the
++            # full-attn offset, then assumes ALL layers' K/V have that
++            # same length after update_and_fetch. RotatingKVCache returns
++            # only the rotated window (up to max_size, e.g. 1024) — so
++            # request K/V across layers have different shapes and
++            # mx.concatenate(axis=0) ValueErrors at the batch step.
++            # Detected 2026-05-19 on gemma4 MoE: shapes (1,8,7426,256)
++            # vs (1,8,1024,256). Fall back to serial-per-request until
++            # the batched path tracks per-layer seq_lens.
++            from mlx_lm.models.cache import RotatingKVCache
++            has_rotating_cache = any(
++                isinstance(c, RotatingKVCache) for c in sample_cache
++            )
++
++            if full_attn_idx is None or cache_layer_mismatch or has_rotating_cache:
++                # Pure-linear / Mamba-only model with no attention layers,
++                # OR hybrid model whose make_cache emits caches for only a
++                # subset of layers (NemotronH). Either way the batched
++                # path's layer_idx indexing assumption breaks; fall back
++                # to serial-per-request. The model's own forward() handles
++                # the cache-position vs layer-index mapping internally.
++                per_req_logits = []
++                for i, rid in enumerate(req_ids):
++                    last_token = self._req_token_ids[rid][-1]
++                    input_ids = mx.array([[last_token]], dtype=mx.int32)
++                    out = self.model(input_ids, cache=caches[i])
++                    per_req_logits.append(self._extract_logits(out)[:, -1, :])
++                stacked = mx.concatenate(per_req_logits, axis=0)
++                lazy_tokens = mx.argmax(stacked, axis=-1)
++                return MlxPendingDecode(
++                    lazy_tokens=lazy_tokens,
++                    req_ids=list(req_ids),
++                    caches=caches,
++                )
++
++            seq_lens = [
++                caches[i][full_attn_idx].offset for i in range(batch_size)
++            ]
++            max_offset = max(seq_lens)
++
++            # BatchedDecodeContext.layer_caches has one slot per full-model
++            # layer index. Linear-layer slots stay None — MLXAttentionWrapper
++            # is only installed on attention layers, so the linear indices
++            # are never read from the context.
++            layer_caches_ctx: list = [None] * num_layers
++            for layer_idx in range(num_layers):
++                if is_full_attn[layer_idx]:
++                    layer_caches_ctx[layer_idx] = [
++                        caches[i][layer_idx] for i in range(batch_size)
++                    ]
++
++            mixed_caches: list = [None] * num_layers
++            linear_batched: list[tuple[int, list]] = []
++            for layer_idx in range(num_layers):
++                if is_full_attn[layer_idx]:
++                    mixed_caches[layer_idx] = OffsetCache(offset=max_offset)
++                else:
++                    # ArraysCache.__getitem__ returns slot 0/1 by index; both
++                    # are mx.arrays of shape (1, ...) after prefill.
++                    conv_b = mx.concatenate(
++                        [caches[i][layer_idx][0] for i in range(batch_size)],
++                        axis=0,
++                    )
++                    ssm_b = mx.concatenate(
++                        [caches[i][layer_idx][1] for i in range(batch_size)],
++                        axis=0,
++                    )
++                    state = [conv_b, ssm_b]
++                    mixed_caches[layer_idx] = state
++                    linear_batched.append((layer_idx, state))
++
++            ctx = BatchedDecodeContext(
++                batch_size=batch_size,
++                seq_lens=seq_lens,
++                layer_caches=layer_caches_ctx,
++            )
++            set_context(ctx)
++            try:
++                last_tokens = [
++                    self._req_token_ids[rid][-1] for rid in req_ids
++                ]
++                batched_input = mx.array(last_tokens, dtype=mx.int32)[:, None]
++                model_output = self.model(batched_input, cache=mixed_caches)
++                logits = self._extract_logits(model_output)
++                lazy_tokens = mx.argmax(logits[:, -1, :], axis=-1)
++
++                # DeltaNet writes new conv_state into slot 0 and new
++                # ssm_state into slot 1 of the batched list in-place
++                # (qwen3_5/language.py:290 and :323). Split each (B, ...)
++                # back into the per-request ArraysCache so the next decode
++                # step picks up each request's own state.
++                for layer_idx, state in linear_batched:
++                    new_conv = state[0]
++                    new_ssm = state[1]
++                    for i in range(batch_size):
++                        caches[i][layer_idx][0] = new_conv[i : i + 1]
++                        caches[i][layer_idx][1] = new_ssm[i : i + 1]
++            finally:
++                clear_context()
++
++            return MlxPendingDecode(
++                lazy_tokens=lazy_tokens,
++                req_ids=list(req_ids),
++                caches=caches,
++            )
++
++        # Non-hybrid batched path: assumes all layers share the same KV
++        # cache shape. Breaks for Gemma 4-style heterogeneous attention
++        # (mix of ContiguousKVCache + RotatingKVCache) — sliding layers'
++        # update_and_fetch returns at most max_size tokens while full
++        # layers return offset tokens, so per-request K/V have different
++        # seq_lens across layers and mx.concatenate ValueErrors. Detect
++        # and fall back to serial-per-request decode. Discovered 2026-05-19
++        # on gemma4 MoE.
++        from mlx_lm.models.cache import RotatingKVCache
++        if any(isinstance(c, RotatingKVCache) for c in caches[0]):
++            per_req_logits = []
++            for i, rid in enumerate(req_ids):
++                last_token = self._req_token_ids[rid][-1]
++                input_ids = mx.array([[last_token]], dtype=mx.int32)
++                out = self.model(input_ids, cache=caches[i])
++                per_req_logits.append(self._extract_logits(out)[:, -1, :])
++            stacked = mx.concatenate(per_req_logits, axis=0)
++            lazy_tokens = mx.argmax(stacked, axis=-1)
++            return MlxPendingDecode(
++                lazy_tokens=lazy_tokens,
++                req_ids=list(req_ids),
++                caches=caches,
++            )
++
+         seq_lens = [caches[i][0].offset for i in range(batch_size)]
+         layer_caches = [
+             [caches[i][layer_idx] for i in range(batch_size)]
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 3dd8520f2..664b93469 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -57,6 +57,22 @@ class _DummyKVCache(KVCache):
+         return 0, 0
+ 
+ 
++class _DummyMambaPool:
++    """Minimal mamba pool stand-in so SGLang's hybrid-model bookkeeping
++    doesn't crash when the real model uses DeltaNet / Mamba layers but
++    MLX is managing recurrent state itself."""
++
++    def __init__(self):
++        self.size = 1
++        self.free_slots = torch.tensor([], dtype=torch.long)
++
++    def available_size(self):
++        return self.size
++
++    def clear(self):
++        pass
++
++
+ class _DummyModel:
+     """Minimal stand-in so that `inspect.signature(model.forward)` and
+     `getattr(model, ...)` calls in ModelRunner.__init__ don't crash."""
+@@ -78,6 +94,21 @@ class MlxModelRunnerStub(ModelRunner):
+         self._mlx_pool_size = mlx_pool_size
+         super().__init__(*args, **kwargs)
+ 
++    # Override hybrid-model probes the scheduler reads when deciding whether
++    # to allocate mamba / GDN / linear-attn state. MLX manages all recurrent
++    # state itself, so SGLang must not attempt to allocate any.
++    @property
++    def hybrid_gdn_config(self):
++        return None
++
++    @property
++    def mamba2_config(self):
++        return None
++
++    @property
++    def linear_attn_model_spec(self):
++        return None
++
+     def load_model(self):
+         """Set only the metadata that downstream code needs, without
+         loading any PyTorch model weights."""
+@@ -148,6 +179,12 @@ class MlxModelRunnerStub(ModelRunner):
+             enable_memory_saver=False,
+         )
+ 
++        # Hybrid models (Qwen3.5 DeltaNet, Qwen3.6 GDN, Coder-Next mamba)
++        # expect `req_to_token_pool.mamba_pool` to exist. MLX owns the
++        # recurrent state itself, so a dummy pool is enough to satisfy
++        # the bookkeeping reads.
++        self.req_to_token_pool.mamba_pool = _DummyMambaPool()
++
+         dummy_kv = _DummyKVCache(
+             size=self.max_total_num_tokens,
+             dtype=self.kv_cache_dtype,
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index 8dddf97f2..c9cb3d265 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -47,6 +47,13 @@ class MlxTpModelWorker(TpModelWorker):
+             MlxModelRunnerStub,
+         )
+ 
++        # MLX VLM image-processor / tensor-handoff path is unreliable through
++        # SGLang's multimodal pipeline — disable it at the worker level so
++        # processors don't even try to load. Devstral re-enables image via
++        # patches 007/010-012 with a guarded path.
++        self.model_config.is_multimodal = False
++        self.server_args.enable_multimodal = False
++
+         logger.info("Initializing MlxModelRunner for end-to-end MLX inference")
+         init_kwargs = dict(
+             model_path=self.server_args.model_path,
+@@ -54,6 +61,8 @@ class MlxTpModelWorker(TpModelWorker):
+             disable_radix_cache=self.server_args.disable_radix_cache,
+             mem_fraction_static=self.server_args.mem_fraction_static,
+             quantization=self.server_args.quantization,
++            kv_cache_mode=self.server_args.kv_cache_dtype,
++            context_length=self.server_args.context_length,
+         )
+         if self.server_args.max_total_tokens is not None:
+             init_kwargs["pool_size"] = self.server_args.max_total_tokens
+@@ -86,6 +95,20 @@ class MlxTpModelWorker(TpModelWorker):
+         """Override since the stub ModelRunner has no real model."""
+         return None
+ 
++    def cleanup_requests(self, req_ids: list[str]):
++        """Proactively drop MLX state for requests the scheduler reports
++        as finished. Faster than waiting for `_cleanup_stale_rids` to
++        observe the batch-membership change."""
++        for req_id in req_ids:
++            self._mlx_runner.remove_request(req_id)
++            self._mlx_active_rids.discard(req_id)
++
++    def clear_runtime_state(self):
++        """Wipe all MLX-side state. Called when the scheduler goes fully
++        idle so we don't keep stale cache slots warm across long pauses."""
++        self._mlx_runner.clear()
++        self._mlx_active_rids.clear()
++
+     def _ensure_mlx_pool_initialized(self):
+         """Lazily initialize the MlxKVPool after the stub's pools are ready."""
+         if not self._mlx_pool_initialized:
+@@ -179,6 +202,191 @@ class MlxTpModelWorker(TpModelWorker):
+                     # New prefill
+                     prefix_slot_ids = req.prefix_indices.tolist()
+                     full_token_ids = list(req.fill_ids)
++                    # Patch 013: extract pixel_values from multimodal_inputs.
++                    # Patch 015 (2026-05-16): concatenate features across all
++                    # mm_items (was: only the first), so multi-image requests
++                    # work. probe_video sends 6 frames as 6 image_url items;
++                    # before this fix qwen3_5.merge_input_ids_with_image_features
++                    # crashed with "tokens: 384, features 64" because the input
++                    # carried 6 images' worth of placeholder tokens but only
++                    # 1 image's pixel features.
++                    pixel_values = None
++                    mm_kwargs: dict = {}
++                    mm = getattr(req, "multimodal_inputs", None)
++                    if mm and getattr(mm, "mm_items", None):
++                        try:
++                            import mlx.core as _mx
++                            import numpy as _np
++
++                            def _to_numpy(t):
++                                # NumPy can't represent bfloat16 (and only
++                                # gained float16 support recently). SGLang's
++                                # nano_nemotron_vl processor returns
++                                # `(3, H, W)` bf16 tensors; without the
++                                # cast `.numpy()` raises
++                                # `TypeError: Got unsupported ScalarType
++                                # BFloat16` and patch 015's outer Exception
++                                # silently swallowed it, leaving the model
++                                # running text-only on image requests
++                                # (2026-05-16 nemotron-omni fabrication
++                                # root cause).
++                                if hasattr(t, "numpy"):
++                                    try:
++                                        return t.numpy()
++                                    except TypeError:
++                                        return t.to(dtype=__import__("torch").float32).numpy()
++                                return t
++
++                            features: list = []
++                            msd_acc: dict[str, list] = {}
++                            for item in mm.mm_items:
++                                feat = getattr(item, "feature", None)
++                                if feat is None:
++                                    continue
++                                features.append(_to_numpy(feat))
++                                msd = getattr(item, "model_specific_data", None) or {}
++                                for k, v in msd.items():
++                                    msd_acc.setdefault(k, []).append(v)
++
++                            if features:
++                                # Concatenate along axis 0. Each per-image
++                                # feature is (n_patches_i, embed_dim) for
++                                # Qwen-VL or (n_patches_i, n_channels, H, W)
++                                # for Pixtral/Mistral3. axis-0 concat = total
++                                # patches across all images, which matches
++                                # how the VLMs consume multi-image input.
++                                pixel_values = _mx.array(_np.concatenate(features, axis=0))
++
++                                # Forward per-image model-specific kwargs.
++                                # image_grid_thw / video_grid_thw etc. are
++                                # per-image tensors of shape (1, 3) for
++                                # Qwen-VL — stack into (N_images, 3) so the
++                                # vision tower knows the grid for each image.
++                                # image_sizes (Pixtral/Mistral3) is similar.
++                                for k, vs in msd_acc.items():
++                                    try:
++                                        np_arrs = [
++                                            v.numpy() if hasattr(v, "numpy")
++                                            else (_np.asarray(v) if not isinstance(v, (list, tuple))
++                                                  else _np.asarray(v))
++                                            for v in vs
++                                        ]
++                                        mm_kwargs[k] = _mx.array(
++                                            _np.concatenate(np_arrs, axis=0)
++                                            if len(np_arrs) > 1 else np_arrs[0]
++                                        )
++                                    except Exception:
++                                        # Fall back to passing the first
++                                        # value through unmodified — better
++                                        # than dropping the kwarg entirely.
++                                        mm_kwargs[k] = vs[0]
++
++                                # Patch 018 (2026-05-16, Gemma 4 only):
++                                # SGLang's transformers Gemma4ImageProcessor
++                                # returns pre-patched pixel_values of shape
++                                # `(B, max_patches, patch_size² × C)` plus
++                                # `image_position_ids` of shape
++                                # `(B, max_patches, 2)` with `-1` padding
++                                # markers. mlx_vlm's gemma4 vision_tower
++                                # destructures `B, C, H, W = pixel_values.shape`
++                                # — incompatible. We have all the info to
++                                # reverse the patchification: position_ids
++                                # tells us each real patch's (x, y) in the
++                                # grid; the patch tensor is the
++                                # `siglip2.convert_image_to_patches` output
++                                # `image.reshape(C, npH, pH, npW, pW)
++                                #  .permute(1, 3, 2, 4, 0)
++                                #  .reshape(npH × npW, pH × pW × C)`.
++                                # Reverse: filter out -1 padding, reshape
++                                # per-patch (pH × pW × C) back to
++                                # `(pH, pW, C)`, place at (y, x) grid
++                                # position, stack into `(C, npH × pH, npW × pW)`.
++                                # No additional normalization — both
++                                # processors leave pixel_values in [0, 1].
++                                if (
++                                    "image_position_ids" in mm_kwargs
++                                    and pixel_values.ndim == 3
++                                    and pixel_values.shape[-1] in (768, 1536)  # 16²×3, 32²×3 leeway
++                                ):
++                                    try:
++                                        ip = mm_kwargs["image_position_ids"]
++                                        ip_np = _np.asarray(
++                                            ip.tolist() if hasattr(ip, "tolist") else ip
++                                        )
++                                        pv_np = _np.asarray(
++                                            pixel_values.tolist()
++                                            if hasattr(pixel_values, "tolist")
++                                            else pixel_values
++                                        )
++                                        # Normalize to (B, max_patches, ...)
++                                        # vs (max_patches, ...) — multi-image
++                                        # patch-15 concat gives 3D for one
++                                        # image OR `(N×max_patches, ...)`.
++                                        if pv_np.ndim == 2:
++                                            pv_np = pv_np[None, ...]
++                                            ip_np = ip_np[None, ...]
++                                        patch_pixels = pv_np.shape[-1]
++                                        patch_size = 16
++                                        C = patch_pixels // (patch_size * patch_size)
++                                        raw_images = []
++                                        for b in range(pv_np.shape[0]):
++                                            positions = ip_np[b]  # (max_patches, 2)
++                                            patches = pv_np[b]    # (max_patches, patch_pixels)
++                                            # Filter real (non-padding) patches:
++                                            # padding rows have positions=(-1, -1).
++                                            real_mask = positions[:, 0] >= 0
++                                            real_pos = positions[real_mask]
++                                            real_patches = patches[real_mask]
++                                            if real_pos.size == 0:
++                                                continue
++                                            npW = int(real_pos[:, 0].max()) + 1
++                                            npH = int(real_pos[:, 1].max()) + 1
++                                            # Sort patches into grid order
++                                            # (row-major: y * npW + x)
++                                            order = real_pos[:, 1] * npW + real_pos[:, 0]
++                                            sorted_idx = _np.argsort(order)
++                                            grid_patches = real_patches[sorted_idx]  # (npH*npW, pH*pW*C)
++                                            # Reverse the permute+reshape:
++                                            # (npH, npW, pH, pW, C) → permute(4,0,2,1,3)
++                                            # → (C, npH, pH, npW, pW) → reshape(C, H, W)
++                                            grid = grid_patches.reshape(
++                                                npH, npW, patch_size, patch_size, C
++                                            )
++                                            grid = grid.transpose(4, 0, 2, 1, 3)
++                                            raw = grid.reshape(
++                                                C, npH * patch_size, npW * patch_size
++                                            )
++                                            raw_images.append(raw)
++                                        if raw_images:
++                                            # Stack into (B, C, H, W). Gemma 4
++                                            # batches require all-same-H,W
++                                            # for vision_tower's
++                                            # `all_same_size` fast path.
++                                            same_shape = all(
++                                                r.shape == raw_images[0].shape
++                                                for r in raw_images
++                                            )
++                                            if same_shape:
++                                                pixel_values = _mx.array(
++                                                    _np.stack(raw_images, axis=0)
++                                                )
++                                            else:
++                                                pixel_values = _mx.array(raw_images[0][None])
++                                            # mlx_vlm's get_input_embeddings
++                                            # doesn't consume image_position_ids;
++                                            # drop it so it doesn't trip a
++                                            # downstream signature mismatch.
++                                            mm_kwargs.pop("image_position_ids", None)
++                                            mm_kwargs.pop("num_soft_tokens", None)
++                                            mm_kwargs.pop("num_soft_tokens_per_image", None)
++                                    except Exception:
++                                        # Leave pre-patched pixel_values
++                                        # untouched on any error; downstream
++                                        # will still fail loudly but we
++                                        # don't lose the original signal.
++                                        pass
++                        except Exception:
++                            pixel_values = None
+                     next_token = self._mlx_runner.prefill(
+                         req_id=req.rid,
+                         new_token_ids=req_token_ids,
+@@ -186,6 +394,8 @@ class MlxTpModelWorker(TpModelWorker):
+                         prefix_slot_ids=prefix_slot_ids,
+                         new_slot_ids=req_new_slots,
+                         req_pool_idx=req.req_pool_idx,
++                        pixel_values=pixel_values,
++                        mm_kwargs=mm_kwargs,
+                     )
+                     prefill_rids.append((req.rid, next_token))
+ 
+diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
+index c71b0e1c4..92792f425 100644
+--- a/python/sglang/srt/managers/mm_utils.py
++++ b/python/sglang/srt/managers/mm_utils.py
+@@ -1539,7 +1539,11 @@ class ShmPointerMMData:
+         nbytes = tensor.numel() * tensor.element_size()
+         shm = shared_memory.SharedMemory(create=True, size=nbytes)
+         try:
+-            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)
++            # macOS rounds shm allocations up to a page (16 KB on Apple
++            # Silicon), so torch.frombuffer(shm.buf, ...) returns a
++            # tensor LARGER than nbytes. dst.copy_(src) then fails the
++            # size match. Slice dst to the logical byte count.
++            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)[:nbytes]
+             dst.copy_(tensor.view(torch.uint8).reshape(-1))
+         except BaseException:
+             shm.close()
+@@ -1562,10 +1566,16 @@ class ShmPointerMMData:
+         self.dtype = state["dtype"]
+         self.shm = None
+         self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
++        # macOS rounds shm allocations up to a page so the buffer is
++        # larger than self.shape implies. Slice to logical element count
++        # before reshape — mirrors the write-side fix above.
++        n_elements = 1
++        for d in self.shape:
++            n_elements *= d
+         # Zero-copy view into shared memory (no clone, no unlink)
+-        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype).reshape(
+-            self.shape
+-        )
++        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype)[
++            :n_elements
++        ].reshape(self.shape)
+ 
+     def materialize(self) -> torch.Tensor:
+         """Clone tensor from shm to owned memory, then release shm handle."""
+diff --git a/python/sglang/srt/managers/schedule_batch.py b/python/sglang/srt/managers/schedule_batch.py
+index feecc5441..a54a59425 100755
+--- a/python/sglang/srt/managers/schedule_batch.py
++++ b/python/sglang/srt/managers/schedule_batch.py
+@@ -203,6 +203,11 @@ class FINISH_ABORT(BaseFinishReason):
+ 
+ class Modality(Enum):
+     IMAGE = auto()
++    # SGLang's transformers_auto multimodal processor references
++    # ``Modality.MULTI_IMAGES`` when assembling multi-image batches; without
++    # it, multimodal requests crash with AttributeError before reaching
++    # the model.
++    MULTI_IMAGES = auto()
+     VIDEO = auto()
+     AUDIO = auto()
+ 
+@@ -217,7 +222,7 @@ class Modality(Enum):
+ 
+     @staticmethod
+     def all():
+-        return [Modality.IMAGE, Modality.VIDEO, Modality.AUDIO]
++        return [Modality.IMAGE, Modality.MULTI_IMAGES, Modality.VIDEO, Modality.AUDIO]
+ 
+ 
+ class MultimodalInputFormat(Enum):
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+index 143054cd6..dbb72e992 100644
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -3444,6 +3444,9 @@ class Scheduler(
+         if self.is_fully_idle():
+             self.cur_batch = None
+             self.last_batch = None
++            # Let backend workers (e.g. MLX) drop their own per-request
++            # state before SGLang's own pool reset runs.
++            self.tp_worker.clear_runtime_state()
+             self.tree_cache.reset()
+             self.req_to_token_pool.clear()
+             self.token_to_kv_pool_allocator.clear()
+diff --git a/python/sglang/srt/managers/scheduler_output_processor_mixin.py b/python/sglang/srt/managers/scheduler_output_processor_mixin.py
+index ae6f732fe..986441dbb 100644
+--- a/python/sglang/srt/managers/scheduler_output_processor_mixin.py
++++ b/python/sglang/srt/managers/scheduler_output_processor_mixin.py
+@@ -660,6 +660,12 @@ class SchedulerOutputProcessorMixin:
+ 
+         self.maybe_collect_customized_info(i, req, logits_output)
+ 
++        # Backend hook: let MLX (or any other backend) drop its own
++        # per-request state as soon as the scheduler retires the req,
++        # rather than waiting for the next batch-membership scan.
++        if req.finished():
++            self.tp_worker.cleanup_requests([req.rid])
++
+     def _maybe_update_reasoning_tokens(
+         self: Scheduler, req: Req, next_token_id: Union[int, List[int]]
+     ):
+diff --git a/python/sglang/srt/managers/tp_worker.py b/python/sglang/srt/managers/tp_worker.py
+index 60e105d93..6ae9f8cee 100644
+--- a/python/sglang/srt/managers/tp_worker.py
++++ b/python/sglang/srt/managers/tp_worker.py
+@@ -429,6 +429,16 @@ class TpModelWorker(BaseTpWorker):
+             self.model_runner.token_to_kv_pool.size,
+         )
+ 
++    def cleanup_requests(self, req_ids: List[str]):
++        """No-op for default workers. MLX backend overrides to drop
++        backend-side per-request state when the scheduler retires a req."""
++        pass
++
++    def clear_runtime_state(self):
++        """No-op for default workers. MLX backend overrides to wipe
++        backend-side state when the scheduler goes fully idle."""
++        pass
++
+     def is_dllm(self):
+         return self.dllm_algorithm is not None
+ 
+diff --git a/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py b/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
+index 04f9b5f3f..6b162edd3 100644
+--- a/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
++++ b/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
+@@ -125,8 +125,23 @@ class NanoNemotronVLImageProcessor(BaseMultimodalProcessor):
+         self.norm_std = hf_config.norm_std
+         self.use_thumbnail = hf_config.use_thumbnail
+ 
+-        # Dynamic resolution config
+-        self.dynamic_resolution = getattr(hf_config, "dynamic_resolution", False)
++        # Dynamic resolution config.
++        # Patch 017 (2026-05-16, MLX-only): force dynamic_resolution=False
++        # on the MLX backend so SGLang's per-image num_tokens (from
++        # compute_budgeted_image_sizes) matches mlx_vlm's vision-tower
++        # feature count exactly. Under dynamic, per-image rounding produces
++        # an off-by-N mismatch (e.g. 1541 placeholders vs 1536 features
++        # for 6-frame probe_video) — _merge_features then ValueErrors. The
++        # static tile path (preprocess_image with fixed image_size,
++        # render_image with constant num_image_token per tile) gives
++        # `tiles × num_image_token` tokens === `tiles × num_image_token`
++        # features. Upstream dynamic path stays enabled on CUDA/ROCm where
++        # the SGLang Nemotron model code does its own dynamic-aware merge.
++        import os as _os
++        if _os.environ.get("SGLANG_USE_MLX") == "1":
++            self.dynamic_resolution = False
++        else:
++            self.dynamic_resolution = getattr(hf_config, "dynamic_resolution", False)
+         self.min_num_patches = getattr(hf_config, "min_num_patches", 0)
+         self.max_num_patches = getattr(hf_config, "max_num_patches", 0)
+         self.patch_size = hf_config.patch_size
+@@ -310,7 +325,18 @@ class NanoNemotronVLImageProcessor(BaseMultimodalProcessor):
+                 self.render_image(num_tiles=image.shape[0])
+                 for image in preprocessed_images
+             ]
+-            prompt = prompt.replace(self.IMG_CONTEXT_TOKEN, "".join(rendered_images), 1)
++            # Patch 017 (2026-05-16, MLX-only): replace each <image>
++            # placeholder with its own rendered image one at a time.
++            # Upstream used `replace(..., "".join(rendered_images), 1)`
++            # which puts the full concatenation into the first <image>
++            # and leaves the remaining N-1 <image> tokens as stray
++            # placeholders — for 6-frame video that adds 5 extra
++            # placeholder tokens (1541 total instead of the 1536
++            # features mlx_vlm's vision tower produces), and
++            # _merge_features ValueErrors. Per-placeholder replacement
++            # gives exact token=feature alignment for multi-image input.
++            for r in rendered_images:
++                prompt = prompt.replace(self.IMG_CONTEXT_TOKEN, r, 1)
+             image_feature = torch.cat(preprocessed_images, dim=0)
+ 
+         video_feature = None
+diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
+index 173bdbbf4..9e0e08cea 100644
+--- a/python/sglang/srt/server_args.py
++++ b/python/sglang/srt/server_args.py
+@@ -1286,8 +1286,12 @@ class ServerArgs:
+ 
+     def _handle_mps_backends(self):
+         if self.device == "mps":
+-            if not use_mlx():
+-                self.disable_overlap_schedule = True
++            self.disable_overlap_schedule = True
++            self.disable_piecewise_cuda_graph = True
++            self.disable_cuda_graph = True
++            self.attention_backend = "torch_native"
++            if self.enable_multimodal is None:
++                self.enable_multimodal = False
+ 
+     def _handle_xpu_backends(self):
+         if self.device == "xpu":
+@@ -1304,6 +1308,13 @@ class ServerArgs:
+             self.disable_piecewise_cuda_graph = False
+             return
+ 
++        # Skip model-config probing if already disabled (e.g. by MPS handler) —
++        # avoids loading the model config when we already know piecewise CUDA
++        # graph is off, which matters on MLX where the model arch may not
++        # match `is_piecewise_cuda_graph_disabled_model` patterns.
++        if self.disable_piecewise_cuda_graph:
++            return
++
+         # Disable piecewise cuda graph with following conditions:
+         # 1. Disable Model Arch
+         if self.get_model_config().is_piecewise_cuda_graph_disabled_model:
+@@ -4787,8 +4798,19 @@ class ServerArgs:
+             "--kv-cache-dtype",
+             type=str,
+             default=ServerArgs.kv_cache_dtype,
+-            choices=["auto", "fp8_e5m2", "fp8_e4m3", "bf16", "bfloat16", "fp4_e2m1"],
+-            help='Data type for kv cache storage. "auto" will use model data type. "bf16" or "bfloat16" for BF16 KV cache. "fp8_e5m2" and "fp8_e4m3" are supported for CUDA 11.8+. "fp4_e2m1" (only mxfp4) is supported for CUDA 12.8+ and PyTorch 2.8.0+',
++            choices=[
++                "auto", "fp8_e5m2", "fp8_e4m3", "bf16", "bfloat16", "fp4_e2m1",
++                # MLX backend aliases — friendlier names for the Apple Silicon
++                # KV quantization modes our MlxKVPool understands.
++                "fp16", "fp8", "mxfp8", "turboquant", "turbo", "tq", "4bit",
++            ],
++            help=(
++                'Data type for kv cache storage. "auto" will use model data type. '
++                '"fp8_e5m2" / "fp8_e4m3" are CUDA 11.8+. "fp4_e2m1" (mxfp4) is '
++                'CUDA 12.8+ / PyTorch 2.8.0+. MLX backend: "fp8" / "mxfp8" for '
++                'MXFP8 (~2× savings), "turboquant" / "tq" / "4bit" for affine '
++                '4-bit (~3.5× savings; load-bearing for 256K on M4).'
++            ),
+         )
+         parser.add_argument(
+             "--enable-fp32-lm-head",
+diff --git a/python/sglang/srt/utils/hf_transformers/processor.py b/python/sglang/srt/utils/hf_transformers/processor.py
+index a57e4b4c1..690fafc78 100644
+--- a/python/sglang/srt/utils/hf_transformers/processor.py
++++ b/python/sglang/srt/utils/hf_transformers/processor.py
+@@ -50,6 +50,80 @@ from .tokenizer import (
+ )
+ 
+ 
++def _build_gemma4_image_only_processor(
++    model_path, trust_remote_code, revision, **kwargs
++):
++    """Build a Gemma4Processor variant that allows feature_extractor=None +
++    video_processor=None for image+text-only serving.
++
++    Upstream `google/gemma-4-26b-a4b-it` and the mlx-community quantizations ship
++    only `processor_config.json` (image processor + token-id metadata). Neither
++    `preprocessor_config.json` (the audio feature_extractor) nor
++    `video_preprocessor_config.json` is present. transformers 5.5.3's
++    `AutoProcessor.from_pretrained` calls `AutoFeatureExtractor.from_pretrained`
++    and `AutoVideoProcessor.from_pretrained` because `Gemma4Processor.__init__`
++    requires all four sub-components — both raise `OSError` and the construction
++    fails before any image processing path can run.
++
++    SGLang's downstream `Gemma4SGLangProcessor` already accesses
++    `feature_extractor` and `video_processor` via `getattr(..., None)` with safe
++    defaults, so image+text serving doesn't depend on those sub-components — only
++    the constructor does. This helper replays Gemma4Processor.__init__'s body
++    plus ProcessorMixin.__init__'s token-id-list setup, skipping the strict type
++    check on the missing sub-components.
++    """
++    from transformers import AutoImageProcessor, AutoTokenizer, Gemma4Processor
++
++    tokenizer_kwargs = {k: v for k, v in kwargs.items() if k != "size"}
++    tokenizer = AutoTokenizer.from_pretrained(
++        model_path,
++        trust_remote_code=trust_remote_code,
++        revision=revision,
++        **tokenizer_kwargs,
++    )
++    image_processor = AutoImageProcessor.from_pretrained(
++        model_path,
++        trust_remote_code=trust_remote_code,
++        revision=revision,
++        **tokenizer_kwargs,
++    )
++
++    class Gemma4ImageOnlyProcessor(Gemma4Processor):
++        def __init__(self, image_processor, tokenizer, chat_template=None,
++                     image_seq_length=280, audio_seq_length=750, audio_ms_per_token=40):
++            # Body of Gemma4Processor.__init__ up to (but not including) super().__init__()
++            self.image_seq_length = image_seq_length
++            self.image_token_id = tokenizer.image_token_id
++            self.boi_token = tokenizer.boi_token
++            self.eoi_token = tokenizer.eoi_token
++            self.image_token = tokenizer.image_token
++            tokenizer.add_special_tokens({"additional_special_tokens": ["<|video|>"]})
++            self.video_token = "<|video|>"
++            self.video_token_id = tokenizer.convert_tokens_to_ids(self.video_token)
++            self.audio_seq_length = audio_seq_length
++            self.audio_ms_per_token = audio_ms_per_token
++            self.audio_token_id = getattr(tokenizer, "audio_token_id", None)
++            self.audio_token = getattr(tokenizer, "audio_token", None)
++            self.boa_token = getattr(tokenizer, "boa_token", None)
++            self.eoa_token = getattr(tokenizer, "eoa_token", None)
++            # Sub-component attrs without ProcessorMixin's strict type check
++            self.feature_extractor = None
++            self.image_processor = image_processor
++            self.tokenizer = tokenizer
++            self.video_processor = None
++            self.chat_template = chat_template
++            # ProcessorMixin attrs used by create_mm_token_type_ids
++            self.image_ids = [self.image_token_id]
++            self.video_ids = [self.video_token_id]
++            self.audio_ids = [self.audio_token_id]
++
++    return Gemma4ImageOnlyProcessor(
++        image_processor=image_processor,
++        tokenizer=tokenizer,
++        chat_template=getattr(tokenizer, "chat_template", None),
++    )
++
++
+ def _build_processor_manually(
+     model_path, config, trust_remote_code, revision, **kwargs
+ ):
+@@ -198,13 +272,39 @@ def get_processor(
+                     **kwargs,
+                 )
+             else:
+-                processor = AutoProcessor.from_pretrained(
+-                    tokenizer_name,
+-                    *args,
+-                    trust_remote_code=trust_remote_code,
+-                    revision=revision,
+-                    **kwargs,
+-                )
++                try:
++                    processor = AutoProcessor.from_pretrained(
++                        tokenizer_name,
++                        *args,
++                        trust_remote_code=trust_remote_code,
++                        revision=revision,
++                        **kwargs,
++                    )
++                except OSError as e:
++                    # Upstream Gemma 4 ships only processor_config.json — no
++                    # preprocessor_config.json (audio feature_extractor) or
++                    # video_preprocessor_config.json. AutoProcessor demands both
++                    # because Gemma4Processor.__init__ requires all four
++                    # sub-components. Bypass with an image-only variant on M4
++                    # where only image+text serving is wired up.
++                    if (
++                        "feature extractor" in str(e).lower()
++                        and config.model_type == "gemma4"
++                    ):
++                        logger.info(
++                            "AutoProcessor failed for gemma4 %s (missing "
++                            "preprocessor_config.json / video_preprocessor_config.json); "
++                            "constructing image-only processor manually.",
++                            tokenizer_name,
++                        )
++                        processor = _build_gemma4_image_only_processor(
++                            tokenizer_name,
++                            trust_remote_code,
++                            revision,
++                            **kwargs,
++                        )
++                    else:
++                        raise
+ 
+     except ValueError as e:
+         error_message = str(e)

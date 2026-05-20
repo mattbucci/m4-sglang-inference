@@ -1,11 +1,21 @@
-# Patches — SGLang v0.5.11 on Apple Silicon
+# Patches — SGLang v0.5.12 on Apple Silicon
 
-17 patches on top of SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04) for the MLX backend on Apple M4 Pro. Applied in order by `scripts/setup.sh`:
+**Rebased onto v0.5.12 on 2026-05-20.** Originally 19 individual patches on top of
+SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04); rebased onto SGLang `v0.5.12`
+(commit `127b9e328`, 2026-05-20) which added on-the-fly `mlx_q4` / `mlx_q8`
+quantization (+69 lines in `model_runner.py`, +1 in `tp_worker.py`, +3 in
+`hf_transformers/processor.py`). None of our patches were upstreamed by v0.5.12.
+
+The 19 individual patches (002-020) are **kept for historical documentation
+only** — they no longer apply cleanly to v0.5.12 because the new MLX code
+shifted line numbers around our patch points. The actual working state is
+captured in `021-v0512-rebase-cumulative.patch`, which `scripts/setup.sh`
+applies as a single block.
 
 ```bash
 cd components/sglang
-git checkout v0.5.11
-for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
+git checkout v0.5.12
+git apply ../../patches/021-v0512-rebase-cumulative.patch
 ```
 
 | # | Patch | Files | Why |

@@ -21,7 +21,7 @@ SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_BRANCH="main"
 # Pin to a specific commit to ensure patches apply cleanly.
 # Update this hash when rebasing patches onto a newer upstream.
-SGLANG_COMMIT="v0.5.11"  # 2026-05-04: SGLang v0.5.11 — kv_cache/ subpackage upstreamed
+SGLANG_COMMIT="v0.5.12"  # 2026-05-20: SGLang v0.5.12 — adds on-the-fly mlx_q4/mlx_q8 quantization
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -68,16 +68,21 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone "$SGLANG_REPO" "$SGLANG_DIR"
     cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
 
-    # Apply patches in order. All 19 patches (002-020) are proper git
-    # patches against v0.5.11 — 001 (radix cache) was upstreamed.
-    if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
+    # Apply patches. For v0.5.12 we use a single cumulative rebase patch
+    # (021-v0512-rebase-cumulative.patch) that captures all 19 individual
+    # patches (002-020) rebased onto v0.5.12. The individual patches
+    # 002-020 are kept in patches/ for historical documentation only;
+    # they no longer apply cleanly to v0.5.12 because v0.5.12 added new
+    # MLX code (mlx_q4/mlx_q8 on-the-fly quantization, +69 lines in
+    # model_runner.py around the constructor) that shifts line numbers.
+    # See patches/README.md for the per-patch history.
+    cumulative="$REPO_DIR/patches/021-v0512-rebase-cumulative.patch"
+    if [ -f "$cumulative" ]; then
         cd "$SGLANG_DIR"
-        for patch in "$REPO_DIR/patches/"0[01][0-9]-*.patch; do
-            echo "  Applying $(basename "$patch")..."
-            git apply "$patch" || echo "  WARNING: $(basename "$patch") failed to apply"
-        done
+        echo "  Applying 021-v0512-rebase-cumulative.patch (covers 002-020)..."
+        git apply "$cumulative" || echo "  WARNING: cumulative patch failed to apply"
     else
-        echo "  No patches to apply"
+        echo "  No cumulative patch found at $cumulative"
     fi
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"
