@@ -47,7 +47,9 @@ Final state: 19 patches' worth of changes against v0.5.12, captured as
 a single cumulative patch `021-v0512-rebase-cumulative.patch` (117 KB,
 touches 19 files).
 
-## Regression result
+## Regression results — all PASS
+
+### 1. SWE-bench (agentic coding)
 
 ```
 PRESET=qwen36 INSTANCE_IDS=astropy__astropy-12907 TIMEOUT=600
@@ -63,6 +65,23 @@ PRESET=qwen36 INSTANCE_IDS=astropy__astropy-12907 TIMEOUT=600
 The model produces the canonical 506-byte fix to
 `astropy/modeling/separable.py` — same patch as on every prior v0.5.11
 regression check. Greedy MLX decode + same input → bit-identical output.
+
+### 2. Probe trio (capability gates)
+
+```
+scripts/eval/probe_thinking.py --port 23334    # THINKING VERIFIED
+scripts/eval/probe_codegen.py  --port 23334    # CODEGEN STRONG (8/8)
+scripts/eval/probe_vision.py   --port 23334    # VISION STRONG
+```
+
+| Probe | Result | Detail |
+|---|---|---|
+| Thinking | **VERIFIED** | Correct answer (11) + intermediate step (22) both appear; reasoning_content non-empty; qwen3 reasoning channel active |
+| Codegen | **STRONG** (8/8) | `is_balanced` parens 5/5 + `merge_intervals` 3/3 |
+| Vision | **STRONG** | Shape recognition (circle/round) correct, no degradation keywords |
+
+All four gates pass → v0.5.12 rebase is non-regressing across the full
+M4 capability surface (text reasoning, code synthesis, vision tower).
 
 ## Setup changes
 
