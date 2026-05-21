@@ -1,0 +1,16 @@
+SGLang's auto-sizer log at boot (with CTX=65536, mf=0.4, turboquant):
+
+[2026-05-21 03:40:59] Wired memory limit set to 51.8 GB
+[2026-05-21 03:40:59] Auto-sized KV pool (mode=turboquant):
+    sys_available=33.41 GB
+    mlx_limit=51.8 GB
+    mlx_used=19.00 GB         (model weights — 35B at 4-bit)
+    kv_budget=1.73 GB         (remaining for KV cache)
+    bytes_per_slot=23040 (0.562 B/elem)
+    pool_size=80838 tokens
+[2026-05-21 03:41:03] max_total_num_tokens=80838
+    chunked_prefill_size=2048
+    max_prefill_tokens=16384
+    max_running_requests=4096
+    context_len=65536
+    available_gpu_mem=32.80 GB
