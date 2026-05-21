@@ -20,7 +20,11 @@
 #   PRESET           launch.sh preset name (default: coder-30b)
 #   MODEL_KEY        opencode model key in opencode.json (default: $PRESET)
 #   INSTANCES        how many SWE-bench Lite instances to run (default: 1)
-#   TIMEOUT          per-instance opencode timeout in seconds (default: 600)
+#   TIMEOUT          per-instance opencode timeout in seconds (default: 900;
+#                    bumped from 600 on 2026-05-21 — today's qwen36 sessions
+#                    average ~30 tool calls per instance vs ~6-10 in May 18,
+#                    making 600s frequently insufficient; see
+#                    evals/swebench/runs/qwen36-django10914-N3-STABLE-RESOLVED-2026-05-21/perf-investigation.md)
 #   CTX              context length passed to launch.sh (default: 131072)
 #   EXTRA_LAUNCH     extra args to launch.sh (default: long-context recipe)
 #   OUT              output directory for predictions/logs (default: /tmp/swebench-smoke)
@@ -44,7 +48,7 @@ MODEL_KEY="${MODEL_KEY:-$PRESET}"
 INSTANCES="${INSTANCES:-1}"
 # Optional space-separated list of specific instance IDs (overrides INSTANCES).
 INSTANCE_IDS="${INSTANCE_IDS:-}"
-TIMEOUT="${TIMEOUT:-600}"
+TIMEOUT="${TIMEOUT:-900}"
 CTX="${CTX:-131072}"
 PORT=23334
 PROXY_PORT="${PROXY_PORT:-23335}"
