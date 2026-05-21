@@ -140,12 +140,29 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
         if curl -sf "http://127.0.0.1:$PROXY_PORT/health" > /dev/null 2>&1; then break; fi
         sleep 0.5
     done
-    # Repoint opencode at the proxy
+    # Repoint opencode at the proxy + disable the `task` sub-agent tool.
+    # 2026-05-21 finding: qwen36 on django-11001 invokes the `task` tool to
+    # spawn a sub-agent that runs many chat completions but never produces
+    # an edit within reasonable TIMEOUT. Disabling `task` for SWE-bench
+    # rollouts forces direct read/grep/edit work. Verified: with task
+    # disabled, django-11001 finishes in 1204s with RESOLVED (F2P 2/2,
+    # P2P 118/118); with task enabled it hits even TIMEOUT=1800 with 0B
+    # patch. Backup/restore around the rollout keeps the user's
+    # interactive opencode config untouched.
     cp "$OPENCODE_CFG" "$OPENCODE_CFG_BACKUP"
     python3 -c "
-import json, sys
+import json, re, sys
 src = open('$OPENCODE_CFG').read()
-open('$OPENCODE_CFG', 'w').write(src.replace('http://127.0.0.1:$PORT/v1', 'http://127.0.0.1:$PROXY_PORT/v1'))
+src = src.replace('http://127.0.0.1:$PORT/v1', 'http://127.0.0.1:$PROXY_PORT/v1')
+# Inject \"tools\": {\"task\": false} after the \$schema line if not already present.
+if '\"task\": false' not in src:
+    src = re.sub(
+        r'(\"\\\$schema\":\\s*\"[^\"]+\",)',
+        r'\1\n  \"tools\": {\n    \"task\": false\n  },',
+        src,
+        count=1,
+    )
+open('$OPENCODE_CFG', 'w').write(src)
 "
     echo "[$(date +%H:%M:%S)] Proxy ready (PID=$PROXY_PID), opencode config repointed to :$PROXY_PORT"
 fi
