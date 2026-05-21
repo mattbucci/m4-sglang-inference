@@ -1,7 +1,17 @@
+From 68df7c31588263d8349bc6f37dc5f727ffb2e44e Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:51 -0700
+Subject: [PATCH] Patch 012: mlx-sync-pool-skip-non-contiguous
+
+---
+ .../srt/hardware_backend/mlx/model_runner.py  | 43 +++++++++++--------
+ 1 file changed, 25 insertions(+), 18 deletions(-)
+
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 993d3b4b4..ca53b2762 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -743,31 +743,38 @@
+@@ -803,31 +803,38 @@ class MlxModelRunner:
  
      def _sync_new_kv_to_pool(
          self,

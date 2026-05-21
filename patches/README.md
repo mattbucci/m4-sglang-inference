@@ -1,22 +1,36 @@
 # Patches — SGLang v0.5.12 on Apple Silicon
 
-**Rebased onto v0.5.12 on 2026-05-20.** Originally 19 individual patches on top of
-SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04); rebased onto SGLang `v0.5.12`
-(commit `127b9e328`, 2026-05-20) which added on-the-fly `mlx_q4` / `mlx_q8`
-quantization (+69 lines in `model_runner.py`, +1 in `tp_worker.py`, +3 in
+**Rebased onto v0.5.12 on 2026-05-20** (commit `127b9e328`, 2026-05-20). Originally
+19 individual patches on top of SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04);
+rebased onto v0.5.12 which added on-the-fly `mlx_q4` / `mlx_q8` quantization
+(+69 lines in `model_runner.py`, +1 in `tp_worker.py`, +3 in
 `hf_transformers/processor.py`). None of our patches were upstreamed by v0.5.12.
 
-The 19 individual patches (002-020) are **kept for historical documentation
-only** — they no longer apply cleanly to v0.5.12 because the new MLX code
-shifted line numbers around our patch points. The actual working state is
-captured in `021-v0512-rebase-cumulative.patch`, which `scripts/setup.sh`
-applies as a single block.
+**14 per-feature patches against v0.5.12.** After a one-day intermezzo where we
+shipped a single 117 KB cumulative rebase patch (021), the patches are now back
+to per-feature for maintainability. The original patch-013 (VLM pixel_values)
+combined with patches 016-020 into a single file (`016-mlx-vlm-pixel-values-and-hybrid-attention.patch`)
+because those six patches were generated as one commit during the rebase — they
+share ordering dependencies on the new patches 014/015 that made splitting them
+back into six clean per-file patches not worth the complexity. Everything else
+is one patch per feature, applied in numeric order by `scripts/setup.sh`.
 
 ```bash
 cd components/sglang
 git checkout v0.5.12
-git apply ../../patches/021-v0512-rebase-cumulative.patch
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
 ```
+
+Patch number ↔ patch file (numbering preserves feature names from the v0.5.11 era;
+file names sort in application order):
+
+| Patch # | File |
+|---------|------|
+| 002-012 | `002-…patch` through `012-…patch` (one file per feature) |
+| 013 | inside `016-mlx-vlm-pixel-values-and-hybrid-attention.patch` |
+| 014 | `014-mlx-gemma4-image-only-processor.patch` |
+| 015 | `015-mlx-multi-image-concat.patch` |
+| 016-020 | inside `016-mlx-vlm-pixel-values-and-hybrid-attention.patch` |
 
 | # | Patch | Files | Why |
 |:-:|-------|-------|-----|
@@ -50,7 +64,7 @@ git apply ../../patches/021-v0512-rebase-cumulative.patch
 
 ```bash
 # Apply all
-cd components/sglang && git checkout v0.5.11
+cd components/sglang && git checkout v0.5.12
 for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
 
 # Verify clean apply on a fresh tree

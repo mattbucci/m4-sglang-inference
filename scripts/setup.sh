@@ -68,21 +68,28 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone "$SGLANG_REPO" "$SGLANG_DIR"
     cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
 
-    # Apply patches. For v0.5.12 we use a single cumulative rebase patch
-    # (021-v0512-rebase-cumulative.patch) that captures all 19 individual
-    # patches (002-020) rebased onto v0.5.12. The individual patches
-    # 002-020 are kept in patches/ for historical documentation only;
-    # they no longer apply cleanly to v0.5.12 because v0.5.12 added new
-    # MLX code (mlx_q4/mlx_q8 on-the-fly quantization, +69 lines in
-    # model_runner.py around the constructor) that shifts line numbers.
-    # See patches/README.md for the per-patch history.
-    cumulative="$REPO_DIR/patches/021-v0512-rebase-cumulative.patch"
-    if [ -f "$cumulative" ]; then
-        cd "$SGLANG_DIR"
-        echo "  Applying 021-v0512-rebase-cumulative.patch (covers 002-020)..."
-        git apply "$cumulative" || echo "  WARNING: cumulative patch failed to apply"
-    else
-        echo "  No cumulative patch found at $cumulative"
+    # Apply per-feature patches against v0.5.12 in numeric order.
+    # See patches/README.md for what each patch covers. Patch 013 was
+    # combined with patches 016-020 into patches/016-mlx-vlm-pixel-values-and-hybrid-attention.patch
+    # for ordering — that combined patch depends on 014 and 015 being
+    # applied first, so it sorts last by filename.
+    cd "$SGLANG_DIR"
+    shopt -s nullglob 2>/dev/null || true
+    applied=0; failed=0
+    for p in "$REPO_DIR"/patches/0[01][0-9]-*.patch; do
+        name=$(basename "$p")
+        if git apply --check "$p" 2>/dev/null; then
+            git apply "$p"
+            echo "  ✓ $name"
+            applied=$((applied + 1))
+        else
+            echo "  ✗ $name (failed git apply --check)"
+            failed=$((failed + 1))
+        fi
+    done
+    echo "  patches: $applied applied, $failed failed"
+    if [ "$failed" -gt 0 ]; then
+        echo "  WARNING: $failed patch(es) did not apply cleanly"
     fi
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"

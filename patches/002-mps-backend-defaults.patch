@@ -1,8 +1,17 @@
+From 6cc82c129a6856c578b5a86ebde7611af09c5bc3 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:35:46 -0700
+Subject: [PATCH] Patch 002: mps-backend-defaults
+
+---
+ python/sglang/srt/server_args.py | 30 ++++++++++++++++++++++++++----
+ 1 file changed, 26 insertions(+), 4 deletions(-)
+
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index c5bba8351..9b1137e0e 100644
+index 173bdbbf4..9e0e08cea 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -1179,8 +1179,12 @@ class ServerArgs:
+@@ -1286,8 +1286,12 @@ class ServerArgs:
  
      def _handle_mps_backends(self):
          if self.device == "mps":
@@ -17,7 +26,7 @@ index c5bba8351..9b1137e0e 100644
  
      def _handle_xpu_backends(self):
          if self.device == "xpu":
-@@ -1197,6 +1201,13 @@ class ServerArgs:
+@@ -1304,6 +1308,13 @@ class ServerArgs:
              self.disable_piecewise_cuda_graph = False
              return
  
@@ -31,7 +40,7 @@ index c5bba8351..9b1137e0e 100644
          # Disable piecewise cuda graph with following conditions:
          # 1. Disable Model Arch
          if self.get_model_config().is_piecewise_cuda_graph_disabled_model:
-@@ -4428,8 +4439,19 @@ class ServerArgs:
+@@ -4787,8 +4798,19 @@ class ServerArgs:
              "--kv-cache-dtype",
              type=str,
              default=ServerArgs.kv_cache_dtype,

@@ -1,8 +1,17 @@
+From 286f463e68b01e9e050c61b75c17404ad23fea11 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:38:50 -0700
+Subject: [PATCH] Patch 014: mlx-gemma4-image-only-processor
+
+---
+ .../srt/utils/hf_transformers/processor.py    | 114 ++++++++++++++++--
+ 1 file changed, 107 insertions(+), 7 deletions(-)
+
 diff --git a/python/sglang/srt/utils/hf_transformers/processor.py b/python/sglang/srt/utils/hf_transformers/processor.py
-index e19227a3e..963be18f8 100644
+index a57e4b4c1..690fafc78 100644
 --- a/python/sglang/srt/utils/hf_transformers/processor.py
 +++ b/python/sglang/srt/utils/hf_transformers/processor.py
-@@ -49,6 +49,80 @@ from .tokenizer import (
+@@ -50,6 +50,80 @@ from .tokenizer import (
  )
  
  
@@ -83,7 +92,7 @@ index e19227a3e..963be18f8 100644
  def _build_processor_manually(
      model_path, config, trust_remote_code, revision, **kwargs
  ):
-@@ -195,13 +269,39 @@ def get_processor(
+@@ -198,13 +272,39 @@ def get_processor(
                      **kwargs,
                  )
              else:

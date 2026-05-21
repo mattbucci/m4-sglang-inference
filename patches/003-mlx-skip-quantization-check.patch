@@ -1,8 +1,17 @@
+From fdb93f216264512f20272df83c66ec1b658c1810 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:35:46 -0700
+Subject: [PATCH] Patch 003: mlx-skip-quantization-check
+
+---
+ python/sglang/srt/configs/model_config.py | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index cf8bbff0b..b60a2e0e3 100644
+index 111145ef6..8e1db0f9f 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -269,8 +269,11 @@ class ModelConfig:
+@@ -340,8 +340,11 @@ class ModelConfig:
          # Update hybrid model
          self._derive_hybrid_model()
  

@@ -1,10 +1,20 @@
+From 91fc65e0ce8714e6bdb193060f787bd5c6ff470e Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:51 -0700
+Subject: [PATCH] Patch 010: mlx-vlm-position-cache-reset
+
+---
+ .../srt/hardware_backend/mlx/model_runner.py  | 32 +++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 0095bc6d6..dd6907c08 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -273,6 +273,27 @@ class MlxModelRunner:
+@@ -288,6 +288,27 @@ class MlxModelRunner:
              for _ in range(self._num_layers)
          ]
-
+ 
 +    def _reset_mlx_vlm_position_cache(self) -> None:
 +        """Clear mlx_vlm-specific position-id caches on the language model.
 +
@@ -28,11 +38,11 @@ diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sgl
 +
      def _release_cache(self, cache: list[ContiguousKVCache]) -> None:
          """Return a cache list to the pool for reuse.
-
-@@ -796,6 +817,17 @@ class MlxModelRunner:
+ 
+@@ -872,6 +893,17 @@ class MlxModelRunner:
          num_layers = self._num_layers
          prefix_len = len(prefix_slot_ids)
-
+ 
 +        # mlx_vlm/qwen3_5 caches `_position_ids` and `_rope_deltas` on the
 +        # LanguageModel instance and only invalidates them when a new image
 +        # arrives (pixel_values is not None). With concurrent text requests

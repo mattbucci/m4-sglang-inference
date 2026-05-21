@@ -1,3 +1,12 @@
+From cfcf424e0d9fb251af45f6a06da0e58907e08f3b Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:50 -0700
+Subject: [PATCH] Patch 006: mlx-offsetcache-and-make-mask
+
+---
+ .../mlx/kv_cache/contiguous_cache.py          | 50 ++++++++++++++++++-
+ 1 file changed, 48 insertions(+), 2 deletions(-)
+
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py
 index 254d2be08..0b9d39c8b 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/contiguous_cache.py

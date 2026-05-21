@@ -1,3 +1,12 @@
+From 86d9823e48ebb857cfc5dcf0c0f0cf311e0dfcd9 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:50 -0700
+Subject: [PATCH] Patch 005: mlx-attn-wrapper-varargs
+
+---
+ .../mlx/kv_cache/attention_wrapper.py         | 24 +++++++++++++++----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
+
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
 index d9524ab11..61e99b46a 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py

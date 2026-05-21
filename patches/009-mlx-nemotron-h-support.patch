@@ -1,3 +1,14 @@
+From b7cec8085a7d3711ad530bc8d5964c97637401ac Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:51 -0700
+Subject: [PATCH] Patch 009: mlx-nemotron-h-support
+
+---
+ .../mlx/kv_cache/attention_wrapper.py         | 24 ++++---
+ .../mlx/kv_cache/model_patching.py            | 71 ++++++++++++++++---
+ .../srt/hardware_backend/mlx/model_runner.py  | 24 +++++--
+ 3 files changed, 97 insertions(+), 22 deletions(-)
+
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
 index 61e99b46a..4c70b5bd5 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
@@ -151,10 +162,10 @@ index b89bb6e76..37540ee48 100644
          patched += 1
      return patched
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 81a8cb412..754085a40 100644
+index 9d1a0fa16..0095bc6d6 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -578,18 +578,34 @@ class MlxModelRunner:
+@@ -638,18 +638,34 @@ class MlxModelRunner:
          layer 0 may be a DeltaNet layer with only ``linear_attn`` (no
          ``self_attn``). Sample the first layer that actually has
          ``attn_attr`` instead of blindly taking ``layer_list[0]``.

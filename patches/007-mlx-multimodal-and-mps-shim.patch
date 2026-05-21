@@ -1,3 +1,14 @@
+From 4d974f697617355b9f98129f00ac5124a7739272 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:51 -0700
+Subject: [PATCH] Patch 007: mlx-multimodal-and-mps-shim
+
+---
+ python/sglang/_mps_stub.py                   | 29 ++++++++++++++------
+ python/sglang/srt/managers/mm_utils.py       | 18 +++++++++---
+ python/sglang/srt/managers/schedule_batch.py |  7 ++++-
+ 3 files changed, 40 insertions(+), 14 deletions(-)
+
 diff --git a/python/sglang/_mps_stub.py b/python/sglang/_mps_stub.py
 index 8a090b398..118795a65 100644
 --- a/python/sglang/_mps_stub.py
@@ -77,10 +88,10 @@ index c71b0e1c4..92792f425 100644
      def materialize(self) -> torch.Tensor:
          """Clone tensor from shm to owned memory, then release shm handle."""
 diff --git a/python/sglang/srt/managers/schedule_batch.py b/python/sglang/srt/managers/schedule_batch.py
-index ee6c1c77b..cc8a050de 100755
+index feecc5441..a54a59425 100755
 --- a/python/sglang/srt/managers/schedule_batch.py
 +++ b/python/sglang/srt/managers/schedule_batch.py
-@@ -199,6 +199,11 @@ class FINISH_ABORT(BaseFinishReason):
+@@ -203,6 +203,11 @@ class FINISH_ABORT(BaseFinishReason):
  
  class Modality(Enum):
      IMAGE = auto()
@@ -92,7 +103,7 @@ index ee6c1c77b..cc8a050de 100755
      VIDEO = auto()
      AUDIO = auto()
  
-@@ -213,7 +218,7 @@ class Modality(Enum):
+@@ -217,7 +222,7 @@ class Modality(Enum):
  
      @staticmethod
      def all():

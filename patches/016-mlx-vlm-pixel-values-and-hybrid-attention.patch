@@ -1,0 +1,455 @@
+From 2da6725dad1ebcd93f437b0bd469655ee1452c66 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:42:08 -0700
+Subject: [PATCH] Patches 013+016-020: VLM pixel_values + multimodal extras +
+ NemotronH/Gemma 4 sliding-window
+
+Combined commit for the 6 patches whose v0.5.11-base versions either had
+malformed hunk headers (013, 017, 018) or order dependencies on 013 (016)
+that prevented clean sequential application against v0.5.12. The patches:
+
+- 013: VLM pixel_values + mm_kwargs plumbing in prefill/prefill_start +
+       tp_worker.py forwarding from req.multimodal_inputs
+- 016: bf16->float32 numpy bridge in tp_worker.py
+- 017: nemotron-omni video alignment (nano_nemotron_vl.py)
+- 018: gemma4 unpatch (siglip2 reverse in tp_worker.py)
+- 019: NemotronH partial-cache serial fallback in decode_batch_start
+- 020: gemma4 RotatingKVCache update_and_fetch + sliding-window fallback
+
+These all live in 4 files (model_runner.py, tp_worker.py,
+attention_wrapper.py, nano_nemotron_vl.py) and are conceptually
+related (multimodal + heterogeneous-attention support). The other
+13 patches (002-012, 014, 015) are now per-feature commits.
+---
+ .../mlx/kv_cache/attention_wrapper.py         |  15 +-
+ .../srt/hardware_backend/mlx/model_runner.py  | 106 ++++++++++++---
+ .../srt/hardware_backend/mlx/tp_worker.py     | 128 +++++++++++++++++-
+ .../multimodal/processors/nano_nemotron_vl.py |  32 ++++-
+ 4 files changed, 255 insertions(+), 26 deletions(-)
+
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+index 0b98cfbee..90d8df84e 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -183,9 +183,18 @@ class MLXAttentionWrapper(nn.Module):
+         all_v = []
+ 
+         for i in range(B):
+-            layer_caches[i].write_token(keys[i : i + 1], values[i : i + 1])
+-
+-            k_all, v_all = layer_caches[i].get_kv()
++            # Use update_and_fetch (canonical mlx_lm cache API) instead of
++            # write_token + get_kv. update_and_fetch exists on every cache
++            # type — including RotatingKVCache (sliding-window, used by
++            # Gemma 4's sliding-attention layers), which lacks the
++            # write_token / get_kv pair. Crash detected 2026-05-18 on
++            # gemma4 MoE: AttributeError on RotatingKVCache.write_token at
++            # this line. Behavior unchanged for ContiguousKVCache (its
++            # update_and_fetch internally does the same offset-slice that
++            # the old write_token+get_kv pair did).
++            k_all, v_all = layer_caches[i].update_and_fetch(
++                keys[i : i + 1], values[i : i + 1]
++            )
+ 
+             pad = pad_sizes[i]
+             if pad > 0:
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index ca53b2762..b95f410e3 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -96,7 +96,7 @@ class MlxPendingDecode:
+ 
+ 
+ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
+-    # name -> (bits, group_size). group_size=64 matches the mlx-community convention.
++    # name -> (bits, group_size). group_size=64 matches mlx-community convention.
+     "mlx_q4": (4, 64),
+     "mlx_q8": (8, 64),
+ }
+@@ -128,10 +128,8 @@ class MlxModelRunner:
+         self._context_length = context_length
+         # Counter used to trigger periodic mx.clear_cache() calls.
+         self._decode_step_ct: int = 0
+-        # On-the-fly quantization preset (e.g. "mlx_q4"). None = no on-load quantization.
+-        # Pre-quantized HF repos (e.g. mlx-community/Qwen3-0.6B-4bit) load correctly
+-        # regardless of this setting — mlx_lm.load() detects the config and instantiates
+-        # QuantizedLinear modules directly.
++        # On-the-fly quantization preset (e.g. "mlx_q4"). None = no on-load
++        # quantization. Pre-quantized HF repos load correctly regardless.
+         self._quantization: str | None = quantization
+ 
+         self._load_model()
+@@ -424,10 +422,6 @@ class MlxModelRunner:
+     def _load_model(self):
+         """Load via ``mlx_vlm`` if the architecture is a VLM, else ``mlx_lm``.
+ 
+-        On the ``mlx_lm`` path, ``self._quantization`` may request a preset
+-        (e.g. ``mlx_q4``) to quantize fp16 weights in-place via
+-        :func:`mlx_lm.utils.quantize_model` after load.
+-
+         Falls back across loaders if either raises so we still get the
+         model loaded one way or another. Image-bearing requests are
+         routed through the VLM's full forward (with ``pixel_values``);
+@@ -511,7 +505,6 @@ class MlxModelRunner:
+                     f"Falling back to mlx_lm (text-only path)."
+                 )
+ 
+-        # mlx_lm path — load, then optionally apply on-the-fly quantization preset.
+         try:
+             loaded = mlx_lm_load(
+                 self.model_path,
+@@ -777,8 +770,20 @@ class MlxModelRunner:
+         prefix_slot_ids: list[int],
+         new_slot_ids: list[int],
+         req_pool_idx: int,
++        pixel_values=None,
++        mm_kwargs: dict | None = None,
+     ) -> int:
+-        """Prefill a request.  Returns next_token_id."""
++        """Prefill a request.  Returns next_token_id.
++
++        ``pixel_values`` — optional mlx array for VLM image input. When set,
++        passed through to the model's __call__ — TextOnlyVLMShim (see
++        _load_model) routes it to vlm.__call__ instead of language_model.
++        ``mm_kwargs`` — model-specific extras (image_sizes for Mistral3/Pixtral,
++        image_grid_thw for Qwen2-VL, etc.) forwarded as keyword args.
++        Restored 2026-05-13 — the original pixel_values plumbing (Apr-18
++        commit f20ee6e) was lost in the v0.5.11 rebase, which silently
++        broke every VLM image request. See patches/013-mlx-vlm-pixel-values.patch.
++        """
+         pending = self.prefill_start(
+             req_id=req_id,
+             new_token_ids=new_token_ids,
+@@ -786,6 +791,8 @@ class MlxModelRunner:
+             prefix_slot_ids=prefix_slot_ids,
+             new_slot_ids=new_slot_ids,
+             req_pool_idx=req_pool_idx,
++            pixel_values=pixel_values,
++            mm_kwargs=mm_kwargs,
+         )
+         self._eval_with_cache(pending.lazy_token, pending.cache)
+         return self.prefill_finalize(pending)
+@@ -889,6 +896,8 @@ class MlxModelRunner:
+         prefix_slot_ids: list[int],
+         new_slot_ids: list[int],
+         req_pool_idx: int,
++        pixel_values=None,
++        mm_kwargs: dict | None = None,
+     ) -> MlxPendingPrefill:
+         """Queue a prefill forward pass without evaluating.
+ 
+@@ -896,9 +905,19 @@ class MlxModelRunner:
+         next-token ``mx.array`` plus everything needed to commit the
+         request in :meth:`prefill_finalize`.  The caller drives the GPU
+         by handing ``lazy_token`` (and cache state) to ``mx.async_eval``.
++
++        ``pixel_values`` / ``mm_kwargs`` — see :meth:`prefill`.
+         """
+         num_layers = self._num_layers
+         prefix_len = len(prefix_slot_ids)
++        # Build kwargs once; passed to every self.model(...) call below so
++        # the VLM multimodal path is unified across the disable_radix and
++        # full-radix branches.
++        _model_kwargs: dict = {}
++        if pixel_values is not None:
++            _model_kwargs["pixel_values"] = pixel_values
++        if mm_kwargs:
++            _model_kwargs.update(mm_kwargs)
+ 
+         # mlx_vlm/qwen3_5 caches `_position_ids` and `_rope_deltas` on the
+         # LanguageModel instance and only invalidates them when a new image
+@@ -914,7 +933,7 @@ class MlxModelRunner:
+         if self.disable_radix_cache:
+             cache = self._acquire_cache()
+             input_ids = mx.array([new_token_ids], dtype=mx.int32)
+-            model_output = self.model(input_ids, cache=cache)
++            model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+             logits = self._extract_logits(model_output)
+             lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
+             return MlxPendingPrefill(
+@@ -948,7 +967,7 @@ class MlxModelRunner:
+                 c.offset = max(c.offset - 1, 0)
+ 
+         input_ids = mx.array([extend_tokens], dtype=mx.int32)
+-        model_output = self.model(input_ids, cache=cache)
++        model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+         logits = self._extract_logits(model_output)
+ 
+         last_logits = logits[:, -1, :]
+@@ -1083,10 +1102,39 @@ class MlxModelRunner:
+                 (i for i, ok in enumerate(is_full_attn) if ok), None
+             )
+ 
+-            if full_attn_idx is None:
+-                # Pure-linear / Mamba-only model with no attention layers.
+-                # Not observed in our model set yet; keep the serial
+-                # fallback so we don't silently break a future model.
++            # NemotronH-style: make_cache returns one cache per M/* layer
++            # only — MoE ("E") and MLP ("-") layers get nothing, so
++            # len(sample_cache) < num_layers. The batched path below
++            # iterates `range(num_layers)` and indexes is_full_attn /
++            # caches[i] by layer_idx, which IndexErrors past the cache
++            # list. Detected 2026-05-18 on nemotron-omni at first decode.
++            # Fall back to the serial-per-request path until the batched
++            # path is taught about partial-cache layouts.
++            cache_layer_mismatch = len(sample_cache) != num_layers
++
++            # Gemma 4-style: layers mix ContiguousKVCache (full attention)
++            # and RotatingKVCache (sliding-window). The batched path's
++            # pad_sizes math derives a single seq_lens per request from the
++            # full-attn offset, then assumes ALL layers' K/V have that
++            # same length after update_and_fetch. RotatingKVCache returns
++            # only the rotated window (up to max_size, e.g. 1024) — so
++            # request K/V across layers have different shapes and
++            # mx.concatenate(axis=0) ValueErrors at the batch step.
++            # Detected 2026-05-19 on gemma4 MoE: shapes (1,8,7426,256)
++            # vs (1,8,1024,256). Fall back to serial-per-request until
++            # the batched path tracks per-layer seq_lens.
++            from mlx_lm.models.cache import RotatingKVCache
++            has_rotating_cache = any(
++                isinstance(c, RotatingKVCache) for c in sample_cache
++            )
++
++            if full_attn_idx is None or cache_layer_mismatch or has_rotating_cache:
++                # Pure-linear / Mamba-only model with no attention layers,
++                # OR hybrid model whose make_cache emits caches for only a
++                # subset of layers (NemotronH). Either way the batched
++                # path's layer_idx indexing assumption breaks; fall back
++                # to serial-per-request. The model's own forward() handles
++                # the cache-position vs layer-index mapping internally.
+                 per_req_logits = []
+                 for i, rid in enumerate(req_ids):
+                     last_token = self._req_token_ids[rid][-1]
+@@ -1172,6 +1220,30 @@ class MlxModelRunner:
+                 caches=caches,
+             )
+ 
++        # Non-hybrid batched path: assumes all layers share the same KV
++        # cache shape. Breaks for Gemma 4-style heterogeneous attention
++        # (mix of ContiguousKVCache + RotatingKVCache) — sliding layers'
++        # update_and_fetch returns at most max_size tokens while full
++        # layers return offset tokens, so per-request K/V have different
++        # seq_lens across layers and mx.concatenate ValueErrors. Detect
++        # and fall back to serial-per-request decode. Discovered 2026-05-19
++        # on gemma4 MoE.
++        from mlx_lm.models.cache import RotatingKVCache
++        if any(isinstance(c, RotatingKVCache) for c in caches[0]):
++            per_req_logits = []
++            for i, rid in enumerate(req_ids):
++                last_token = self._req_token_ids[rid][-1]
++                input_ids = mx.array([[last_token]], dtype=mx.int32)
++                out = self.model(input_ids, cache=caches[i])
++                per_req_logits.append(self._extract_logits(out)[:, -1, :])
++            stacked = mx.concatenate(per_req_logits, axis=0)
++            lazy_tokens = mx.argmax(stacked, axis=-1)
++            return MlxPendingDecode(
++                lazy_tokens=lazy_tokens,
++                req_ids=list(req_ids),
++                caches=caches,
++            )
++
+         seq_lens = [caches[i][0].offset for i in range(batch_size)]
+         layer_caches = [
+             [caches[i][layer_idx] for i in range(batch_size)]
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index 8369cbd4f..c9cb3d265 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -218,15 +218,32 @@ class MlxTpModelWorker(TpModelWorker):
+                             import mlx.core as _mx
+                             import numpy as _np
+ 
++                            def _to_numpy(t):
++                                # NumPy can't represent bfloat16 (and only
++                                # gained float16 support recently). SGLang's
++                                # nano_nemotron_vl processor returns
++                                # `(3, H, W)` bf16 tensors; without the
++                                # cast `.numpy()` raises
++                                # `TypeError: Got unsupported ScalarType
++                                # BFloat16` and patch 015's outer Exception
++                                # silently swallowed it, leaving the model
++                                # running text-only on image requests
++                                # (2026-05-16 nemotron-omni fabrication
++                                # root cause).
++                                if hasattr(t, "numpy"):
++                                    try:
++                                        return t.numpy()
++                                    except TypeError:
++                                        return t.to(dtype=__import__("torch").float32).numpy()
++                                return t
++
+                             features: list = []
+                             msd_acc: dict[str, list] = {}
+                             for item in mm.mm_items:
+                                 feat = getattr(item, "feature", None)
+                                 if feat is None:
+                                     continue
+-                                features.append(
+-                                    feat.numpy() if hasattr(feat, "numpy") else feat
+-                                )
++                                features.append(_to_numpy(feat))
+                                 msd = getattr(item, "model_specific_data", None) or {}
+                                 for k, v in msd.items():
+                                     msd_acc.setdefault(k, []).append(v)
+@@ -263,6 +280,111 @@ class MlxTpModelWorker(TpModelWorker):
+                                         # value through unmodified — better
+                                         # than dropping the kwarg entirely.
+                                         mm_kwargs[k] = vs[0]
++
++                                # Patch 018 (2026-05-16, Gemma 4 only):
++                                # SGLang's transformers Gemma4ImageProcessor
++                                # returns pre-patched pixel_values of shape
++                                # `(B, max_patches, patch_size² × C)` plus
++                                # `image_position_ids` of shape
++                                # `(B, max_patches, 2)` with `-1` padding
++                                # markers. mlx_vlm's gemma4 vision_tower
++                                # destructures `B, C, H, W = pixel_values.shape`
++                                # — incompatible. We have all the info to
++                                # reverse the patchification: position_ids
++                                # tells us each real patch's (x, y) in the
++                                # grid; the patch tensor is the
++                                # `siglip2.convert_image_to_patches` output
++                                # `image.reshape(C, npH, pH, npW, pW)
++                                #  .permute(1, 3, 2, 4, 0)
++                                #  .reshape(npH × npW, pH × pW × C)`.
++                                # Reverse: filter out -1 padding, reshape
++                                # per-patch (pH × pW × C) back to
++                                # `(pH, pW, C)`, place at (y, x) grid
++                                # position, stack into `(C, npH × pH, npW × pW)`.
++                                # No additional normalization — both
++                                # processors leave pixel_values in [0, 1].
++                                if (
++                                    "image_position_ids" in mm_kwargs
++                                    and pixel_values.ndim == 3
++                                    and pixel_values.shape[-1] in (768, 1536)  # 16²×3, 32²×3 leeway
++                                ):
++                                    try:
++                                        ip = mm_kwargs["image_position_ids"]
++                                        ip_np = _np.asarray(
++                                            ip.tolist() if hasattr(ip, "tolist") else ip
++                                        )
++                                        pv_np = _np.asarray(
++                                            pixel_values.tolist()
++                                            if hasattr(pixel_values, "tolist")
++                                            else pixel_values
++                                        )
++                                        # Normalize to (B, max_patches, ...)
++                                        # vs (max_patches, ...) — multi-image
++                                        # patch-15 concat gives 3D for one
++                                        # image OR `(N×max_patches, ...)`.
++                                        if pv_np.ndim == 2:
++                                            pv_np = pv_np[None, ...]
++                                            ip_np = ip_np[None, ...]
++                                        patch_pixels = pv_np.shape[-1]
++                                        patch_size = 16
++                                        C = patch_pixels // (patch_size * patch_size)
++                                        raw_images = []
++                                        for b in range(pv_np.shape[0]):
++                                            positions = ip_np[b]  # (max_patches, 2)
++                                            patches = pv_np[b]    # (max_patches, patch_pixels)
++                                            # Filter real (non-padding) patches:
++                                            # padding rows have positions=(-1, -1).
++                                            real_mask = positions[:, 0] >= 0
++                                            real_pos = positions[real_mask]
++                                            real_patches = patches[real_mask]
++                                            if real_pos.size == 0:
++                                                continue
++                                            npW = int(real_pos[:, 0].max()) + 1
++                                            npH = int(real_pos[:, 1].max()) + 1
++                                            # Sort patches into grid order
++                                            # (row-major: y * npW + x)
++                                            order = real_pos[:, 1] * npW + real_pos[:, 0]
++                                            sorted_idx = _np.argsort(order)
++                                            grid_patches = real_patches[sorted_idx]  # (npH*npW, pH*pW*C)
++                                            # Reverse the permute+reshape:
++                                            # (npH, npW, pH, pW, C) → permute(4,0,2,1,3)
++                                            # → (C, npH, pH, npW, pW) → reshape(C, H, W)
++                                            grid = grid_patches.reshape(
++                                                npH, npW, patch_size, patch_size, C
++                                            )
++                                            grid = grid.transpose(4, 0, 2, 1, 3)
++                                            raw = grid.reshape(
++                                                C, npH * patch_size, npW * patch_size
++                                            )
++                                            raw_images.append(raw)
++                                        if raw_images:
++                                            # Stack into (B, C, H, W). Gemma 4
++                                            # batches require all-same-H,W
++                                            # for vision_tower's
++                                            # `all_same_size` fast path.
++                                            same_shape = all(
++                                                r.shape == raw_images[0].shape
++                                                for r in raw_images
++                                            )
++                                            if same_shape:
++                                                pixel_values = _mx.array(
++                                                    _np.stack(raw_images, axis=0)
++                                                )
++                                            else:
++                                                pixel_values = _mx.array(raw_images[0][None])
++                                            # mlx_vlm's get_input_embeddings
++                                            # doesn't consume image_position_ids;
++                                            # drop it so it doesn't trip a
++                                            # downstream signature mismatch.
++                                            mm_kwargs.pop("image_position_ids", None)
++                                            mm_kwargs.pop("num_soft_tokens", None)
++                                            mm_kwargs.pop("num_soft_tokens_per_image", None)
++                                    except Exception:
++                                        # Leave pre-patched pixel_values
++                                        # untouched on any error; downstream
++                                        # will still fail loudly but we
++                                        # don't lose the original signal.
++                                        pass
+                         except Exception:
+                             pixel_values = None
+                     next_token = self._mlx_runner.prefill(
+diff --git a/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py b/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
+index 04f9b5f3f..6b162edd3 100644
+--- a/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
++++ b/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
+@@ -125,8 +125,23 @@ class NanoNemotronVLImageProcessor(BaseMultimodalProcessor):
+         self.norm_std = hf_config.norm_std
+         self.use_thumbnail = hf_config.use_thumbnail
+ 
+-        # Dynamic resolution config
+-        self.dynamic_resolution = getattr(hf_config, "dynamic_resolution", False)
++        # Dynamic resolution config.
++        # Patch 017 (2026-05-16, MLX-only): force dynamic_resolution=False
++        # on the MLX backend so SGLang's per-image num_tokens (from
++        # compute_budgeted_image_sizes) matches mlx_vlm's vision-tower
++        # feature count exactly. Under dynamic, per-image rounding produces
++        # an off-by-N mismatch (e.g. 1541 placeholders vs 1536 features
++        # for 6-frame probe_video) — _merge_features then ValueErrors. The
++        # static tile path (preprocess_image with fixed image_size,
++        # render_image with constant num_image_token per tile) gives
++        # `tiles × num_image_token` tokens === `tiles × num_image_token`
++        # features. Upstream dynamic path stays enabled on CUDA/ROCm where
++        # the SGLang Nemotron model code does its own dynamic-aware merge.
++        import os as _os
++        if _os.environ.get("SGLANG_USE_MLX") == "1":
++            self.dynamic_resolution = False
++        else:
++            self.dynamic_resolution = getattr(hf_config, "dynamic_resolution", False)
+         self.min_num_patches = getattr(hf_config, "min_num_patches", 0)
+         self.max_num_patches = getattr(hf_config, "max_num_patches", 0)
+         self.patch_size = hf_config.patch_size
+@@ -310,7 +325,18 @@ class NanoNemotronVLImageProcessor(BaseMultimodalProcessor):
+                 self.render_image(num_tiles=image.shape[0])
+                 for image in preprocessed_images
+             ]
+-            prompt = prompt.replace(self.IMG_CONTEXT_TOKEN, "".join(rendered_images), 1)
++            # Patch 017 (2026-05-16, MLX-only): replace each <image>
++            # placeholder with its own rendered image one at a time.
++            # Upstream used `replace(..., "".join(rendered_images), 1)`
++            # which puts the full concatenation into the first <image>
++            # and leaves the remaining N-1 <image> tokens as stray
++            # placeholders — for 6-frame video that adds 5 extra
++            # placeholder tokens (1541 total instead of the 1536
++            # features mlx_vlm's vision tower produces), and
++            # _merge_features ValueErrors. Per-placeholder replacement
++            # gives exact token=feature alignment for multi-image input.
++            for r in rendered_images:
++                prompt = prompt.replace(self.IMG_CONTEXT_TOKEN, r, 1)
+             image_feature = torch.cat(preprocessed_images, dim=0)
+ 
+         video_feature = None

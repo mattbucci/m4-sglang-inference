@@ -1,3 +1,15 @@
+From 073cda1f8948571d67ecc3983809173f1c93d1e6 Mon Sep 17 00:00:00 2001
+From: M4 Patch Rebase <claude-rebase@m4.local>
+Date: Wed, 20 May 2026 22:37:51 -0700
+Subject: [PATCH] Patch 008: mlx-kv-quant-module
+
+---
+ .../hardware_backend/mlx/kv_cache/__init__.py |  10 +
+ .../hardware_backend/mlx/kv_cache/kv_pool.py  |  86 ++++--
+ .../hardware_backend/mlx/kv_cache/kv_quant.py | 250 ++++++++++++++++++
+ 3 files changed, 328 insertions(+), 18 deletions(-)
+ create mode 100644 python/sglang/srt/hardware_backend/mlx/kv_cache/kv_quant.py
+
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
 index 208e64452..f18175d00 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/__init__.py
