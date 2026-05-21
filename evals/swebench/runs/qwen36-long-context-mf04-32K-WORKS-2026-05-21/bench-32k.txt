@@ -1,0 +1,21 @@
+Long-context probe with --mem-fraction-static 0.4 (lower than 0.5 default).
+
+Recipe:
+  CTX=131072
+  --kv-cache-dtype turboquant
+  --chunked-prefill-size 2048
+  --mem-fraction-static 0.4   (was 0.5)
+  --max-running-requests 1
+  --disable-radix-cache
+
+Result:
+  32K tokens (in=31458, out=32):
+    time=51.9s  TPOT=1623ms  prefill rate ≈ 612 tok/s
+    server health=OK after request
+    memory after request: pages free = 5637 × 16KB = 88 MB
+
+Decode-only rate (32 output tokens / 0.53s ≈ 60 tok/s) is healthy —
+matches M4 historical baseline.
+
+64K NOT attempted: memory was at 88 MB free after 32K, so 64K
+(~2× KV cache) would definitely OOM.
