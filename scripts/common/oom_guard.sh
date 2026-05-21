@@ -61,14 +61,20 @@ while true; do
     BELOW_WARN=$?
 
     if [ "$BELOW_KILL" -eq 0 ]; then
-        # Snapshot for forensics
-        SGLANG_PIDS=$(pgrep -f sglang.launch_server | tr '\n' ' ')
+        # Snapshot for forensics. Anchor on "python ... -m sglang.launch_server"
+        # rather than the bare "sglang.launch_server" string: pgrep -f matches
+        # the full command line as substring, so bare "sglang.launch_server"
+        # also matches any shell whose prompt text contains the phrase (e.g.,
+        # an `eval '... pgrep -f "sglang.launch_server" ...'` wrapper). The
+        # tighter regex only matches the actual python -m invocation.
+        SGLANG_PATTERN='python.*-m sglang\.launch_server'
+        SGLANG_PIDS=$(pgrep -f "$SGLANG_PATTERN" | tr '\n' ' ')
         log "CRITICAL free=${FG}GB < ${KILL_GB}GB — killing SGLang pids: ${SGLANG_PIDS:-none}"
         ps -o pid,rss,command -p ${SGLANG_PIDS:-1} 2>/dev/null | tee -a "$LOG" >&2 || true
         if [ -n "${SGLANG_PIDS// }" ]; then
-            pkill -9 -f sglang.launch_server || true
+            pkill -9 -f "$SGLANG_PATTERN" || true
             sleep 2
-            pkill -9 -f sglang.launch_server || true
+            pkill -9 -f "$SGLANG_PATTERN" || true
         fi
         log "kill complete; guard sleeping 30s before resuming watch"
         sleep 30
