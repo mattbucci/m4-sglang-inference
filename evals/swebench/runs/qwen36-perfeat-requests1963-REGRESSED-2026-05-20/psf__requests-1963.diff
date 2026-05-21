@@ -1,0 +1,28 @@
+diff --git a/requests/sessions.py b/requests/sessions.py
+index 425db22c..811d08d3 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -86,9 +86,13 @@ class SessionRedirectMixin(object):
+         """Receives a Response. Returns a generator of Responses."""
+ 
+         i = 0
++        history = []
+ 
+         while resp.is_redirect:
+-            prepared_request = req.copy()
++            if i == 0:
++                prepared_request = req.copy()
++            else:
++                prepared_request = history[-1].copy()
+ 
+             resp.content  # Consume socket so it can be released
+ 
+@@ -180,6 +184,8 @@ class SessionRedirectMixin(object):
+ 
+             extract_cookies_to_jar(self.cookies, prepared_request, resp.raw)
+ 
++            history.append(prepared_request)
++
+             i += 1
+             yield resp
+ 
