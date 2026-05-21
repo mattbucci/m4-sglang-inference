@@ -1,0 +1,40 @@
+Long-context ceiling on M4 — environment-dependent
+
+Today's measurements (mem-fraction 0.4, turboquant, chunked-prefill 2048):
+
+  Run #1:  40K probe  → OOM (post-boot free=5 GB, server DOWN)
+  Run #2:  32K probe  → OK  (post-boot free=6 GB, free after=0 GB)
+
+Yesterday's measurement (same config):
+
+  32K probe → OK (post-boot free=7 GB, free after=88 MB)
+
+Per-token memory cost during prefill (empirical):
+  (post-boot-free - free-after) / tokens-prefilled
+
+  Yesterday 32K:  (7 - 0.088) GB / 31458 tokens = 0.22 MB/token
+  Today 32K:      (6 - 0) GB / 31458 tokens = 0.19 MB/token
+  Today 40K@OOM:  delta = (5 - 1) GB at ~21K prefilled before OOM = 0.19 MB/token
+
+So per-token cost is consistent ~0.19-0.22 MB/token across measurements.
+
+Predictive formula:
+  max_prefill_tokens ≈ (post-boot-free-GB × 1024 - 500) MB / 0.2 MB/token
+                    ≈ (post-boot-free-GB - 0.5) × 5120 tokens
+
+  At 5 GB post-boot:  ceiling ≈ 23K
+  At 6 GB post-boot:  ceiling ≈ 28K
+  At 7 GB post-boot:  ceiling ≈ 33K
+  At 10 GB post-boot: ceiling ≈ 48K
+
+Matches empirical: today's 40K OOM (predicted ~23K cap) and 32K-tight
+fit (predicted ~28K cap, actual 32K works with 0 GB after = at the
+edge of formula).
+
+Top desktop apps consuming memory (current state):
+  claude --remote-control:  514 MB
+  Firefox + plugins:         1.1 GB total
+  Spotify (+helper):         600 MB
+  Steam (+helpers):          450 MB
+  ----
+  Subtotal:                 ~2.7 GB of avoidable background memory
