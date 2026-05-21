@@ -1,0 +1,70 @@
+diff --git a/django/conf/global_settings.py b/django/conf/global_settings.py
+index acee9887d2..bdeec80610 100644
+--- a/django/conf/global_settings.py
++++ b/django/conf/global_settings.py
+@@ -304,7 +304,7 @@ FILE_UPLOAD_TEMP_DIR = None
+ 
+ # The numeric mode to set newly-uploaded files to. The value should be a mode
+ # you'd pass directly to os.chmod; see https://docs.python.org/library/os.html#files-and-directories.
+-FILE_UPLOAD_PERMISSIONS = None
++FILE_UPLOAD_PERMISSIONS = 0o644
+ 
+ # The numeric mode to assign to newly-created directories, when uploading files.
+ # The value should be a mode as you'd pass to os.chmod;
+diff --git a/docs/howto/deployment/checklist.txt b/docs/howto/deployment/checklist.txt
+index c31bcac62a..4d507cc9c1 100644
+--- a/docs/howto/deployment/checklist.txt
++++ b/docs/howto/deployment/checklist.txt
+@@ -162,7 +162,8 @@ With the default file upload settings, files smaller than
+ than larger files as described in :setting:`FILE_UPLOAD_PERMISSIONS`.
+ 
+ Setting :setting:`FILE_UPLOAD_PERMISSIONS` ensures all files are uploaded with
+-the same permissions.
++the same permissions. If you don't set :setting:`FILE_UPLOAD_PERMISSIONS`,
++files uploaded with the default settings will have a mode of ``0o644``.
+ 
+ HTTPS
+ =====
+diff --git a/docs/ref/settings.txt b/docs/ref/settings.txt
+index 46e99af993..eba5bd2e31 100644
+--- a/docs/ref/settings.txt
++++ b/docs/ref/settings.txt
+@@ -1484,7 +1484,7 @@ This value mirrors the functionality and caveats of the
+ ``FILE_UPLOAD_PERMISSIONS``
+ ---------------------------
+ 
+-Default: ``None``
++Default: ``0o644``
+ 
+ The numeric mode (i.e. ``0o644``) to set newly uploaded files to. For
+ more information about what these modes mean, see the documentation for
+diff --git a/docs/releases/2.2.txt b/docs/releases/2.2.txt
+index 291f62b560..fdc236b063 100644
+--- a/docs/releases/2.2.txt
++++ b/docs/releases/2.2.txt
+@@ -498,4 +498,11 @@ Miscellaneous
+   These new attributes allow databases dependencies to be declared in order to
+   prevent unexpected queries against non-default databases to leak state
+   between tests. The previous behavior of ``allow_database_queries=True`` and
+-  ``multi_db=True`` can be achieved by setting ``databases='__all__'``.
++   ``multi_db=True`` can be achieved by setting ``databases='__all__'``.
++
++Settings
++--------
++
++* The default value of :setting:`FILE_UPLOAD_PERMISSIONS` is ``0o644``
++  instead of ``None``. To restore the previous behavior, set
++  ``FILE_UPLOAD_PERMISSIONS = None`` in your settings.
+diff --git a/tests/test_utils/tests.py b/tests/test_utils/tests.py
+index a1a113a26e..e953eb6609 100644
+--- a/tests/test_utils/tests.py
++++ b/tests/test_utils/tests.py
+@@ -1099,7 +1099,7 @@ class OverrideSettingsTests(SimpleTestCase):
+         the file_permissions_mode attribute of
+         django.core.files.storage.default_storage.
+         """
+-        self.assertIsNone(default_storage.file_permissions_mode)
++        self.assertEqual(default_storage.file_permissions_mode, 0o644)
+         with self.settings(FILE_UPLOAD_PERMISSIONS=0o777):
+             self.assertEqual(default_storage.file_permissions_mode, 0o777)
+ 
