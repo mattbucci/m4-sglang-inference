@@ -63,35 +63,65 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   users, not for our characterization runs.
 - Always source `scripts/common.sh` before launching
 - **Model status and benchmarks** are in README.md (single source of truth)
-- **OOM guard MANDATORY for long-context (≥64K) work.** macOS doesn't have a
+- **OOM guard MANDATORY for long-context (≥32K) work.** macOS doesn't have a
   Linux-style OOM killer; once a process touches a page past physical RAM, the
-  whole system stalls until reboot. Never run a 128K+ bench without
+  whole system stalls until reboot. Never run a 32K+ bench without
   `bash scripts/common/oom_guard.sh &` running in the background — it pkill's
-  the SGLang server when free+inactive drops below 8 GB.
+  the SGLang server when free+inactive drops below 8 GB. (Threshold updated
+  from 64K → 32K on 2026-05-21 reflecting the new empirical ceiling; the
+  guard itself is unchanged but its trigger should now fire on smaller
+  contexts than before.)
 - **DO NOT raise `MEM_FRAC` / `--mem-fraction-static` above 0.7 default.**
   On unified memory the flag is a fraction of TOTAL system RAM, not "GPU
   memory." 0.85 crashed the box on 2026-05-14 (macOS compressor + swap hit
   ~150 GB effective; jetsam reaped the server; required reboot). The lever
-  moves DOWN for long-context (0.4-0.5 baked into 128K+ presets) — never
-  UP. Right levers for memory pressure: `--max-total-tokens`,
+  moves DOWN for long-context: **use mem-fraction 0.4 for 32K+ work**
+  (was 0.5; lowered 2026-05-21 to match the new ~32K ceiling). Right
+  levers for memory pressure: `--max-total-tokens`,
   `--chunked-prefill-size`, `MAX_RUNNING`, request `max_tokens`,
   `chat_template_kwargs={"enable_thinking": false}`, `--kv-cache-dtype turboquant`.
-- **Long-context launch flags (validated 2026-05-11 on v0.5.11):**
-  For 128K on qwen36-class models (35B weights), the working recipe is:
-  `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.5`.
-  This combination prefills 128K in ~6.5 min on Qwen3.6-35B-A3B; default
-  `--mem-fraction 0.7` or `--chunked-prefill 4096` will OOM-guard-fire at
-  the prefill phase. Bench tooling needs `urllib timeout=1800` for 128K
-  (`scripts/bench/bench_long_context.py` defaults to 120 s — severs the
-  connection mid-decode at long context). OOM root cause clarified: not
-  import bloat (Python imports total ~547 MB resident); the driver is
-  chunked-prefill activation tensors growing with context.
+  Note: 2026-05-21 found `--chunked-prefill-size` does NOT help with the
+  current OOM regression — 1024 and 2048 produced identical OOM points
+  at 60K. The lever is broken for activation memory; only
+  `--max-total-tokens` (cap KV size) and `--mem-fraction-static` (cap
+  total reservation) actually move the needle today.
+- **Long-context launch flags — current state (2026-05-21 on v0.5.12):**
+  The previously-claimed 128K recipe no longer fits on M4 today.
+  Empirically-measured ceiling for qwen36 (35B-MoE-4bit) is now
+  **~32K input tokens** of prefill with:
+  `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.4`
+  (note `mem-fraction 0.4`, was 0.5 — needed for the new ceiling).
+  At 32K the request finishes with single-digit MB free RAM. 60K-64K
+  OOM-kills the server mid-prefill regardless of chunked-prefill-size
+  (1024 vs 2048 produced identical OOM points in 2026-05-21 testing —
+  see `evals/swebench/runs/qwen36-long-context-*-2026-05-21/`).
+  Memory consumption during prefill is empirically linear in
+  tokens-processed at ~0.15-0.2 MB/token, mechanism unclear (candidates:
+  MLX lazy page-touch accumulation, Python intermediate-buffer growth,
+  MoE expert dispatch overhead). The lever is NOT `--chunked-prefill-size`
+  or `--context-length`. Closing the gap to the aspirational 128K+
+  needs MLX flash-attention or aggressive per-token memory reclaim —
+  upstream-MLX work, not config-tuning. Bench tooling needs
+  `urllib timeout=1800` for any long-context run.
+  Historical claim (kept for reference): on v0.5.11 / May 2026, this
+  same recipe fit 128K and prefilled in ~6.5 min. The regression
+  arrived with the v0.5.12 rebase or co-installed MLX library updates;
+  not yet isolated.
 
 ## Optimization Target
-- **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure
-  at long context first — that is the workload Apple Silicon is uniquely good at.
+- **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
+  Measure at long context first — that is the workload Apple Silicon is uniquely good at.
+  - **Current state (2026-05-21): NOT achievable on the present stack.** Practical
+    ceiling is ~32K input prefill for a 35B-MoE-4bit model. Closing the gap needs
+    MLX flash-attention or per-token memory reclaim — both are upstream-MLX work.
+    See the "Long-context launch flags" note above for the regression context.
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
   batch benchmarks.
+- **Tertiary (currently the most productive workload):** single-user agentic
+  coding at moderate context (8-32K typical per turn). qwen36 + opencode is
+  the validated primary recommendation here; SWE-bench Lite M4-scorable
+  resolved rate = 5/13 = 38.5% on the v0.5.12 stack with N=3-confirmed
+  outcome stability for the tested instances.
 
 ## Quality Rules
 - **Every new MLX model must pass `validate_capabilities.py`** before its numbers
