@@ -1,0 +1,15 @@
+Quick long-context bench: qwen36 at CTX=131072 with the
+"validated 2026-05-11 on v0.5.11" recipe:
+  --kv-cache-dtype turboquant
+  --chunked-prefill-size 2048
+  --mem-fraction-static 0.5
+
+Output tokens per test: 64
+Server: fresh boot, no prior load.
+
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+256 tokens                          246    64     1.3s   20.6ms     48.5 tok/s
+4K tokens                          3934    64     5.8s   90.0ms     11.1 tok/s
+16K tokens                        15729    64    22.6s  353.0ms      2.8 tok/s
+64K tokens                        65536    64    OOM-killed mid-prefill (server died)
