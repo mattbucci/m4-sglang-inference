@@ -1,17 +1,35 @@
-From 286f463e68b01e9e050c61b75c17404ad23fea11 Mon Sep 17 00:00:00 2001
-From: M4 Patch Rebase <claude-rebase@m4.local>
-Date: Wed, 20 May 2026 22:38:50 -0700
-Subject: [PATCH] Patch 014: mlx-gemma4-image-only-processor
-
----
- .../srt/utils/hf_transformers/processor.py    | 114 ++++++++++++++++--
- 1 file changed, 107 insertions(+), 7 deletions(-)
-
+diff --git a/python/sglang/srt/utils/hf_transformers/mistral_utils.py b/python/sglang/srt/utils/hf_transformers/mistral_utils.py
+index d44fb86..fa20e4c 100644
+--- a/python/sglang/srt/utils/hf_transformers/mistral_utils.py
++++ b/python/sglang/srt/utils/hf_transformers/mistral_utils.py
+@@ -396,7 +396,15 @@ def wrap_as_pixtral(processor, config):
+     vision_config = config.vision_config
+     patch_size = vision_config.patch_size
+     image_size = vision_config.image_size
+-    spatial_merge_size = getattr(vision_config, "spatial_merge_size", 1)
++    # Pixtral checkpoints carry spatial_merge_size in vision_config; Mistral3
++    # (Devstral) carries it on the TOP-level config. Missing it halves the
++    # patch grid: [IMG] expansion happens at patch_size instead of
++    # patch_size*merge, so placeholder count != merged feature count.
++    spatial_merge_size = getattr(
++        vision_config,
++        "spatial_merge_size",
++        getattr(config, "spatial_merge_size", 1),
++    )
+ 
+     effective_patch = patch_size * spatial_merge_size
+     image_processor = PixtralImageProcessor(
 diff --git a/python/sglang/srt/utils/hf_transformers/processor.py b/python/sglang/srt/utils/hf_transformers/processor.py
-index a57e4b4c1..690fafc78 100644
+index 7dd000c..8ba2c1d 100644
 --- a/python/sglang/srt/utils/hf_transformers/processor.py
 +++ b/python/sglang/srt/utils/hf_transformers/processor.py
-@@ -50,6 +50,80 @@ from .tokenizer import (
+@@ -45,11 +45,86 @@ from .mistral_utils import (
+ )
+ from .tokenizer import (
+     _TOKENIZERS_BACKEND,
++    _declared_tokenizer_class,
+     _fix_added_tokens_encoding,
+     _fix_special_tokens_pattern,
  )
  
  
@@ -92,7 +110,7 @@ index a57e4b4c1..690fafc78 100644
  def _build_processor_manually(
      model_path, config, trust_remote_code, revision, **kwargs
  ):
-@@ -198,13 +272,39 @@ def get_processor(
+@@ -206,13 +281,39 @@ def get_processor(
                      **kwargs,
                  )
              else:
@@ -139,3 +157,48 @@ index a57e4b4c1..690fafc78 100644
  
      except ValueError as e:
          error_message = str(e)
+@@ -260,23 +361,37 @@ def get_processor(
+             )
+         else:
+             raise
+-    if (
+-        isinstance(processor, PreTrainedTokenizerBase)
+-        and getattr(config, "model_type", None) == "pixtral"
+-    ):
++    if isinstance(processor, PreTrainedTokenizerBase) and getattr(
++        config, "model_type", None
++    ) in ("pixtral", "mistral3"):
++        # transformers 5.12 AutoProcessor returns the bare MistralCommon
++        # tokenizer for Mistral3/Devstral checkpoints (no image processor at
++        # all — `images` kwarg is rejected), so image requests silently skip
++        # [IMG] expansion and pixel preprocessing. Mistral3's vision side IS
++        # pixtral; build the real PixtralProcessor around the tokenizer.
+         processor = wrap_as_pixtral(processor, config)
+ 
+     tokenizer = get_tokenizer_from_processor(processor)
+ 
+     # AutoProcessor may internally create a TokenizersBackend tokenizer
+     # (same issue as get_tokenizer). Replace it with a properly loaded one.
+-    if type(tokenizer).__name__ == _TOKENIZERS_BACKEND:
++    # Also replace a MistralCommonBackend tokenizer when the checkpoint
++    # explicitly declares tokenizer_class=TokenizersBackend: mistral-common
++    # ignores jinja chat templates and cannot render image chat messages
++    # (HTTP 400 from apply_chat_template) — mlx-community Devstral ships a
++    # full HF tokenizer.json and declares TokenizersBackend, so honor it.
++    _tok_cls = type(tokenizer).__name__
++    if _tok_cls == _TOKENIZERS_BACKEND or (
++        "MistralCommon" in _tok_cls
++        and _declared_tokenizer_class(tokenizer_name, revision)
++        == _TOKENIZERS_BACKEND
++    ):
+         from .tokenizer import get_tokenizer
+ 
+         logger.warning(
+-            "Processor tokenizer for %s is TokenizersBackend, "
+-            "reloading via get_tokenizer",
++            "Processor tokenizer for %s is %s, reloading via get_tokenizer",
+             tokenizer_name,
++            _tok_cls,
+         )
+         tokenizer = get_tokenizer(
+             tokenizer_name,

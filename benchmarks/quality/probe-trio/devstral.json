@@ -1,9 +1,9 @@
 {
   "preset": "devstral",
-  "timestamp": "2026-05-18T00:12:51",
+  "timestamp": "2026-07-19T15:22:49",
   "probes": {
     "codegen": {
-      "verdict": "PARTIAL",
+      "verdict": "STRONG",
       "log": "/tmp/probe-trio-logs/devstral-codegen.log"
     },
     "vision": {
@@ -11,7 +11,7 @@
       "log": "/tmp/probe-trio-logs/devstral-vision.log"
     },
     "video": {
-      "verdict": "FAIL",
+      "verdict": "PARTIAL",
       "log": "/tmp/probe-trio-logs/devstral-video.log"
     }
   }

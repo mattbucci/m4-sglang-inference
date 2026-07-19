@@ -101,3 +101,33 @@ index 55c88af..0a65f7d 100755
  
  
  class MultimodalInputFormat(Enum):
+diff --git a/python/sglang/srt/multimodal/processors/pixtral.py b/python/sglang/srt/multimodal/processors/pixtral.py
+index a9ee65e..fe82ec4 100644
+--- a/python/sglang/srt/multimodal/processors/pixtral.py
++++ b/python/sglang/srt/multimodal/processors/pixtral.py
+@@ -99,15 +99,23 @@ class PixtralProcessor(BaseMultimodalProcessor):
+             if len(mm_data.images) > 1:
+                 from sglang.srt.managers.schedule_batch import MultimodalDataItem
+ 
++                # Multi-image requests may combine into a single MULTI_IMAGES
++                # item (see Modality.MULTI_IMAGES); match either so the
++                # per-image split below still runs instead of raising
++                # StopIteration inside the coroutine (surfaces as HTTP 500).
+                 old_item = next(
+-                    item for item in mm_items if item.modality == Modality.IMAGE
++                    item
++                    for item in mm_items
++                    if item.modality in (Modality.IMAGE, Modality.MULTI_IMAGES)
+                 )
+                 all_offsets = old_item.offsets
+                 old_feature = old_item.feature
+                 old_image_sizes = getattr(old_item, "image_sizes", None)
+ 
+                 mm_items = [
+-                    item for item in mm_items if item.modality != Modality.IMAGE
++                    item
++                    for item in mm_items
++                    if item.modality not in (Modality.IMAGE, Modality.MULTI_IMAGES)
+                 ]
+                 offset_idx = 0
+                 for i, img in enumerate(mm_data.images):

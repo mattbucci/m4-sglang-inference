@@ -4,16 +4,19 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack status — SGLang v0.5.15.post1 (rebased 2026-07-19):** the **text /
-agentic-coding stack is production-validated** — `coder-30b`, `qwen3-moe`,
-`qwen3-32b` pass `validate_capabilities` (basic + thinking) and `probe_codegen`
-STRONG. The **VLM-arch models are WIP on this stack**: `qwen35`, `qwen36`
-(normally the primary agentic pick), `devstral`, and `gemma4*` are
-`*ForConditionalGeneration` checkpoints needing the `mlx_vlm` loader path
-(removed upstream in the v0.5.15 refactor) plus new hybrid-scheduler
-integration; `nemotron-30b` hits a rope-less-attention detection gap. See
-[patches/README.md](patches/README.md) → "VLM / hybrid path (WIP)". **Until that
-lands, use `coder-30b` as the primary agentic model.**
+**Stack status — SGLang v0.5.15.post1 (rebased + VLM/hybrid landed
+2026-07-19):** text AND VLM/hybrid stacks are **production-validated**.
+`coder-30b` / `qwen3-moe` / `qwen3-32b` pass the gates (basic + thinking,
+codegen STRONG). Patch 008 restored the VLM/hybrid path (`mlx_vlm` loader,
+mamba-allocator contract, vision plumbing): **`qwen36` is back as the primary
+agentic pick** — codegen STRONG, vision STRONG, video STRONG, thinking
+VERIFIED — with `qwen35` (STRONG/STRONG/PARTIAL) and `nemotron-30b`
+(codegen STRONG, thinking VERIFIED) also serving. **New capability: hybrid
+(DeltaNet/Mamba2) models now run with the radix cache** (`no_buffer`
+strategy; greedy-determinism-validated prefix caching — first time on M4).
+Trade-off: radix-on-hybrid disables the overlap schedule. `gemma4*` remain
+blocked by the upstream sliding-window gap. See
+[patches/README.md](patches/README.md) → "VLM / hybrid path".
 
 ## Documentation
 
@@ -21,23 +24,23 @@ lands, use `coder-30b` as the primary agentic model.**
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (5 patches on top of SGLang main) |
+| [patches/README.md](patches/README.md) | Per-patch notes (6 patches on top of SGLang v0.5.15.post1) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 5 patches
+scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 6 patches
 # Presets — [OK] = validated on v0.5.15.post1; [WIP] = blocked, see patches/README.md
-scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE (primary agentic)
+scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
+scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
 scripts/launch.sh qwen3-32b                       # [OK]  Qwen3-32B-DWQ Dense
 scripts/launch.sh qwen3-moe                       # [OK]  Qwen3-30B-A3B-DWQ MoE
-scripts/launch.sh devstral                        # [WIP] Devstral 24B + image VLM (mlx_vlm loader)
-scripts/launch.sh qwen35                          # [WIP] Qwen3.5-27B DeltaNet hybrid+VL
-scripts/launch.sh qwen35-9b-8bit                  # [WIP] Qwen3.5-9B 8-bit (tight-memory variant)
-scripts/launch.sh qwen36                          # [WIP] Qwen3.6-35B-A3B MoE+DeltaNet+VL
-scripts/launch.sh qwen36-27b                      # [WIP] Qwen3.6-27B Dense+DeltaNet+VL
+scripts/launch.sh qwen35                          # [OK]  Qwen3.5-27B DeltaNet hybrid+VL
+scripts/launch.sh devstral                        # [OK]  Devstral 24B + image VLM
+scripts/launch.sh nemotron-30b                    # [OK]  NemotronH Mamba2+Attn+MoE
+scripts/launch.sh qwen35-9b-8bit                  # [unswept] Qwen3.5-9B 8-bit (same path as qwen35)
+scripts/launch.sh qwen36-27b                      # [unswept] Qwen3.6-27B Dense+DeltaNet+VL (same path as qwen36)
 scripts/launch.sh gemma4                          # [WIP] Gemma 4 26B MoE (sliding-window gap upstream)
 scripts/launch.sh gemma4-31b                      # [WIP] Gemma 4 31B Dense (sliding-window gap upstream)
-scripts/launch.sh nemotron-30b                    # [WIP] NemotronH (rope-less attn detection gap)
 # coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
 
 # Capability gates (run AFTER server is up on PORT 23334)
