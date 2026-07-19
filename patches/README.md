@@ -1,143 +1,112 @@
-# Patches — SGLang v0.5.12 on Apple Silicon
+# Patches — SGLang v0.5.15.post1 on Apple Silicon
 
-**Rebased onto v0.5.12 on 2026-05-20** (commit `127b9e328`, 2026-05-20). Originally
-19 individual patches on top of SGLang `v0.5.11` (commit `612785ffd`, 2026-05-04);
-rebased onto v0.5.12 which added on-the-fly `mlx_q4` / `mlx_q8` quantization
-(+69 lines in `model_runner.py`, +1 in `tp_worker.py`, +3 in
-`hf_transformers/processor.py`). None of our patches were upstreamed by v0.5.12.
+**Rebased onto v0.5.15.post1 on 2026-07-19** (commit `0b3bb0c`), from the prior
+v0.5.12 pin (`127b9e328`). This was a **large** rebase: v0.5.15.post1 shipped a
+major MLX-backend refactor that **upstreamed much of our hybrid/cache work**.
 
-**14 per-feature patches against v0.5.12.** After a one-day intermezzo where we
-shipped a single 117 KB cumulative rebase patch (021), the patches are now back
-to per-feature for maintainability. The original patch-013 (VLM pixel_values)
-combined with patches 016-020 into a single file (`016-mlx-vlm-pixel-values-and-hybrid-attention.patch`)
-because those six patches were generated as one commit during the rebase — they
-share ordering dependencies on the new patches 014/015 that made splitting them
-back into six clean per-file patches not worth the complexity. Everything else
-is one patch per feature, applied in numeric order by `scripts/setup.sh`.
+## What v0.5.15.post1 upstreamed (patches DROPPED)
 
-```bash
-cd components/sglang
-git checkout v0.5.12
-for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
-```
+The MLX backend gained native machinery that subsumes several patches:
 
-Patch number ↔ patch file (numbering preserves feature names from the v0.5.11 era;
-file names sort in application order):
+| new upstream file | what it provides | our dropped patch |
+|-------------------|------------------|-------------------|
+| `kv_cache/attention_contract.py` | duck-typed attention + multi-name head-count detection (`n_heads`/`num_attention_heads`, `n_kv_heads`/`num_key_value_heads`/`num_k_heads`) + DeltaNet-vs-attention discrimination | **009** (mlx-nemotron-h head-count duck-typing) — *for mlx_lm models only, see caveat* |
+| `kv_cache/attention_kv_cache.py` | `AttentionOffsetCache` (has `make_mask`/`state`), `ContiguousAttentionKVCache`, `PoolBackedAttentionKVCache` | **006** (offsetcache + make_mask) |
+| `kv_cache/auxiliary_state.py` | `MlxAuxiliaryStatePool` / `MlxAuxiliaryStateComponent(MambaComponent)` — native Mamba/DeltaNet recurrent state in the unified radix cache | hybrid half of **004**, **019** |
+| `kv_cache/layout.py` | `MlxModelCacheLayout` attention/auxiliary layer split | **012** (sync-pool skip-non-contiguous), pool-filter half of **020** |
+| `kv_cache/model_patching.py` | `find_attention_layers` via the contract + `language_model` (VLM) nesting | routing half of **004**, **009** |
+| `kv_cache/attention_wrapper.py` | `MLXAttentionWrapper._batched_decode` natively does gated-attn split+sigmoid **and** an AOT Metal RoPE kernel | **011** (gated-attn batched decode) |
 
-| Patch # | File |
-|---------|------|
-| 002-012 | `002-…patch` through `012-…patch` (one file per feature) |
-| 013 | inside `016-mlx-vlm-pixel-values-and-hybrid-attention.patch` |
-| 014 | `014-mlx-gemma4-image-only-processor.patch` |
-| 015 | `015-mlx-multi-image-concat.patch` |
-| 016-020 | inside `016-mlx-vlm-pixel-values-and-hybrid-attention.patch` |
+Also new upstream: `aot.py` (compiled Metal kernels), `moe/fused_swiglu.py`,
+`profiler.py`, `parent_watchdog.py`. And upstream added the MPS defaults our
+patch 002 used to set (torch_native attention resolver, "torch_native ⇒ disable
+cuda graph" rule, MPS entry in the piecewise-incompatibility list), so patch 002
+collapsed to ~2 lines.
 
-| # | Patch | Files | Why |
+**⚠ CAVEAT — 009/011 were upstreamed for `mlx_lm` text models, NOT for
+`mlx_vlm` / NemotronH.** The native contract requires an attribute literally
+named `rope`. mlx_vlm attention names it `rotary_emb`; NemotronH attention is
+position-free (no rope). So on v0.5.15.post1 the native detection misses those
+architectures. See "VLM / hybrid path (WIP)" below.
+
+## Applied patches (text stack — VALIDATED)
+
+Five patches, applied in numeric order by `scripts/setup.sh`. This is the
+production-quality stack for text / agentic-coding workloads.
+
+| # | Patch | Files | Why (rebased against v0.5.15.post1) |
 |:-:|-------|-------|-----|
-| 002 | mps-backend-defaults | `server_args.py` | Disable CUDA graph & piecewise CUDA on MPS, force `torch_native` attention, default multimodal off (Devstral re-enables via patch 007). |
-| 003 | mlx-skip-quantization-check | `configs/model_config.py` | MLX checkpoints have `quantization_config` without `quant_method`; SGLang's verify-quant raises. Skip when MLX backend is active. |
-| 004 | mlx-lifecycle-and-hybrid-fixes | `model_runner.py`, `model_runner_stub.py`, `tp_worker.py` (MLX + base), `scheduler.py`, `scheduler_output_processor_mixin.py` | Lifecycle (clear-on-idle, drop-on-finish) + hybrid-model bookkeeping (`hybrid_gdn_config`/`mamba2_config`/`linear_attn_model_spec` properties, `_DummyMambaPool`) + the load-bearing **patch 013** that routes hybrid cache via `model.language_model.make_cache()` for VLM-wrapped DeltaNet (Qwen3.5/3.6 MMLU 16.7% → 93.0%) + **patch 015** keep `RotatingKVCache` native for Gemma 4 sliding layers + full cache reset on pool reuse + VLM-detect-first `_load_model` with image-aware `_TextOnlyVLMShim` + RoPE auto-scaling for 256K-on-40K-native models. |
-| 005 | mlx-attn-wrapper-varargs | `kv_cache/attention_wrapper.py` | Devstral / Ministral3 pass `attn_scale` as a positional arg between `x` and `mask`. Wrapper now accepts `*args, **kwargs` and applies `attn_scale` if present. |
-| 006 | mlx-offsetcache-and-make-mask | `kv_cache/contiguous_cache.py` | `OffsetCache.__getitem__`/`__setitem__`/`__len__`/`lengths`/`advance` stubs so hybrid DeltaNet decode doesn't `AttributeError` (the cache surface, not data). **Patch 014** also lives here: `ContiguousKVCache.make_mask` returns an explicit `(N, offset+N)` causal mask when `offset>0`, unblocking chunked prefill at large context. |
-| 007 | mlx-multimodal-and-mps-shim | `_mps_stub.py`, `managers/mm_utils.py`, `managers/schedule_batch.py` | (a) MPS stub redirects `to('cuda')` → `to('cpu')` so transformers code that defaults to CUDA keeps working on Apple Silicon. (b) `ShmPointerMMData` slice fix — macOS rounds shm allocations up to a 16 KB page, so `torch.frombuffer(shm.buf, ...)` returns a larger-than-logical tensor; slice to `nbytes` on write, to `n_elements` on read. (c) Add `Modality.MULTI_IMAGES` enum member that SGLang's `transformers_auto` references but doesn't define. |
-| 008 | mlx-kv-quant-module | `kv_cache/kv_quant.py` (new), `kv_cache/__init__.py` | KV cache quantization for MLX backend. New `KVCacheMode` enum + `parse_kv_cache_mode` (accepts `fp8` / `mxfp8` / `turboquant` / `tq` / `4bit` aliases) + `bytes_per_element` for pool sizing + `KVQuantizer` with quantize/dequantize on 3D pool buffers and 4D cache buffers. Wired into `MlxModelRunner.__init__` (accepts `kv_cache_mode` + `context_length` kwargs); turboquant is load-bearing for 256K work on the 64 GB Mac (~3.5× savings vs fp16, ~1.75× vs fp8). |
-| 009 | mlx-nemotron-h-support | `kv_cache/attention_wrapper.py`, `kv_cache/model_patching.py`, `model_runner.py` | NemotronH-style hybrids (Mamba2 + Attention + MoE) expose `mixer` on every layer with the type alternating per-layer. `find_attention_layers` now probes `self_attn`/`attention`/`mixer` and accepts `mixer` only when at least one layer's mixer is real attention (q/k/v/o_proj present); `patch_model_attention` skips non-attention mixers; `_get_attn_config` samples the first attention layer instead of `layer_list[0]`. The attention wrapper accepts either `n_heads`/`n_kv_heads` (mlx_lm) or `num_attention_heads`/`num_key_value_heads` (mlx_vlm + NemotronH) and skips the RoPE call when `inner.rope` is absent (NemotronH's attention is position-free — RoPE lives in the interleaved Mamba layers). |
-| 010 | mlx-vlm-position-cache-reset | `model_runner.py` | mlx_vlm's `LanguageModel` for qwen3_5 (and 14 other VLM families that share the same caching pattern: qwen2_vl, qwen2_5_vl, qwen3_vl, qwen3_vl_moe, qwen3_5_moe, qwen3_omni_moe, glm4v, glm4v_moe, glm_ocr, ernie4_5_moe_vl, hunyuan_vl, paddleocr_vl, falcon_ocr, falcon_perception) memoizes `_position_ids` and `_rope_deltas` on the instance and only invalidates them when a new `pixel_values` arrives. Under `MAX_RUNNING>1` with text-only requests, request A's cached `(3, 1, L_A)` position tensor is still on the model when request B's prefill arrives — `apply_multimodal_rotary_pos_emb` then broadcasts `(1, 1, L_A, 64)` cos/sin against `(1, 24, L_B, 64)` queries and crashes. `prefill_start` now nulls these attributes at every new-request boundary; chunked-prefill `extend_start` deliberately leaves them intact (the cache is valid for chunk 2+ of the same request). Unblocks `MAX_RUNNING=4` on Qwen3.5-27B end-to-end (verified 2026-05-12 with 16-prompt mixed-length bench: 16/16 successful, zero broadcast errors). Resolves the long-standing crash documented in `patches/HYBRID_CONCURRENT_TRACE_PLAN.md`. |
-| 011 | mlx-hybrid-batched-decode-gated-attn | `model_runner.py`, `kv_cache/attention_wrapper.py` | Two co-dependent changes that together unblock true batched decode for DeltaNet hybrids (Qwen3.5/3.6 family). **(a) `model_runner.decode_batch_start`**: replaces the serial-per-request hybrid fallback with a mixed per-layer cache — full-attention layers (ContiguousKVCache) route through the existing `BatchedDecodeContext`+`MLXAttentionWrapper`, linear-attention layers (ArraysCache) stack per-request `conv_state`/`ssm_state` along axis 0 into `(B, ...)` tensors so the existing `gated_delta_update` kernel (already fully batched per `mlx_lm/models/gated_delta.py:262-283`) processes all B requests in one forward; after the call each layer's updated batched state is split back into per-request ArraysCache. **(b) `MLXAttentionWrapper._batched_decode`**: extended to handle mlx_vlm's `Qwen3_5Attention` style — q_proj output is `n_heads*head_dim*2` (queries + gate concatenated), so head_dim must be derived from keys not queries; the gate is split off the queries reshape and `sigmoid(gate)`-multiplied after SDPA before `o_proj`. RoPE dispatches on `hasattr(inner, "rotary_emb")`: if present, build `(3, B, 1)` text-only position_ids from `ctx.offsets`, call `inner.rotary_emb(values, position_ids)`, then `apply_multimodal_rotary_pos_emb(queries, keys, cos, sin)` (imported from `type(inner).__module__` so the same wrapper works for every mlx_vlm family). `args[0]` is also type-discriminated: only treated as `attn_scale` when it's a Python number or 0-d mx.array (mlx_lm Devstral/ministral3 style); for mlx_vlm callers where args[0] is the mask, the existing built-from-ctx padding mask is used instead. **Verified 2026-05-12 08:39**: Qwen3.5-27B `MAX_RUNNING=4` 16-prompt bench reached 16 concurrent decode with gen throughput 41 tok/s before the OOM guard fired on memory pressure (mf=0.4 + 16 sequences is still over the M4's activation budget — that's a separate tuning task, not a code bug). Without this patch the same bench did 1× per-request serial decode at MR>1. |
-| 012 | mlx-sync-pool-skip-non-contiguous | `model_runner.py` | `_sync_new_kv_to_pool` now filters to `ContiguousKVCache` layers only and writes per-layer via `set_kv`, instead of stacking all layers and calling `set_kv_all_layers`. Hybrid models have heterogeneous per-layer caches (`ContiguousKVCache` for full-attention, `ArraysCache` for DeltaNet/Mamba2 recurrent state, `RotatingKVCache` for Gemma 4 sliding) — only the first kind has the `(1, n_kv_heads, S, head_dim)` shape the pool expects, so the old `mx.stack([... .keys ...])` crashed with `AttributeError: 'ArraysCache' object has no attribute 'keys'` or shape mismatch. With the filter, non-attention layer slots stay zero-initialised in the pool and the write side stops crashing; users must still keep `--disable-radix-cache` for hybrid models for correctness (radix prefix reuse would still produce wrong outputs at the recurrent layers — the pool simply can't represent linear state per-token). This is the defence-in-depth fix for the latent bug that bench runs and ad-hoc launches kept tripping over before commit a8a3ff0 added `--disable-radix-cache` to every hybrid preset. |
-| 013 | mlx-vlm-pixel-values | `model_runner.py`, `tp_worker.py` | **Restores the v0.5.10 VLM image-bearing inference path that was silently lost in the v0.5.11 rebase.** The original `Patch 010: pixel_values plumbing tp_worker → prefill → TextOnlyVLMShim` (Apr-18 commit `f20ee6e`) was the load-bearing change that made Devstral describe images correctly on the old stack. It didn't reapply during `ebe23bb` and the slot was silently reused for an unrelated patch (the new `mlx-vlm-position-cache-reset`, same number, different purpose). Between then and the 2026-05-13 probe sweep, every VLM image request silently took the text-only branch of `_TextOnlyVLMShim` — model hallucinated content from training prior, `validate_capabilities.py` keyword grep happened to pass on lucky words like "circle". This patch re-adds: `MlxModelRunner.prefill` / `prefill_start` accept `pixel_values=None, mm_kwargs=None`; build a `_model_kwargs` dict that's threaded to every `self.model(input_ids, cache=cache, **_model_kwargs)` call (both `disable_radix_cache` branch and full-radix branch). `tp_worker._forward_batch_generation_mlx` extracts `pixel_values` from `req.multimodal_inputs.mm_items[0].feature` (torch→mlx via numpy bridge) and forwards every key in `item.model_specific_data` as `mm_kwargs` (Pixtral/Mistral3 require `image_sizes` for the patch merger; Qwen2-VL uses `image_grid_thw`; Qwen3.5/3.6 use `video_grid_thw` + `second_per_grid_ts`). Verified 2026-05-13 by `probe_vision.py`: Devstral STRONG ("The image shows a single red circle with a black outline on a white background.") and Qwen3.5-9B-8bit STRONG (4-step reasoning trace correctly identifies circle/red/white/black-outline) — both match the Apr-18 baseline. |
-| 015 | mlx-multi-image-concat | `hardware_backend/mlx/tp_worker.py` | **Unblocks multi-image / video-frames-as-images requests.** Patch 013 forwarded `pixel_values` and `mm_kwargs` from `req.multimodal_inputs.mm_items[0]` only — fine for single-image probes, broken for `probe_video.py` and any other multi-image input. SGLang's processor produces one `mm_item` per input image, so the second through Nth image's `feature` (vision-tower input) and `model_specific_data` (`image_grid_thw` etc.) get dropped. Qwen3.5/3.6 `merge_input_ids_with_image_features` then ValueError-crashes with `tokens: N×64, features: 64` — the chat template emitted N images' worth of placeholder tokens, but only one image's vision-tower features arrived. Patch iterates over every `mm_item`, concatenates each `feature` along axis 0, stacks each per-image kwarg in the same order, falls back to passing the first value through unmodified on conversion failure. Verified end-to-end 2026-05-16 via `probe_video.py` against `qwen35-9b-8bit`: 6-frame "red circle moving right" + "red circle moving down" both classified CORRECT (one-word "right" / "down" completions, finish=stop, 445 prompt tokens confirms all 6 frames tokenized). |
-| 014 | mlx-gemma4-image-only-processor | `utils/hf_transformers/processor.py` | **Unblocks Gemma 4 image+text serving on mlx-community checkpoints.** Upstream `google/gemma-4-26b-a4b-it` and its mlx-community quantizations ship only `processor_config.json` (image processor + token-id metadata). Neither `preprocessor_config.json` (audio feature_extractor) nor `video_preprocessor_config.json` is present. On transformers 5.5.3, `AutoProcessor.from_pretrained` calls `AutoFeatureExtractor.from_pretrained` (404) and `AutoVideoProcessor.from_pretrained` (404) because `Gemma4Processor.__init__` strictly requires all four sub-components. The construction failed with `OSError: Can't load feature extractor for ... preprocessor_config.json` before any image processing path ran, and Gemma 4 was text-only on M4. SGLang's downstream `Gemma4SGLangProcessor` already accesses `feature_extractor` and `video_processor` via `getattr(..., None)` with safe defaults — the strict requirement was only at the transformers-level constructor. Patch adds a `_build_gemma4_image_only_processor` helper that replays `Gemma4Processor.__init__`'s body plus `ProcessorMixin.__init__`'s token-id-list setup, but skips the strict type check on the missing sub-components and leaves `feature_extractor` / `video_processor` as `None`. Dispatch from the `AutoProcessor.from_pretrained` OSError handler when `"feature extractor" in str(e).lower()` and `config.model_type == "gemma4"`. Verified end-to-end 2026-05-15: `get_processor('mlx-community/gemma-4-26b-a4b-it-4bit')` returns a working processor, `proc(text=..., images=[...])` produces `pixel_values` of shape (1, 2520, 768) + `mm_token_type_ids` correctly tagging image tokens. Probe_vision pending live server boot. |
-| 016 | mlx-mm-bfloat16-numpy | `hardware_backend/mlx/tp_worker.py` | **Fixes `nemotron-omni` vision FAIL fabrication root cause.** SGLang's `nano_nemotron_vl.py` processor for `NemotronH_Nano_Omni_Reasoning_V3` finalizes each preprocessed image with `.to(dtype=torch.bfloat16)`. Patch 015's `feat.numpy()` then raises `TypeError: Got unsupported ScalarType BFloat16` (NumPy can't represent bfloat16 directly). The outer `except Exception` block silently caught it and dropped `pixel_values=None`, so prefill went down the text-only branch of `_TextOnlyVLMShim` — the model produced its image-less hallucination prior (e.g. "the word 'Terror' repeated in a grid" for a red-circle-on-white prompt). Same pattern as the pre-patch-013 fabrication, masked behind a different swallow point. Patch 016 wraps `.numpy()` in a `_to_numpy` helper that catches the TypeError and falls back to `t.to(dtype=torch.float32).numpy()` — keeps the dtype contract correct on the numpy boundary, then mlx_vlm's vision tower casts back to bf16 internally. Verified end-to-end 2026-05-16 via `probe_vision.py` against `nemotron-omni`: VERDICT STRONG ("A red circle with a black outline is centered on a white background"). |
-| 017 | mlx-nemotron-omni-video-alignment | `multimodal/processors/nano_nemotron_vl.py` | **Unblocks `nemotron-omni` multi-image / probe_video (FAIL → STRONG).** Two co-dependent fixes after patch 016 unblocked single-image: **(a) static-tile alignment** — `NanoNemotronVLImageProcessor.__init__` env-gates `dynamic_resolution=False` when `SGLANG_USE_MLX=1`. Under upstream's `dynamic_resolution=True` + `min_num_patches=1024`, `compute_budgeted_image_sizes` rounds per-image patch budgets in a way mlx_vlm's vision tower can't replicate exactly (per-image features = `(H × W) / (patch_size² × downsample_factor²)` based on actual resized dims; SGLang's `num_tokens` is from its own budget math). The static tile path (`preprocess_image` → `image_to_pixel_values(input_size=512, max_num_tiles=12, use_thumbnail=True)`) produces fixed-size tiles where token count = `tiles × num_image_token` = `tiles × 256`, exactly matching the feature count from `vision_model(pixel_values).features` after `pixel_shuffle(0.5)` reduction. **(b) per-placeholder rendered-image replacement** — upstream `process_mm_data_async` did `prompt.replace(IMG_CONTEXT_TOKEN, "".join(rendered_images), 1)` which inserts the full concatenation into the first `<image>` and leaves the remaining N-1 `<image>` tokens as stray IMG_CONTEXT placeholders. For 6-frame probe_video that produced 1541 placeholders (1536 inserted + 5 stray) vs 1536 features → `_merge_features` ValueError. Per-placeholder replacement (`for r in rendered_images: prompt = prompt.replace(IMG_CONTEXT_TOKEN, r, 1)`) consumes each `<image>` exactly once, restoring 1:1 alignment. Verified 2026-05-16 via `probe_video.py`: both direction probes ("right" / "down") classified CORRECT with 3-token completions, 1632 prompt tokens (= 6 × 256 + chat-template overhead). Single-image `probe_vision` regression-tested STRONG. Upstream dynamic path stays enabled on CUDA/ROCm where the SGLang Nemotron model code does its own dynamic-aware merge. |
-| 018 | mlx-gemma4-unpatch | `hardware_backend/mlx/tp_worker.py` | **Unblocks Gemma 4 vision + video on M4 (FAIL → STRONG).** SGLang's transformers-based `Gemma4ImageProcessor` outputs pre-patched pixel_values shape `(B, max_patches, patch_size² × C)` = `(B, max_patches, 768)` for `patch_size=16, C=3` via `siglip2.convert_image_to_patches`: `image.reshape(C, npH, pH, npW, pW).permute(1, 3, 2, 4, 0).reshape(npH·npW, pH·pW·C)`, then `pad_along_first_dim` pads to `max_patches` with `image_position_ids = -1` markers for padding. mlx_vlm's gemma4 vision tower destructures `B, C, H, W = pixel_values.shape` and crashes with `ValueError: not enough values to unpack (expected 4, got 3)`. Bridge: in `tp_worker._forward_batch_generation_mlx`, after patch 015 builds `pixel_values` + `mm_kwargs`, detect Gemma 4 by `pixel_values.ndim == 3` + `shape[-1] in (768, 1536)` + presence of `image_position_ids` (only Gemma 4 ships these in `model_specific_data`), then reverse the patchification: (1) filter padding via `positions[:, 0] >= 0`, (2) sort real patches by row-major grid order (`y * npW + x`), (3) reshape `(npH·npW, pH·pW·C)` → `(npH, npW, pH, pW, C)`, (4) reverse permute to `(C, npH, pH, npW, pW)`, (5) reshape to `(C, npH·pH, npW·pW)`, (6) stack into `(B, C, H, W)`, (7) drop `image_position_ids` + `num_soft_tokens*` from `mm_kwargs` (mlx_vlm doesn't consume them). Both processors leave pixels in [0, 1] — no extra normalization. Detection is precise enough to skip non-Gemma-4 multi-image paths (Qwen3.5/3.6 regression-tested STRONG). Verified end-to-end: `gemma4-31b` STRONG on vision + STRONG on video (both "right" / "down" direction probes correct, 2-token completions); `gemma4` STRONG on vision + PARTIAL on video (says "down" on both directions — model-quality regression at the smaller 26B-A4B MoE variant, not a plumbing issue). |
-| 019 | mlx-nemotron-h-partial-cache | `hardware_backend/mlx/model_runner.py` | **Unblocks NemotronH-family agentic decode (IndexError → clean decode).** NemotronH's `make_cache()` only emits per-layer caches for `M` (Mamba2) and `*` (Attention) layer types — `MoE` ("E") and `MLP` ("-") layers get nothing, so `len(sample_cache) < num_layers`. In `decode_batch_start` the batched hybrid path builds `is_full_attn = [isinstance(c, ContiguousKVCache) for c in sample_cache]` then iterates `for layer_idx in range(num_layers): if is_full_attn[layer_idx]: ...`, which IndexErrors past the cache list when `num_layers > len(sample_cache)`. Detected 2026-05-18 on `nemotron-omni` at first decode after preflight + opencode triggered `batch_size > 1` (single-request fast path at line 1020 was already fine). Fix: extend the existing pure-linear/Mamba-only serial-fallback trigger to also fire when `len(sample_cache) != num_layers`. The serial-per-request path calls `self.model(input_ids, cache=caches[i])` which lets NemotronH's own `__call__` handle the cache-position vs layer-index mapping via its `cache_counter` increment (only for M/* layers). Verified 2026-05-19 on `nemotron-omni`: server decodes cleanly (8665 input tokens → 23 output tokens → reason: stop). Model itself still doesn't engage opencode (chat-template gap, same class as coder-30b/devstral) but the stack-level crash is gone — future NemotronH variants can drive opencode without backend failures. |
-| 020 | mlx-gemma4-sliding-window | `hardware_backend/mlx/{kv_cache/attention_wrapper.py, model_runner.py}` | **Unblocks Gemma 4 MoE agentic decode (AttributeError + ValueError → 4 tool calls).** Two interacting fixes for Gemma 4's heterogeneous attention layout (mix of ContiguousKVCache + RotatingKVCache per layer). **(a)** `attention_wrapper._batched_decode` was calling `cache.write_token(k, v)` + `cache.get_kv()` which exist only on ContiguousKVCache; RotatingKVCache (sliding-window) uses the canonical `update_and_fetch(keys, values)`. AttributeError on first decode. Swap both calls for the single `update_and_fetch` (works on every mlx_lm cache type; semantics unchanged for ContiguousKVCache). **(b)** After (a), the non-hybrid batched path in `model_runner` derived a single `seq_lens` per request from `caches[i][0].offset` then assumed ALL layers' K/V would have that length. RotatingKVCache returns at most `max_size` (1024 for Gemma 4 sliding-window) — so per-request K/V across layers had shapes `(1,8,7426,256)` vs `(1,8,1024,256)` and `mx.concatenate(axis=0)` ValueErrored. Detect `RotatingKVCache` in `caches[0]` and fall back to serial-per-request (same pattern as patch 019). Verified 2026-05-19 on gemma4 MoE: 4 tool calls (1 glob + 1 read + 2 bash) over 108s. Model itself still doesn't synthesize an edit (same "engages but can't synthesize" class as qwen35-9b-8bit) but the stack crashes are gone — failure class for Gemma 4 MoE upgrades from "MLX backend bug" to "model-side synthesis ceiling." |
+| 002 | mps-backend-defaults | `server_args.py` | **Collapsed.** Only survivors: default `enable_multimodal=False` on MPS (launch presets depend on it) + MLX `--kv-cache-dtype` aliases (`fp8`/`mxfp8`/`turboquant`/`tq`/`4bit`). The aliases are **boot-critical**: the launch default `KV_CACHE=fp8` is not in upstream's `choices`, so without them every preset is rejected by argparse. (torch_native + cuda-graph disable are now upstream.) |
+| 003 | mlx-skip-quantization-check | `configs/model_config.py` | Wrap `self._verify_quantization()` in `if not use_mlx():` — MLX checkpoints carry `quantization_config` without `quant_method`, and the upstream raise is still live. |
+| 005 | mlx-attn-wrapper-varargs | `kv_cache/attention_wrapper.py` | `__call__(self, x, *args, **kwargs)` + transparent delegate. Devstral/ministral3 (and mlx_vlm attention) pass extra positional/keyword args (`attn_scale`, `position_ids`, …); the fixed 3-arg upstream signature would `TypeError`. Batched decode uses `inner.scale`. |
+| 007 | mlx-multimodal-and-mps-shim | `_mps_stub.py`, `managers/mm_utils.py`, `managers/schedule_batch.py` | (a) `.to('cuda')`→`.to('cpu')` redirect; (b) `ShmPointerMMData` slice to logical byte/element count (macOS 16 KB shm page rounding); (c) `Modality.MULTI_IMAGES` enum member. None upstreamed. |
+| 014 | mlx-gemma4-image-only-processor | `utils/hf_transformers/processor.py` | Applied **clean** against v0.5.15.post1 (only patch that did). Builds a Gemma 4 image-only processor when the checkpoint ships only `processor_config.json`. |
 
-## What was dropped at v0.5.11
+### Dropped as upstreamed (not re-derived): 006, 009†, 011, 012, 019
+† 009's mlx_lm head-count detection is upstream; its NemotronH-specific handling is not (WIP).
 
-| Old patch | Status |
-|-----------|--------|
-| 001-mlx-radix-cache | **Upstreamed.** SGLang v0.5.11 ships `python/sglang/srt/hardware_backend/mlx/kv_cache/` natively with `ContiguousKVCache`, `MlxKVPool`, `OffsetCache`, `attention_wrapper.py`, and `model_patching.py`. |
+## VLM / hybrid path (WIP — deferred)
+
+**The VLM-arch models don't serve on v0.5.15.post1 yet.** `qwen35`, `qwen36`
+(the primary agentic recommendation), `devstral`, and `gemma4*` are all
+`*ForConditionalGeneration` VLM checkpoints — `mlx_lm` cannot load them, so they
+need the `mlx_vlm` loader path that was **entirely removed** upstream (the
+v0.5.15 MLX backend is 100% text-only). `nemotron-30b`/`nemotron-omni` are
+text-only but hit the rope-less-attention detection gap.
+
+Substantial progress is captured in
+[`WIP-phase2-vlm-hybrid-integration.patch`](WIP-phase2-vlm-hybrid-integration.patch)
+(kept out of the applied stack — its name doesn't match setup.sh's
+`0[01][0-9]-*.patch` glob; 240 lines across 4 files). It re-derives, and gets
+`qwen36` from "crash at load" all the way into the serving event loop:
+
+1. **mlx_vlm loader + `_TextOnlyVLMShim`** (`mlx/model_runner.py`) — VLM-detect
+   `_load_model`, wrap so text requests route to `language_model` and the native
+   cache machinery unwraps via `__getattr__`. Needs `pip install mlx-vlm`
+   (`--no-deps`; see setup.sh). *Verified: `mlx_vlm.load` works on the pinned
+   `transformers==5.12.1`.*
+2. **Attention detection compat** (`kv_cache/attention_contract.py`) — require
+   `scale` (the softmax marker that excludes DeltaNet), make `rope` optional so
+   `rotary_emb` (mlx_vlm) and position-free (NemotronH) attention are detected.
+3. **Serial decode routing** (`mlx/model_runner.py`) — a `_attention_wrapper_
+   batchable` flag (inner has `.rope`); route `rotary_emb`/rope-less attention to
+   `_decode_with_native_cache` (delegates to the model's own forward). Batched
+   decode is an MR>1 throughput optimization only.
+4. **Skip general attn-backend init on MLX** (`model_executor/model_runner.py`) —
+   `init_attention_backends` no-ops on `use_mlx()`. The MLX tp worker overrides
+   `forward_batch_generation`, so the general backends are unused; skipping also
+   avoids `GDNAttnBackend.__init__` crashing on the MLX aux-state pool.
+5. **`mamba_allocator` alias** (`kv_cache/auxiliary_state.py`) — for the pool
+   stats observer.
+
+**Remaining blocker (the reason it's still WIP):** v0.5.15's refactored general
+scheduler drives hybrid-SSM (GDN/Mamba) **slot allocation** through a mamba-pool
+contract — `mamba_allocator.alloc_group_begin(...)` in the core batch-admission
+path (`scheduler.py`), plus `mamba_cache.conv`, etc. — that the MLX
+`MlxAuxiliaryStatePool` does not implement. Completing VLM/hybrid support is
+**new v0.5.15 integration work**, not a patch rebase: either implement that
+allocator contract on the MLX pool (multi-method, with batch-accounting
+semantics) or comprehensively disengage the general hybrid machinery on MLX
+(the v0.5.12 approach — but `MlxModelRunner._store_auxiliary_state`, called
+unconditionally in `prefill_finalize`, now needs the aux pool, so it cascades).
+
+## Also dropped / regressed on v0.5.15.post1
+
+- **gemma4 / gemma4-31b** — upstream `_attention_kv_config_for_layer` raises
+  `NotImplementedError("...does not support sliding-window attention yet...")`,
+  and it runs at runner construction, so these raise at boot. Sliding-window
+  support is an upstream feature gap (old patch 020 kept `RotatingKVCache`
+  native; that path no longer exists). Needs per-layer/window-aware pools.
 
 ## Apply / sanity check
 
 ```bash
-# Apply all
-cd components/sglang && git checkout v0.5.12
-for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
-
-# Verify clean apply on a fresh tree
-for p in ../../patches/0[01][0-9]-*.patch; do git apply --check "$p" && echo "OK: $(basename $p)"; done
+cd components/sglang && git checkout v0.5.15.post1
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done   # 5 patches, all clean
 ```
 
-## Open follow-up
+## Historical
 
-Patch 008 ships the `kv_quant.py` module + `MlxModelRunner.__init__` plumbing for `kv_cache_mode` / `context_length`, but `ContiguousKVCache` and `MlxKVPool` still store fp16 KV. To activate turboquant end-to-end on v0.5.11 we need to wire `KVQuantizer` into both buffer classes. Tracked as TODO; the parameter pass-through is in place so when wired, no API surface changes.
-
-## v0.5.11 rebase context
-
-See [REBASE-v0.5.11-NOTES.md](REBASE-v0.5.11-NOTES.md) for the strategy that drove this rebase (drop what's upstream, keep only what's load-bearing for the mlx-community model set that mirrors what sister teams run).
-
-## Shipped narrative — resolved post-rebase
-
-Forensics for items that started life on the main README's "Active work" list and have since landed. The patch table above is the canonical reference; this section just keeps the *why* so future debuggers don't have to re-derive it from `git log`.
-
-### Patch 013 — VLM image regression fixed (2026-05-13)
-
-**Symptom:** between the v0.5.11 rebase and the 2026-05-13 probe sweep, every VLM image request silently took the text-only branch of `_TextOnlyVLMShim`. Devstral on a red-circle-on-white prompt returned `"A diagram of a circular flow chart with a central circle labeled '1' surrounded by 12 smaller circles numbered 2 through 13..."` — total fabrication from training prior. `validate_capabilities.py:check_vision` keyword grep happened to pass because the word "circle" appeared. The fabricated-VLM mode escaped detection from Apr 18 → May 13.
-
-**Root cause:** the v0.5.11 rebase silently DROPPED the original Apr-18 `Patch 010: pixel_values plumbing tp_worker → prefill → TextOnlyVLMShim` (commit `f20ee6e`). The patch-010 slot was reused for an unrelated change (the new `mlx-vlm-position-cache-reset`, same number, different purpose). The omission was invisible to `git apply --check` because the new patch 010 applied cleanly — there was no merge conflict to surface.
-
-**Fix:** patch 013 re-threads `pixel_values` + `mm_kwargs` (image_sizes for Mistral3/Pixtral, image_grid_thw for Qwen-VL, video_grid_thw + second_per_grid_ts for Qwen3.5/3.6 video) from `tp_worker._forward_batch_generation_mlx` through `MlxModelRunner.prefill` / `prefill_start` all the way to `self.model(input_ids, cache=cache, **mm_kwargs)`. Devstral + Qwen3.5-9B-8bit both probe_vision STRONG after the patch.
-
-**Lesson:** when a rebase reuses a patch number, re-check the patch *contents*. Trust the probe trio over the keyword-grep validator. Sister teams hit the same lesson on R9700's patch 030 (presharded-w2 detection) — read the number, not just the file count, when validating a rebase.
-
-### Patch 011 — hybrid batched decode + Qwen3.5 gated multimodal attention (2026-05-12)
-
-**Symptom:** at `MAX_RUNNING>1` on any Qwen3.5/3.6 hybrid, decode would either crash or fall back to serial-per-request execution. Pre-patch the 8-prompt random bench gave 1× throughput at MR>1.
-
-**Two co-dependent changes:**
-- `model_runner.decode_batch_start` replaces the serial-per-request hybrid fallback with a mixed per-layer cache. Full-attention (ContiguousKVCache) layers route through `BatchedDecodeContext`+`MLXAttentionWrapper`; linear-attention (ArraysCache) layers stack per-request `conv_state`/`ssm_state` along axis 0 into `(B, ...)` tensors so `gated_delta_update` (already fully batched per `mlx_lm/models/gated_delta.py:262-283`) processes B requests in one forward, then splits back per-request.
-- `MLXAttentionWrapper._batched_decode` extended for `Qwen3_5Attention`: q_proj output is `n_heads*head_dim*2` (queries + gate concatenated), head_dim derived from keys not queries, gate split off and `sigmoid(gate)`-multiplied after SDPA. RoPE dispatches on `hasattr(inner, "rotary_emb")`; `args[0]` type-discriminated (number/0-d mx.array → `attn_scale`, else mask).
-
-**Verification (2026-05-12):** qwen35 (27B+DeltaNet) peak 34 tok/s at MR=2 (2.3×); qwen36-27b (Dense+DeltaNet) peak 34 tok/s at MR=2; **qwen36 (35B-A3B MoE+DeltaNet) peak 148 tok/s at MR=2** — MoE active-params win compounds with batched decode. Wrapper rework is backward-compatible on non-hybrid mlx_lm: Devstral 24B peak 40 tok/s at MR=4 (8/8 successful); Qwen3-30B-A3B peak **160 tok/s at MR=8** (16-prompt queue, concurrency 15.11, 16/16 successful). Recipe: `MAX_RUNNING={2,4} MEM_FRAC=0.4 EXTRA_ARGS="--disable-radix-cache --chunked-prefill-size 1024 --max-total-tokens 32768"`.
-
-**Open follow-up:** 16-prompt queue at MR=4 still trips the OOM guard. Needs mf=0.3 or smaller chunked-prefill — tuning, not a code bug.
-
-### Reasoning + tool-call parsers wired into launch presets (2026-05-13)
-
-**Gap:** 3090 shipped `--tool-call-parser` on every Qwen3-Coder preset; M4 had it only on `coder-30b` and `coder-next`. R9700 also had `--reasoning-parser gemma4`. M4 was missing the reasoning parser on Gemma 4 and the tool-call parser on Devstral, Qwen3-family, Qwen3.5/3.6 family.
-
-**Audit + fix (commit `01f19d3`):** 11 presets gained `--tool-call-parser` per 3090's chat-template grep mapping:
-- Devstral (Mistral arch) → `mistral`
-- Gemma 4 26B / 31B → `gemma4`
-- Qwen3.5 / 3.6 family (every variant) → `qwen3_coder` (XML `<function=NAME>` format)
-- Qwen3 base (qwen3-32b, qwen3-moe) → `qwen25` (JSON-in-tag format)
-
-`gemma4` / `gemma4-31b` also gained `--reasoning-parser gemma4`. `nemotron-30b` gained `--reasoning-parser nemotron_3` to stop verbose thinking traces from consuming the 1024-tok MC eval budget.
-
-**Verification:** `coder-30b-DWQ` tool-call request returns `finish_reason="tool_calls"` with structured `tool_calls[{function:{name,arguments}}]` and `content=None`. probe_codegen STRONG 8/8 with the parser wired in — no regression on plain codegen. `gemma4` reasoning parser splits 365 reasoning_tokens into `reasoning_content` (864 chars, bullet-format Gemma trace), final answer 0.05 in `content`.
-
-### Content-aware probe trio (2026-05-13)
-
-**Adoption:** ported 3090's `probe_thinking` / `probe_vision` / `probe_codegen` (STRONG / DEGRADED / FAIL classification). Replaced the loose keyword-grep validator as the gate for capability claims.
-
-**First sweep findings (since fixed via patches 011/013 + parser wiring):**
-- `coder-30b` (DWQ): codegen STRONG 8/8, matches 3090's `coder-reap-25b` baseline.
-- `devstral`: vision FAIL (fabrication) → root-caused to patch 010 loss, fixed by patch 013 → now STRONG.
-- `qwen35-9b-8bit`: vision FAIL ("pale pink") → same root cause, also STRONG after patch 013.
-- `gemma4`: vision FAIL with a third signature ("Please provide the image") — image dropped at SGLang multimodal layer because mlx-community checkpoint ships without `preprocessor_config.json`. **Still blocked upstream**, tracked in main README Active work.
-- `nemotron-30b`: reasoning parser worked — 154 reasoning_tokens (`"We need to solve classic puzzle: ball + bat = 1.10..."`) split cleanly out of `content`.
-
-Per-cell receipts at `benchmarks/quality/probe-trio/*.json`. probe_all.sh sweeps all presets in one command.
-
-### Gemma 4 radix-cache root-cause (2026-05-13)
-
-**Symptom:** Gemma 4 first prefill crashed with `ValueError: [broadcast_shapes] Shapes (2,128) and (1,8,64) cannot be broadcast` inside `_sync_new_kv_to_pool`. Memory pressure from prior runs could mask this as a scheduler-init BrokenPipe; clean `pkill` + retry surfaces the real shape error.
-
-**Root cause:** `MlxKVPool` assumes homogeneous per-layer attention shapes. Gemma 4 26B has 25 sliding-attention layers @ (8 KV heads × 256 dim) interleaved with 5 full-attention layers @ (2 KV heads × 512 dim — `global_head_dim` / `num_global_key_value_heads`); 31B same pattern (50 + 10). Pool gets sized for whatever `_get_attn_config` sees in layer 0 (a sliding layer) but only the full-attention layers actually write to the pool — sliding ones use `RotatingKVCache` and stay native. First full-attention prefill broadcasts `(2,128)` packed-KV into `(1,8,64)` pool slots → ValueError.
-
-**Workaround:** `--disable-radix-cache` baked into both `gemma4` presets via `launch.sh` (commit `a8a3ff0`). Bypasses pool construction + sync write path entirely. Loses agentic prefix reuse but evals (one-shot prompts) unaffected. Already-published numbers were valid because `run_all_evals.sh` enforces radix off anyway.
-
-**Fix-A / fix-B / fix-C** options documented in [`RADIX_CACHE_GEMMA4_ROOT_CAUSE.md`](RADIX_CACHE_GEMMA4_ROOT_CAUSE.md). Fix-A (sample a full-attention layer in `_get_attn_config`) is the minimum to restore radix support; fix-B (per-layer pool shapes) is the structural fix. Untaken pending the upstream `preprocessor_config.json` block — Gemma 4 multimodal isn't useful for agentic prefix reuse on M4 yet.
+- v0.5.12 rebase context: git history + this file's prior revision.
+- v0.5.11 rebase strategy: [REBASE-v0.5.11-NOTES.md](REBASE-v0.5.11-NOTES.md).
+</content>

@@ -21,7 +21,7 @@ SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_BRANCH="main"
 # Pin to a specific commit to ensure patches apply cleanly.
 # Update this hash when rebasing patches onto a newer upstream.
-SGLANG_COMMIT="v0.5.12"  # 2026-05-20: SGLang v0.5.12 — adds on-the-fly mlx_q4/mlx_q8 quantization
+SGLANG_COMMIT="v0.5.15.post1"  # 2026-07-19: rebased onto v0.5.15.post1. Upstream MLX backend now natively covers hybrid (DeltaNet/Mamba) radix cache, attention duck-typing, and gated-attn batched decode — patches 006/009/011/012 dropped as upstreamed.
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -65,14 +65,14 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     echo "[1/3] Cloning SGLang at pinned commit ${SGLANG_COMMIT}..."
     rm -rf "$SGLANG_DIR"
     mkdir -p "$(dirname "$SGLANG_DIR")"
-    git clone "$SGLANG_REPO" "$SGLANG_DIR"
-    cd "$SGLANG_DIR" && git checkout "$SGLANG_COMMIT"
+    # Shallow single-tag clone — the full history is ~1-2 GB and unnecessary;
+    # we only build one pinned tag. Leaves the tree checked out at the tag.
+    git clone --depth 1 --branch "$SGLANG_COMMIT" "$SGLANG_REPO" "$SGLANG_DIR"
+    cd "$SGLANG_DIR"
 
-    # Apply per-feature patches against v0.5.12 in numeric order.
-    # See patches/README.md for what each patch covers. Patch 013 was
-    # combined with patches 016-020 into patches/016-mlx-vlm-pixel-values-and-hybrid-attention.patch
-    # for ordering — that combined patch depends on 014 and 015 being
-    # applied first, so it sorts last by filename.
+    # Apply per-feature patches against v0.5.15.post1 in numeric order.
+    # See patches/README.md for what each patch covers and which v0.5.12-era
+    # patches were dropped as upstreamed in the v0.5.15.post1 rebase.
     cd "$SGLANG_DIR"
     shopt -s nullglob 2>/dev/null || true
     applied=0; failed=0
@@ -122,6 +122,15 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "  Installing additional dependencies..."
     pip install openai requests matplotlib
+
+    # mlx-vlm: VLM (image) model loading for the *ForConditionalGeneration
+    # presets (Qwen3.5/3.6, Devstral/Mistral3, Gemma 4) that mlx_lm cannot
+    # load. Installed with --no-deps: mlx-vlm 0.6.5 requires
+    # transformers>=5.14.0 while SGLang v0.5.15.post1 hard-pins
+    # transformers==5.12.1 — 5.12.1 works for our model set (verified via
+    # mlx_vlm.load). Without this, launch.sh {devstral,qwen35,qwen36,gemma4*}
+    # cannot load the model. See patch 013 (mlx-vlm-load-and-shim).
+    pip install "mlx-vlm==0.6.5" --no-deps
 
     # swebench: SWE-bench Lite dataset + harness for evals/swebench/run_rollouts.py.
     # Required to load `princeton-nlp/SWE-bench_Lite` for the agentic-coding probe.

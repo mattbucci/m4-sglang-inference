@@ -1,16 +1,5 @@
-From 4d974f697617355b9f98129f00ac5124a7739272 Mon Sep 17 00:00:00 2001
-From: M4 Patch Rebase <claude-rebase@m4.local>
-Date: Wed, 20 May 2026 22:37:51 -0700
-Subject: [PATCH] Patch 007: mlx-multimodal-and-mps-shim
-
----
- python/sglang/_mps_stub.py                   | 29 ++++++++++++++------
- python/sglang/srt/managers/mm_utils.py       | 18 +++++++++---
- python/sglang/srt/managers/schedule_batch.py |  7 ++++-
- 3 files changed, 40 insertions(+), 14 deletions(-)
-
 diff --git a/python/sglang/_mps_stub.py b/python/sglang/_mps_stub.py
-index 8a090b398..118795a65 100644
+index b463ff6..b2bcfc4 100644
 --- a/python/sglang/_mps_stub.py
 +++ b/python/sglang/_mps_stub.py
 @@ -208,16 +208,27 @@ def _patch_non_blocking() -> None:
@@ -51,12 +40,12 @@ index 8a090b398..118795a65 100644
  
      torch.Tensor.to = _patched_to
 diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
-index c71b0e1c4..92792f425 100644
+index 67cf53e..d02d412 100644
 --- a/python/sglang/srt/managers/mm_utils.py
 +++ b/python/sglang/srt/managers/mm_utils.py
-@@ -1539,7 +1539,11 @@ class ShmPointerMMData:
-         nbytes = tensor.numel() * tensor.element_size()
-         shm = shared_memory.SharedMemory(create=True, size=nbytes)
+@@ -1688,7 +1688,11 @@ class ShmPointerMMData:
+             create=True, size=nbytes, name=make_shm_name("mm")
+         )
          try:
 -            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)
 +            # macOS rounds shm allocations up to a page (16 KB on Apple
@@ -67,9 +56,9 @@ index c71b0e1c4..92792f425 100644
              dst.copy_(tensor.view(torch.uint8).reshape(-1))
          except BaseException:
              shm.close()
-@@ -1562,10 +1566,16 @@ class ShmPointerMMData:
+@@ -1712,10 +1716,16 @@ class ShmPointerMMData:
          self.dtype = state["dtype"]
-         self.shm = None
+         self.precomputed_hash = state.get("precomputed_hash")
          self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
 +        # macOS rounds shm allocations up to a page so the buffer is
 +        # larger than self.shape implies. Slice to logical element count
@@ -88,10 +77,10 @@ index c71b0e1c4..92792f425 100644
      def materialize(self) -> torch.Tensor:
          """Clone tensor from shm to owned memory, then release shm handle."""
 diff --git a/python/sglang/srt/managers/schedule_batch.py b/python/sglang/srt/managers/schedule_batch.py
-index feecc5441..a54a59425 100755
+index 55c88af..0a65f7d 100755
 --- a/python/sglang/srt/managers/schedule_batch.py
 +++ b/python/sglang/srt/managers/schedule_batch.py
-@@ -203,6 +203,11 @@ class FINISH_ABORT(BaseFinishReason):
+@@ -217,6 +217,11 @@ class FINISH_ABORT(BaseFinishReason):
  
  class Modality(Enum):
      IMAGE = auto()
@@ -103,7 +92,7 @@ index feecc5441..a54a59425 100755
      VIDEO = auto()
      AUDIO = auto()
  
-@@ -217,7 +222,7 @@ class Modality(Enum):
+@@ -231,7 +236,7 @@ class Modality(Enum):
  
      @staticmethod
      def all():
