@@ -1,12 +1,25 @@
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
-index 13f731f..feb3e87 100644
+index 13f731f..5a80b0a 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
 +++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
-@@ -127,10 +127,16 @@ class MLXAttentionWrapper(nn.Module):
+@@ -127,10 +127,29 @@ class MLXAttentionWrapper(nn.Module):
          object.__setattr__(self, "_inner", inner)
          object.__setattr__(self, "_layer_idx", layer_idx)
  
 -    def __call__(self, x: mx.array, mask: Any = None, cache: Any = None) -> mx.array:
++    def __getattr__(self, name: str):
++        # Delegate attribute reads the wrapper doesn't own to the wrapped
++        # attention module. Model-level forwards inspect attention attributes
++        # directly (e.g. mlx_vlm qwen3_5 reads ``self_attn.rotary_emb
++        # .fused_apply`` to pick a RoPE path), and duck-typed helpers probe
++        # ``rope``/``scale``/head counts through the wrapper.
++        try:
++            return super().__getattr__(name)
++        except AttributeError:
++            if name == "_inner":
++                raise
++            return getattr(self._inner, name)
++
 +    def __call__(self, x: mx.array, *args, **kwargs) -> mx.array:
          ctx = get_context()
          if ctx is None:

@@ -128,8 +128,9 @@ if [ "$SKIP_ENV" = false ]; then
     # load. Installed with --no-deps: mlx-vlm 0.6.5 requires
     # transformers>=5.14.0 while SGLang v0.5.15.post1 hard-pins
     # transformers==5.12.1 — 5.12.1 works for our model set (verified via
-    # mlx_vlm.load). Without this, launch.sh {devstral,qwen35,qwen36,gemma4*}
-    # cannot load the model. See patch 013 (mlx-vlm-load-and-shim).
+    # mlx_vlm model-only load). Without this, launch.sh
+    # {devstral,qwen35,qwen36,gemma4*} cannot load the model. See patch 008
+    # (mlx-vlm-hybrid-integration).
     pip install "mlx-vlm==0.6.5" --no-deps
 
     # swebench: SWE-bench Lite dataset + harness for evals/swebench/run_rollouts.py.

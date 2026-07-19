@@ -29,66 +29,80 @@ named `rope`. mlx_vlm attention names it `rotary_emb`; NemotronH attention is
 position-free (no rope). So on v0.5.15.post1 the native detection misses those
 architectures. See "VLM / hybrid path (WIP)" below.
 
-## Applied patches (text stack — VALIDATED)
+## Applied patches
 
-Five patches, applied in numeric order by `scripts/setup.sh`. This is the
-production-quality stack for text / agentic-coding workloads.
+Six patches, applied in numeric order by `scripts/setup.sh`. 002–014 minus 008
+form the text stack; 008 adds the VLM / hybrid (DeltaNet/Mamba2) path.
 
 | # | Patch | Files | Why (rebased against v0.5.15.post1) |
 |:-:|-------|-------|-----|
 | 002 | mps-backend-defaults | `server_args.py` | **Collapsed.** Only survivors: default `enable_multimodal=False` on MPS (launch presets depend on it) + MLX `--kv-cache-dtype` aliases (`fp8`/`mxfp8`/`turboquant`/`tq`/`4bit`). The aliases are **boot-critical**: the launch default `KV_CACHE=fp8` is not in upstream's `choices`, so without them every preset is rejected by argparse. (torch_native + cuda-graph disable are now upstream.) |
 | 003 | mlx-skip-quantization-check | `configs/model_config.py` | Wrap `self._verify_quantization()` in `if not use_mlx():` — MLX checkpoints carry `quantization_config` without `quant_method`, and the upstream raise is still live. |
-| 005 | mlx-attn-wrapper-varargs | `kv_cache/attention_wrapper.py` | `__call__(self, x, *args, **kwargs)` + transparent delegate. Devstral/ministral3 (and mlx_vlm attention) pass extra positional/keyword args (`attn_scale`, `position_ids`, …); the fixed 3-arg upstream signature would `TypeError`. Batched decode uses `inner.scale`. |
+| 005 | mlx-attn-wrapper-varargs | `kv_cache/attention_wrapper.py` | `__call__(self, x, *args, **kwargs)` + transparent delegate. Devstral/ministral3 (and mlx_vlm attention) pass extra positional/keyword args (`attn_scale`, `position_ids`, …); the fixed 3-arg upstream signature would `TypeError`. Batched decode uses `inner.scale`. Also delegates attribute **reads** to the wrapped module via `__getattr__` — model forwards inspect attention attrs directly (mlx_vlm qwen3_5 reads `self_attn.rotary_emb.fused_apply`). |
 | 007 | mlx-multimodal-and-mps-shim | `_mps_stub.py`, `managers/mm_utils.py`, `managers/schedule_batch.py` | (a) `.to('cuda')`→`.to('cpu')` redirect; (b) `ShmPointerMMData` slice to logical byte/element count (macOS 16 KB shm page rounding); (c) `Modality.MULTI_IMAGES` enum member. None upstreamed. |
+| 008 | mlx-vlm-hybrid-integration | `mlx/model_runner.py`, `kv_cache/attention_contract.py`, `kv_cache/auxiliary_state.py`, `model_executor/model_runner.py`, `arg_groups/overrides.py`, `managers/overlap_utils.py` | The VLM / hybrid path — see the section below. Restores `mlx_vlm` loading (removed upstream), fixes attention detection for `rotary_emb`/rope-less archs, implements the scheduler's mamba-allocator contract on the MLX aux pool, and enables the radix cache for hybrid models (`no_buffer` strategy). |
 | 014 | mlx-gemma4-image-only-processor | `utils/hf_transformers/processor.py` | Applied **clean** against v0.5.15.post1 (only patch that did). Builds a Gemma 4 image-only processor when the checkpoint ships only `processor_config.json`. |
 
 ### Dropped as upstreamed (not re-derived): 006, 009†, 011, 012, 019
-† 009's mlx_lm head-count detection is upstream; its NemotronH-specific handling is not (WIP).
+† 009's mlx_lm head-count detection is upstream; its NemotronH-specific handling
+is not — patch 008 re-adds it via the attention contract.
 
-## VLM / hybrid path (WIP — deferred)
+## VLM / hybrid path (patch 008 — LANDED 2026-07-19)
 
-**The VLM-arch models don't serve on v0.5.15.post1 yet.** `qwen35`, `qwen36`
-(the primary agentic recommendation), `devstral`, and `gemma4*` are all
-`*ForConditionalGeneration` VLM checkpoints — `mlx_lm` cannot load them, so they
-need the `mlx_vlm` loader path that was **entirely removed** upstream (the
-v0.5.15 MLX backend is 100% text-only). `nemotron-30b`/`nemotron-omni` are
-text-only but hit the rope-less-attention detection gap.
-
-Substantial progress is captured in
-[`WIP-phase2-vlm-hybrid-integration.patch`](WIP-phase2-vlm-hybrid-integration.patch)
-(kept out of the applied stack — its name doesn't match setup.sh's
-`0[01][0-9]-*.patch` glob; 240 lines across 4 files). It re-derives, and gets
-`qwen36` from "crash at load" all the way into the serving event loop:
+v0.5.15 removed the `mlx_vlm` loader path entirely (the upstream MLX backend is
+100% text-only), so `*ForConditionalGeneration` checkpoints (Qwen3.5/3.6,
+Devstral, Gemma 4) couldn't load even for text, and NemotronH hit a rope-less
+attention detection gap. Patch 008 restores all of it as **new v0.5.15
+integration work** (not a rebase of any old patch):
 
 1. **mlx_vlm loader + `_TextOnlyVLMShim`** (`mlx/model_runner.py`) — VLM-detect
    `_load_model`, wrap so text requests route to `language_model` and the native
    cache machinery unwraps via `__getattr__`. Needs `pip install mlx-vlm`
-   (`--no-deps`; see setup.sh). *Verified: `mlx_vlm.load` works on the pinned
-   `transformers==5.12.1`.*
+   (`--no-deps`; see setup.sh). Image-bearing calls (pixel_values) go through
+   the full VLM forward.
 2. **Attention detection compat** (`kv_cache/attention_contract.py`) — require
    `scale` (the softmax marker that excludes DeltaNet), make `rope` optional so
    `rotary_emb` (mlx_vlm) and position-free (NemotronH) attention are detected.
-3. **Serial decode routing** (`mlx/model_runner.py`) — a `_attention_wrapper_
-   batchable` flag (inner has `.rope`); route `rotary_emb`/rope-less attention to
-   `_decode_with_native_cache` (delegates to the model's own forward). Batched
-   decode is an MR>1 throughput optimization only.
+3. **Serial decode routing** (`mlx/model_runner.py`) — a
+   `_attention_wrapper_batchable` flag (inner has `.rope`); route
+   `rotary_emb`/rope-less attention to `_decode_with_native_cache` (delegates to
+   the model's own forward). Batched decode is an MR>1 throughput optimization
+   only; correctness holds either way.
 4. **Skip general attn-backend init on MLX** (`model_executor/model_runner.py`) —
    `init_attention_backends` no-ops on `use_mlx()`. The MLX tp worker overrides
    `forward_batch_generation`, so the general backends are unused; skipping also
    avoids `GDNAttnBackend.__init__` crashing on the MLX aux-state pool.
-5. **`mamba_allocator` alias** (`kv_cache/auxiliary_state.py`) — for the pool
-   stats observer.
+5. **Mamba-allocator contract on `MlxAuxiliaryStatePool`**
+   (`kv_cache/auxiliary_state.py`) — the v0.5.15 scheduler drives hybrid-SSM
+   slot allocation through `mamba_allocator.alloc_group_begin/end` in the
+   batch-admission path. The MLX pool now implements the full allocator surface
+   (`alloc_group_begin/end`, `alloc`/`_do_alloc` iterator batching,
+   `schedulable_available_size`, `mamba_allocator` alias), mirroring upstream
+   `MambaSlotAllocator` semantics.
+6. **Eager copy-on-write on prefix match** (`kv_cache/auxiliary_state.py`) —
+   the base `MambaComponent.finalize_match_result` stages a deferred COW that
+   the general model runner applies on-device inside the forward pass, which
+   never runs on MLX. `MlxAuxiliaryStateComponent` overrides it to apply the
+   snapshot-dict copy eagerly (host-side, stream-free).
+7. **`no_buffer` mamba-radix strategy on MLX** (`arg_groups/overrides.py`) —
+   the `auto` strategy resolved to `extra_buffer`, which asserts CUDA/MUSA/NPU
+   (FLA kernels). On MLX, `auto` now resolves to `no_buffer` +
+   `disable_overlap_schedule=True` — hybrid models run the normal event loop
+   instead of the MLX overlap loop when the radix cache is on.
+8. **Device-aware FutureMap stash/publish** (`managers/overlap_utils.py`) —
+   the normal event loop relays MLX host tensors into device-allocated buffers;
+   `.to()` now pins dtype **and** device (no-op on CUDA).
 
-**Remaining blocker (the reason it's still WIP):** v0.5.15's refactored general
-scheduler drives hybrid-SSM (GDN/Mamba) **slot allocation** through a mamba-pool
-contract — `mamba_allocator.alloc_group_begin(...)` in the core batch-admission
-path (`scheduler.py`), plus `mamba_cache.conv`, etc. — that the MLX
-`MlxAuxiliaryStatePool` does not implement. Completing VLM/hybrid support is
-**new v0.5.15 integration work**, not a patch rebase: either implement that
-allocator contract on the MLX pool (multi-method, with batch-accounting
-semantics) or comprehensively disengage the general hybrid machinery on MLX
-(the v0.5.12 approach — but `MlxModelRunner._store_auxiliary_state`, called
-unconditionally in `prefill_finalize`, now needs the aux pool, so it cascades).
+**Result: hybrid models get the radix cache for the first time on M4.**
+Greedy-determinism validated on qwen36: a 512-token prefix-cache hit produces
+token-for-token identical output to the cold run, and a branched suffix (eager
+COW path) answers correctly. Presets for qwen35 / qwen35-9b-8bit / qwen36 /
+qwen36-27b / nemotron-30b no longer pass `--disable-radix-cache`.
+
+**Trade-off:** radix-on-hybrid forces `disable_overlap_schedule` (upstream
+`no_buffer` constraint), i.e. the normal event loop. For agentic multi-turn
+workloads the prefix-cache win (whole prefills skipped) dominates the overlap
+loss; revisit if a decode-bound workload regresses.
 
 ## Also dropped / regressed on v0.5.15.post1
 
