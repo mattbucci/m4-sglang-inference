@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. SGLang **v0.5.11** (commit `612785ffd`) + 17 patches (see [patches/README.md](patches/README.md)) — upstream landed our patch 001 (`kv_cache/` subpackage) in v0.5.11.
+256K-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. **SGLang v0.5.15.post1** (rebased 2026-07-19, commit `0b3bb0c`) + 5 patches (see [patches/README.md](patches/README.md)) — the v0.5.15 refactor upstreamed most of our hybrid/cache patches (006/009/011/012/019). **Text / agentic-coding stack validated** on this rebase (`coder-30b`, `qwen3-moe`, `qwen3-32b` — validate_capabilities + probe_codegen STRONG). **VLM-arch models (`qwen35`/`qwen36`/`devstral`/`gemma4*`) + `nemotron` are WIP** pending the `mlx_vlm` loader path (removed upstream) + hybrid-scheduler integration — details and the WIP patch in [patches/README.md](patches/README.md). Model status/benchmarks below reflect the prior v0.5.12 stack until re-measured.
 
 ## Fleet-audit action queue (2026-07-18)
 
