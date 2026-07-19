@@ -1,5 +1,12 @@
 # M4-G: Add check_tool_call boot gate to M4 validate_capabilities.py (port of 3090 check + its error-body-surfacing _http_post, greedy-adapted)
 
+> **Post-rebase delta (2026-07-19):** stack is v0.5.15.post1, box awake.
+> The "bisect exclusion" scheduling constraint reduces to: don't run
+> concurrently with any other serving item on the single box. qwen36 (green
+> path) and qwen3-moe (negative control) are both validated presets on the
+> new stack; greedy-adapted shipping still correct (sampling not yet
+> implemented).
+
 | | |
 |---|---|
 | **Type** | task |

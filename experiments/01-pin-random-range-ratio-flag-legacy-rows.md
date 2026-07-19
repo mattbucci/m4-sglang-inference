@@ -1,5 +1,11 @@
 # M4-C: Pin --random-range-ratio 1 in every bench_serving invocation, port the actual-depth guard, and flag all legacy bench_serving depth-labeled rows as suspect (leaving the separate /v1/completions long_context instrument untouched)
 
+> **Post-rebase delta (2026-07-19):** the box is AWAKE and running validated
+> v0.5.15.post1 — steps 8-9 are no longer wake-gated. One addition: any
+> re-measured bench rows land on the NEW stack, so label them
+> `v0.5.15.post1` and do not overwrite v0.5.12-labeled history (the README
+> throughput tables are still v0.5.12 until the re-measure item runs).
+
 | | |
 |---|---|
 | **Type** | task |

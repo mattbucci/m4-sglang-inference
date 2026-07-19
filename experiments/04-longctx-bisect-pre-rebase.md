@@ -1,5 +1,31 @@
 # M4-A: Bisect the 128K→32K long-context regression BEFORE any rebase
 
+> **Post-rebase deltas (2026-07-19) — read before Method step 1.** The
+> v0.5.15.post1 rebase landed and validated the day after this spec was
+> written; "before any rebase" and the stay-vs-rebase framing are moot (we
+> stayed rebased). What survives, what changed:
+>
+> - **NEW STEP 0 (replaces the step-3 baseline):** measure the CURRENT
+>   v0.5.15.post1 stack's 32K growth rate with the same instruments
+>   (oom_guard + mem_profile + bench_long_context). If growth <0.08 MB/token
+>   and a 64K/128K probe completes, **the regression is gone — close this
+>   item as "fixed by rebase/lib-float", re-derive the long-context ceiling,
+>   and skip all arms.** Only if the signature (≥0.15 MB/token) persists does
+>   the bisect proceed as specced. Note qwen36's preset now enables the radix
+>   cache + normal event loop; add `EXTRA_ARGS="--disable-radix-cache"` to
+>   match the historical recipe (the spec's step-3 command already does).
+> - Arms are UNAFFECTED: they build in git worktrees at old repo commits
+>   whose own setup.sh does full clones at old pins — independent of the
+>   main checkout's new stack.
+> - The old v0.5.12 venv was rebuilt in place with **no pip freeze captured**
+>   and the pip wheel cache is empty — old-lib recovery is PyPI-upload-date
+>   only (step 2b). The old patched TREE survives at
+>   `components/sglang.v0512.bak`.
+> - Current-stack lib versions for reference: mlx 0.32.0, mlx-lm 0.31.3,
+>   mlx-vlm 0.6.5, torch 2.11.0, transformers 5.12.1.
+> - Disk: only ~12 GiB free — clear space (see queue's disk-triage item)
+>   before building arms (~25 GB each).
+
 | | |
 |---|---|
 | **Type** | experiment |

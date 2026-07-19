@@ -2,7 +2,41 @@
 
 Vetted execution queue from the 2026-07-18 fleet audit. Each doc is a self-contained spec: a fresh agent starts at Method step 1. Order below is the execution order; the three rigs run their lanes **in parallel** and meet at the sync points.
 
+## Re-vet 2026-07-19 — the rebase happened; queue re-baselined
+
+One day after this queue was authored, the box woke and the **v0.5.15.post1
+rebase + VLM/hybrid integration landed and validated** (commits `920aeb6` →
+`89df3c3`; probe matrix in patches/README.md — every model ≥ its v0.5.12
+baseline, radix cache now on for hybrids). That invalidates several framing
+assumptions below. **The per-item specs remain the execution authority, but
+each affected doc now carries a dated "Post-rebase deltas" header that
+overrides its stale facts.** Summary:
+
+| # | ID | 2026-07-19 status | Delta |
+|---|---|---|---|
+| 01 | M4-C | **ready — fully unblocked** | Box is awake; steps 8-9 no longer wake-gated. Bench edits unaffected by the rebase. |
+| 02 | M4-D | **ready — unchanged** | Repo-only; no rebase impact. |
+| 03 | M4-F | **ready — half done, params changed** | Version-header half is DONE (docs now say v0.5.15.post1 everywhere). Replay-gates half still open and MORE valuable (6 new patches). New params: tag `v0.5.15.post1`, 6 patch files 002–014, setup.sh now SHALLOW-clones (`--depth 1 --branch`), patched-module inventory changed. |
+| 04 | M4-A | **reframed — "before any rebase" is moot** | Rebase happened; stay-vs-rebase is decided (stayed rebased, quality-validated). Evidence intact: arms are worktree-built at old commits with their own full-clone setup.sh. Old venv destroyed w/o a freeze → lib recovery is PyPI-upload-date only (spec's designed fallback). **New step 0: measure the v0.5.15 stack's 32K growth rate first — the regression may be gone.** |
+| 05 | M4-B | **ready — site map + numbering re-anchored** | Still wanted (greedy-only still true). But: live tree now has **7 argmax sites** (not 10) in the rewritten model_runner.py; old patches 004/011/016 no longer exist; "patch 021 + glob widen" is obsolete (next free number 009 fits the existing glob); mlx-lm now 0.31.3 (make_sampler verified present). **New datapoint: qwen36 thinking is VERIFIED under greedy on v0.5.15** — the loop-repro baseline must be re-established (qwen35-27b is the remaining candidate looper). |
+| 06 | M4-G | **ready — minor deltas** | Presets/validate_capabilities unchanged in shape. The "bisect exclusion" scheduling note now just means: don't run concurrently with any serving item. |
+| 07 | M4-E | **blocked on disk** | 12 GiB free vs ~70+ GB needed. Motivation partially weakened: qwen36 (mlx-community 4bit) thinking VERIFIED under greedy on v0.5.15, so the "router/DeltaNet quant → infinite-think" co-implication lost its flagship repro; the DWQ-quality precedent (+20pp HE) still motivates the build. |
+| — | **NEW: disk triage** | **do first (~1h)** | 12 GiB free on a 926 GiB disk; HF cache is 362 GB. Inventory `~/.cache/huggingface/hub`, list per-repo sizes + last-access, propose deletions to Matt (gemma4 variants, superseded devstral/nemotron-omni dupes are candidates). Gates 07 and comfortable bisect arms. |
+| — | **NEW: v0.5.15 re-measure** | ready | README throughput/long-context tables + the SWE-bench 5/13 cell still reflect v0.5.12. Fold into M4-C steps 8-9 (bench rows) and a qwen36 SWE-bench re-run. Also: sweep the `[unswept]` presets (qwen35-9b-8bit, qwen36-27b) — same code path as their validated siblings. |
+| — | **NEW: radix/overlap A/B** | ready (~2h) | Radix-on-hybrid forces the normal event loop (overlap off). Measure decode TPOT qwen36 radix-on vs `--disable-radix-cache` (overlap loop) at MR=1; keep preset default on data. |
+| — | **NEW: upstream candidates** | ready (repo-only) | Generic sglang fixes worth offering upstream / sister repos: declared-tokenizer-class guard, `wrap_as_pixtral` mistral3 + top-level `spatial_merge_size`, pixtral MULTI_IMAGES splitter, mamba-radix `no_buffer` auto-resolution on MLX, device-aware FutureMap stash. |
+
+**Revised execution order:** disk triage → 01 (all steps) + 02 (parallel,
+repo-only) → 03 (replay gates; provides arm-gate tooling) → radix/overlap A/B
+(cheap, informs presets) → 04 step 0 (v0.5.15 growth-rate; decides whether the
+full bisect still exists) → 05 (sampling) → 06 → v0.5.15 re-measure →
+07 (after disk + sampling).
+
 **Lane rationale:** C and D are repo-only (execution_host any-checkout) and start NOW while the box is dormant: C steps 1-7 pin --random-range-ratio 1 and flag the legacy depth-suspect bench_serving rows (a prerequisite for A's honest bisect); D re-sends the Docker-scoring ask as a 3090-README callout + codifies the receiving-repo routing rule. The rest are wake-gated: F first (patch replay gates + fail-hard apply loop + stale-version-header fix) — foundational hygiene that provides the per-arm gate tooling A reuses, and it does not rebase so it is safe before the bisect. A: the 128K→32K bisect that must precede ANY rebase (rebasing buries the evidence) and decides stay-vs-rebase for the whole M4 queue. B: MLX sampling — needs F's widened setup.sh glob to land patch 021, and unblocks E/G. G: tool-call boot gate (ships greedy-adapted, quick). E: in-house qwen36 4-bit (biggest; its probe_thinking A/B wants B's sampling and it produces the clean flagship). C steps 8-9 (pin smoke + re-measure) complete after wake, before A's bench-dependent steps.
+
+Original 2026-07-18 queue below — **Status column and lane rationale are
+superseded by the re-vet table above**; per-doc "Post-rebase deltas" headers
+override stale facts inside each spec.
 
 | # | ID | Title | Type | Status | Host | Wall clock |
 |---|---|---|---|---|---|---|

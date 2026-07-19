@@ -1,5 +1,25 @@
 # M4-F: Port patch replay gates + per-modality probe gate into setup.sh; fix stale version header
 
+> **Post-rebase deltas (2026-07-19).** The version-header half of this task is
+> **DONE** — README/CLAUDE.md/setup.sh all say v0.5.15.post1 + 6 patches now
+> (commits `b74aa15`, `89df3c3`); skip every header-fix step. The replay-gate
+> half is still open and more valuable than ever (a brand-new 6-patch stack).
+> Updated parameters:
+>
+> - Tag/pin: `SGLANG_COMMIT="v0.5.15.post1"`; **setup.sh now SHALLOW-clones**
+>   (`--depth 1 --branch`) — the tag tip object exists so a pristine worktree
+>   at the tag still works, but gate scripts must not assume other tags/full
+>   history in `components/sglang`.
+> - Patch inventory: **6 files, 002/003/005/007/008/014** (glob `0[01][0-9]`
+>   unchanged and sufficient). Regenerate the import-smoke module list from
+>   `grep -h '^+++ b/' patches/*.patch | sort -u` — the 19-file list in this
+>   spec is stale.
+> - A manual pristine-replay + byte-identity check already passed on
+>   2026-07-19 (scratch clone; "differing files: 0") — this task turns that
+>   ad-hoc check into the committed, gated script.
+> - The probe suite this task wires in as a gate was just exercised
+>   end-to-end (probe matrix in patches/README.md) — fresh green baseline.
+
 | | |
 |---|---|
 | **Type** | task |

@@ -1,5 +1,15 @@
 # M4-E: In-house qwen36 MLX 4-bit with router/DeltaNet/vision exclusions
 
+> **Post-rebase deltas (2026-07-19):** (1) **BLOCKED ON DISK** — 12 GiB free
+> vs ~70+ GB needed (67 GB BF16 + conversion scratch); run the queue's
+> disk-triage item first. (2) Motivation update: on v0.5.15.post1 the
+> mlx-community 4bit qwen36 passes thinking VERIFIED under greedy — the
+> "router/DeltaNet INT4 → infinite-think" co-implication lost its flagship
+> repro, so the primary justification is now checkpoint quality (the
+> Coder-30B DWQ +20pp HumanEval precedent), and the probe_thinking A/B
+> should expect a subtler delta, not a loop fix. Sampling (M4-B) remains the
+> preferred prerequisite for that A/B.
+
 | | |
 |---|---|
 | **Type** | experiment |

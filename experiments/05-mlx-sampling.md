@@ -1,5 +1,32 @@
 # M4-B: "Implement temperature/top-p/top-k/min-p sampling in the MLX backend via mlx-lm make_sampler"
 
+> **Post-rebase deltas (2026-07-19) — read before Method step 1.** The stack
+> is now SGLang v0.5.15.post1 + 6 patches (002/003/005/007/008/014); the
+> v0.5.12 tree this spec was reconstructed against is gone. Core motivation
+> unchanged (greedy-only is still true; zero sampling plumbing in the MLX
+> backend). Deltas:
+>
+> - **Site map re-anchored:** the rewritten `mlx/model_runner.py` has
+>   **7 `mx.argmax` sites** (live grep 2026-07-19), not 10; old patches
+>   004/011/016 no longer exist — the batched/hybrid decode paths are now
+>   upstream-native plus patch 008's serial-decode routing. Step 1's hard
+>   stop-gate (live grep must match before editing) is the operative rule;
+>   ignore this spec's reconstructed line numbers entirely.
+> - **Numbering:** "021 + widen the setup.sh glob" is obsolete. The patch set
+>   restarted; next free number inside the existing `0[01][0-9]` glob is
+>   **009** → deliverable is `patches/009-mlx-sampling.patch`, no glob edit.
+> - **mlx-lm is 0.31.3** (make_sampler import verified on 2026-07-19).
+> - **Loop-repro baseline must be re-established:** qwen36 thinking is
+>   VERIFIED under greedy on v0.5.15 (2026-07-19 probe) — it no longer
+>   demonstrates the infinite-`<think>` loop. qwen35-27b remains the
+>   receipt-backed INT4 candidate (its thinking probe is still skipped as a
+>   known looper — confirm DEGRADED at baseline per the spec's hard
+>   precondition before counting any loop-fix claim).
+> - Registry cleanup hook: "patch 004's cleanup path" is now
+>   `_cleanup_stale_rids` / `remove_request` in the native runner.
+> - probe_vision/probe_codegen gate targets are unchanged and green on the
+>   new stack (qwen36 STRONG/STRONG baseline to preserve).
+
 | | |
 |---|---|
 | **Type** | experiment |
