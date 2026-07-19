@@ -80,7 +80,3 @@ grep -c 'qwen36-predictions' in the 3090 README currently returns 1 (the terse q
 - Numbers drift: if anyone regenerates the export via aggregate.py before 3090-B runs, the callout's 26/21 goes stale — step 1's re-verify plus quoting counts in one place only (the callout points at exports/README.md for detail) bounds the blast radius.
 - Expected-rate framing (60-80% strong, >50% confirms) is an M4 manual-review estimate, not a receipt; the callout must label it as expectation, or the adversarial-vetting culture on the 3090 side will discount the whole ask.
 - The routing rule is only as good as its adoption on the other two rigs; this task can only place it in m4 CLAUDE.md and demonstrate it by example (the callout itself) — fleet-wide codification is the orchestrator's call.
-
-
----
-*Vetted 2026-07-18: drafted against live repo state, adversarially checked (feasibility + design), revised. Part of the fleet-audit experiment queue.*

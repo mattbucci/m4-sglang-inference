@@ -4,19 +4,15 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack status — SGLang v0.5.15.post1 (rebased + VLM/hybrid landed
-2026-07-19):** text AND VLM/hybrid stacks are **production-validated**.
-`coder-30b` / `qwen3-moe` / `qwen3-32b` pass the gates (basic + thinking,
-codegen STRONG). Patch 008 restored the VLM/hybrid path (`mlx_vlm` loader,
-mamba-allocator contract, vision plumbing): **`qwen36` is back as the primary
-agentic pick** — codegen STRONG, vision STRONG, video STRONG, thinking
-VERIFIED — with `qwen35` (STRONG/STRONG/PARTIAL) and `nemotron-30b`
-(codegen STRONG, thinking VERIFIED) also serving. **New capability: hybrid
-(DeltaNet/Mamba2) models now run with the radix cache** (`no_buffer`
-strategy; greedy-determinism-validated prefix caching — first time on M4).
-Trade-off: radix-on-hybrid disables the overlap schedule. `gemma4*` remain
-blocked by the upstream sliding-window gap. See
-[patches/README.md](patches/README.md) → "VLM / hybrid path".
+**Stack: SGLang v0.5.15.post1 + 6 patches.** Text and VLM/hybrid paths are
+production-validated. **`qwen36` is the primary agentic model** (codegen
+STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
+`qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass
+their gates — full probe matrix in [patches/README.md](patches/README.md).
+Hybrid (DeltaNet/Mamba2) presets run with the radix cache (`no_buffer`
+strategy, greedy-determinism-validated prefix caching); the trade-off is that
+radix-on-hybrid disables the overlap schedule. `gemma4*` is blocked by an
+upstream sliding-window gap.
 
 ## Documentation
 
@@ -29,7 +25,7 @@ blocked by the upstream sliding-window gap. See
 ## Key Commands
 ```bash
 scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 6 patches
-# Presets — [OK] = validated on v0.5.15.post1; [WIP] = blocked, see patches/README.md
+# Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
 scripts/launch.sh qwen3-32b                       # [OK]  Qwen3-32B-DWQ Dense
@@ -62,6 +58,16 @@ bash   scripts/eval/run_all_evals.sh              # full quality sweep across pr
 bash   scripts/bench/bench_256k_all.sh            # 256K single-user context sweep
 ```
 
+## Documentation Style
+- **All .md docs describe CURRENT state only.** No datestamps in prose, no
+  audit/verification markers (🅷, ⓡ), no "DONE"/strikethrough/"NEW" status
+  markers, no "original"/"previous"/"post-rebase" framing, no was-vs-now
+  comparisons ("up from X", "first time"). History lives in git history and
+  commit messages — put the narrative of what changed there. Keep load-bearing
+  *rationale* for rules (why a limit exists, what an incident cost) but strip
+  the dates from it. Exception: `evals/*/runs/` and `benchmarks/` receipt
+  files are dated run records by design and stay as-is.
+
 ## Critical Rules
 - **SGLang + MLX only** — all models must run on SGLang with `SGLANG_USE_MLX=1`
 - **No tensor parallelism** — MLX runs on a single unified memory device
@@ -81,61 +87,44 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   Linux-style OOM killer; once a process touches a page past physical RAM, the
   whole system stalls until reboot. Never run a 32K+ bench without
   `bash scripts/common/oom_guard.sh &` running in the background — it pkill's
-  the SGLang server when free+inactive drops below 8 GB. (Threshold updated
-  from 64K → 32K on 2026-05-21 reflecting the new empirical ceiling; the
-  guard itself is unchanged but its trigger should now fire on smaller
-  contexts than before.)
+  the SGLang server when free+inactive drops below 8 GB.
 - **DO NOT raise `MEM_FRAC` / `--mem-fraction-static` above 0.7 default.**
   On unified memory the flag is a fraction of TOTAL system RAM, not "GPU
-  memory." 0.85 crashed the box on 2026-05-14 (macOS compressor + swap hit
-  ~150 GB effective; jetsam reaped the server; required reboot). The lever
-  moves DOWN for long-context: **use mem-fraction 0.4 for 32K+ work**
-  (was 0.5; lowered 2026-05-21 to match the new ~32K ceiling). Right
-  levers for memory pressure: `--max-total-tokens`,
-  `--chunked-prefill-size`, `MAX_RUNNING`, request `max_tokens`,
-  `chat_template_kwargs={"enable_thinking": false}`, `--kv-cache-dtype turboquant`.
-  Note: 2026-05-21 found `--chunked-prefill-size` does NOT help with the
-  current OOM regression — 1024 and 2048 produced identical OOM points
-  at 60K. The lever is broken for activation memory; only
-  `--max-total-tokens` (cap KV size) and `--mem-fraction-static` (cap
-  total reservation) actually move the needle today.
-- **Long-context launch flags — current state (2026-05-21 on v0.5.12):**
-  The previously-claimed 128K recipe no longer fits on M4 today.
-  Empirically-measured ceiling for qwen36 (35B-MoE-4bit) is now
-  **~32K input tokens** of prefill with:
-  `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.4`
-  (note `mem-fraction 0.4`, was 0.5 — needed for the new ceiling).
-  At 32K the request finishes with single-digit MB free RAM. 60K-64K
-  OOM-kills the server mid-prefill regardless of chunked-prefill-size
-  (1024 vs 2048 produced identical OOM points in 2026-05-21 testing —
-  see `evals/swebench/runs/qwen36-long-context-*-2026-05-21/`).
-  Memory consumption during prefill is empirically linear in
-  tokens-processed at ~0.15-0.2 MB/token, mechanism unclear (candidates:
-  MLX lazy page-touch accumulation, Python intermediate-buffer growth,
-  MoE expert dispatch overhead). The lever is NOT `--chunked-prefill-size`
-  or `--context-length`. Closing the gap to the aspirational 128K+
-  needs MLX flash-attention or aggressive per-token memory reclaim —
-  upstream-MLX work, not config-tuning. Bench tooling needs
-  `urllib timeout=1800` for any long-context run.
-  Historical claim (kept for reference): on v0.5.11 / May 2026, this
-  same recipe fit 128K and prefilled in ~6.5 min. The regression
-  arrived with the v0.5.12 rebase or co-installed MLX library updates;
-  not yet isolated.
+  memory." 0.85 has crashed the box (macOS compressor + swap hit ~150 GB
+  effective; jetsam reaped the server; required reboot). The lever moves DOWN
+  for long-context: **use mem-fraction 0.4 for 32K+ work**. Right levers for
+  memory pressure: `--max-total-tokens`, `MAX_RUNNING`, request `max_tokens`,
+  `chat_template_kwargs={"enable_thinking": false}`,
+  `--kv-cache-dtype turboquant`. `--chunked-prefill-size` does NOT help —
+  prefill memory growth is per-token (activation side), so only
+  `--max-total-tokens` (cap KV size) and `--mem-fraction-static` (cap total
+  reservation) move the needle.
+- **Long-context launch flags:** the measured ceiling for qwen36
+  (35B-MoE-4bit) is **~32K input tokens** of prefill with
+  `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.4`;
+  at 32K the request finishes with single-digit MB free RAM, and 60-64K
+  OOM-kills the server mid-prefill regardless of chunked-prefill-size.
+  Prefill memory grows linearly at ~0.15-0.2 MB/token, mechanism unisolated
+  (candidates: MLX lazy page-touch accumulation, Python intermediate-buffer
+  growth, MoE expert dispatch overhead) — see the long-context item in
+  [experiments/](experiments/README.md) for the measurement/bisect plan.
+  The ceiling was measured on the previous stack pin and is unverified on
+  the current one. Closing the gap to 128K+ needs MLX flash-attention or
+  per-token memory reclaim — upstream-MLX work, not config-tuning. Bench
+  tooling needs `urllib timeout=1800` for any long-context run.
 
 ## Optimization Target
 - **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
   Measure at long context first — that is the workload Apple Silicon is uniquely good at.
-  - **Current state (2026-05-21): NOT achievable on the present stack.** Practical
-    ceiling is ~32K input prefill for a 35B-MoE-4bit model. Closing the gap needs
-    MLX flash-attention or per-token memory reclaim — both are upstream-MLX work.
-    See the "Long-context launch flags" note above for the regression context.
+  - Not achievable yet: practical ceiling is ~32K input prefill for a
+    35B-MoE-4bit model (see "Long-context launch flags" above).
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
   batch benchmarks.
 - **Tertiary (currently the most productive workload):** single-user agentic
   coding at moderate context (8-32K typical per turn). qwen36 + opencode is
-  the validated primary recommendation here; SWE-bench Lite M4-scorable
-  resolved rate = 5/13 = 38.5% on the v0.5.12 stack with N=3-confirmed
-  outcome stability for the tested instances.
+  the validated primary recommendation; SWE-bench Lite M4-scorable resolved
+  rate = 5/13 = 38.5% (measured on the previous stack pin; re-run queued in
+  [experiments/](experiments/README.md)).
 
 ## Quality Rules
 - **Every new MLX model must pass `validate_capabilities.py`** before its numbers
@@ -144,11 +133,12 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
     `<think>…</think><think>…</think>` loops. Must terminate before max_tokens.
   - **Basic** — short factual answer survives the chat template (catches Devstral
     `<unk>` from doubled BOS, Gemma4 `<pad>` token emission).
-  - **Vision** — VLM image roundtrip works (currently skipped on M4: VLM
-    pipelines crash on MPS; see patch 002 + Devstral VLM warmup workaround).
+  - **Vision** — VLM image roundtrip works (probe_vision on the VLM presets;
+    content-aware, catches placeholder-token hallucination).
 - **Inspect chat templates BEFORE launching** any new community checkpoint with
-  `validate_chat_template.py --model <path>`. Past incidents:
-  - Devstral AWQ leading-BOS produced `<unk>` outputs → custom jinja template fix.
+  `validate_chat_template.py --model <path>`. Known hazard classes:
+  - Devstral leading-BOS produces `<unk>` outputs → custom jinja template fix
+    (`scripts/devstral_chat_template.jinja`).
   - Qwen3.5 thinking tags in template without calibrated thinking data → infinite `<think>` loop.
   - Gemma4 thinking requires `chat_template_kwargs={"enable_thinking": true}` per request.
 

@@ -150,10 +150,9 @@ apply_preset() {
             # Qwen3_5ForConditionalGeneration — DeltaNet hybrid + vision + VIDEO.
             # video_grid_thw / second_per_grid_ts already flow through tp_worker
             # mm_extra_kwargs path (see SGLang commit 2a327f0 for upstream fix).
-            # Radix cache ENABLED as of v0.5.15.post1 — DeltaNet state is
-            # snapshotted via MlxAuxiliaryStatePool (no_buffer strategy), so
-            # the old ArraysCache/_sync_new_kv_to_pool crash is gone. Same
-            # machinery greedy-determinism-validated on qwen36 2026-07-19.
+            # Radix cache enabled — DeltaNet state is snapshotted via
+            # MlxAuxiliaryStatePool (no_buffer strategy, patch 008); greedy
+            # determinism validated on the same machinery as qwen36.
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
             # MAX_RUNNING=4: patch 010 reset of mlx_vlm position cache +
             # patch 011 batched DeltaNet decode + Qwen3_5-aware
@@ -171,8 +170,8 @@ apply_preset() {
             # Smaller Qwen3.5 (9B) at higher precision (8-bit). Same DeltaNet
             # hybrid + vision architecture as qwen35; needs patch 013 for
             # correctness. Better quality/memory tradeoff than 27B-4bit for
-            # most workloads (~10 GB resident vs ~14 GB). Radix cache ENABLED
-            # as of v0.5.15.post1 (same aux-state snapshot path as qwen35).
+            # most workloads (~10 GB resident vs ~14 GB). Radix cache enabled
+            # (same aux-state snapshot path as qwen35).
             MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
@@ -222,11 +221,9 @@ apply_preset() {
             # Qwen3.6-35B-A3B MoE+DeltaNet+VL. Sister teams (3090/R9700) use
             # this as their flagship 256K agentic model. Vision + VIDEO capable
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
-            # Radix cache ENABLED as of v0.5.15.post1: the native MLX cache
-            # layout snapshots DeltaNet state via MlxAuxiliaryStatePool, so the
-            # old "hybrid ArraysCache" _sync_new_kv_to_pool crash is gone.
-            # Validated 2026-07-19: greedy outputs identical with/without
-            # prefix-cache hit.
+            # Radix cache enabled: the MLX cache layout snapshots DeltaNet
+            # state via MlxAuxiliaryStatePool (patch 008); greedy outputs are
+            # token-identical with and without a prefix-cache hit.
             MODEL="${MODEL:-mlx-community/Qwen3.6-35B-A3B-4bit}"
             # --enable-multimodal required: patch 002 forces multimodal=False
             # when unset; without this flag the SGLang multimodal gate drops
@@ -246,8 +243,7 @@ apply_preset() {
             # Qwen3.6 family — smaller weights than 35B-A3B, no MoE indirection
             # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
             # as qwen35 / qwen36 (patches 013/015 load-bearing).
-            # Radix cache ENABLED as of v0.5.15.post1 (same aux-state
-            # snapshot path as qwen36).
+            # Radix cache enabled (same aux-state snapshot path as qwen36).
             # --enable-multimodal required for vision — see qwen36 preset
             # comment. probe_vision FAIL on 2026-05-16 without it.
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
@@ -286,8 +282,8 @@ apply_preset() {
             # MAX_RUNNING=1 like the other hybrids.
             MODEL="${MODEL:-mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
-            # Radix cache ENABLED as of v0.5.15.post1: Mamba2 state rides
-            # the same MlxAuxiliaryStatePool snapshot path as DeltaNet.
+            # Radix cache enabled: Mamba2 state rides the same
+            # MlxAuxiliaryStatePool snapshot path as DeltaNet.
             # --reasoning-parser nemotron_3 — Nemotron-3-Nano emits verbose
             # thinking traces; without the parser they consume the 1024-tok
             # MC eval budget before the model answers. Initial M4 quality

@@ -49,10 +49,10 @@ On Apple Silicon there is no separate VRAM — `MEM_FRAC=0.85` means MLX takes
 85% of the whole 64 GB pool, leaving the OS itself ~10 GB for kernel + Metal
 compile buffers + page cache + transient activation + everything else.
 
-**Tested and crashed 2026-05-14:** bumped default 0.7 → 0.85 to "use the 64 GB
-more efficiently." macOS compressor + swap hit ~150 GB effective usage,
-jetsam reaped the server mid-decode, box hard-locked, required reboot.
-Reverted in commit `328bd97`. **Default 0.7 is load-bearing — do not raise.**
+**Tested and crashed:** bumping the default 0.7 → 0.85 to "use the 64 GB
+more efficiently" drove macOS compressor + swap to ~150 GB effective usage;
+jetsam reaped the server mid-decode, the box hard-locked, reboot required.
+**Default 0.7 is load-bearing — do not raise.**
 
 The lever moves *down*, not up. Long-context (128K+) presets override
 to 0.4-0.5 because chunked-prefill activation scratch dominates the budget
