@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "hardware": "Apple M4 Pro 64GB",
+    "instrument": "scripts/bench/bench_all_unified.py --context-list",
+    "output_tokens": 64,
+    "saved": "2026-07-19",
+    "schema": 2,
+    "serving_recipe": "CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant",
+    "stack": "v0.5.15.post1"
+  },
+  "coder-30b": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 80.1,
+      "tpot_ms": 12.5,
+      "ttft_ms": 1241.8
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 28.7,
+      "tpot_ms": 34.8,
+      "ttft_ms": 99579.1
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 55.8,
+      "tpot_ms": 17.9,
+      "ttft_ms": 14029.5
+    }
+  },
+  "qwen3-moe": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 78.0,
+      "tpot_ms": 12.8,
+      "ttft_ms": 1251.9
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 28.8,
+      "tpot_ms": 34.8,
+      "ttft_ms": 98912.2
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 55.7,
+      "tpot_ms": 18.0,
+      "ttft_ms": 14357.8
+    }
+  }
+}

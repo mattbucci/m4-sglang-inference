@@ -99,6 +99,9 @@ def main():
     p.add_argument("--name", required=True, help="Model display name")
     p.add_argument("--output", default=None)
     p.add_argument("--context-max", type=int, default=32768)
+    p.add_argument("--context-list", default=None,
+                   help="Comma-separated exact context depths (overrides the "
+                        "geometric sweep; used by the regression tripwire)")
     p.add_argument("--concurrency-max", type=int, default=16)
     p.add_argument("--kv-cache", default="auto",
                    help="KV cache mode (auto/fp8/turboquant) for results metadata")
@@ -147,9 +150,12 @@ def main():
     # --- Context sweep (single user, 64 output tokens) ---
     context_results = []
     if not args.skip_context:
-        ctx_levels = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
-                      65536, 131072, 262144]
-        ctx_levels = [c for c in ctx_levels if c <= args.context_max]
+        if args.context_list:
+            ctx_levels = [int(c) for c in args.context_list.split(",")]
+        else:
+            ctx_levels = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+                          65536, 131072, 262144]
+            ctx_levels = [c for c in ctx_levels if c <= args.context_max]
 
         print(f"--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---")
         print(f"{'Context':>8}  {'TPOT(ms)':>10}  {'tok/s':>8}  {'TTFT(ms)':>10}")

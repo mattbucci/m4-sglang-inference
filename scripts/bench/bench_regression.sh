@@ -1,208 +1,241 @@
 #!/bin/bash
-# Performance regression test for M4 Pro MLX inference.
+# Depth-verified throughput regression tripwire for the M4 Pro MLX rig.
 #
-# Uses sglang.bench_serving for accurate TPOT measurement.
-# Compares against stored baselines and flags regressions (>10% slower).
+# Instrument: scripts/bench/bench_all_unified.py --context-list (fleet
+# invariants: single-user, --random-range-ratio 1, actual_input_tokens
+# recorded per point, degenerate points rejected — dead-server partial
+# streams and zero-output rejections never become rows).
+# Three depths per preset: 1024, 8192, 32768 (the M4 ceiling depths).
+#
+# Baselines: benchmarks/baselines.json, fleet-standard SCHEMA v2 —
+#   { "_meta": {schema:2, instrument, stack, hardware, output_tokens, saved},
+#     "<preset>": { "1024": {tok_per_sec,tpot_ms,ttft_ms,actual_input_tokens},
+#                   "8192": {...}, "32768": {...} } }
+# Gate: tok_per_sec drop >THRESHOLD% (default 10) at any depth => REGRESSION,
+# exit 1. ttft_ms drift is reported WARN-only. Points with depth_shortfall /
+# error / actual <95% of label are never saved and never compared — listed
+# NOT-COMPARED so a silently missing deep point can't masquerade as a PASS.
 #
 # Usage:
-#   ./scripts/bench/bench_regression.sh devstral      # Run one model
-#   BASELINE=save ./scripts/bench/bench_regression.sh devstral  # Save baseline
+#   scripts/bench/bench_regression.sh <preset>            # bench live server
+#                                                         #   (must be serving
+#                                                         #   <preset>), compare
+#   BASELINE=save scripts/bench/bench_regression.sh <preset>   # save instead
+#   scripts/bench/bench_regression.sh arm [preset...]     # serve each preset
+#                                                         #   itself (tripwire
+#                                                         #   recipe), bench,
+#                                                         #   stop, next
+#   scripts/bench/bench_regression.sh check <preset> <run.json>  # compare/save
+#                                                         #   from an existing
+#                                                         #   results.json (no
+#                                                         #   serving)
 #
-# Baselines stored in benchmarks/baselines.json
-
-set -eo pipefail
+# Ops rules:
+#   - The 32768-labeled point does not fit the as-shipped presets (CTX 32768
+#     rejects 32768+64, and radix-on serving OOMs the genuine 32K prefill —
+#     benchmarks/coder-30b-4bit/results.json receipts). Arm/bench serve with
+#     the documented long-context tripwire recipe: CTX=36000 MEM_FRAC=0.45
+#     SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant.
+#   - oom_guard.sh must be running for any arm/bench (32K point). Refuses to
+#     start without it.
+#   - BASELINE=save is a DELIBERATE act (after a receipted WIN or verified
+#     flip). Save merges per-preset AND per-depth: a flagged rerun can't drop
+#     a previously-armed point.
+set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+PYBENCH="$SCRIPT_DIR/bench_all_unified.py"
 source "$REPO_DIR/scripts/common.sh"
 activate_venv
 setup_mlx_env
+[ -f "$PYBENCH" ] || { echo "FATAL: instrument missing at $PYBENCH"; exit 2; }
 
-BASELINES="$REPO_DIR/benchmarks/baselines.json"
+BASELINES="${BASELINES:-$REPO_DIR/benchmarks/baselines.json}"
+RUNS_DIR="$REPO_DIR/benchmarks/regression"
 PORT="${PORT:-23334}"
 BASE_URL="http://localhost:$PORT"
-THRESHOLD="${THRESHOLD:-10}"  # % regression threshold
-MODEL_FILTER="${1:?Usage: $0 <model_key> (e.g. devstral, coder-30b, gemma4, qwen35, coder-next)}"
+THRESHOLD="${THRESHOLD:-10}"
 SAVE_BASELINE="${BASELINE:-}"
+DEPTHS="1024,8192,32768"
+STACK_TAG="${STACK_TAG:-sglang-v0.5.15.post1}"
 
-# Model key → HuggingFace model ID for sglang.bench_serving
-get_bench_model() {
-    case "$1" in
-        devstral)   echo "mistralai/Devstral-Small-2-24B-Instruct-2512" ;;
-        coder-30b)  echo "Qwen/Qwen3-Coder-30B-A3B-Instruct" ;;
-        gemma4)     echo "google/gemma-4-26B-A4B-it" ;;
-        qwen35)     echo "Qwen/Qwen3.5-27B" ;;
-        coder-next) echo "Qwen/Qwen3-Coder-Next" ;;
-        gemma4-31b) echo "google/gemma-4-31b" ;;
-        *)          echo "$1" ;;
-    esac
+# One preset per distinct M4 arch path: MoE (coder-30b), MoE-DWQ (qwen3-moe),
+# dense Mistral3+VL (devstral), MoE+DeltaNet hybrid+VL (qwen36).
+TRIPWIRE_PRESETS=(coder-30b qwen3-moe devstral qwen36)
+
+mkdir -p "$RUNS_DIR"
+
+require_oom_guard() {
+    pgrep -f "oom_guard.sh" > /dev/null 2>&1 || {
+        echo "FATAL: oom_guard.sh not running (mandatory for the 32K point)."
+        echo "Start it first: bash scripts/common/oom_guard.sh &"
+        exit 2
+    }
 }
 
-bench_one() {
-    local model="$1" input_len="$2" output_len="$3" num_prompts="$4"
-
-    # --random-range-ratio 1 pins exact lengths (upstream default 0.0 draws
-    # uniform [1, N] — labeled depths measure ~half depth).
-    python3 -m sglang.benchmark.serving \
-        --backend sglang \
-        --base-url "$BASE_URL" \
-        --model "$model" \
-        --dataset-name random \
-        --random-input-len "$input_len" \
-        --random-output-len "$output_len" \
-        --random-range-ratio 1 \
-        --num-prompts "$num_prompts" \
-        --request-rate inf \
-        --disable-tqdm 2>&1
+wait_health() {
+    for _ in $(seq 1 90); do
+        curl -s -m 3 "$BASE_URL/health" > /dev/null 2>&1 && return 0
+        sleep 10
+    done
+    return 1
 }
 
-extract_metrics() {
-    local output="$1"
-    local tpot throughput ttft
-    tpot=$(echo "$output" | grep "Mean TPOT" | awk '{print $NF}' | sed 's/ms//')
-    throughput=$(echo "$output" | grep "Output token throughput" | awk '{print $NF}')
-    ttft=$(echo "$output" | grep "Mean TTFT" | awk '{print $NF}' | sed 's/ms//')
-    echo "${tpot:-0} ${throughput:-0} ${ttft:-0}"
+run_instrument() {
+    local preset="$1" out_json="$2"
+    SGLANG_USE_MLX=1 python3 "$PYBENCH" --port "$PORT" --name "$preset" \
+        --context-list "$DEPTHS" --skip-concurrency --skip-charts \
+        --output "$out_json"
 }
 
-run_bench() {
-    local key="$1"
-    local model
-    model=$(get_bench_model "$key")
-    echo ""
-    echo "=== $key ==="
+# compare/save one preset from a run JSON. Args: preset run_json save_flag
+check_json() {
+    python3 - "$1" "$2" "${3:-}" <<'PYEOF'
+import json, os, sys, time
 
-    echo "  Single user (128 in, 50 out)..."
-    local single_out
-    single_out=$(bench_one "$model" 128 50 1)
-    read -r tpot1 tp1 ttft1 <<< "$(extract_metrics "$single_out")"
-    echo "    TPOT: ${tpot1}ms  Throughput: ${tp1} tok/s  TTFT: ${ttft1}ms"
+preset, run_path, save = sys.argv[1], sys.argv[2], sys.argv[3]
+BASELINES = os.environ["BASELINES_PATH"]
+THRESHOLD = float(os.environ.get("THRESHOLD", "10"))
+DEPTHS = ["1024", "8192", "32768"]
 
-    echo "  Multi user @8 (128 in, 50 out)..."
-    local multi_out
-    multi_out=$(bench_one "$model" 128 50 16)
-    read -r tpot8 tp8 ttft8 <<< "$(extract_metrics "$multi_out")"
-    echo "    TPOT: ${tpot8}ms  Throughput: ${tp8} tok/s  TTFT: ${ttft8}ms"
+with open(run_path) as f:
+    run = json.load(f)
 
-    python3 -c "
-import json
-result = {
-    'single_tpot_ms': float('${tpot1}'),
-    'single_throughput': float('${tp1}'),
-    'single_ttft_ms': float('${ttft1}'),
-    'multi8_tpot_ms': float('${tpot8}'),
-    'multi8_throughput': float('${tp8}'),
-    'multi8_ttft_ms': float('${ttft8}'),
-}
-print(json.dumps(result))
-" 2>/dev/null
-}
+points = {}
+for pt in run.get("context_sweep", []):
+    label = str(pt.get("context"))
+    if label not in DEPTHS:
+        continue
+    actual = pt.get("actual_input_tokens")
+    flagged = ("error" in pt or pt.get("depth_shortfall")
+               or actual is None or actual < 0.95 * pt["context"])
+    points[label] = None if flagged else {
+        "tok_per_sec": pt["tok_per_sec"], "tpot_ms": pt["tpot_ms"],
+        "ttft_ms": pt["ttft_ms"], "actual_input_tokens": actual,
+    }
 
-compare_baseline() {
-    local key="$1" current="$2"
-    if [ ! -f "$BASELINES" ]; then
-        echo "  (no baseline file — run with BASELINE=save to create)"
-        return 0
-    fi
+baselines = {}
+if os.path.exists(BASELINES):
+    with open(BASELINES) as f:
+        baselines = json.load(f)
 
-    python3 -c "
-import json, sys
+if save:
+    base = baselines.setdefault(preset, {})
+    saved = 0
+    for label in DEPTHS:
+        if points.get(label):          # merge per-depth; flagged never saved
+            base[label] = points[label]
+            saved += 1
+        else:
+            print(f"  {label}: NOT-SAVED (missing or flagged)")
+    baselines["_meta"] = {
+        "schema": 2,
+        "instrument": "scripts/bench/bench_all_unified.py --context-list",
+        "stack": run.get("sglang_version", os.environ.get("STACK_TAG", "")),
+        "hardware": "Apple M4 Pro 64GB",
+        "output_tokens": 64,
+        "serving_recipe": ("CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 "
+                           "--disable-radix-cache --kv-cache turboquant"),
+        "saved": time.strftime("%Y-%m-%d"),
+    }
+    with open(BASELINES, "w") as f:
+        json.dump(baselines, f, indent=2, sort_keys=True)
+    print(f"  saved {saved}/{len(DEPTHS)} depths for {preset} -> {BASELINES}")
+    sys.exit(0 if saved else 1)
 
-with open('$BASELINES') as f:
-    baselines = json.load(f)
-
-if '$key' not in baselines:
-    print('  (no baseline for $key)')
-    sys.exit(0)
-
-base = baselines['$key']
-curr = json.loads('$current')
-threshold = $THRESHOLD
+base = baselines.get(preset)
+if not isinstance(base, dict):
+    print(f"  no baseline for {preset} — run with BASELINE=save to arm")
+    sys.exit(2)
 
 failed = False
-for metric in ['single_tpot_ms', 'single_ttft_ms', 'multi8_tpot_ms']:
-    b = base.get(metric, 0)
-    c = curr.get(metric, 0)
-    if b > 0 and c > 0:
-        pct = ((c - b) / b) * 100
-        status = 'REGRESSION' if pct > threshold else 'ok'
-        if pct > threshold:
-            failed = True
-        print(f'  {metric}: {b:.1f} -> {c:.1f} ({pct:+.1f}%) [{status}]')
+for label in DEPTHS:
+    b, c = base.get(label), points.get(label)
+    if not b:
+        print(f"  {label}: no armed baseline (NOT-COMPARED)")
+        continue
+    if not c:
+        print(f"  {label}: current point missing/flagged (NOT-COMPARED)")
+        failed = True     # an armed depth that can't be measured is a failure
+        continue
+    pct = (c["tok_per_sec"] - b["tok_per_sec"]) / b["tok_per_sec"] * 100
+    verdict = "REGRESSION" if pct < -THRESHOLD else "ok"
+    if pct < -THRESHOLD:
+        failed = True
+    print(f"  {label}: tok/s {b['tok_per_sec']:.1f} -> {c['tok_per_sec']:.1f} "
+          f"({pct:+.1f}%) [{verdict}]")
+    tdrift = (c["ttft_ms"] - b["ttft_ms"]) / b["ttft_ms"] * 100 if b["ttft_ms"] else 0
+    if abs(tdrift) > THRESHOLD:
+        print(f"    WARN ttft_ms {b['ttft_ms']:.0f} -> {c['ttft_ms']:.0f} "
+              f"({tdrift:+.1f}%) — warn-only")
+sys.exit(1 if failed else 0)
+PYEOF
+}
+export BASELINES_PATH="$BASELINES" THRESHOLD STACK_TAG
 
-for metric in ['single_throughput', 'multi8_throughput']:
-    b = base.get(metric, 0)
-    c = curr.get(metric, 0)
-    if b > 0 and c > 0:
-        pct = ((c - b) / b) * 100
-        status = 'REGRESSION' if pct < -threshold else 'ok'
-        if pct < -threshold:
-            failed = True
-        print(f'  {metric}: {b:.1f} -> {c:.1f} ({pct:+.1f}%) [{status}]')
-
-if failed:
-    print()
-    print('  *** PERFORMANCE REGRESSION DETECTED ***')
-    sys.exit(1)
-else:
-    print('  All metrics within threshold.')
-" 2>/dev/null
+server_served_name() {
+    curl -s -m 5 "$BASE_URL/v1/models" | python3 -c \
+        "import json,sys; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null
 }
 
-# Wait for server
-echo "Waiting for server at $BASE_URL..."
-for i in $(seq 1 30); do
-    curl -s "$BASE_URL/health" > /dev/null 2>&1 && break
-    [ "$i" -eq 30 ] && echo "ERROR: Server not ready" && exit 1
-    sleep 2
-done
-echo "Server ready."
+MODE="${1:?Usage: $0 <preset> | arm [preset...] | check <preset> <run.json>}"
 
-# Warm up MLX kernels — cold start causes massive false regression
-echo "Warming up (5 requests)..."
-for i in $(seq 1 5); do
-    curl -s "$BASE_URL/v1/chat/completions" \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"Warmup request $i: explain gravity briefly\"}],\"max_tokens\":50,\"temperature\":0}" > /dev/null 2>&1
-done
-echo "Warm."
-
-# Run benchmarks
-FAILED=0
-
-echo ""
-echo "============================================"
-echo "M4 Pro MLX Performance Regression Test"
-echo "Threshold: ${THRESHOLD}% deviation"
-echo "============================================"
-
-RESULT=$(run_bench "${MODEL_FILTER}")
-RESULT_JSON=$(echo "$RESULT" | tail -1)
-
-echo ""
-echo "--- Comparing against baseline ---"
-compare_baseline "${MODEL_FILTER}" "$RESULT_JSON" || FAILED=1
-
-if [ -n "$SAVE_BASELINE" ]; then
-    echo ""
-    echo "Saving baseline..."
-    python3 -c "
-import json, os
-path = '$BASELINES'
-baselines = {}
-if os.path.exists(path):
-    with open(path) as f:
-        baselines = json.load(f)
-baselines['${MODEL_FILTER}'] = json.loads('$RESULT_JSON')
-with open(path, 'w') as f:
-    json.dump(baselines, f, indent=2)
-print(f'Saved baseline for ${MODEL_FILTER} to {path}')
-"
+if [ "$MODE" = "check" ]; then
+    PRESET="${2:?check needs <preset> <run.json>}"
+    RUN_JSON="${3:?check needs <preset> <run.json>}"
+    echo "=== $PRESET (offline check: $RUN_JSON) ==="
+    check_json "$PRESET" "$RUN_JSON" "$SAVE_BASELINE"
+    exit $?
 fi
 
-echo ""
-if [ "$FAILED" -ne 0 ]; then
+if [ "$MODE" = "arm" ]; then
+    shift
+    if [ $# -gt 0 ]; then PRESETS=("$@"); else PRESETS=("${TRIPWIRE_PRESETS[@]}"); fi
+    require_oom_guard
+    FAILED=0
+    for preset in "${PRESETS[@]}"; do
+        echo ""
+        echo "=== arming $preset ==="
+        pkill -f "sglang.launch_server" 2>/dev/null; sleep 5
+        CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 \
+            EXTRA_ARGS="--disable-radix-cache" \
+            bash "$REPO_DIR/scripts/launch.sh" "$preset" --kv-cache turboquant \
+            > "$RUNS_DIR/${preset}-serve.log" 2>&1 &
+        if ! wait_health; then
+            echo "  FAILED: $preset never became healthy (NOT-ARMED)"
+            FAILED=1
+            continue
+        fi
+        RUN_JSON="$RUNS_DIR/${preset}-$(date +%Y%m%dT%H%M%S).json"
+        run_instrument "$preset" "$RUN_JSON"
+        BASELINE=save check_json "$preset" "$RUN_JSON" save || FAILED=1
+        pkill -f "sglang.launch_server" 2>/dev/null; sleep 5
+    done
+    exit $FAILED
+fi
+
+# default: bench the live server for <preset>, compare (or save)
+PRESET="$MODE"
+require_oom_guard
+SERVED="$(server_served_name)"
+if [ -z "$SERVED" ]; then
+    echo "FATAL: no server responding on $BASE_URL"
+    exit 2
+fi
+if [ "$SERVED" != "$PRESET" ]; then
+    echo "FATAL: server is serving '$SERVED', not '$PRESET'"
+    exit 2
+fi
+RUN_JSON="$RUNS_DIR/${PRESET}-$(date +%Y%m%dT%H%M%S).json"
+echo "=== $PRESET (live bench @ $DEPTHS) ==="
+run_instrument "$PRESET" "$RUN_JSON"
+echo "--- $([ -n "$SAVE_BASELINE" ] && echo saving baseline || echo comparing) ---"
+check_json "$PRESET" "$RUN_JSON" "$SAVE_BASELINE"
+RC=$?
+if [ $RC -eq 1 ] && [ -z "$SAVE_BASELINE" ]; then
+    echo ""
     echo "RESULT: REGRESSION DETECTED"
     exit 1
-else
-    echo "RESULT: PASS"
 fi
+[ -z "$SAVE_BASELINE" ] && echo "" && echo "RESULT: PASS"
+exit $RC
