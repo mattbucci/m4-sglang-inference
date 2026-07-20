@@ -114,17 +114,18 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   doubling ladder), the pool is sized to EXACTLY the request (`CTX =
   label + 64` — overallocating the pool to CTX=210K for a 192K label cost
   ~2-3 GB and the run), and `CHUNKED=1024` (sub-2048 chunks cost nothing at
-  depth and buy ~4.3 GB transient margin). The open deep-context constraint
-  is decode TPOT at depth — the receipts' whole-request "TPOT" is ~95%
-  prefill amortization; the true decode curve is the decode-tpot-truth
-  queue item. Bench tooling needs a long urllib timeout for deep runs.
+  depth and buy ~4.3 GB transient margin). There is no decode wall: true
+  streamed decode is 61.7 tok/s @32K → 36.0 @128K → 30.2 @151K
+  (`benchmarks/longctx-bisect/decode-curve/DECISION.md`; the historical
+  "13-19 s/token" figures were whole-request prefill amortization). Bench
+  tooling needs a long urllib timeout for deep runs.
 
 ## Optimization Target
 - **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
   Measure at long context first — that is the workload Apple Silicon is uniquely good at.
-  - Current: **256K validated** (primary capacity target reached); the
-    open constraint is decode TPOT at depth (see "Long-context" above and
-    the decode-tpot-truth queue item).
+  - Current: **256K validated, usable (6/6 recall at 245K), and
+    interactive at depth** (36 tok/s true decode at 128K) — the capacity
+    and decode targets are both met; see "Long-context" above.
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
   batch benchmarks.
 - **Tertiary (currently the most productive workload):** single-user agentic

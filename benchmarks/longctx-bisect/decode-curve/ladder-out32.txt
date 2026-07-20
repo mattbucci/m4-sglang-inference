@@ -1,0 +1,17 @@
+Model: qwen36
+Output tokens per test: 32
+Label                               Input    Out      TTFT        ITL       Decode   Amortized
+-----------------------------------------------------------------------------------------------
+  32K tokens                      in=  31458  out=  32  ttft=   50.5s  itl_mean=   16.7ms  decode= 59.8 tok/s  amortized=  1.59 s/tok
+  64K tokens                      in=  62916  out=  32  ttft=  132.1s  itl_mean=   20.5ms  decode= 48.8 tok/s  amortized=  4.15 s/tok
+  96K tokens                      in=  94374  out=  32  ttft=  245.2s  itl_mean=   25.8ms  decode= 38.8 tok/s  amortized=  7.69 s/tok
+  128K tokens                     in= 125830  out=  32  ttft=  401.3s  itl_mean=   31.3ms  decode= 31.9 tok/s  amortized= 12.57 s/tok
+  153K tokens                     in= 150997  out=  32  ttft=  552.9s  itl_mean=   33.1ms  decode= 30.2 tok/s  amortized= 17.31 s/tok
+
+===============================================================================================
+Summary: decode at depth (output=32 tokens; amortized = whole-request/out, ~all prefill at small out)
+  32K tokens                      decode= 59.8 tok/s  itl p50/p95=16/24ms  ttft=50.5s  amortized=1.59 s/tok  (in=31458)
+  64K tokens                      decode= 48.8 tok/s  itl p50/p95=19/28ms  ttft=132.1s  amortized=4.15 s/tok  (in=62916)
+  96K tokens                      decode= 38.8 tok/s  itl p50/p95=24/33ms  ttft=245.2s  amortized=7.69 s/tok  (in=94374)
+  128K tokens                     decode= 31.9 tok/s  itl p50/p95=30/42ms  ttft=401.3s  amortized=12.57 s/tok  (in=125830)
+  153K tokens                     decode= 30.2 tok/s  itl p50/p95=31/43ms  ttft=552.9s  amortized=17.31 s/tok  (in=150997)

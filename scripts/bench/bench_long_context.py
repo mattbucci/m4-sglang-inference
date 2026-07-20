@@ -36,6 +36,8 @@ def bench_completions(base_url, input_len, output_len, label=""):
         "max_tokens": output_len,
         "temperature": 0,
         "ignore_eos": True,
+        "stream": True,
+        "stream_options": {"include_usage": True},
     }).encode()
     req = urllib.request.Request(
         f"{base_url}/v1/completions",
@@ -44,28 +46,62 @@ def bench_completions(base_url, input_len, output_len, label=""):
     )
 
     t0 = time.time()
+    ttft = None
+    chunk_times = []
+    usage = {}
     # 1h per request — 128K+ on M4 with turboquant can take 25+ min just for
     # prefill at our observed throughput. The full sweep can take several
     # hours, which is the expected cost of a 256K characterization on Apple.
     with urllib.request.urlopen(req, timeout=3600) as r:
-        data = json.loads(r.read())
+        for raw in r:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            payload = line[5:].strip()
+            if payload == "[DONE]":
+                break
+            chunk = json.loads(payload)
+            if chunk.get("usage"):
+                usage = chunk["usage"]
+            choices = chunk.get("choices") or []
+            if choices and choices[0].get("text"):
+                now = time.time()
+                if ttft is None:
+                    ttft = now - t0
+                chunk_times.append(now)
     elapsed = time.time() - t0
 
-    usage = data["usage"]
-    prompt_tokens = usage["prompt_tokens"]
-    completion_tokens = usage["completion_tokens"]
+    prompt_tokens = usage.get("prompt_tokens", 0)
+    completion_tokens = usage.get("completion_tokens", len(chunk_times))
+    depth_verified = prompt_tokens >= 0.95 * input_len
 
-    tpot = (elapsed / completion_tokens * 1000) if completion_tokens > 0 else 0
-    throughput = completion_tokens / elapsed if elapsed > 0 else 0
+    # True decode rate: inter-token latencies past the first token. The old
+    # whole-request metric is kept as amortized_s_per_token — at out<<prefill
+    # it is ~95%+ prefill amortization, NOT decode speed.
+    itls = [b - a for a, b in zip(chunk_times, chunk_times[1:])]
+    itls_sorted = sorted(itls)
+    itl_mean = sum(itls) / len(itls) if itls else 0
+    itl_p50 = itls_sorted[len(itls) // 2] if itls else 0
+    itl_p95 = itls_sorted[int(len(itls) * 0.95)] if itls else 0
+    decode_tok_per_s = 1.0 / itl_mean if itl_mean > 0 else 0
+    amortized = (elapsed / completion_tokens) if completion_tokens > 0 else 0
 
-    print(f"  {label:30s}  in={prompt_tokens:>7d}  out={completion_tokens:>4d}  "
-          f"time={elapsed:>6.1f}s  TPOT={tpot:>6.1f}ms  {throughput:>5.1f} tok/s")
+    print(f"  {label:30s}  in={prompt_tokens:>7d}{'' if depth_verified else '!'}  "
+          f"out={completion_tokens:>4d}  ttft={ttft or 0:>7.1f}s  "
+          f"itl_mean={itl_mean * 1000:>7.1f}ms  decode={decode_tok_per_s:>5.1f} tok/s  "
+          f"amortized={amortized:>6.2f} s/tok")
     return {
         "prompt_tokens": prompt_tokens,
+        "depth_verified": depth_verified,
         "completion_tokens": completion_tokens,
         "elapsed": elapsed,
-        "tpot_ms": tpot,
-        "throughput": throughput,
+        "ttft_s": ttft,
+        "itl_mean_ms": itl_mean * 1000,
+        "itl_p50_ms": itl_p50 * 1000,
+        "itl_p95_ms": itl_p95 * 1000,
+        "decode_tok_per_s": decode_tok_per_s,
+        "amortized_s_per_token": amortized,
+        "n_itl_samples": len(itls),
     }
 
 
@@ -100,8 +136,8 @@ def main():
     out = args.output_tokens
     print(f"Model: {model_id}")
     print(f"Output tokens per test: {out}")
-    print(f"{'Label':30s}  {'Input':>9s}  {'Out':>5s}  {'Time':>7s}  {'TPOT':>8s}  {'Throughput':>10s}")
-    print("-" * 85)
+    print(f"{'Label':30s}  {'Input':>9s}  {'Out':>5s}  {'TTFT':>8s}  {'ITL':>9s}  {'Decode':>11s}  {'Amortized':>10s}")
+    print("-" * 95)
 
     # Context lengths — push to the limits of 64GB unified memory by default;
     # accept a custom list when the caller just wants a short sweep.
@@ -137,11 +173,14 @@ def main():
             results.append((label, None))
 
     # Summary
-    print(f"\n{'='*85}")
-    print(f"Summary: TPOT at different context lengths (output={out} tokens)")
+    print(f"\n{'='*95}")
+    print(f"Summary: decode at depth (output={out} tokens; amortized = whole-request/out, ~all prefill at small out)")
     for label, r in results:
         if r:
-            print(f"  {label:30s}  TPOT={r['tpot_ms']:>6.1f}ms  {r['throughput']:>5.1f} tok/s  (prefill {r['prompt_tokens']} tok in {r['elapsed']:.1f}s)")
+            print(f"  {label:30s}  decode={r['decode_tok_per_s']:>5.1f} tok/s  "
+                  f"itl p50/p95={r['itl_p50_ms']:.0f}/{r['itl_p95_ms']:.0f}ms  "
+                  f"ttft={r['ttft_s'] or 0:.1f}s  amortized={r['amortized_s_per_token']:.2f} s/tok  "
+                  f"(in={r['prompt_tokens']}{'' if r['depth_verified'] else ' UNVERIFIED'})")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,16 @@
+Model: qwen36
+Output tokens per test: 256
+Label                               Input    Out      TTFT        ITL       Decode   Amortized
+-----------------------------------------------------------------------------------------------
+  32K tokens                      in=  31458  out= 256  ttft=   51.1s  itl_mean=   16.2ms  decode= 61.7 tok/s  amortized=  0.22 s/tok
+  64K tokens                      in=  62916  out= 256  ttft=  126.5s  itl_mean=   19.8ms  decode= 50.5 tok/s  amortized=  0.51 s/tok
+  96K tokens                      in=  94374  out= 256  ttft=  243.6s  itl_mean=   24.0ms  decode= 41.7 tok/s  amortized=  0.98 s/tok
+  128K tokens                     in= 125830  out= 256  ttft=  399.3s  itl_mean=   27.8ms  decode= 36.0 tok/s  amortized=  1.59 s/tok
+  153K tokens                     ERROR: Remote end closed connection without response
+
+===============================================================================================
+Summary: decode at depth (output=256 tokens; amortized = whole-request/out, ~all prefill at small out)
+  32K tokens                      decode= 61.7 tok/s  itl p50/p95=16/16ms  ttft=51.1s  amortized=0.22 s/tok  (in=31458)
+  64K tokens                      decode= 50.5 tok/s  itl p50/p95=20/20ms  ttft=126.5s  amortized=0.51 s/tok  (in=62916)
+  96K tokens                      decode= 41.7 tok/s  itl p50/p95=24/25ms  ttft=243.6s  amortized=0.98 s/tok  (in=94374)
+  128K tokens                     decode= 36.0 tok/s  itl p50/p95=27/29ms  ttft=399.3s  amortized=1.59 s/tok  (in=125830)

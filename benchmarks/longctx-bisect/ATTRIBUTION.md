@@ -86,16 +86,19 @@ is the deciding experiment.
   the shapes, not the retention policy.
 - The ceiling formula (max_prefill ≈ free_GB × 5120) described the uncapped
   cache's burn rate, not a structural limit; superseded by the cap.
-- Decode TPOT at depth (1.6 s at 32K, 4.4 s at 64K, 13 s at 128K) is now a
-  binding long-context constraint — a separate optimization target
-  (attention read bandwidth), not a memory bug.
+- ERRATUM: the "decode TPOT at depth" ladder previously quoted here
+  (1.6 s @32K / 13 s @128K) was whole-request elapsed ÷ output tokens from
+  the pre-streaming `bench_long_context.py` — ~99% prefill amortization,
+  not decode. The corrected streamed instrument measures TRUE decode at
+  61.7 tok/s @32K → 36.0 tok/s @128K → 30.2 @151K
+  (`decode-curve/DECISION.md`): there is no decode wall on this hybrid.
 - **Certified ceiling: 256K** (in=251,659 server-verified). The recipe:
   patch 015 pre-sizes the per-request cache (no doubling ladder), the pool
   is sized to exactly the request (`CTX = label + 64`; overallocating to
   CTX=210K for a 192K label cost the run its last ~2-3 GB), `CHUNKED=1024`
   (the sub-2048 chunk costs nothing at depth and buys ~4.3 GB of transient
   margin), `MEM_FRAC=0.5`, radix off, turboquant. No cache-quantization
-  surgery was needed for capacity — the remaining deep-context constraint
-  is decode TPOT at depth (see the decode-tpot-truth queue item: the
-  whole-request "TPOT" numbers in these receipts are ~95% prefill
-  amortization; the true decode rate needs the fixed instrument).
+  surgery was needed for capacity, and there is no decode wall either —
+  true streamed decode is 36.0 tok/s at 128K (`decode-curve/DECISION.md`);
+  the whole-request "TPOT" columns in these receipts are amortized
+  prefill, kept only for historical interpretability.
