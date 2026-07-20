@@ -3,7 +3,7 @@
     "hardware": "Apple M4 Pro 64GB",
     "instrument": "scripts/bench/bench_all_unified.py --context-list",
     "output_tokens": 64,
-    "saved": "2026-07-19",
+    "saved": "2026-07-20",
     "schema": 2,
     "serving_recipe": "CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant",
     "stack": "v0.5.15.post1"
@@ -42,6 +42,26 @@
       "ttft_ms": 66241.4
     }
   },
+  "qwen3-32b": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 12.3,
+      "tpot_ms": 81.1,
+      "ttft_ms": 10912.9
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 7.5,
+      "tpot_ms": 133.8,
+      "ttft_ms": 493597.9
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 10.7,
+      "tpot_ms": 93.1,
+      "ttft_ms": 91115.0
+    }
+  },
   "qwen3-moe": {
     "1024": {
       "actual_input_tokens": 1024,
@@ -62,6 +82,46 @@
       "ttft_ms": 14357.8
     }
   },
+  "qwen35": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 15.0,
+      "tpot_ms": 66.8,
+      "ttft_ms": 9081.9
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 12.8,
+      "tpot_ms": 78.4,
+      "ttft_ms": 306694.6
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 14.6,
+      "tpot_ms": 68.7,
+      "ttft_ms": 69434.7
+    }
+  },
+  "qwen35-9b-8bit": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 26.9,
+      "tpot_ms": 37.1,
+      "ttft_ms": 2812.0
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 23.6,
+      "tpot_ms": 42.4,
+      "ttft_ms": 95545.2
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 26.3,
+      "tpot_ms": 38.0,
+      "ttft_ms": 23901.7
+    }
+  },
   "qwen36": {
     "1024": {
       "actual_input_tokens": 1024,
@@ -80,6 +140,26 @@
       "tok_per_sec": 72.8,
       "tpot_ms": 13.7,
       "ttft_ms": 10658.7
+    }
+  },
+  "qwen36-27b": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 15.0,
+      "tpot_ms": 66.5,
+      "ttft_ms": 9056.0
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 12.8,
+      "tpot_ms": 78.0,
+      "ttft_ms": 304507.5
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 14.4,
+      "tpot_ms": 69.4,
+      "ttft_ms": 69400.1
     }
   }
 }

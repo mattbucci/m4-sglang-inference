@@ -1,75 +1,101 @@
 {
-  "legacy_depth_suspect": true,
-  "legacy_depth_note": "pre-pin bench_serving-random rows: --random-range-ratio unpinned; labeled depths/lengths drawn uniform [1,N] \u2014 see benchmarks/LEGACY-DEPTH-SUSPECT.md",
-  "model": "Qwen3-32B Dense 4-bit",
-  "model_id": "mlx-community/Qwen3-32B-4bit",
+  "model": "Qwen3-32B 4-bit",
+  "model_id": "qwen3-32b",
   "engine": "SGLang + MLX",
   "hardware": "Apple M4 Pro 64GB",
-  "timestamp": "2026-04-14 08:28:36",
-  "method": "sglang.bench_serving",
+  "timestamp": "2026-07-19 23:47:23",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.15.post1",
   "kv_cache_mode": "turboquant",
-  "context_max": 262144,
+  "context_max": 32768,
   "context_sweep": [
     {
       "context": 128,
-      "tpot_ms": 82.5,
-      "tok_per_sec": 12.1,
-      "ttft_ms": 671.4
+      "tpot_ms": 79.0,
+      "tok_per_sec": 12.7,
+      "ttft_ms": 1301.6,
+      "actual_input_tokens": 128
     },
     {
       "context": 256,
-      "tpot_ms": 82.8,
-      "tok_per_sec": 12.1,
-      "ttft_ms": 675.2
+      "tpot_ms": 79.3,
+      "tok_per_sec": 12.6,
+      "ttft_ms": 2568.6,
+      "actual_input_tokens": 256
     },
     {
       "context": 512,
-      "tpot_ms": 82.9,
-      "tok_per_sec": 12.1,
-      "ttft_ms": 674.9
+      "tpot_ms": 78.8,
+      "tok_per_sec": 12.7,
+      "ttft_ms": 5117.1,
+      "actual_input_tokens": 512
     },
     {
       "context": 1024,
-      "tpot_ms": 83.4,
-      "tok_per_sec": 12.0,
-      "ttft_ms": 673.6
+      "tpot_ms": 81.1,
+      "tok_per_sec": 12.3,
+      "ttft_ms": 10912.9,
+      "actual_input_tokens": 1024
     },
     {
       "context": 2048,
-      "tpot_ms": 90.2,
-      "tok_per_sec": 11.1,
-      "ttft_ms": 11085.3
+      "tpot_ms": 82.9,
+      "tok_per_sec": 12.1,
+      "ttft_ms": 22260.9,
+      "actual_input_tokens": 2048
     },
     {
       "context": 4096,
-      "tpot_ms": 90.3,
-      "tok_per_sec": 11.1,
-      "ttft_ms": 11711.0
+      "tpot_ms": 86.6,
+      "tok_per_sec": 11.5,
+      "ttft_ms": 44811.0,
+      "actual_input_tokens": 4096
     },
     {
       "context": 8192,
-      "tpot_ms": 113.1,
-      "tok_per_sec": 8.8,
-      "ttft_ms": 58094.1
+      "tpot_ms": 93.1,
+      "tok_per_sec": 10.7,
+      "ttft_ms": 91115.0,
+      "actual_input_tokens": 8192
     },
     {
       "context": 16384,
-      "tpot_ms": 166.3,
-      "tok_per_sec": 6.0,
-      "ttft_ms": 161498.2
+      "tpot_ms": 107.2,
+      "tok_per_sec": 9.3,
+      "ttft_ms": 203182.0,
+      "actual_input_tokens": 16384
     },
     {
       "context": 32768,
-      "error": "timeout_or_crash"
-    },
-    {
-      "context": 65536,
-      "error": "timeout_or_crash"
-    },
-    {
-      "context": 131072,
-      "error": "timeout_or_crash"
+      "tpot_ms": 133.8,
+      "tok_per_sec": 7.5,
+      "ttft_ms": 493597.9,
+      "actual_input_tokens": 32768
     }
   ],
-  "throughput_sweep": []
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "tpot_ms": 128.7,
+      "tok_per_sec": 25.7,
+      "ttft_ms": 4842.9,
+      "actual_input_tokens": 1024
+    },
+    {
+      "concurrency": 2,
+      "tpot_ms": 235.6,
+      "tok_per_sec": 26.1,
+      "ttft_ms": 18219.4,
+      "actual_input_tokens": 2048
+    },
+    {
+      "concurrency": 4,
+      "tpot_ms": 378.0,
+      "tok_per_sec": 30.4,
+      "ttft_ms": 38444.6,
+      "actual_input_tokens": 4096
+    }
+  ],
+  "serving_recipe": "launch.sh <preset> --kv-cache turboquant, CTX=36000, MEM_FRAC=0.45, CHUNKED=2048, SGLANG_MLX_CACHE_LIMIT_GB=2, --disable-radix-cache",
+  "serving_recipe_notes": "32768 row measured at MEM_FRAC=0.5 (the 0.45 pool caps requests at 25,241 tokens)"
 }

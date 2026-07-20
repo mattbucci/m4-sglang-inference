@@ -1,0 +1,5 @@
+=== M4 capability validator — http://localhost:23334  model=qwen3-32b ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [SKIP] thinking  (--no-thinking forces enable_thinking=false; can't probe reasoning)
+--- 2/2 passed in 4.0s ---

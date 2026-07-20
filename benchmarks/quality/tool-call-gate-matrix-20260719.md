@@ -12,6 +12,10 @@ patches.
 | qwen3-moe | qwen25 | **PASS** — identical structured response | 1.2 s | see note below |
 | nemotron-30b | (none wired) | **FAIL** — `no tool_calls finish=stop raw-markup-in-content(<function)`, content = `\n<tool_call>\n<function=get_weather>\n<parameter=location>\nPar…`, exit 1 | 1.1 s | negative control |
 | nemotron-30b | qwen3_coder (fix from the transcript) | **PASS** — `finish=tool_calls name='get_weather' args='{"location": "Paris"}'` | 1.0 s | fix validated by the gate |
+| qwen35 | qwen3_coder | **PASS** — structured tool_calls | (re-measure window) | full-validator run |
+| qwen3-32b | qwen25 | **PASS** — structured tool_calls | (re-measure window) | full-validator run |
+| qwen35-9b-8bit | qwen3_coder | **PASS** — structured tool_calls | (re-measure window) | full-validator run |
+| qwen36-27b | qwen3_coder | **PASS** — structured tool_calls | (re-measure window) | full-validator run |
 
 ## Negative control & anti-vacuousness
 
@@ -40,9 +44,15 @@ auto-skip list = `{smol-docling}` only (non-tool-trained VLM smoke model).
 Zero-touch inheritance: `run_all_evals.sh` (bare) and `bench_smoke.sh`
 (`$FLAGS`) invoke the validator unmodified and now run the gate.
 
-## Not measured tonight
+## Not yet measured
 
-coder-30b, devstral, qwen3-32b, gemma4*, qwen35* presets — the optional full
-sweep rides the re-measure queue item. gemma4-31b is the expected-FAIL
-model-side canary (0 tokens under tool prompts per the bakeoff receipt); it
-must never be skip-listed.
+coder-30b, devstral, gemma4* — coder-30b/devstral ride future serve windows;
+gemma4* are blocked at boot. gemma4-31b is the expected-FAIL model-side
+canary (0 tokens under tool prompts per the bakeoff receipt); it must never
+be skip-listed.
+
+Validator side-note from the re-measure windows: qwen35 and qwen35-9b-8bit
+FAIL the greedy thinking check as TRUNCATED at 2048 tokens (verbosity, not
+the loop — the content-aware probe_thinking passes, and model-recommended
+sampling via patch 016 is the recommended thinking path). qwen36-27b passes
+all three checks including thinking.

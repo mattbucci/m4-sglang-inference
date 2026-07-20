@@ -21,10 +21,11 @@ All bench scripts now pin `--random-range-ratio 1` and record server-verified
 Rows produced before the pin are unrecoverable — the real depth was never
 recorded — and carry `"legacy_depth_suspect": true`:
 
-- `results.json` with pre-pin sweep rows (10): `coder-30b-4bit`,
+- `results.json` with pre-pin sweep rows still flagged (6):
   `coder-next-80b-4bit`, `devstral-24b-4bit`, `devstral-24b_4-bit`,
   `gemma4-26b-4bit`, `gemma4-31b-4bit`,
-  `qwen3-30b-a3b_4-bit-dwq_mr4` (throughput-only), `qwen3-30b-moe-4bit`,
+  `qwen3-30b-a3b_4-bit-dwq_mr4` (throughput-only). Re-measured at genuine
+  depth (marker dropped): `coder-30b-4bit`, `qwen3-30b-moe-4bit`,
   `qwen3-32b-4bit`, `qwen35-27b-4bit`
 - `bench_comprehensive` text outputs (7): `Coder-30B_4bit_20260412_*.txt` (2),
   `Devstral-24B_4bit_20260412_*.txt` (2), `Qwen3.5-27B_4bit_20260412_*.txt` (3)

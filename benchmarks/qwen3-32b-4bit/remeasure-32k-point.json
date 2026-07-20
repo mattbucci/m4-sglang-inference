@@ -1,0 +1,21 @@
+{
+  "model": "qwen3-32b-32kfix",
+  "model_id": "qwen3-32b",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-07-20 00:55:28",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.15.post1",
+  "kv_cache_mode": "auto",
+  "context_max": 32768,
+  "context_sweep": [
+    {
+      "context": 32768,
+      "tpot_ms": 133.8,
+      "tok_per_sec": 7.5,
+      "ttft_ms": 493597.9,
+      "actual_input_tokens": 32768
+    }
+  ],
+  "throughput_sweep": []
+}

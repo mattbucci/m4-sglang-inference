@@ -222,16 +222,22 @@ These rows are the regression baselines (`benchmarks/baselines.json`, schema v2)
 | qwen36 | 82.4 | 72.8 | **57.8** | 57 s |
 | coder-30b | 80.1 | 55.8 | 28.7 | 100 s |
 | qwen3-moe | 78.0 | 55.7 | 28.8 | 99 s |
+| qwen35-9b-8bit | 26.9 | 26.3 | 23.6 | 128 s |
 | devstral | 16.5 | 14.8 | OOM | — |
+| qwen35 | 15.0 | 14.6 | 12.8 | 307 s |
+| qwen36-27b | 15.0 | 14.4 | 12.8 | 262 s |
+| qwen3-32b | 12.3 | 10.7 | 7.5† | 494 s |
 
-**DeltaNet holds decode flat at genuine depth**: qwen36 keeps 70% of its
-short-context speed at a true 32,768-token context while the full-attention
-MoEs halve twice; its 32K prefill is ~1.7× faster too (DeltaNet layers carry
-recurrent state, not KV). Full curves (128→32K, 9 points) + concurrency rows:
-`benchmarks/{coder-30b-4bit,qwen3-30b-moe-4bit}/results.json`. Serving-envelope
-receipts (radix-on 32K prefill OOM, radix-off conc-8 OOM, devstral dense 32K
-OOM) live in the same files' error rows — feeding the radix/overlap A/B and
-beyond-128K queue items.
+† qwen3-32b's 32K row needs `MEM_FRAC=0.5` (the 0.45 pool caps requests at
+25,241 tokens). All eight rows above are armed as schema-v2 regression
+baselines. **DeltaNet holds decode flat at genuine depth** across every
+hybrid (qwen35/qwen36-27b retain 85% of short-context speed at true 32K;
+qwen35-9b-8bit retains 88%) while full-attention models halve or worse.
+
+Full curves (128→32K, 9 points) + concurrency rows live in each preset's
+`benchmarks/<slug>/results.json`; serving-envelope receipts (radix-on 32K
+prefill OOM, radix-off conc-8 OOM, dense 32K walls) are the same files'
+error rows.
 
 ### Legacy tables (earlier stack pins)
 

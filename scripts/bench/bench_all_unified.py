@@ -166,8 +166,10 @@ def main():
         print("-" * 50)
 
         for ctx in ctx_levels:
-            # Scale timeout for long context
-            bench_timeout = 600 if ctx <= 32768 else 1800 if ctx <= 65536 else 3600
+            # Scale timeout for long context. The 32768 tier needs headroom:
+            # a slow-prefill preset (qwen35 ~110 tok/s) runs ~300s for the
+            # request alone, and 600s leaves no margin for a retry.
+            bench_timeout = 600 if ctx < 32768 else 1800 if ctx <= 65536 else 3600
             r = run_bench_serving(base_url, model, ctx, 64, 1,
                                   request_rate=1, timeout=bench_timeout)
             if r is None:
