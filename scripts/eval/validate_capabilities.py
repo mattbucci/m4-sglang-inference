@@ -28,7 +28,16 @@ import json
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
+
+# Presets legitimately not trained for tool use (auto-skip the tool_call
+# check). Keyed on the SERVED model name, which launch.sh sets equal to the
+# preset name — a SERVED_NAME override defeats the auto-skip. Additions
+# require per-model evidence of non-tool TRAINING, never a missing parser or
+# a measured FAIL (nemotron-30b emits tool-call attempts; its parser-less
+# FAIL is an actionable finding, not a skip).
+NON_TOOL_MODELS = frozenset({"smol-docling"})
 
 
 def _http_post(url: str, payload: dict, timeout: int = 180) -> dict:
@@ -37,8 +46,19 @@ def _http_post(url: str, payload: dict, timeout: int = 180) -> dict:
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # Surface the server's error body (often actionable: missing config,
+        # template render error, etc.) instead of the opaque default str().
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            body = "<no body>"
+        raise urllib.error.HTTPError(
+            e.url, e.code, f"{e.reason}: {body}", e.headers, None
+        ) from None
 
 
 def _http_get(url: str, timeout: int = 10) -> dict:
@@ -186,6 +206,69 @@ def check_basic(base_url: str, model: str, thinking_kwargs: dict | None = None) 
     return passed, f"finish={finish} answer={sample!r}"
 
 
+def check_tool_call(base_url: str, model: str) -> tuple[bool, str]:
+    """Verify the server emits STRUCTURED tool_calls, not raw markup as content.
+
+    Sends a weather query with an OpenAI-style tools=[...] spec. When a preset's
+    `--tool-call-parser` matches its chat-template tool format, SGLang returns
+    finish_reason='tool_calls' with a parsed function.name + JSON arguments. With
+    the wrong/missing parser, the model's raw `<function=...>` / `<tool_call>` /
+    `[TOOL_CALLS]` markup is served as plain assistant `content` and every coding
+    harness silently drops it → empty diff. This probe catches that regression
+    at the server layer, before a multi-hour rollout burns wall clock on it.
+
+    Always forces enable_thinking:False (a greedy thinking chain can hit
+    max_tokens and FAIL as truncated for a non-parser reason) and temperature=0
+    — the boot gate stays deterministic even though real sampling is available
+    (patch 016).
+    """
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"location": {"type": "string", "description": "City name"}},
+                "required": ["location"],
+            },
+        },
+    }]
+    payload = {
+        "model": model,
+        "messages": [{"role": "user",
+                      "content": "What's the weather in Paris right now? Use the get_weather tool."}],
+        "tools": tools,
+        "tool_choice": "auto",
+        "max_tokens": 512,
+        "temperature": 0,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    try:
+        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=150)
+    except Exception as e:
+        return False, f"request failed: {e!r}"
+    choice = r["choices"][0]
+    msg = choice.get("message", {})
+    finish = choice.get("finish_reason")
+    tcs = msg.get("tool_calls") or []
+    if not tcs:
+        content = msg.get("content") or ""
+        hint = next((f" raw-markup-in-content({m})" for m in
+                     ("<function", "<tool_call", "[TOOL_CALLS]", "functools", "<|tool")
+                     if m in content), "")
+        return False, f"no tool_calls finish={finish}{hint} content={content[:60]!r}"
+    fn = tcs[0].get("function", {})
+    name = fn.get("name", "")
+    raw_args = fn.get("arguments", "")
+    try:
+        parsed = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+    except Exception:
+        parsed = None
+    ok = name == "get_weather" and isinstance(parsed, dict) and "location" in parsed
+    return ok, f"finish={finish} name={name!r} args={str(raw_args)[:80]!r}"
+
+
 def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     """Synthetic red circle on white. Currently most MLX models won't pass this."""
     img_bytes = _make_test_image()
@@ -223,6 +306,9 @@ def main() -> int:
                    help="Run vision check (off by default — MLX backend disables VLMs)")
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
+    p.add_argument("--skip-tools", action="store_true",
+                   help="Skip the tool_call check (auto-skipped for "
+                        "NON_TOOL_MODELS presets)")
     p.add_argument("--no-thinking", action="store_true",
                    help="Disable thinking via chat_template_kwargs={'enable_thinking': false}. "
                         "Required for Qwen3 family on greedy MLX to avoid infinite <think> loops. "
@@ -256,6 +342,14 @@ def main() -> int:
     ok, msg = check_basic(base, model, thinking_kwargs)
     results.append(("basic", ok, msg))
     print(f"  [{'PASS' if ok else 'FAIL'}] basic     {msg}")
+
+    if args.skip_tools or model in NON_TOOL_MODELS:
+        reason = "--skip-tools" if args.skip_tools else "non-tool model"
+        print(f"  [SKIP] tool_call ({reason})")
+    else:
+        ok, msg = check_tool_call(base, model)
+        results.append(("tool_call", ok, msg))
+        print(f"  [{'PASS' if ok else 'FAIL'}] tool_call {msg}")
 
     if args.no_thinking:
         print(f"  [SKIP] thinking  (--no-thinking forces enable_thinking=false; can't probe reasoning)")

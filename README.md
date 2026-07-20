@@ -10,7 +10,6 @@ Full specs and statuses live in [experiments/README.md](experiments/README.md); 
 
 - [ ] **Disk triage** — 12 GiB free of 926 GiB; the HF cache holds 362 GB. Inventory, propose deletions to Matt. Gates the in-house quant and bisect arms. *(~1h)*
 - [ ] **Beyond 160K** — 192K exhausts the memory budget at ~180K prefilled (bf16 per-request attention cache + pool). Phase 2: quantize the per-request cache (also attacks decode TPOT at depth) or pool-backed prefill writes. Spec: [experiments/08](experiments/08-beyond-128k.md). Related envelope receipts: radix-off concurrent prefill (conc-8) and dense-devstral genuine-32K both trip the oom_guard.
-- [ ] **Tool-call boot gate** — port the 3090's `check_tool_call` into `validate_capabilities.py`. Spec: [experiments/06](experiments/06-check-tool-call-gate.md). *(hours)*
 - [ ] **Re-measure on the current stack** — the remaining legacy tables (short-sweep, batched-decode peaks), the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). The four tripwire presets are re-measured at genuine depth (see Performance). *(hours per piece)*
 - [ ] **In-house qwen36 MLX 4-bit** with router/DeltaNet/vision exclusions — after disk + sampling. Spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md). *(days)*
 
