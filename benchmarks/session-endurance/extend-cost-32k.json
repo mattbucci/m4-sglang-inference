@@ -1,0 +1,30 @@
+[
+  {
+    "depth_label": 32768,
+    "prefix_tokens": 34535,
+    "suffix_tokens": 1,
+    "ttft_ms_median": 117.6,
+    "ttft_ms_all": [
+      170.3,
+      117.6,
+      116.6
+    ],
+    "cache_hit_verified": true,
+    "decode_ms_per_token": 21.8,
+    "tax_ratio": 5.4
+  },
+  {
+    "depth_label": 32768,
+    "prefix_tokens": 34535,
+    "suffix_tokens": 64,
+    "ttft_ms_median": 315.6,
+    "ttft_ms_all": [
+      314.3,
+      315.6,
+      326.4
+    ],
+    "cache_hit_verified": true,
+    "decode_ms_per_token": 21.8,
+    "tax_ratio": 14.5
+  }
+]
