@@ -290,7 +290,11 @@ apply_preset() {
             # eval landed at MMLU 77 / HE 10 / LAB-Bench 19.4 specifically
             # because of this (README quality table footnote ¶). Wiring
             # nemotron_3 should bump HE + LAB-Bench substantially.
-            EXTRA_ARGS="$EXTRA_ARGS"
+            # --tool-call-parser qwen3_coder — the model emits qwen3-coder
+            # format tool markup (<tool_call><function=...><parameter=...>;
+            # check_tool_call transcript in
+            # benchmarks/quality/tool-call-gate-matrix-20260719.md).
+            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen3_coder"
             REASONING="--reasoning-parser nemotron_3"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;

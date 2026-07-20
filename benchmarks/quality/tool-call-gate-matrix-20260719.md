@@ -11,6 +11,7 @@ patches.
 | qwen36 | qwen3_coder | **PASS** — `finish=tool_calls name='get_weather' args='{"location": "Paris"}'` | 1.0 s | positive anchor |
 | qwen3-moe | qwen25 | **PASS** — identical structured response | 1.2 s | see note below |
 | nemotron-30b | (none wired) | **FAIL** — `no tool_calls finish=stop raw-markup-in-content(<function)`, content = `\n<tool_call>\n<function=get_weather>\n<parameter=location>\nPar…`, exit 1 | 1.1 s | negative control |
+| nemotron-30b | qwen3_coder (fix from the transcript) | **PASS** — `finish=tool_calls name='get_weather' args='{"location": "Paris"}'` | 1.0 s | fix validated by the gate |
 
 ## Negative control & anti-vacuousness
 
@@ -27,10 +28,10 @@ emits well-formed `<function=get_weather>` markup as plain content** (no
 diagnostic hint. This matches the int4-bakeoff observation (nemotron ran 900s
 producing tool-call attempts that no parser consumed).
 
-**Actionable finding:** nemotron-30b's emitted format (`<tool_call>` /
-`<function=...>` / `<parameter=...>`) is the qwen3-coder family format —
-wiring `--tool-call-parser qwen3_coder` into the nemotron-30b preset is a
-plausible one-line fix; validate with this gate before relying on it.
+**Finding → fix, same session:** nemotron-30b's emitted format
+(`<tool_call>` / `<function=...>` / `<parameter=...>`) is the qwen3-coder
+family format; `--tool-call-parser qwen3_coder` is now wired into the preset
+and the gate validates structured tool_calls (row above).
 
 ## Gate-1 checks (no server)
 
