@@ -1,0 +1,25 @@
+/Users/letsrtfm/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/attention/fla/utils.py:223: UserWarning: Triton is not supported on current platform, roll back to CPU.
+  warnings.warn(
+/Users/letsrtfm/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/awq/awq.py:52: UserWarning: Only CUDA, HIP and XPU support AWQ currently.
+  warnings.warn(f"Only CUDA, HIP and XPU support AWQ currently.")
+/Users/letsrtfm/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/gguf.py:64: UserWarning: Only CUDA, MUSA and NPU support GGUF quantization currently.
+  warnings.warn(f"Only CUDA, MUSA and NPU support GGUF quantization currently.")
+== import smoke: 17 patch-touched modules ==
+  PASS  sglang._mps_stub
+  PASS  sglang.srt.arg_groups.overrides
+  PASS  sglang.srt.configs.model_config
+  PASS  sglang.srt.hardware_backend.mlx.kv_cache.attention_contract
+  PASS  sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper (+1 symbol checks)
+  PASS  sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state (+3 symbol checks)
+  PASS  sglang.srt.hardware_backend.mlx.model_runner (+2 symbol checks)
+  PASS  sglang.srt.hardware_backend.mlx.tp_worker
+  PASS  sglang.srt.managers.mm_utils
+  PASS  sglang.srt.managers.overlap_utils (+1 symbol checks)
+  PASS  sglang.srt.managers.schedule_batch (+1 symbol checks)
+  PASS  sglang.srt.model_executor.model_runner
+  PASS  sglang.srt.multimodal.processors.pixtral
+  PASS  sglang.srt.server_args (+1 symbol checks)
+  PASS  sglang.srt.utils.hf_transformers.mistral_utils
+  PASS  sglang.srt.utils.hf_transformers.processor (+1 symbol checks)
+  PASS  sglang.srt.utils.hf_transformers.tokenizer (+1 symbol checks)
+== PASS: 17/17 modules ==

@@ -1,0 +1,5 @@
+== 3-gate patch test: 6 patches from /Users/letsrtfm/AI/m4-sglang-inference/patches vs v0.5.15.post1 ==
+gate (a): 6/6 apply clean on pristine v0.5.15.post1
+gate (b): live tree byte-identical to pristine+patches
+gate (c): 6/6 correctly fail on the patched tree
+== ALL GATES PASS ==

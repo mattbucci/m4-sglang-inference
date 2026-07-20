@@ -1,0 +1,11 @@
+== 3-gate patch test: 6 patches from /Users/letsrtfm/AI/m4-sglang-inference/patches vs wrongbase ==
+  GATE-A FAIL (does not apply on pristine): 002-mps-backend-defaults.patch
+  GATE-A FAIL (does not apply on pristine): 003-mlx-skip-quantization-check.patch
+  GATE-A FAIL (does not apply on pristine): 005-mlx-attn-wrapper-varargs.patch
+  GATE-A FAIL (does not apply on pristine): 007-mlx-multimodal-and-mps-shim.patch
+  GATE-A FAIL (does not apply on pristine): 008-mlx-vlm-hybrid-integration.patch
+  GATE-A FAIL (does not apply on pristine): 014-mlx-hf-processor-fixes.patch
+gate (a): 0/6 apply clean on pristine wrongbase
+gate (b): live tree byte-identical to pristine+patches
+gate (c): 6/6 correctly fail on the patched tree
+== GATE FAILURES (see above) ==

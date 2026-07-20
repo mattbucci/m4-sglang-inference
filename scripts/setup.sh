@@ -17,11 +17,16 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-SGLANG_REPO="https://github.com/sgl-project/sglang.git"
+# Env-overridable so gate negative-tests and bisect arms can target scratch
+# clones/local sources without editing the pin. Defaults are the live stack.
+SGLANG_REPO="${SGLANG_REPO:-https://github.com/sgl-project/sglang.git}"
 SGLANG_BRANCH="main"
-# Pin to a specific commit to ensure patches apply cleanly.
-# Update this hash when rebasing patches onto a newer upstream.
-SGLANG_COMMIT="v0.5.15.post1"  # 2026-07-19: rebased onto v0.5.15.post1. Upstream MLX backend now natively covers hybrid (DeltaNet/Mamba) radix cache, attention duck-typing, and gated-attn batched decode — patches 006/009/011/012 dropped as upstreamed.
+# Pin to a specific tag to ensure patches apply cleanly.
+# Update when rebasing patches onto a newer upstream (upstream MLX covers
+# hybrid radix cache, attention duck-typing, and gated-attn batched decode
+# natively at this pin — see patches/README.md for the current stack).
+SGLANG_COMMIT="${SGLANG_COMMIT:-v0.5.15.post1}"
+PATCH_DIR="${PATCH_DIR:-$REPO_DIR/patches}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -70,13 +75,14 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone --depth 1 --branch "$SGLANG_COMMIT" "$SGLANG_REPO" "$SGLANG_DIR"
     cd "$SGLANG_DIR"
 
-    # Apply per-feature patches against v0.5.15.post1 in numeric order.
-    # See patches/README.md for what each patch covers and which v0.5.12-era
-    # patches were dropped as upstreamed in the v0.5.15.post1 rebase.
+    # Apply per-feature patches in numeric order — see patches/README.md.
+    # FATAL-abort on any failure: a silently skipped patch serves plausible
+    # output with a whole modality missing (the patch-013 fabrication class).
+    # Strict git apply only — no fuzzy fallback.
     cd "$SGLANG_DIR"
     shopt -s nullglob 2>/dev/null || true
-    applied=0; failed=0
-    for p in "$REPO_DIR"/patches/0[01][0-9]-*.patch; do
+    applied=0; failed_patches=""
+    for p in "$PATCH_DIR"/0[01][0-9]-*.patch; do
         name=$(basename "$p")
         if git apply --check "$p" 2>/dev/null; then
             git apply "$p"
@@ -84,17 +90,24 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
             applied=$((applied + 1))
         else
             echo "  ✗ $name (failed git apply --check)"
-            failed=$((failed + 1))
+            failed_patches="$failed_patches $name"
         fi
     done
-    echo "  patches: $applied applied, $failed failed"
-    if [ "$failed" -gt 0 ]; then
-        echo "  WARNING: $failed patch(es) did not apply cleanly"
+    echo "  patches: $applied applied"
+    if [ -n "$failed_patches" ]; then
+        echo "  FATAL: patch(es) FAILED:$failed_patches"
+        echo "  The tree at $SGLANG_DIR is now partially patched — fix the"
+        echo "  chain (or rm the tree to re-clone) before serving anything."
+        exit 1
     fi
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"
-    echo "  Updating to latest main..."
-    cd "$SGLANG_DIR" && git pull --ff-only 2>/dev/null || echo "  (pull skipped — shallow clone)"
+    echo "  Running patch gates against the existing tree..."
+    SGLANG_DIR="$SGLANG_DIR" SGLANG_TAG="$SGLANG_COMMIT" PATCH_DIR="$PATCH_DIR" \
+        bash "$REPO_DIR/scripts/test_patch_gates.sh" || {
+        echo "  FATAL: existing tree fails the patch gates (see above)."
+        exit 1
+    }
 fi
 
 # -------------------------------------------------------------------
@@ -190,6 +203,17 @@ print(f'SGLANG_USE_MLX: {os.environ.get(\"SGLANG_USE_MLX\")}')
 print()
 print('All components verified!')
 "
+
+# Full patch-chain gate: pristine replay + byte identity + double-apply
+# rejection, then the eager-import smoke over every patch-touched module.
+# Every setup.sh run ends with these — a pass here means the tree serving
+# tonight is exactly pin + patches and its boot chain imports.
+echo ""
+echo "Running patch gates + import smoke..."
+SGLANG_DIR="$SGLANG_DIR" SGLANG_TAG="$SGLANG_COMMIT" PATCH_DIR="$PATCH_DIR" \
+    bash "$REPO_DIR/scripts/test_patch_gates.sh" || exit 1
+SGLANG_USE_MLX=1 PATCH_DIR="$PATCH_DIR" \
+    python3 "$REPO_DIR/scripts/eval/import_smoke.py" || exit 1
 
 echo ""
 echo "=============================================="

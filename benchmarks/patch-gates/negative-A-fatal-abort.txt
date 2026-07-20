@@ -1,0 +1,48 @@
+==============================================
+M4 Pro Inference — MLX Backend Setup
+==============================================
+SGLang:  main (includes MLX backend)
+Backend: MLX (native Apple Silicon)
+Venv:    /Users/letsrtfm/AI/m4-sglang-inference/.venv
+==============================================
+Chip:   Apple M4 Pro
+Memory: 64 GB unified
+OS:     macOS 26.2
+
+Python:  3.12 (python3)
+
+[1/3] Cloning SGLang at pinned commit v0.5.15.post1...
+Cloning into '/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/37761402-9866-49a2-8d29-1f0b6ce1834d/scratchpad/negA-sgl'...
+warning: --depth is ignored in local clones; use file:// instead.
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+Note: switching to '0b3bb0cbe31873994c9f989fddfe2f87ca839fdd'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+  ✗ 003-corrupted.patch (failed git apply --check)
+  patches: 0 applied
+  FATAL: patch(es) FAILED: 003-corrupted.patch
+  The tree at /private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/37761402-9866-49a2-8d29-1f0b6ce1834d/scratchpad/negA-sgl is now partially patched — fix the
+  chain (or rm the tree to re-clone) before serving anything.
