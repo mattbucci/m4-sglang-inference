@@ -21,8 +21,8 @@ probe sweep need exclusive serving windows; the repo-only items don't.
 |---|---|---|
 | M4-D | 3090-B | Executable Docker-scoring callout in the 3090 README (corrected score_docker.py command, runtime bound, result-return path). Shared drop-dir: `evals/swebench/m4-imports/qwen36-m4/` (3090-B's name wins as the executor). |
 | 3090-B | M4-D | `scores-docker-summary.json` (first full-26 official resolve rate) committed back to this repo (`exports/qwen36-docker-summary.json` + README headline update), replacing the 5/13-local-subset cell. |
-| beyond-128k | 3090 / R9700 | The buffer-cache-cap finding (unbounded MLX cache retained ~0.6 MB/token across chunked prefill; not a lib regression) is MLX-specific but the method — cap the allocator cache before bisecting libs — is worth a sister-README note. |
-| agentic-endurance-and-extend-tax | 3090 / R9700 | Turn-tax comparison note (R97-J asked all three rigs: append-1/append-64 TTFT vs decode ms/token at matched cached-prefix depths), delivered together with the queued buffer-cache-cap note above. |
+| beyond-128k | 3090 / R9700 | Buffer-cache-cap method note — delivered in the sister READMEs' cross-team notes (grep `M4→R9700 (2026-07-20)` / `M4→3090 (2026-07-20)`). |
+| agentic-endurance-and-extend-tax | 3090 / R9700 | Turn-tax comparison — delivered in the same cross-team notes (85x does not reproduce on MLX: 2.6x@8K, 5.4x@32K). |
 
 ## Fleet sync points involving this rig
 
