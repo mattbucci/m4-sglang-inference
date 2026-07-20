@@ -8,7 +8,7 @@ authoritative.
 |:-:|---|---|---|---|
 | 1 | disk-triage | (no spec — ~1h task) | **ready, do first** | 12 GiB free of 926 GiB; HF cache holds 362 GB. Inventory `~/.cache/huggingface/hub` per-repo sizes + last access, propose deletions to Matt (gemma4 variants and superseded dupes are candidates). Gates M4-E and comfortable bisect arms. |
 | 2 | M4-C | [Pin `--random-range-ratio 1` + flag legacy depth rows](01-pin-random-range-ratio-flag-legacy-rows.md) | ready | Repo edits + on-box smoke; prerequisite for honest bench rows everywhere. |
-| 2 (parallel) | M4-D | [Docker-scoring ask as 3090-README callout](02-docker-scoring-ask-callout.md) | ready | Repo-only; unblocks the official full-26 SWE-bench cell on the 3090 side. |
+| 2 (parallel) | M4-D | [Docker-scoring ask as 3090-README callout](02-docker-scoring-ask-callout.md) | **done (2026-07-19)** — superseded: the 3090 scored the export directly (9/26 = 34.6% official, 0 errors, no local-vs-Docker flips; `exports/qwen36-docker-summary.json`) | Repo-only; unblocks the official full-26 SWE-bench cell on the 3090 side. |
 | 3 | M4-F | [Patch replay gates + probe gate in setup.sh](03-patch-replay-gates-setup.md) | ready | Scripts the pristine-replay/byte-identity/double-apply gates; provides the per-arm gate tooling M4-A reuses. |
 | 4 | radix-ab | (no spec — ~2h task) | ready | Decode-TPOT A/B on qwen36 at MR=1: radix-on (normal event loop) vs `--disable-radix-cache` (overlap loop). Keeps hybrid preset defaults data-driven. |
 | 5 | M4-A | [Long-context: measure, then bisect if the regression persists](04-longctx-bisect-pre-rebase.md) | ready | Phase 0 measures the current stack's 32K growth rate — if clean, the item closes without arms. |
