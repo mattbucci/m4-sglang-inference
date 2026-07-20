@@ -9,7 +9,6 @@ Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) usin
 Full specs and statuses live in [experiments/README.md](experiments/README.md); one-line summary, in execution order:
 
 - [ ] **Disk triage** — 12 GiB free of 926 GiB; the HF cache holds 362 GB. Inventory, propose deletions to Matt. Gates the in-house quant and bisect arms. *(~1h)*
-- [ ] **Radix/overlap decode A/B** — quantify the overlap-schedule cost of radix-on-hybrid at MR=1; keep preset defaults on data. New input: radix-on serving OOMs the genuine-32K prefill on full-attention MoEs while a fresh radix-off server completes it (receipts in `benchmarks/coder-30b-4bit/results.json`) — the A/B should also profile cross-request memory retention. *(~2h)*
 - [ ] **Beyond 128K** — survive the contiguous-attention cache's 131K doubling boundary (incremental growth or pool-backed prefill writes), and attack decode TPOT at depth. Related envelope receipts: radix-off concurrent prefill (conc-8, 32×256/256) and dense-devstral genuine-32K both trip the oom_guard. *(the long-context growth regression itself is resolved — patch 008 cache cap; receipts in `benchmarks/longctx-bisect/`)*
 - [ ] **Real sampling** — wire temp/top-p/top-k/min-p into the MLX backend via `mlx_lm make_sampler`; unblocks thinking-mode evals. Spec: [experiments/05](experiments/05-mlx-sampling.md). *(days)*
 - [ ] **Tool-call boot gate** — port the 3090's `check_tool_call` into `validate_capabilities.py`. Spec: [experiments/06](experiments/06-check-tool-call-gate.md). *(hours)*

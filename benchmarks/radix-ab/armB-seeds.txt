@@ -1,0 +1,40 @@
+--- seed 101 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          11034.52  
+Mean TPOT (ms):                          13.72     
+--- seed 102 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10814.80  
+Mean TPOT (ms):                          13.48     
+--- seed 103 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10735.00  
+Mean TPOT (ms):                          13.98     
+--- seed 104 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          13024.30  
+Mean TPOT (ms):                          14.58     
+--- seed 105 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10900.33  
+Mean TPOT (ms):                          13.12     
+--- seed 106 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10752.09  
+Mean TPOT (ms):                          13.81     
+--- seed 107 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10744.25  
+Mean TPOT (ms):                          13.95     
+--- seed 108 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10622.25  
+Mean TPOT (ms):                          13.53     
+--- seed 109 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10625.17  
+Mean TPOT (ms):                          13.61     
+--- seed 110 ---
+Successful requests:                     1         
+Mean TTFT (ms):                          10694.43  
+Mean TPOT (ms):                          14.00     

@@ -95,10 +95,14 @@ produces token-for-token identical output to a cold run, and branched suffixes
 | devstral | STRONG | STRONG | PARTIAL | — |
 | nemotron-30b | STRONG | — | — | VERIFIED |
 
-**Trade-off:** radix-on-hybrid forces `disable_overlap_schedule` (upstream
-`no_buffer` constraint), i.e. the normal event loop. For agentic multi-turn
-workloads the prefix-cache win (whole prefills skipped) dominates the overlap
-loss; revisit if a decode-bound workload regresses.
+**Trade-off (measured, `benchmarks/radix-ab/VERDICT.md`):** radix-on-hybrid
+forces `disable_overlap_schedule` (upstream `no_buffer` constraint), i.e. the
+normal event loop — a 15–21% MR=1 decode cost on qwen36 (48.6 vs 57.3 tok/s
+at 32K). The prefix-cache win dominates for the agentic workload: a full
+prefix hit answers in 204 ms vs an 11.2 s cold 8K prefill (55×). Use
+`--disable-radix-cache` for single-shot deep-prefill work — faster decode and
+a ~4.5 GB safer memory envelope (radix-on retains ~0.4 GB/request outside the
+static pool).
 
 ## Known gaps
 
