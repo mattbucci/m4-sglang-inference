@@ -1,9 +1,9 @@
 # Patches — SGLang v0.5.15.post1 on Apple Silicon
 
-Seven patches on top of the `v0.5.15.post1` pin (commit `0b3bb0c`), applied in
+Eight patches on top of the `v0.5.15.post1` pin (commit `0b3bb0c`), applied in
 numeric order by `scripts/setup.sh`. Numbering is sparse; retired numbers are
-not reused. 002–015 minus 008 form the text stack; 008 adds the VLM / hybrid
-(DeltaNet/Mamba2) path; 015 removes the deep-prefill growth ladder.
+not reused. 002–016 minus 008 form the text stack; 008 adds the VLM / hybrid
+(DeltaNet/Mamba2) path; 015 removes the deep-prefill growth ladder; 016 adds real sampling.
 
 ## Applied patches
 
@@ -16,6 +16,7 @@ not reused. 002–015 minus 008 form the text stack; 008 adds the VLM / hybrid
 | 008 | mlx-vlm-hybrid-integration | `mlx/model_runner.py`, `mlx/tp_worker.py`, `kv_cache/attention_contract.py`, `kv_cache/auxiliary_state.py`, `model_executor/model_runner.py`, `arg_groups/overrides.py`, `managers/overlap_utils.py`, `utils/hf_transformers/tokenizer.py` | The VLM / hybrid path — see the section below. `mlx_vlm` loading, attention detection for `rotary_emb`/rope-less archs, the scheduler's mamba-allocator contract on the MLX aux pool, radix cache for hybrid models (`no_buffer` strategy), vision (`pixel_values`) plumbing, NemotronH support, and the **MLX buffer-cache cap** (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token of shape-shifting transient buffers and long prefills jetsam around 30K; capped, 128K completes — `benchmarks/longctx-bisect/ATTRIBUTION.md`). |
 | 014 | mlx-hf-processor-fixes | `utils/hf_transformers/processor.py`, `utils/hf_transformers/mistral_utils.py` | (a) Gemma 4 image-only processor when the checkpoint ships only `processor_config.json`. (b) Replace a `MistralCommonBackend` processor tokenizer when the checkpoint explicitly declares `tokenizer_class=TokenizersBackend` — mistral-common ignores jinja chat templates and 400s on image chat messages; mlx-community Devstral ships a full HF `tokenizer.json`. Pairs with 008's same rule in `get_tokenizer`. (c) `wrap_as_pixtral` covers `model_type=mistral3` (transformers 5.12 AutoProcessor returns a bare tokenizer for Devstral — no image processor at all) and reads `spatial_merge_size` from the top-level config where Mistral3 keeps it (missing it halves the patch grid: placeholder count ≠ merged feature count → silent single-feature merge → hallucinated image answers). |
 | 015 | mlx-presize-attention-cache | `mlx/model_runner.py`, `kv_cache/attention_kv_cache.py` | `ContiguousAttentionKVCache.reserve()` + per-request pre-sizing in `_acquire_cache`/`prefill_start` (target: `origin_input_ids` + `max_new_tokens`; continuation chunks reuse the cache via `_req_caches`, so first acquisition covers the whole chunked prefill; `_release_cache` trims back to default so the reuse pool never hoards deep-request buffers). Replaces the doubling ladder for known-length requests: the ladder both spikes at each grow (old+new+copy per attention layer) and overshoots to the next power of two — at 160K it holds 262,144-token bf16 buffers and dies at ~156K, while exact pre-size (163,872) completes 157,287 server-verified tokens (A/B receipts: `benchmarks/longctx-bisect/{ladder,presize}-160k-chunked2048*`). Also halves the cache at 32K-class depths (exact size vs next-power-of-two). |
+| 016 | mlx-sampling | `mlx/model_runner.py` | Real per-request sampling via `mlx_lm.make_sampler`: a per-rid `(temperature, top_p, top_k, min_p)` registry filled from `req.sampling_params` in `prefill_start`, `_select_tokens` replacing all 7 `mx.argmax` sites (prefill x3 / extend / batched decode x2 / serial native-cache decode). The sampler consumes LOG-PROBABILITIES — logits are logsumexp-normalized on the sampled path only; an all-greedy batch keeps the exact argmax graph (bit-stable greedy). SGLang encodes greedy as top_k==1, so a genuine top_k=1 + temperature>0 request aliases to greedy (by design); TOP_K_ALL (1<<30) maps to make_sampler top_k=0. Heterogeneous batches sample per-row and concatenate; `mx.random.seed(server random_seed)` at runner init (per-request sampling_seed is a non-goal — single global MLX stream). Unit sanity: `scripts/test/test_sampling_select.py`. |
 
 ## VLM / hybrid path (patch 008)
 
@@ -116,5 +117,5 @@ static pool).
 
 ```bash
 cd components/sglang && git checkout v0.5.15.post1
-for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done   # 7 patches, all clean
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done   # 8 patches, all clean
 ```

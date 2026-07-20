@@ -1,0 +1,211 @@
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -27,6 +27,11 @@
+ from mlx_lm import load as mlx_lm_load
+ from mlx_lm.utils import quantize_model as mlx_lm_quantize_model
+ 
++try:
++    from mlx_lm.sample_utils import make_sampler as _mlx_make_sampler
++except ImportError:  # mlx-lm is unpinned in the sglang extras
++    _mlx_make_sampler = None
++
+ from sglang.srt.environ import envs
+ from sglang.srt.hardware_backend.mlx.aot import (
+     MLX_AOT_KERNEL_REGISTRY,
+@@ -241,6 +246,18 @@
+ 
+         self._req_caches: dict[str, list[Any]] = {}
+         self._req_token_ids: dict[str, list[int]] = {}
++        # Per-request sampling: rid -> (temperature, top_p, top_k, min_p).
++        # Absent means greedy — SGLang normalizes temperature<eps to top_k=1,
++        # and top_k==1 requests are never registered, so the greedy path stays
++        # the exact argmax graph. Sampler closures are cached per spec.
++        self._req_sampling: dict[str, tuple[float, float, int, float]] = {}
++        self._sampler_cache: dict[tuple[float, float, int, float], Any] = {}
++        try:
++            _seed = get_global_server_args().random_seed
++        except Exception:  # unit contexts construct the runner without globals
++            _seed = None
++        if _seed is not None:
++            mx.random.seed(_seed)
+         self._cache_pool: list[list[Any]] = []  # reusable full-attention caches
+ 
+         self._attention_kv_pool: MlxAttentionKVPool | None = None
+@@ -338,6 +355,69 @@
+     def _first_attention_cache(self, cache: list[Any]) -> Any:
+         return cache[self._cache_layout.first_attention_layer_index]
+ 
++    def register_sampling(self, req_id: str, sampling_params: Any) -> None:
++        """Record a request's sampling spec; absent/top_k==1 stays greedy.
++
++        A genuine top_k=1 request with temperature>0 is indistinguishable
++        from SGLang's greedy encoding and is served greedy (documented
++        aliasing, patches/README.md).
++        """
++        if sampling_params is None:
++            return
++        spec = (
++            float(sampling_params.temperature),
++            float(sampling_params.top_p),
++            int(sampling_params.top_k),
++            float(sampling_params.min_p),
++        )
++        if spec[2] == 1:
++            return
++        if _mlx_make_sampler is None:
++            logger.warning(
++                "mlx_lm.sample_utils.make_sampler unavailable — request %s "
++                "with sampling params served greedy",
++                req_id,
++            )
++            return
++        self._req_sampling[req_id] = spec
++
++    def _sampler_for(self, spec: tuple[float, float, int, float]):
++        sampler = self._sampler_cache.get(spec)
++        if sampler is None:
++            temperature, top_p, top_k, min_p = spec
++            sampler = _mlx_make_sampler(
++                temp=temperature,
++                top_p=top_p,
++                min_p=min_p,
++                # SGLang encodes "no top-k" as TOP_K_ALL (1<<30); make_sampler
++                # disables top-k at 0.
++                top_k=0 if top_k >= (1 << 30) else top_k,
++            )
++            self._sampler_cache[spec] = sampler
++        return sampler
++
++    def _select_tokens(self, last_logits: mx.array, req_ids: list[str]) -> mx.array:
++        """Per-request token selection over (B, vocab) last-position logits.
++
++        The sampler consumes LOG-PROBABILITIES — ``apply_top_p``
++        exponentiates and cumsums, so raw logits would give wrong nuclei —
++        hence the logsumexp normalization on the sampled path. The all-greedy
++        path is today's exact ``mx.argmax`` graph, untouched.
++        """
++        specs = [self._req_sampling.get(rid) for rid in req_ids]
++        if all(s is None for s in specs):
++            return mx.argmax(last_logits, axis=-1)
++        logprobs = last_logits - mx.logsumexp(last_logits, axis=-1, keepdims=True)
++        if len(set(specs)) == 1:
++            return self._sampler_for(specs[0])(logprobs)
++        rows = []
++        for i, s in enumerate(specs):
++            if s is None:
++                rows.append(mx.argmax(last_logits[i : i + 1], axis=-1))
++            else:
++                rows.append(self._sampler_for(s)(logprobs[i : i + 1]))
++        return mx.concatenate(rows, axis=0)
++
+     def _get_auxiliary_state_pool_index(self, req_pool_idx: int) -> Any | None:
+         if (
+             not self._cache_layout.has_auxiliary_state
+@@ -999,6 +1079,7 @@
+             req.mamba_last_track_seqlen = None
+             max_new = req.sampling_params.max_new_tokens or 0
+             required_len = len(req.origin_input_ids) + max_new + 8
++            self.register_sampling(req_id, req.sampling_params)
+ 
+         _model_kwargs: dict = {}
+         if pixel_values is not None:
+@@ -1013,7 +1094,7 @@
+             input_ids = mx.array([new_token_ids], dtype=mx.int32)
+             model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+             logits = self._extract_logits(model_output)
+-            lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
++            lazy_token = self._select_tokens(logits[:, -1, :], [req_id])
+             return MlxPendingPrefill(
+                 lazy_token=lazy_token,
+                 cache=cache,
+@@ -1056,7 +1137,7 @@
+                 input_ids = mx.array([full_token_ids or new_token_ids], dtype=mx.int32)
+                 model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+                 logits = self._extract_logits(model_output)
+-                lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
++                lazy_token = self._select_tokens(logits[:, -1, :], [req_id])
+                 if new_slot_ids:
+                     self._sync_new_kv_to_pool(cache, prefix_len, new_slot_ids)
+                 return MlxPendingPrefill(
+@@ -1104,7 +1185,7 @@
+             self._store_tracked_auxiliary_state(req, cache, track_len)
+ 
+         last_logits = logits[:, -1, :]
+-        lazy_token = mx.argmax(last_logits, axis=-1)
++        lazy_token = self._select_tokens(last_logits, [req_id])
+ 
+         # Convert pool-backed attention KV to contiguous attention KV for decode.
+         # This appends a lazy slice-assign onto the forward graph; the
+@@ -1157,7 +1238,7 @@
+         input_ids = mx.array([new_token_ids], dtype=mx.int32)
+         model_output = self.model(input_ids, cache=cache)
+         logits = self._extract_logits(model_output)
+-        lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
++        lazy_token = self._select_tokens(logits[:, -1, :], [req_id])
+ 
+         if not self.disable_radix_cache and new_slot_ids:
+             synced = self._req_synced_offset[req_id]
+@@ -1261,7 +1342,7 @@
+ 
+         hidden_states = self._model_norm(hidden_states)
+         logits = self._extract_logits(self._model_lm_head(hidden_states))
+-        return mx.argmax(logits[:, -1, :], axis=-1)
++        return self._select_tokens(logits[:, -1, :], req_ids)
+ 
+     def _decode_auxiliary_layer(
+         self,
+@@ -1396,12 +1477,13 @@
+         self,
+         caches: list[list[Any]],
+         input_ids_by_request: list[mx.array],
++        req_ids: list[str],
+     ) -> mx.array:
+         lazy_token_list = []
+-        for input_ids, cache in zip(input_ids_by_request, caches):
++        for input_ids, cache, rid in zip(input_ids_by_request, caches, req_ids):
+             model_output = self.model(input_ids, cache=cache)
+             logits = self._extract_logits(model_output)
+-            lazy_token_list.append(mx.argmax(logits[:, -1, :], axis=-1))
++            lazy_token_list.append(self._select_tokens(logits[:, -1, :], [rid]))
+         return (
+             lazy_token_list[0]
+             if len(lazy_token_list) == 1
+@@ -1425,7 +1507,7 @@
+             ]
+             model_output = self.model(batched_input, cache=shim_cache)
+             logits = self._extract_logits(model_output)
+-            return mx.argmax(logits[:, -1, :], axis=-1)
++            return self._select_tokens(logits[:, -1, :], req_ids)
+         finally:
+             clear_context()
+ 
+@@ -1464,7 +1546,9 @@
+             # (NemotronH) attention — the batched wrapper's inner.rope path does
+             # not apply. Delegates to the model's own forward (correct RoPE).
+             lazy_tokens = self._decode_with_native_cache(
+-                caches, [batched_input[i : i + 1] for i in range(len(req_ids))]
++                caches,
++                [batched_input[i : i + 1] for i in range(len(req_ids))],
++                list(req_ids),
+             )
+         elif self._cache_layout.has_auxiliary_state:
+             lazy_tokens = self._decode_with_hybrid_batching(
+@@ -1513,7 +1597,9 @@
+         batched_input = prev.lazy_tokens[:, None]
+         if not self._attention_wrapper_batchable:
+             lazy_tokens = self._decode_with_native_cache(
+-                caches, [batched_input[i : i + 1] for i in range(len(prev.req_ids))]
++                caches,
++                [batched_input[i : i + 1] for i in range(len(prev.req_ids))],
++                list(prev.req_ids),
+             )
+         elif self._cache_layout.has_auxiliary_state:
+             lazy_tokens = self._decode_with_hybrid_batching(
+@@ -1567,6 +1653,7 @@
+             self._sync_decode_kv_to_pool(req_id)
+ 
+         self._req_token_ids.pop(req_id, None)
++        self._req_sampling.pop(req_id, None)
+         cache = self._req_caches.pop(req_id, None)
+         if cache is not None:
+             self._release_cache(cache)

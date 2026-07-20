@@ -15,14 +15,14 @@ arithmetic problem and inspects:
   - reasoning_content / content separation confirms the parser sees the
     channel boundary
 
-M4 note: MLX backend uses greedy decode (no temperature/top-p support).
-We zero temperature/top_p/top_k from the 3090 defaults so the request
-doesn't trip the un-implemented sampler path.
-
 Usage:
   python scripts/eval/probe_thinking.py [--port PORT] [--model MODEL]
+                                        [--temperature T] [--top-p P]
 
-Defaults: port 23334, model "default".
+Defaults: port 23334, model "default", temperature 0 (greedy). Pass
+--temperature/--top-p to probe under real sampling (patch 016), or
+--temperature -1 to OMIT the sampling fields so --sampling-defaults model
+applies the checkpoint's generation_config.
 """
 import argparse
 import json
@@ -52,16 +52,24 @@ def main() -> int:
             "max_tokens >= 2000."
         ),
     )
+    p.add_argument("--temperature", type=float, default=0.0,
+                   help="Sampling temperature; 0 = greedy; -1 = omit the "
+                        "field so --sampling-defaults model applies")
+    p.add_argument("--top-p", type=float, default=None,
+                   help="Nucleus top-p (only sent when set)")
     args = p.parse_args()
 
     payload = {
         "model": args.model,
         "messages": [{"role": "user", "content": PROMPT}],
         "max_tokens": args.max_tokens,
-        "temperature": 0,
         "skip_special_tokens": False,
         "chat_template_kwargs": {"enable_thinking": True},
     }
+    if args.temperature >= 0:
+        payload["temperature"] = args.temperature
+    if args.top_p is not None:
+        payload["top_p"] = args.top_p
 
     req = Request(
         f"http://localhost:{args.port}/v1/chat/completions",

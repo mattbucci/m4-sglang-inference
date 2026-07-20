@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.15.post1 + 7 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.15.post1 + 8 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass
@@ -20,11 +20,11 @@ upstream sliding-window gap.
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (7 patches on top of SGLang v0.5.15.post1) |
+| [patches/README.md](patches/README.md) | Per-patch notes (8 patches on top of SGLang v0.5.15.post1) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 7 patches
+scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 8 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
