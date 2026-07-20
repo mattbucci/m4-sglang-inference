@@ -1,0 +1,12 @@
+{
+  "identical": [
+    true,
+    true,
+    true
+  ],
+  "post": [
+    "2, 3, 5, 7, 11, 13, 17, 19",
+    "```python\nreversed_string = original_string[::-1]\n```",
+    "Canberra"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "run1": [
+    "Sure! Here are three planets:\n\n1. **Earth**  \n2. **Mars**  \n3. **Jupiter**",
+    "1. Nile  \n2. Amazon  \n3. Yangtze",
+    "1. Red  \n2. Blue  \n3. Green",
+    "1. Dog  \n2. Elephant  \n3. Penguin"
+  ],
+  "run2": [
+    "Sure! Here are three planets:\n\n1. **Earth**  \n2. **Mars**  \n3. **Jupiter**",
+    "1. Nile  \n2. Amazon  \n3. Yangtze",
+    "Blue, green, and red.",
+    "Sure! Here are three animals:\n\n1. Elephant  \n2. Dog  \n3. Butterfly"
+  ],
+  "greedy_reproducible": true,
+  "sampled_vary": true
+}

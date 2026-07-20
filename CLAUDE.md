@@ -71,10 +71,13 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 ## Critical Rules
 - **SGLang + MLX only** — all models must run on SGLang with `SGLANG_USE_MLX=1`
 - **No tensor parallelism** — MLX runs on a single unified memory device
-- **Greedy sampling only** — MLX backend uses argmax; temperature/top-p not yet supported
-  - This is a *correctness* concern: 3090 team confirmed Qwen3.6 (and likely Qwen3 family)
-    enters a `"</think>\nParis\n</think>…"` repetition loop at temperature=0. Validate
-    every Qwen-family model with `validate_capabilities.py` before publishing numbers.
+- **Real sampling supported** (patch 016) — per-request temperature/top-p/
+  top-k/min-p via `mlx_lm.make_sampler`; greedy (the default) stays
+  bit-stable argmax, `--sampling-defaults model` applies checkpoint
+  generation configs. Validate every Qwen-family model with
+  `validate_capabilities.py` before publishing numbers — the 3090 confirmed
+  Qwen3.x can enter `</think>` repetition loops at temperature=0, so
+  thinking workloads should use model-recommended sampling.
 - **MLX-format models required** — AWQ/GPTQ models from other platforms won't work; use `mlx_lm.convert` or download from `mlx-community/` on HuggingFace
 - **Always use full-size models for evals + benchmarks** — never substitute a smaller
   variant (e.g. Qwen3.5-9B) "because it loads faster" when the README and quality
