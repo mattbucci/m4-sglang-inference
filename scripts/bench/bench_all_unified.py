@@ -65,8 +65,18 @@ def run_bench_serving(base_url, model, input_len, output_len, num_prompts,
     ttft = extract(r"Mean TTFT[^:]*:\s*([\d.]+)")
     throughput = extract(r"Output token throughput[^:]*:\s*([\d.]+)")
     total_input = extract(r"Total input tokens:\s*(\d+)")
+    completed = extract(r"Successful requests:\s*(\d+)")
 
     if tpot is None and throughput is None:
+        return None
+    # A killed/dying server can still yield a metrics block over partial
+    # streams (and "Total input tokens" counts what was SENT, not served) —
+    # only a fully successful batch is a valid point. An instant per-request
+    # rejection (e.g. input > pool capacity) also counts as "successful" with
+    # zero output, so require actual generation too.
+    if completed is None or int(completed) < num_prompts:
+        return None
+    if not throughput or throughput <= 0:
         return None
     return {"tpot_ms": tpot, "ttft_ms": ttft, "throughput": throughput,
             "actual_input_tokens": int(total_input) if total_input else None}
