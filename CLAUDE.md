@@ -104,28 +104,27 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   complete at 2048 (`benchmarks/longctx-bisect/ATTRIBUTION.md`). Chunk size
   does NOT change steady per-token growth (that was the buffer-cache story,
   fixed by the patch-008 cap) — it changes the transient peak.
-- **Long-context: 160K validated** for qwen36 (35B-MoE-4bit) with
-  `CTX=175000 MEM_FRAC=0.5 CHUNKED=2048 EXTRA_ARGS="--disable-radix-cache"
-  launch.sh qwen36 --kv-cache turboquant` — in=157,287 prefills in ~10 min,
-  decode 0.1 tok/s (receipts: `benchmarks/longctx-bisect/`). Three stacked
-  fixes hold the ceiling: patch 008 caps the MLX buffer cache
-  (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 — uncapped, chunked prefill
-  retained ~0.6 MB/token and died ~30K), `CHUNKED=2048` keeps the per-chunk
-  transient floor survivable, and patch 015 pre-sizes the per-request
-  attention cache (the doubling ladder's 262,144-token overshoot killed a
-  160K run at ~156K that exact pre-sizing completes). **192K dies at ~180K
-  prefilled** — steady budget exhaustion (bf16 contiguous cache + pool), no
-  single spike; that and decode TPOT at depth (13-19 s/token at 128-160K)
-  are the open constraints — quantizing the per-request cache attacks both
-  (see [experiments/](experiments/README.md)). Bench tooling needs a long
-  urllib timeout for deep runs.
+- **Long-context: 256K validated** for qwen36 (35B-MoE-4bit) with
+  `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache"
+  launch.sh qwen36 --kv-cache turboquant` — in=251,659 prefills in ~23 min
+  (receipts: `benchmarks/longctx-bisect/`). Four stacked pieces hold the
+  ceiling: patch 008 caps the MLX buffer cache (`SGLANG_MLX_CACHE_LIMIT_GB`,
+  default 4 — uncapped, chunked prefill retained ~0.6 MB/token and died
+  ~30K), patch 015 pre-sizes the per-request attention cache (kills the
+  doubling ladder), the pool is sized to EXACTLY the request (`CTX =
+  label + 64` — overallocating the pool to CTX=210K for a 192K label cost
+  ~2-3 GB and the run), and `CHUNKED=1024` (sub-2048 chunks cost nothing at
+  depth and buy ~4.3 GB transient margin). The open deep-context constraint
+  is decode TPOT at depth — the receipts' whole-request "TPOT" is ~95%
+  prefill amortization; the true decode curve is the decode-tpot-truth
+  queue item. Bench tooling needs a long urllib timeout for deep runs.
 
 ## Optimization Target
 - **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
   Measure at long context first — that is the workload Apple Silicon is uniquely good at.
-  - Current: **160K validated**; 192K exhausts the memory budget at ~180K
-    prefilled (bf16 per-request cache + pool), and decode TPOT at depth is
-    the other open constraint (see "Long-context" above).
+  - Current: **256K validated** (primary capacity target reached); the
+    open constraint is decode TPOT at depth (see "Long-context" above and
+    the decode-tpot-truth queue item).
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
   batch benchmarks.
 - **Tertiary (currently the most productive workload):** single-user agentic

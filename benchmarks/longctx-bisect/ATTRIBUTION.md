@@ -32,6 +32,12 @@ one-line runtime policy in the MLX backend.
 | ladder-160k-chunked2048 | 0.32.0 | 4 GB | CTX 175K, mf 0.5, chunked 2048, doubling ladder | survives the 131K grow | guard-killed at ~156K — post-doubling the ladder holds 262,144-token bf16 buffers per attention layer (the power-of-two overshoot) and the budget runs out |
 | presize-160k-chunked2048 | 0.32.0 | 4 GB | CTX 175K, mf 0.5, chunked 2048, patch-015 pre-size | worst WARN ~10.3 GB | **160K completes** (in=157,287; prefill 606.9s; decode 0.1 tok/s) — exact-size buffers (163,872), no spike, no overshoot |
 | presize-192k-chunked2048 | 0.32.0 | 4 GB | CTX 210K, mf 0.5, chunked 2048, patch-015 pre-size | — | guard-killed at ~180K — the bf16 contiguous cache (196,640-token buffers) + 210K pool exceed the budget; no single spike, steady exhaustion |
+| ledger-arm1-exactctx | 0.32.0 | 4 GB | **CTX 196608 (exact)**, mf 0.5, chunked 2048 | trough 7.9 GB | **192K completes** (in=188,745; 832.3s) — the CTX=210K run's ~14K-token pool overallocation WAS the missing budget |
+| ledger-arm2-chunk1024 | 0.32.0 | 4 GB | CTX 196608, mf 0.5, **chunked 1024** | trough 12.2 GB | **192K completes faster** (806.2s) with +4.3 GB margin — sub-2048 chunks cost nothing and buy headroom |
+| ledger-arm3-mf045 | 0.32.0 | 4 GB | CTX 196608, **mf 0.45**, chunked 2048 | trough 8.3 GB | **192K completes** (833.8s) |
+| ledger-128kcontrol | 0.32.0 | 4 GB | CTX 140000, mf 0.5, chunked 2048 | — | **128K control passes** (in=125,830; 409.7s) |
+| ledger-210k-ch1024 | 0.32.0 | 4 GB | CTX 215104 (exact), mf 0.5, chunked 1024 | trough 10.8 GB | **210K completes** (in=206,439; 952.6s) |
+| ledger-256k-ch1024 | 0.32.0 | 4 GB | CTX 262208 (exact), mf 0.5, chunked 1024 | trough 9.7 GB | **256K completes** (in=251,659; 1390.0s ≈ 23.2 min) — the primary target |
 
 Growth computed from mem_profile.sh (free+inactive delta over the prefill
 window ÷ server-verified prompt tokens); per-run receipts in the sibling
@@ -83,8 +89,13 @@ is the deciding experiment.
 - Decode TPOT at depth (1.6 s at 32K, 4.4 s at 64K, 13 s at 128K) is now a
   binding long-context constraint — a separate optimization target
   (attention read bandwidth), not a memory bug.
-- **Certified ceiling: 128K.** The next boundary is mechanistic: at 131K
-  tokens the per-layer ContiguousAttentionKVCache doubles capacity
-  (131K→262K), and the realloc spike across attention layers blows the
-  remaining budget. Going past 128K needs incremental (non-doubling) cache
-  growth or pool-backed prefill writes — queued as its own item.
+- **Certified ceiling: 256K** (in=251,659 server-verified). The recipe:
+  patch 015 pre-sizes the per-request cache (no doubling ladder), the pool
+  is sized to exactly the request (`CTX = label + 64`; overallocating to
+  CTX=210K for a 192K label cost the run its last ~2-3 GB), `CHUNKED=1024`
+  (the sub-2048 chunk costs nothing at depth and buys ~4.3 GB of transient
+  margin), `MEM_FRAC=0.5`, radix off, turboquant. No cache-quantization
+  surgery was needed for capacity — the remaining deep-context constraint
+  is decode TPOT at depth (see the decode-tpot-truth queue item: the
+  whole-request "TPOT" numbers in these receipts are ~95% prefill
+  amortization; the true decode rate needs the fixed instrument).

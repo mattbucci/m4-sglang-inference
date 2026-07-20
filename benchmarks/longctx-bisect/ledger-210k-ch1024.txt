@@ -1,0 +1,9 @@
+Model: qwen36
+Output tokens per test: 32
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+  210K tokens                     in= 206439  out=  32  time= 952.6s  TPOT=29768.9ms    0.0 tok/s
+
+=====================================================================================
+Summary: TPOT at different context lengths (output=32 tokens)
+  210K tokens                     TPOT=29768.9ms    0.0 tok/s  (prefill 206439 tok in 952.6s)
