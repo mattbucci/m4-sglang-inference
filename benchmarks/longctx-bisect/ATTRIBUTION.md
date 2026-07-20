@@ -29,6 +29,9 @@ one-line runtime policy in the MLX backend.
 | presize-128k-control | 0.32.0 | 4 GB | CTX 140K, mf 0.5, **chunked 4096**, patch-015 pre-size | — | guard-killed at ~103.5K |
 | postrevert-128k | 0.32.0 | 4 GB | CTX 140K, mf 0.5, **chunked 4096**, 015 reverted | — | guard-killed at the IDENTICAL ~103.5K (pending-token 27526 in both logs) — pre-size ≡ ladder below the 131K crossover; the 4096 chunk size is the killer |
 | postrevert-128k-chunked2048 | 0.32.0 | 4 GB | CTX 140K, mf 0.5, chunked 2048 | worst WARN 10.86 GB | **128K completes** (in=125,830; prefill 424.9s — matches phase1-deep 415.8s) |
+| ladder-160k-chunked2048 | 0.32.0 | 4 GB | CTX 175K, mf 0.5, chunked 2048, doubling ladder | survives the 131K grow | guard-killed at ~156K — post-doubling the ladder holds 262,144-token bf16 buffers per attention layer (the power-of-two overshoot) and the budget runs out |
+| presize-160k-chunked2048 | 0.32.0 | 4 GB | CTX 175K, mf 0.5, chunked 2048, patch-015 pre-size | worst WARN ~10.3 GB | **160K completes** (in=157,287; prefill 606.9s; decode 0.1 tok/s) — exact-size buffers (163,872), no spike, no overshoot |
+| presize-192k-chunked2048 | 0.32.0 | 4 GB | CTX 210K, mf 0.5, chunked 2048, patch-015 pre-size | — | guard-killed at ~180K — the bf16 contiguous cache (196,640-token buffers) + 210K pool exceed the budget; no single spike, steady exhaustion |
 
 Growth computed from mem_profile.sh (free+inactive delta over the prefill
 window ÷ server-verified prompt tokens); per-run receipts in the sibling

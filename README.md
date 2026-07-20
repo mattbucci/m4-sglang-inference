@@ -1,15 +1,15 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.15.post1** (commit `0b3bb0c`) + 6 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.15.post1** (commit `0b3bb0c`) + 7 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
 
-**Long-context: 128K single-user context validated on qwen36** (the buffer-cache root cause of the prior ~32K ceiling is fixed in patch 008 — receipts in `benchmarks/longctx-bisect/`). Throughput benchmark tables below were measured on earlier stack pins; the re-measure is queued.
+**Long-context: 160K single-user context validated on qwen36** (patch 008 buffer-cache cap + `CHUNKED=2048` + patch 015 cache pre-sizing — receipts in `benchmarks/longctx-bisect/`). Throughput benchmark tables below were measured on earlier stack pins; the re-measure is queued.
 
 ## Action queue
 
 Full specs and statuses live in [experiments/README.md](experiments/README.md); one-line summary, in execution order:
 
 - [ ] **Disk triage** — 12 GiB free of 926 GiB; the HF cache holds 362 GB. Inventory, propose deletions to Matt. Gates the in-house quant and bisect arms. *(~1h)*
-- [ ] **Beyond 128K** — survive the contiguous-attention cache's 131K doubling boundary (incremental growth or pool-backed prefill writes), and attack decode TPOT at depth. Related envelope receipts: radix-off concurrent prefill (conc-8, 32×256/256) and dense-devstral genuine-32K both trip the oom_guard. *(the long-context growth regression itself is resolved — patch 008 cache cap; receipts in `benchmarks/longctx-bisect/`)*
+- [ ] **Beyond 160K** — 192K exhausts the memory budget at ~180K prefilled (bf16 per-request attention cache + pool). Phase 2: quantize the per-request cache (also attacks decode TPOT at depth) or pool-backed prefill writes. Spec: [experiments/08](experiments/08-beyond-128k.md). Related envelope receipts: radix-off concurrent prefill (conc-8) and dense-devstral genuine-32K both trip the oom_guard.
 - [ ] **Real sampling** — wire temp/top-p/top-k/min-p into the MLX backend via `mlx_lm make_sampler`; unblocks thinking-mode evals. Spec: [experiments/05](experiments/05-mlx-sampling.md). *(days)*
 - [ ] **Tool-call boot gate** — port the 3090's `check_tool_call` into `validate_capabilities.py`. Spec: [experiments/06](experiments/06-check-tool-call-gate.md). *(hours)*
 - [ ] **Re-measure on the current stack** — the remaining legacy tables (short-sweep, batched-decode peaks), the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). The four tripwire presets are re-measured at genuine depth (see Performance). *(hours per piece)*
@@ -117,7 +117,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 
 - **Greedy-only sampling.** The MLX backend selects tokens with `mx.argmax`; temperature/top-p/top-k are silently ignored. On Qwen3.5-27B this causes infinite `<think>` loops on reasoning-heavy prompts (`validate_capabilities.py` includes a loop detector). Real sampling is queued ([experiments/05](experiments/05-mlx-sampling.md)).
 - **`gemma4` / `gemma4-31b` blocked at boot** — upstream `_attention_kv_config_for_layer` raises `NotImplementedError` for sliding-window attention at runner construction. Upstream feature gap; needs window-aware pools.
-- **Long-context ceiling is 128K** (validated: in=125,830, ~7 min prefill, decode 0.1 tok/s). 192K+ dies at the contiguous-attention cache's 131K capacity-doubling boundary — needs incremental cache growth or pool-backed prefill writes (queued). Decode TPOT at depth (13 s/token at 128K) is the other open constraint. The MLX buffer cache is capped by patch 008 (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB) — do not remove the cap; uncapped, chunked prefill retains ~0.6 MB/token and jetsams around 30K.
+- **Long-context ceiling is 160K** (validated: in=157,287, ~10 min prefill, decode 0.1 tok/s; recipe: `CTX=175000 MEM_FRAC=0.5 CHUNKED=2048`, radix off, turboquant). 192K dies at ~180K prefilled — steady budget exhaustion (bf16 per-request attention cache + pool), the phase-2 target. Decode TPOT at depth (13-19 s/token at 128-160K) is the other open constraint. Three load-bearing settings: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), `CHUNKED=2048` (the 4096 default's transients kill deep prefills at ~100-113K), and patch-015 cache pre-sizing (the doubling ladder's power-of-two overshoot kills a 160K run at ~156K).
 - **64K dense-attention ceiling is structural.** The per-chunk attention-score tensor `mx.fast.scaled_dot_product_attention` materializes hits 30–90 GB at deep offsets. Without flash-attention-style block-streaming SDPA in MLX, decode at 32K is the practical ceiling for dense standard-attention models; DeltaNet hybrids (`qwen35`, `qwen36`, `qwen36-27b`) are the workaround.
 - **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
 - **Coder-Next-80B infeasible** — 42 GB weights alone exceed the safe budget; model load OOMs. No path on a single 64 GB Mac.
@@ -129,7 +129,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang v0.5.15.post1, MLX deps, 6 patches
+./scripts/setup.sh                          # venv, SGLang v0.5.15.post1, MLX deps, 7 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -317,7 +317,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.15.post1** (`0b3bb0c`) + 6 patches |
+| SGLang | **v0.5.15.post1** (`0b3bb0c`) + 7 patches |
 | MLX | 0.32.0 |
 | mlx-lm | 0.31.3 |
 | mlx-vlm | 0.6.5 |
@@ -327,7 +327,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Six patches on top of `v0.5.15.post1` — full rationale per patch in [patches/README.md](patches/README.md):
+Seven patches on top of `v0.5.15.post1` — full rationale per patch in [patches/README.md](patches/README.md):
 
 | # | Patch | What |
 |:-:|-------|------|

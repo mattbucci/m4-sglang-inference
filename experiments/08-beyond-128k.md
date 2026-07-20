@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | ready (phase 2) |
+| **Status** | phase 1 complete (160K validated); phase 2 ready |
 | **Execution host** | m4-box |
 | **Wall clock** | Phase 2 implementation: days (serving hot path). Each deep validation run 15-45 min. |
 | **GPU time** | Exclusive serving windows for validation (guard mandatory) |
@@ -37,11 +37,12 @@ weights (wired ~19 GB)
   copy (`attention_kv_cache.py:_grow`); its 131072→262144 step transiently
   holds old+new+copy across every attention layer — the attributed killer of
   the 192K run at chunked 2048.
-- Per-request pre-sizing (tried as patch 015, currently reverted, kept in
-  git history) is memory-identical to the ladder below the 131K crossover
-  (identical ~103.5K death depths at chunked 4096). Above the crossover it
-  avoids both the doubling spike and the 262144 overshoot — the deciding
-  A/B is ladder-vs-presize at 160K / chunked 2048.
+- Per-request pre-sizing (patch 015, landed) is memory-identical to the
+  ladder below the 131K crossover; above it, the A/B at 160K / chunked 2048
+  decided: the ladder dies at ~156K holding the 262,144-token overshoot,
+  exact pre-size completes 157,287 server-verified tokens. **160K is the
+  validated ceiling.** 192K dies at ~180K prefilled — steady budget
+  exhaustion, no spike.
 - The bf16 contiguous cache remains the dominant marginal cost at depth,
   and unlike the pool it is neither quantized nor budget-capped — the
   phase-2 target either way.

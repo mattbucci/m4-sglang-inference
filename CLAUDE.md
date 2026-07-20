@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.15.post1 + 6 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.15.post1 + 7 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass
@@ -20,11 +20,11 @@ upstream sliding-window gap.
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (6 patches on top of SGLang v0.5.15.post1) |
+| [patches/README.md](patches/README.md) | Per-patch notes (7 patches on top of SGLang v0.5.15.post1) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 6 patches
+scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 7 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
@@ -101,24 +101,28 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   complete at 2048 (`benchmarks/longctx-bisect/ATTRIBUTION.md`). Chunk size
   does NOT change steady per-token growth (that was the buffer-cache story,
   fixed by the patch-008 cap) — it changes the transient peak.
-- **Long-context: 128K validated** for qwen36 (35B-MoE-4bit) with
-  `CTX=140000 MEM_FRAC=0.5 CHUNKED=2048 EXTRA_ARGS="--disable-radix-cache" launch.sh
-  qwen36 --kv-cache turboquant` — in=125,830 prefills in ~7 min, decode
-  0.1 tok/s (receipts: `benchmarks/longctx-bisect/`). The prior ~32K
-  ceiling was unbounded MLX buffer-cache accumulation across prefill chunks
-  (~0.6 MB/token retained); patch 008 caps the cache
-  (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4). **192K+ still dies** at the
-  contiguous-attention cache's 131K capacity-doubling boundary — that and
-  decode TPOT at depth (13 s/token at 128K) are the open long-context
-  constraints (see [experiments/](experiments/README.md)). Bench tooling
-  needs a long urllib timeout for deep runs.
+- **Long-context: 160K validated** for qwen36 (35B-MoE-4bit) with
+  `CTX=175000 MEM_FRAC=0.5 CHUNKED=2048 EXTRA_ARGS="--disable-radix-cache"
+  launch.sh qwen36 --kv-cache turboquant` — in=157,287 prefills in ~10 min,
+  decode 0.1 tok/s (receipts: `benchmarks/longctx-bisect/`). Three stacked
+  fixes hold the ceiling: patch 008 caps the MLX buffer cache
+  (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 — uncapped, chunked prefill
+  retained ~0.6 MB/token and died ~30K), `CHUNKED=2048` keeps the per-chunk
+  transient floor survivable, and patch 015 pre-sizes the per-request
+  attention cache (the doubling ladder's 262,144-token overshoot killed a
+  160K run at ~156K that exact pre-sizing completes). **192K dies at ~180K
+  prefilled** — steady budget exhaustion (bf16 contiguous cache + pool), no
+  single spike; that and decode TPOT at depth (13-19 s/token at 128-160K)
+  are the open constraints — quantizing the per-request cache attacks both
+  (see [experiments/](experiments/README.md)). Bench tooling needs a long
+  urllib timeout for deep runs.
 
 ## Optimization Target
 - **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
   Measure at long context first — that is the workload Apple Silicon is uniquely good at.
-  - Current: **128K validated**; 192K+ blocked at the contiguous-cache
-    doubling boundary, and decode TPOT at depth is the other open constraint
-    (see "Long-context" above).
+  - Current: **160K validated**; 192K exhausts the memory budget at ~180K
+    prefilled (bf16 per-request cache + pool), and decode TPOT at depth is
+    the other open constraint (see "Long-context" above).
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
   batch benchmarks.
 - **Tertiary (currently the most productive workload):** single-user agentic
