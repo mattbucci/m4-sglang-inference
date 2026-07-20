@@ -16,6 +16,7 @@ Full specs and statuses live in [experiments/README.md](experiments/README.md); 
 - [ ] **Real sampling** — wire temp/top-p/top-k/min-p into the MLX backend via `mlx_lm make_sampler`; unblocks thinking-mode evals. Spec: [experiments/05](experiments/05-mlx-sampling.md). *(days)*
 - [ ] **Tool-call boot gate** — port the 3090's `check_tool_call` into `validate_capabilities.py`. Spec: [experiments/06](experiments/06-check-tool-call-gate.md). *(hours)*
 - [ ] **Re-measure on the current stack** — throughput/long-context tables, the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). *(hours per piece)*
+- [ ] **Re-arm baselines.json (schema v2, 3090 fleet standard 2026-07-19)** — current file is a 2026-04-12 relic in the old parser format; rides the re-measure evening. M4 ceiling depths 1024/8192/32768, `--random-range-ratio 1` pinned (M4-C already landed the pin), `oom_guard.sh` mandatory, keyed by launch-preset name, `invalid`/`depth_shortfall` points never saved. Schema + rules: 3090 `scripts/bench/README.md` (their tripwire armed 7/7 within 3% of receipts, validated exit-1 both ways).
 - [ ] **In-house qwen36 MLX 4-bit** with router/DeltaNet/vision exclusions — after disk + sampling. Spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md). *(days)*
 
 ## Primary target: long-context agentic coding
