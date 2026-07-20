@@ -1,0 +1,126 @@
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+@@ -80,6 +80,22 @@
+     def make_mask(self, N, **kwargs):
+         return None if N == 1 else "causal"
+ 
++    def reserve(self, required: int) -> None:
++        """Pre-size to at least *required* tokens; only valid while empty.
++
++        Dropping any existing buffers lets the next write lazily allocate at
++        the new size — one allocation at the exact target instead of the
++        doubling ladder, whose 131072→262144 step transiently holds old+new
++        buffers plus a copy across every attention layer (the observed 192K
++        prefill killer).
++        """
++        if required <= self.max_seq_len:
++            return
++        assert self.offset == 0, "reserve() requires an empty cache"
++        self.max_seq_len = required
++        self.keys = None
++        self.values = None
++
+     def _grow(self, required: int) -> None:
+         """Double the buffer until it can hold *required* tokens."""
+         new_max = self.max_seq_len
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -234,7 +234,10 @@
+         _first_attn_inner = getattr(_first_attn, "_inner", _first_attn)
+         self._attention_wrapper_batchable = hasattr(_first_attn_inner, "rope")
+ 
+-        self._max_seq_len = 4096  # doubles on overflow
++        # Initial per-request attention-cache capacity. Requests whose known
++        # total length exceeds it are pre-sized at acquisition (reserve());
++        # anything else grows by doubling on overflow.
++        self._max_seq_len = 4096
+ 
+         self._req_caches: dict[str, list[Any]] = {}
+         self._req_token_ids: dict[str, list[int]] = {}
+@@ -298,18 +301,38 @@
+             cache[layer_idx] = ContiguousAttentionKVCache(max_seq_len=self._max_seq_len)
+         return cache
+ 
+-    def _acquire_cache(self) -> list[Any]:
+-        """Get a reusable cache list from the pool, or create a new one."""
++    def _acquire_cache(self, required_len: int | None = None) -> list[Any]:
++        """Get a reusable cache list from the pool, or create a new one.
++
++        ``required_len`` pre-sizes the attention caches to the request's
++        total expected length (copy-free: the caches are empty here), so a
++        deep prefill never walks the doubling ladder.
++        """
+         if not self._cache_layout.has_auxiliary_state and self._cache_pool:
+             cache = self._cache_pool.pop()
+             for c in cache:
+                 c.offset = 0
+-            return cache
+-        return self._new_native_cache()
++        else:
++            cache = self._new_native_cache()
++        if required_len is not None and required_len > self._max_seq_len:
++            for layer_idx in self._cache_layout.attention_layer_indices:
++                cache[layer_idx].reserve(required_len)
++        return cache
+ 
+     def _release_cache(self, cache: list[Any]) -> None:
+-        """Return a cache list to the pool for reuse."""
++        """Return a cache list to the pool for reuse.
++
++        Pre-sized deep-request buffers are dropped back to the default size
++        first so the pool never hoards multi-GB caches for short requests.
++        """
+         if not self._cache_layout.has_auxiliary_state:
++            for layer_idx in self._cache_layout.attention_layer_indices:
++                c = cache[layer_idx]
++                if c.max_seq_len > self._max_seq_len:
++                    c.offset = 0
++                    c.max_seq_len = self._max_seq_len
++                    c.keys = None
++                    c.values = None
+             self._cache_pool.append(cache)
+ 
+     def _first_attention_cache(self, cache: list[Any]) -> Any:
+@@ -967,8 +990,15 @@
+         prefills route through the full-prompt paths below.
+         """
+         prefix_len = len(prefix_slot_ids)
++        # Pre-size target: the full prompt (origin_input_ids covers chunks
++        # that have not arrived yet) plus the decode budget. Continuation
++        # chunks reuse this cache via _req_caches, so sizing here covers the
++        # whole chunked prefill.
++        required_len: int | None = None
+         if req is not None:
+             req.mamba_last_track_seqlen = None
++            max_new = req.sampling_params.max_new_tokens or 0
++            required_len = len(req.origin_input_ids) + max_new + 8
+ 
+         _model_kwargs: dict = {}
+         if pixel_values is not None:
+@@ -979,7 +1009,7 @@
+             self._reset_mlx_vlm_position_cache()
+ 
+         if self.disable_radix_cache:
+-            cache = self._acquire_cache()
++            cache = self._acquire_cache(required_len)
+             input_ids = mx.array([new_token_ids], dtype=mx.int32)
+             model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+             logits = self._extract_logits(model_output)
+@@ -1022,7 +1052,7 @@
+                 # (_model_kwargs set) also take this path: their image tokens
+                 # may sit inside the cached prefix, and the VLM feature merge
+                 # only sees the input_ids it is called with.
+-                cache = self._acquire_cache()
++                cache = self._acquire_cache(required_len)
+                 input_ids = mx.array([full_token_ids or new_token_ids], dtype=mx.int32)
+                 model_output = self.model(input_ids, cache=cache, **_model_kwargs)
+                 logits = self._extract_logits(model_output)
+@@ -1038,7 +1068,7 @@
+                     synced_offset=prefix_len + len(new_slot_ids),
+                 )
+         else:
+-            cache = self._acquire_cache()
++            cache = self._acquire_cache(required_len)
+             pool_backed_attention = False
+ 
+         if new_token_count > 0:

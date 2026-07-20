@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.15.post1** (commit `0b3bb0c`) + 6 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.15.post1** (commit `0b3bb0c`) + 7 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
 
 **Long-context: 128K single-user context validated on qwen36** (the buffer-cache root cause of the prior ~32K ceiling is fixed in patch 008 — receipts in `benchmarks/longctx-bisect/`). Throughput benchmark tables below were measured on earlier stack pins; the re-measure is queued.
 
@@ -129,7 +129,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang v0.5.15.post1, MLX deps, 6 patches
+./scripts/setup.sh                          # venv, SGLang v0.5.15.post1, MLX deps, 7 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -317,7 +317,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.15.post1** (`0b3bb0c`) + 6 patches |
+| SGLang | **v0.5.15.post1** (`0b3bb0c`) + 7 patches |
 | MLX | 0.32.0 |
 | mlx-lm | 0.31.3 |
 | mlx-vlm | 0.6.5 |
@@ -327,7 +327,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Six patches on top of `v0.5.15.post1` — full rationale per patch in [patches/README.md](patches/README.md):
+Seven patches on top of `v0.5.15.post1` — full rationale per patch in [patches/README.md](patches/README.md):
 
 | # | Patch | What |
 |:-:|-------|------|

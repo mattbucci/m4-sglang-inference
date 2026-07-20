@@ -1,9 +1,9 @@
 # Patches — SGLang v0.5.15.post1 on Apple Silicon
 
-Six patches on top of the `v0.5.15.post1` pin (commit `0b3bb0c`), applied in
+Seven patches on top of the `v0.5.15.post1` pin (commit `0b3bb0c`), applied in
 numeric order by `scripts/setup.sh`. Numbering is sparse; retired numbers are
-not reused. 002–014 minus 008 form the text stack; 008 adds the VLM / hybrid
-(DeltaNet/Mamba2) path.
+not reused. 002–015 minus 008 form the text stack; 008 adds the VLM / hybrid
+(DeltaNet/Mamba2) path; 015 removes the deep-prefill growth ladder.
 
 ## Applied patches
 
@@ -15,6 +15,7 @@ not reused. 002–014 minus 008 form the text stack; 008 adds the VLM / hybrid
 | 007 | mlx-multimodal-and-mps-shim | `_mps_stub.py`, `managers/mm_utils.py`, `managers/schedule_batch.py`, `multimodal/processors/pixtral.py` | (a) `.to('cuda')`→`.to('cpu')` redirect; (b) `ShmPointerMMData` slice to logical byte/element count (macOS 16 KB shm page rounding); (c) `Modality.MULTI_IMAGES` enum member + pixtral multi-image splitter matches it (StopIteration → HTTP 500 otherwise). |
 | 008 | mlx-vlm-hybrid-integration | `mlx/model_runner.py`, `mlx/tp_worker.py`, `kv_cache/attention_contract.py`, `kv_cache/auxiliary_state.py`, `model_executor/model_runner.py`, `arg_groups/overrides.py`, `managers/overlap_utils.py`, `utils/hf_transformers/tokenizer.py` | The VLM / hybrid path — see the section below. `mlx_vlm` loading, attention detection for `rotary_emb`/rope-less archs, the scheduler's mamba-allocator contract on the MLX aux pool, radix cache for hybrid models (`no_buffer` strategy), vision (`pixel_values`) plumbing, NemotronH support, and the **MLX buffer-cache cap** (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token of shape-shifting transient buffers and long prefills jetsam around 30K; capped, 128K completes — `benchmarks/longctx-bisect/ATTRIBUTION.md`). |
 | 014 | mlx-hf-processor-fixes | `utils/hf_transformers/processor.py`, `utils/hf_transformers/mistral_utils.py` | (a) Gemma 4 image-only processor when the checkpoint ships only `processor_config.json`. (b) Replace a `MistralCommonBackend` processor tokenizer when the checkpoint explicitly declares `tokenizer_class=TokenizersBackend` — mistral-common ignores jinja chat templates and 400s on image chat messages; mlx-community Devstral ships a full HF `tokenizer.json`. Pairs with 008's same rule in `get_tokenizer`. (c) `wrap_as_pixtral` covers `model_type=mistral3` (transformers 5.12 AutoProcessor returns a bare tokenizer for Devstral — no image processor at all) and reads `spatial_merge_size` from the top-level config where Mistral3 keeps it (missing it halves the patch grid: placeholder count ≠ merged feature count → silent single-feature merge → hallucinated image answers). |
+| 015 | mlx-presize-attention-cache | `mlx/model_runner.py`, `kv_cache/attention_kv_cache.py` | `ContiguousAttentionKVCache.reserve()` + per-request pre-sizing in `_acquire_cache`/`prefill_start` (target: `origin_input_ids` + `max_new_tokens`; continuation chunks reuse the cache, so the first acquisition covers the whole chunked prefill). Every request cache starts at 4,096 tokens and `_grow()` doubles-and-copies up the ladder; the 131072→262144 step transiently holds old+new buffers plus a copy across every attention layer — the 192K prefill killer. `reserve()` on an empty cache is one exact-size lazy allocation, and `_release_cache` trims pre-sized buffers back to the default so the reuse pool never hoards multi-GB caches. |
 
 ## VLM / hybrid path (patch 008)
 
@@ -115,5 +116,5 @@ static pool).
 
 ```bash
 cd components/sglang && git checkout v0.5.15.post1
-for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done   # 6 patches, all clean
+for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done   # 7 patches, all clean
 ```
