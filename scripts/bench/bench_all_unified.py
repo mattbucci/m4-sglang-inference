@@ -78,6 +78,10 @@ def run_bench_serving(base_url, model, input_len, output_len, num_prompts,
         return None
     if not throughput or throughput <= 0:
         return None
+    # An instant per-request rejection can still leave a nonzero throughput
+    # line while TPOT is 0/absent — no legitimate run decodes without a TPOT.
+    if not tpot or tpot <= 0:
+        return None
     return {"tpot_ms": tpot, "ttft_ms": ttft, "throughput": throughput,
             "actual_input_tokens": int(total_input) if total_input else None}
 
