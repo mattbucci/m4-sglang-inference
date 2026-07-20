@@ -40,13 +40,16 @@ get_bench_model() {
 bench_one() {
     local model="$1" input_len="$2" output_len="$3" num_prompts="$4"
 
-    python3 -m sglang.bench_serving \
+    # --random-range-ratio 1 pins exact lengths (upstream default 0.0 draws
+    # uniform [1, N] — labeled depths measure ~half depth).
+    python3 -m sglang.benchmark.serving \
         --backend sglang \
         --base-url "$BASE_URL" \
         --model "$model" \
         --dataset-name random \
-        --random-input "$input_len" \
-        --random-output "$output_len" \
+        --random-input-len "$input_len" \
+        --random-output-len "$output_len" \
+        --random-range-ratio 1 \
         --num-prompts "$num_prompts" \
         --request-rate inf \
         --disable-tqdm 2>&1

@@ -35,13 +35,17 @@ def run_bench_serving(base_url, model, input_len, output_len, num_prompts,
                       request_rate="inf", timeout=300):
     """Run sglang.bench_serving and parse TPOT/TTFT/throughput."""
     cmd = [
-        sys.executable, "-m", "sglang.bench_serving",
+        sys.executable, "-m", "sglang.benchmark.serving",
         "--backend", "sglang",
         "--base-url", base_url,
         "--model", model,
         "--dataset-name", "random",
-        "--random-input", str(input_len),
-        "--random-output", str(output_len),
+        "--random-input-len", str(input_len),
+        "--random-output-len", str(output_len),
+        # Without this pin the upstream default (0.0) draws prompt AND output
+        # lengths uniform in [1, N] — every labeled depth measures ~half depth
+        # (or, at num-prompts 1, ANY depth in [1, N]).
+        "--random-range-ratio", "1",
         "--num-prompts", str(num_prompts),
         "--request-rate", str(request_rate),
         "--disable-tqdm",
@@ -60,10 +64,12 @@ def run_bench_serving(base_url, model, input_len, output_len, num_prompts,
     tpot = extract(r"Mean TPOT[^:]*:\s*([\d.]+)")
     ttft = extract(r"Mean TTFT[^:]*:\s*([\d.]+)")
     throughput = extract(r"Output token throughput[^:]*:\s*([\d.]+)")
+    total_input = extract(r"Total input tokens:\s*(\d+)")
 
     if tpot is None and throughput is None:
         return None
-    return {"tpot_ms": tpot, "ttft_ms": ttft, "throughput": throughput}
+    return {"tpot_ms": tpot, "ttft_ms": ttft, "throughput": throughput,
+            "actual_input_tokens": int(total_input) if total_input else None}
 
 
 def check_server(base_url, retries=3, timeout=30):
@@ -156,13 +162,24 @@ def main():
             tpot = r["tpot_ms"] or 0
             tps = 1000.0 / tpot if tpot > 0 else 0
             ttft = r["ttft_ms"] or 0
+            actual = r["actual_input_tokens"]
             print(f"{ctx:>8}  {tpot:>10.1f}  {tps:>8.1f}  {ttft:>10.1f}")
-            context_results.append({
+            point = {
                 "context": ctx,
                 "tpot_ms": round(tpot, 1),
                 "tok_per_sec": round(tps, 1),
                 "ttft_ms": round(ttft, 1),
-            })
+                "actual_input_tokens": actual,
+            }
+            # Server-verified depth guard: the labeled depth only counts if the
+            # server actually saw >= 95% of it (chat templates / tokenizer
+            # round-trips shave a few tokens; more than 5% means the instrument
+            # is lying about depth).
+            if actual is None or actual < 0.95 * ctx:
+                point["depth_shortfall"] = True
+                print(f"  WARN: depth shortfall — requested {ctx}, "
+                      f"server saw {actual}")
+            context_results.append(point)
     else:
         print("Skipping context sweep (--skip-context)")
 
@@ -198,13 +215,20 @@ def main():
                 tpot = r["tpot_ms"] or 0
                 tp = r["throughput"] or 0
                 ttft = r["ttft_ms"] or 0
+                actual = r["actual_input_tokens"]
                 print(f"{conc:>5}  {tpot:>10.1f}  {tp:>8.1f}  {ttft:>10.1f}")
-                throughput_results.append({
+                point = {
                     "concurrency": conc,
                     "tpot_ms": round(tpot, 1),
                     "tok_per_sec": round(tp, 1),
                     "ttft_ms": round(ttft, 1),
-                })
+                    "actual_input_tokens": actual,
+                }
+                if actual is None or actual < 0.95 * np * 256:
+                    point["depth_shortfall"] = True
+                    print(f"  WARN: input shortfall — requested {np * 256}, "
+                          f"server saw {actual}")
+                throughput_results.append(point)
     else:
         print("\nSkipping concurrency sweep (--skip-concurrency)")
 
@@ -221,13 +245,25 @@ def main():
         except Exception:
             pass
 
+    # sglang version stamp — re-measures move two variables (range-ratio pin
+    # AND stack pin), so every row must be attributable to its stack.
+    try:
+        sglang_commit = subprocess.run(
+            ["git", "-C", os.path.join(os.path.dirname(__file__), "..", "..",
+                                       "components", "sglang"),
+             "describe", "--tags", "--always"],
+            capture_output=True, text=True, timeout=10).stdout.strip() or "unknown"
+    except Exception:
+        sglang_commit = "unknown"
+
     all_results = {
         "model": args.name,
         "model_id": model,
         "engine": "SGLang + MLX",
         "hardware": "Apple M4 Pro 64GB",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "method": "sglang.bench_serving",
+        "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+        "sglang_version": sglang_commit,
         "kv_cache_mode": args.kv_cache,
         "context_max": args.context_max,
         "context_sweep": context_results if context_results else existing.get("context_sweep", []),

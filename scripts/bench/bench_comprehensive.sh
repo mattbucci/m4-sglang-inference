@@ -68,13 +68,16 @@ for CONC in 1 2 4 8 16; do
         NP=$((CONC * 4)); RR=inf
     fi
 
-    RESULT=$(python3 -m sglang.bench_serving \
+    # --random-range-ratio 1 pins exact lengths (upstream default 0.0 draws
+    # uniform [1, N] — labeled depths measure ~half depth).
+    RESULT=$(python3 -m sglang.benchmark.serving \
         --backend sglang \
         --base-url "$BASE_URL" \
         --model "$MODEL" \
         --dataset-name random \
-        --random-input 256 \
-        --random-output 256 \
+        --random-input-len 256 \
+        --random-output-len 256 \
+        --random-range-ratio 1 \
         --num-prompts $NP \
         --request-rate $RR 2>&1)
 
@@ -94,13 +97,14 @@ printf "%-10s  %-10s  %-12s  %-10s\n" "Input" "TPOT(ms)" "Throughput" "TTFT(ms)"
 echo "----------------------------------------------------" | tee -a "$RESULTS_FILE"
 
 for INPUT_LEN in 128 512 1024 4096 8192 16384 32768 65536 131072; do
-    RESULT=$(python3 -m sglang.bench_serving \
+    RESULT=$(python3 -m sglang.benchmark.serving \
         --backend sglang \
         --base-url "$BASE_URL" \
         --model "$MODEL" \
         --dataset-name random \
-        --random-input $INPUT_LEN \
-        --random-output 64 \
+        --random-input-len $INPUT_LEN \
+        --random-output-len 64 \
+        --random-range-ratio 1 \
         --num-prompts 1 \
         --request-rate 1 2>&1)
 

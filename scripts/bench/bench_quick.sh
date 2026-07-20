@@ -42,13 +42,16 @@ for CONC in 1 8 16; do
         NP=64; RR=inf
     fi
 
-    RESULT=$(python3 -m sglang.bench_serving \
+    # --random-range-ratio 1 pins exact lengths; the upstream default (0.0)
+    # draws both lengths uniform in [1, N] — labeled 256/256 measures ~128/~128.
+    RESULT=$(python3 -m sglang.benchmark.serving \
         --backend sglang \
         --base-url "$BASE_URL" \
         --model "$MODEL" \
         --dataset-name random \
-        --random-input 256 \
-        --random-output 256 \
+        --random-input-len 256 \
+        --random-output-len 256 \
+        --random-range-ratio 1 \
         --num-prompts $NP \
         --request-rate $RR 2>&1)
 

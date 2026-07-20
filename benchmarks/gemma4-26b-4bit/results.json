@@ -1,4 +1,6 @@
 {
+  "legacy_depth_suspect": true,
+  "legacy_depth_note": "pre-pin bench_serving-random rows: --random-range-ratio unpinned; labeled depths/lengths drawn uniform [1,N] \u2014 see benchmarks/LEGACY-DEPTH-SUSPECT.md",
   "model": "Gemma 4 26B 4-bit",
   "model_id": "mlx-community/gemma-4-26b-a4b-it-4bit",
   "engine": "SGLang + MLX",

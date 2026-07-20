@@ -205,12 +205,12 @@ bash   scripts/bench/bench_256k_all.sh                      # long-context sweep
 | `gemma4-31b` | `gemma-4-31b-it-mxfp4` | Dense (sliding+full) | 17 GB | 11.7 | blocked | `embed_vision.embedding_projection` INT4 |
 | `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | 32K probe | **clean** |
 
-\* tok/s and Max-ctx cells were measured on earlier stack pins (re-measure queued); the practical prefill ceiling is ~32K regardless of context-length label (see Known Issues). MR=N numbers are batched-decode peaks. Audit hazards from the [checkpoint audits](#checkpoint-audits).
+\* tok/s and Max-ctx cells were measured on earlier stack pins (re-measure queued) and pre-date the bench depth pin — depth-labeled cells are suspect ([inventory](benchmarks/LEGACY-DEPTH-SUSPECT.md)). The validated long-context ceiling is 128K (see Known Issues). MR=N numbers are batched-decode peaks. Audit hazards from the [checkpoint audits](#checkpoint-audits).
 
 ## Performance
 
-> Mac mini M4 Pro (64 GB), SGLang + MLX, `sglang.bench_serving`.
-> **All numbers in this section were measured on earlier stack pins** — the current-stack re-measure is in the action queue. Legacy depth-labeled rows are additionally suspect pending the `--random-range-ratio 1` fix ([experiments/01](experiments/01-pin-random-range-ratio-flag-legacy-rows.md)).
+> Mac mini M4 Pro (64 GB), SGLang + MLX, `sglang.benchmark.serving`.
+> **All numbers in this section were measured on earlier stack pins** — the current-stack re-measure is in the action queue. Depth-labeled rows additionally pre-date the `--random-range-ratio 1` pin (labeled depths drew uniform [1,N]) and are flagged suspect — mechanism + full inventory in [benchmarks/LEGACY-DEPTH-SUSPECT.md](benchmarks/LEGACY-DEPTH-SUSPECT.md).
 
 ### Short-sweep decode tok/s (fp16 KV, single user, 64 output tokens)
 
