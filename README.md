@@ -9,7 +9,6 @@ Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) usin
 Full specs and statuses live in [experiments/README.md](experiments/README.md); one-line summary, in execution order:
 
 - [ ] **Disk triage** — 12 GiB free of 926 GiB; the HF cache holds 362 GB. Inventory, propose deletions to Matt. Gates the in-house quant and bisect arms. *(~1h)*
-- [ ] **Patch replay gates in setup.sh** — script the pristine-replay + byte-identity + double-apply gates and wire the probe suite in as a post-setup gate. Spec: [experiments/03](experiments/03-patch-replay-gates-setup.md). *(hours)*
 - [ ] **Radix/overlap decode A/B** — quantify the overlap-schedule cost of radix-on-hybrid at MR=1; keep preset defaults on data. New input: radix-on serving OOMs the genuine-32K prefill on full-attention MoEs while a fresh radix-off server completes it (receipts in `benchmarks/coder-30b-4bit/results.json`) — the A/B should also profile cross-request memory retention. *(~2h)*
 - [ ] **Beyond 128K** — survive the contiguous-attention cache's 131K doubling boundary (incremental growth or pool-backed prefill writes), and attack decode TPOT at depth. Related envelope receipts: radix-off concurrent prefill (conc-8, 32×256/256) and dense-devstral genuine-32K both trip the oom_guard. *(the long-context growth regression itself is resolved — patch 008 cache cap; receipts in `benchmarks/longctx-bisect/`)*
 - [ ] **Real sampling** — wire temp/top-p/top-k/min-p into the MLX backend via `mlx_lm make_sampler`; unblocks thinking-mode evals. Spec: [experiments/05](experiments/05-mlx-sampling.md). *(days)*
@@ -305,6 +304,17 @@ cd python && cp pyproject_other.toml pyproject.toml
 pip install -e ".[srt_mps]"
 pip install "mlx-vlm==0.6.5" --no-deps    # VLM loader; SGLang pins transformers==5.12.1, hence --no-deps
 ```
+
+**Gate protocol (publish precondition):** every setup run — and any stack
+change before its numbers are published — must pass
+`scripts/test_patch_gates.sh` (pristine replay + byte-identity + double-apply
+rejection; `setup.sh` runs it automatically and FATAL-aborts on any patch
+failure), `scripts/eval/import_smoke.py` (eager import of every patch-touched
+module + load-bearing symbols), and the behavioral probe gate
+(`PRESETS="devstral qwen36" scripts/eval/probe_all.sh` — verdicts must match
+`benchmarks/quality/probe-trio/`; a STRONG→FAIL flip is a stop-and-investigate
+finding, the class that caught a month of fabricated VLM output). Receipts:
+`benchmarks/patch-gates/`.
 
 | Component | Version |
 |-----------|---------|
