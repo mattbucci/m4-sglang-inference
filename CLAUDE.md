@@ -99,25 +99,24 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   prefill memory growth is per-token (activation side), so only
   `--max-total-tokens` (cap KV size) and `--mem-fraction-static` (cap total
   reservation) move the needle.
-- **Long-context launch flags:** the measured ceiling for qwen36
-  (35B-MoE-4bit) is **~32K input tokens** of prefill with
-  `--kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.4`;
-  at 32K the request finishes with single-digit MB free RAM, and 60-64K
-  OOM-kills the server mid-prefill regardless of chunked-prefill-size.
-  Prefill memory grows linearly at ~0.15-0.2 MB/token, mechanism unisolated
-  (candidates: MLX lazy page-touch accumulation, Python intermediate-buffer
-  growth, MoE expert dispatch overhead) — see the long-context item in
-  [experiments/](experiments/README.md) for the measurement/bisect plan.
-  The ceiling was measured on the previous stack pin and is unverified on
-  the current one. Closing the gap to 128K+ needs MLX flash-attention or
-  per-token memory reclaim — upstream-MLX work, not config-tuning. Bench
-  tooling needs `urllib timeout=1800` for any long-context run.
+- **Long-context: 128K validated** for qwen36 (35B-MoE-4bit) with
+  `CTX=140000 MEM_FRAC=0.5 EXTRA_ARGS="--disable-radix-cache" launch.sh
+  qwen36 --kv-cache turboquant` — in=125,830 prefills in ~7 min, decode
+  0.1 tok/s (receipts: `benchmarks/longctx-bisect/`). The prior ~32K
+  ceiling was unbounded MLX buffer-cache accumulation across prefill chunks
+  (~0.6 MB/token retained); patch 008 caps the cache
+  (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4). **192K+ still dies** at the
+  contiguous-attention cache's 131K capacity-doubling boundary — that and
+  decode TPOT at depth (13 s/token at 128K) are the open long-context
+  constraints (see [experiments/](experiments/README.md)). Bench tooling
+  needs a long urllib timeout for deep runs.
 
 ## Optimization Target
 - **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
   Measure at long context first — that is the workload Apple Silicon is uniquely good at.
-  - Not achievable yet: practical ceiling is ~32K input prefill for a
-    35B-MoE-4bit model (see "Long-context launch flags" above).
+  - Current: **128K validated**; 192K+ blocked at the contiguous-cache
+    doubling boundary, and decode TPOT at depth is the other open constraint
+    (see "Long-context" above).
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
   batch benchmarks.
 - **Tertiary (currently the most productive workload):** single-user agentic

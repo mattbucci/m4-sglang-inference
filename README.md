@@ -2,7 +2,7 @@
 
 Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.15.post1** (commit `0b3bb0c`) + 6 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
 
-Throughput and long-context benchmark tables below were measured on earlier stack pins; the re-measure is queued.
+**Long-context: 128K single-user context validated on qwen36** (the buffer-cache root cause of the prior ~32K ceiling is fixed in patch 008 — receipts in `benchmarks/longctx-bisect/`). Throughput benchmark tables below were measured on earlier stack pins; the re-measure is queued.
 
 ## Action queue
 
@@ -12,7 +12,7 @@ Full specs and statuses live in [experiments/README.md](experiments/README.md); 
 - [ ] **Bench-flag pin** — `--random-range-ratio 1` in every `sglang.bench_serving` invocation + flag legacy depth-labeled rows as suspect. Spec: [experiments/01](experiments/01-pin-random-range-ratio-flag-legacy-rows.md). *(hours)*
 - [ ] **Patch replay gates in setup.sh** — script the pristine-replay + byte-identity + double-apply gates and wire the probe suite in as a post-setup gate. Spec: [experiments/03](experiments/03-patch-replay-gates-setup.md). *(hours)*
 - [ ] **Radix/overlap decode A/B** — quantify the overlap-schedule cost of radix-on-hybrid at MR=1; keep preset defaults on data. *(~2h)*
-- [ ] **Long-context** — measure the current stack's 32K prefill growth rate; bisect the historical 128K→32K regression only if the signature persists. Spec: [experiments/04](experiments/04-longctx-bisect-pre-rebase.md). *(hours; days if the bisect runs)*
+- [ ] **Beyond 128K** — survive the contiguous-attention cache's 131K doubling boundary (incremental growth or pool-backed prefill writes), and attack decode TPOT at depth. *(the long-context growth regression itself is resolved — patch 008 cache cap; receipts in `benchmarks/longctx-bisect/`)*
 - [ ] **Real sampling** — wire temp/top-p/top-k/min-p into the MLX backend via `mlx_lm make_sampler`; unblocks thinking-mode evals. Spec: [experiments/05](experiments/05-mlx-sampling.md). *(days)*
 - [ ] **Tool-call boot gate** — port the 3090's `check_tool_call` into `validate_capabilities.py`. Spec: [experiments/06](experiments/06-check-tool-call-gate.md). *(hours)*
 - [ ] **Re-measure on the current stack** — throughput/long-context tables, the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). *(hours per piece)*
@@ -120,7 +120,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 
 - **Greedy-only sampling.** The MLX backend selects tokens with `mx.argmax`; temperature/top-p/top-k are silently ignored. On Qwen3.5-27B this causes infinite `<think>` loops on reasoning-heavy prompts (`validate_capabilities.py` includes a loop detector). Real sampling is queued ([experiments/05](experiments/05-mlx-sampling.md)).
 - **`gemma4` / `gemma4-31b` blocked at boot** — upstream `_attention_kv_config_for_layer` raises `NotImplementedError` for sliding-window attention at runner construction. Upstream feature gap; needs window-aware pools.
-- **Long-context ceiling ~32K input tokens** for qwen36 (35B-MoE-4bit) with the tuned recipe (turboquant KV, `--mem-fraction-static 0.4`); 60-64K OOM-kills the server mid-prefill. Prefill memory grows ~0.15-0.2 MB/token, mechanism unisolated — measurement/bisect plan in [experiments/04](experiments/04-longctx-bisect-pre-rebase.md). Ceiling measured on the previous stack pin; unverified on the current one.
+- **Long-context ceiling is 128K** (validated: in=125,830, ~7 min prefill, decode 0.1 tok/s). 192K+ dies at the contiguous-attention cache's 131K capacity-doubling boundary — needs incremental cache growth or pool-backed prefill writes (queued). Decode TPOT at depth (13 s/token at 128K) is the other open constraint. The MLX buffer cache is capped by patch 008 (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB) — do not remove the cap; uncapped, chunked prefill retains ~0.6 MB/token and jetsams around 30K.
 - **64K dense-attention ceiling is structural.** The per-chunk attention-score tensor `mx.fast.scaled_dot_product_attention` materializes hits 30–90 GB at deep offsets. Without flash-attention-style block-streaming SDPA in MLX, decode at 32K is the practical ceiling for dense standard-attention models; DeltaNet hybrids (`qwen35`, `qwen36`, `qwen36-27b`) are the workaround.
 - **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
 - **Coder-Next-80B infeasible** — 42 GB weights alone exceed the safe budget; model load OOMs. No path on a single 64 GB Mac.
@@ -152,10 +152,10 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 # coder-next          — infeasible on 64 GB
 # smol-docling        — 256M VLM smoke test only
 
-# Long-context (32K ceiling — see Known Issues; OOM guard mandatory)
+# Long-context (128K validated; OOM guard mandatory for ≥32K)
 bash scripts/common/oom_guard.sh &
-CTX=32768 MEM_FRAC=0.4 EXTRA_ARGS="--kv-cache-dtype turboquant \
-    --chunked-prefill-size 2048" bash scripts/launch.sh qwen36
+CTX=140000 MEM_FRAC=0.5 EXTRA_ARGS="--disable-radix-cache" \
+    bash scripts/launch.sh qwen36 --kv-cache turboquant
 
 # Agentic coding (qwen36 + opencode). The Qwen3 <think> template blocks break
 # the opencode loop (reasoning_content invisible to opencode / stray </think>
@@ -193,7 +193,7 @@ bash   scripts/bench/bench_256k_all.sh                      # long-context sweep
 
 | Preset | Checkpoint (mlx-community) | Type | Wts | 1-user tok/s* | Max ctx* | Audit hazards |
 |--------|---------------------------|------|:---:|:------------:|:-------:|:-------------|
-| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 51.8 (148 MR=2) | 256K label / ~32K measured | router INT4 + DeltaNet INT4 |
+| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 51.8 (148 MR=2) | **128K measured** (262K label) | router INT4 + DeltaNet INT4 |
 | `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 68.4 | 256K (3.2) | router INT4 |
 | `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 69.0 | 64K (6.3) | router INT4 |
 | `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.3 (34 MR=2) | 256K label | DeltaNet `in_proj_a/b` INT4 |

@@ -13,7 +13,7 @@
 
 ## Objective
 
-The 2026-07-14 fleet finding (bench_serving --dataset-name random with the upstream default --random-range-ratio 0.0 draws prompt AND output lengths uniform in [1, N], so every labeled-depth row measured ~half depth — or, at num-prompts 1, ANY depth in [1, N]) never propagated to the M4 repo: all four bench_serving entry points are unpinned. Pin the ratio, record server-verified actual input tokens per point, and mark every existing bench_serving depth-labeled artifact LEGACY-DEPTH-SUSPECT so the rig has a truthful instrument — a prerequisite for the long-context item (M4-A). Scope is the bench_serving instrument only; the repo's separate /v1/completions long_context instrument is already server-verified and out of scope.
+The 2026-07-14 fleet finding (bench_serving --dataset-name random with the upstream default --random-range-ratio 0.0 draws prompt AND output lengths uniform in [1, N], so every labeled-depth row measured ~half depth — or, at num-prompts 1, ANY depth in [1, N]) never propagated to the M4 repo: all four bench_serving entry points are unpinned. Pin the ratio, record server-verified actual input tokens per point, and mark every existing bench_serving depth-labeled artifact LEGACY-DEPTH-SUSPECT so the rig has a truthful instrument — a prerequisite for honest depth rows. Scope is the bench_serving instrument only; the repo's separate /v1/completions long_context instrument is already server-verified and out of scope.
 
 
 ## Background & receipts
