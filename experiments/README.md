@@ -7,18 +7,17 @@ authoritative.
 | Order | ID | Spec | Status | Why now / gates |
 |:-:|---|---|---|---|
 | 1 | disk-triage | (no spec — ~1h task) | **ready, do first** | 12 GiB free of 926 GiB; HF cache holds 362 GB. Inventory `~/.cache/huggingface/hub` per-repo sizes + last access, propose deletions to Matt (gemma4 variants and superseded dupes are candidates). Gates M4-E and comfortable bisect arms. |
-| 2 | M4-C | [Pin `--random-range-ratio 1` + flag legacy depth rows](01-pin-random-range-ratio-flag-legacy-rows.md) | ready | Repo edits + on-box smoke; prerequisite for honest bench rows everywhere. |
-| 3 | M4-F | [Patch replay gates + probe gate in setup.sh](03-patch-replay-gates-setup.md) | ready | Scripts the pristine-replay/byte-identity/double-apply gates; gate tooling reusable for any scratch-stack build. |
-| 4 | radix-ab | (no spec — ~2h task) | ready | Decode-TPOT A/B on qwen36 at MR=1: radix-on (normal event loop) vs `--disable-radix-cache` (overlap loop). Keeps hybrid preset defaults data-driven. |
-| 5 | beyond-128k | (no spec yet) | ready | 128K is validated (growth regression resolved — cache cap in patch 008; `benchmarks/longctx-bisect/ATTRIBUTION.md`). Remaining: survive the contiguous-attention cache's 131K capacity-doubling spike (incremental growth or pool-backed prefill writes) to reach 192K/256K, and attack decode TPOT at depth (13 s/token at 128K). |
-| 6 | M4-B | [Real sampling via mlx-lm make_sampler](05-mlx-sampling.md) | ready | Removes the greedy-only limitation; unblocks thinking-mode evals and fleet parity. |
-| 7 | M4-G | [check_tool_call boot gate](06-check-tool-call-gate.md) | ready | Cheap gate against the tool-call-class failure mode. |
-| 8 | re-measure | (no spec — fold into M4-C step 8-9 + a qwen36 SWE-bench re-run) | ready | README throughput/long-context tables and the SWE-bench cell are from earlier stack pins; `qwen35-9b-8bit` / `qwen36-27b` presets unswept. |
-| 9 | M4-E | [In-house qwen36 MLX 4-bit with exclusions](07-qwen36-inhouse-mlx4bit-exclusions.md) | **blocked: disk** | Needs ~70+ GB (67 GB BF16 + conversion scratch). Motivation is the DWQ-quality precedent; run its probe A/B after M4-B lands. |
+| 2 | M4-F | [Patch replay gates + probe gate in setup.sh](03-patch-replay-gates-setup.md) | ready | Scripts the pristine-replay/byte-identity/double-apply gates; gate tooling reusable for any scratch-stack build. |
+| 3 | radix-ab | (no spec — ~2h task) | ready | Decode-TPOT A/B on qwen36 at MR=1: radix-on (normal event loop) vs `--disable-radix-cache` (overlap loop). Keeps hybrid preset defaults data-driven. New input from the genuine-depth re-measure: radix-on serving OOMs the genuine-32K prefill on full-attention MoEs while a fresh radix-off server completes it (cross-request memory retention — `benchmarks/coder-30b-4bit/results.json` error rows); profile that alongside the decode A/B. |
+| 4 | beyond-128k | (no spec yet) | ready | 128K is validated (growth regression resolved — cache cap in patch 008; `benchmarks/longctx-bisect/ATTRIBUTION.md`). Remaining: survive the contiguous-attention cache's 131K capacity-doubling spike (incremental growth or pool-backed prefill writes) to reach 192K/256K, and attack decode TPOT at depth (13 s/token at 128K). Related envelope receipts: radix-off concurrent prefill (conc-8) and dense-devstral genuine-32K both trip the oom_guard. |
+| 5 | M4-B | [Real sampling via mlx-lm make_sampler](05-mlx-sampling.md) | ready | Removes the greedy-only limitation; unblocks thinking-mode evals and fleet parity. |
+| 6 | M4-G | [check_tool_call boot gate](06-check-tool-call-gate.md) | ready | Cheap gate against the tool-call-class failure mode. |
+| 7 | re-measure | (no spec — remaining legacy tables + a qwen36 SWE-bench re-run) | ready | Short-sweep and batched-decode README tables and the SWE-bench cell are from earlier stack pins; `qwen35-9b-8bit` / `qwen36-27b` presets unswept. The four tripwire presets (qwen36, coder-30b, qwen3-moe, devstral) are re-measured at genuine depth and armed in `benchmarks/baselines.json` (schema v2). |
+| 8 | M4-E | [In-house qwen36 MLX 4-bit with exclusions](07-qwen36-inhouse-mlx4bit-exclusions.md) | **blocked: disk** | Needs ~70+ GB (67 GB BF16 + conversion scratch). Motivation is the DWQ-quality precedent; run its probe A/B after M4-B lands. |
 | — | upstream-candidates | (no spec — repo-only) | ready | Offer upstream / sister repos the generic fixes: declared-tokenizer-class guard, `wrap_as_pixtral` mistral3 + top-level `spatial_merge_size`, pixtral MULTI_IMAGES splitter, mamba-radix `no_buffer` resolution on MLX, device-aware FutureMap stash, **the MLX buffer-cache cap** (unbounded-cache prefill growth affects every MLX serving stack). |
 
 Scheduling constraint: the box serves one model at a time — beyond-128k, M4-B/G/E and any
-probe sweep need exclusive serving windows; M4-C/D/F and the repo-only items
+probe sweep need exclusive serving windows; M4-F and the repo-only items
 don't.
 
 ## Cross-rig edges

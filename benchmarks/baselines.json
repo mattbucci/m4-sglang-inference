@@ -28,6 +28,20 @@
       "ttft_ms": 14029.5
     }
   },
+  "devstral": {
+    "1024": {
+      "actual_input_tokens": 1023,
+      "tok_per_sec": 16.5,
+      "tpot_ms": 60.5,
+      "ttft_ms": 7655.0
+    },
+    "8192": {
+      "actual_input_tokens": 8191,
+      "tok_per_sec": 14.8,
+      "tpot_ms": 67.6,
+      "ttft_ms": 66241.4
+    }
+  },
   "qwen3-moe": {
     "1024": {
       "actual_input_tokens": 1024,
@@ -46,6 +60,26 @@
       "tok_per_sec": 55.7,
       "tpot_ms": 18.0,
       "ttft_ms": 14357.8
+    }
+  },
+  "qwen36": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 82.4,
+      "tpot_ms": 12.1,
+      "ttft_ms": 1291.2
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 57.8,
+      "tpot_ms": 17.3,
+      "ttft_ms": 57436.9
+    },
+    "8192": {
+      "actual_input_tokens": 8192,
+      "tok_per_sec": 72.8,
+      "tpot_ms": 13.7,
+      "ttft_ms": 10658.7
     }
   }
 }

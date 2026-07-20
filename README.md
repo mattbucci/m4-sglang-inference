@@ -9,14 +9,12 @@ Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) usin
 Full specs and statuses live in [experiments/README.md](experiments/README.md); one-line summary, in execution order:
 
 - [ ] **Disk triage** — 12 GiB free of 926 GiB; the HF cache holds 362 GB. Inventory, propose deletions to Matt. Gates the in-house quant and bisect arms. *(~1h)*
-- [ ] **Bench-flag pin** — `--random-range-ratio 1` in every `sglang.bench_serving` invocation + flag legacy depth-labeled rows as suspect. Spec: [experiments/01](experiments/01-pin-random-range-ratio-flag-legacy-rows.md). *(hours)*
 - [ ] **Patch replay gates in setup.sh** — script the pristine-replay + byte-identity + double-apply gates and wire the probe suite in as a post-setup gate. Spec: [experiments/03](experiments/03-patch-replay-gates-setup.md). *(hours)*
-- [ ] **Radix/overlap decode A/B** — quantify the overlap-schedule cost of radix-on-hybrid at MR=1; keep preset defaults on data. *(~2h)*
-- [ ] **Beyond 128K** — survive the contiguous-attention cache's 131K doubling boundary (incremental growth or pool-backed prefill writes), and attack decode TPOT at depth. *(the long-context growth regression itself is resolved — patch 008 cache cap; receipts in `benchmarks/longctx-bisect/`)*
+- [ ] **Radix/overlap decode A/B** — quantify the overlap-schedule cost of radix-on-hybrid at MR=1; keep preset defaults on data. New input: radix-on serving OOMs the genuine-32K prefill on full-attention MoEs while a fresh radix-off server completes it (receipts in `benchmarks/coder-30b-4bit/results.json`) — the A/B should also profile cross-request memory retention. *(~2h)*
+- [ ] **Beyond 128K** — survive the contiguous-attention cache's 131K doubling boundary (incremental growth or pool-backed prefill writes), and attack decode TPOT at depth. Related envelope receipts: radix-off concurrent prefill (conc-8, 32×256/256) and dense-devstral genuine-32K both trip the oom_guard. *(the long-context growth regression itself is resolved — patch 008 cache cap; receipts in `benchmarks/longctx-bisect/`)*
 - [ ] **Real sampling** — wire temp/top-p/top-k/min-p into the MLX backend via `mlx_lm make_sampler`; unblocks thinking-mode evals. Spec: [experiments/05](experiments/05-mlx-sampling.md). *(days)*
 - [ ] **Tool-call boot gate** — port the 3090's `check_tool_call` into `validate_capabilities.py`. Spec: [experiments/06](experiments/06-check-tool-call-gate.md). *(hours)*
-- [ ] **Re-measure on the current stack** — throughput/long-context tables, the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). *(hours per piece)*
-- [ ] **Re-arm baselines.json (schema v2, 3090 fleet standard 2026-07-19)** — current file is a 2026-04-12 relic in the old parser format; rides the re-measure evening. M4 ceiling depths 1024/8192/32768, `--random-range-ratio 1` pinned (M4-C already landed the pin), `oom_guard.sh` mandatory, keyed by launch-preset name, `invalid`/`depth_shortfall` points never saved. Schema + rules: 3090 `scripts/bench/README.md` (their tripwire armed 7/7 within 3% of receipts, validated exit-1 both ways).
+- [ ] **Re-measure on the current stack** — the remaining legacy tables (short-sweep, batched-decode peaks), the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). The four tripwire presets are re-measured at genuine depth (see Performance). *(hours per piece)*
 - [ ] **In-house qwen36 MLX 4-bit** with router/DeltaNet/vision exclusions — after disk + sampling. Spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md). *(days)*
 
 ## Primary target: long-context agentic coding
@@ -211,7 +209,36 @@ bash   scripts/bench/bench_256k_all.sh                      # long-context sweep
 ## Performance
 
 > Mac mini M4 Pro (64 GB), SGLang + MLX, `sglang.benchmark.serving`.
-> **All numbers in this section were measured on earlier stack pins** — the current-stack re-measure is in the action queue. Depth-labeled rows additionally pre-date the `--random-range-ratio 1` pin (labeled depths drew uniform [1,N]) and are flagged suspect — mechanism + full inventory in [benchmarks/LEGACY-DEPTH-SUSPECT.md](benchmarks/LEGACY-DEPTH-SUSPECT.md).
+
+### Genuine-depth context sweep (current stack, `--random-range-ratio 1`)
+
+Decode tok/s with the server-verified depth instrument (every point's
+`actual_input_tokens` == label). Tripwire recipe: `CTX=36000 MEM_FRAC=0.45
+SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant`.
+These rows are the regression baselines (`benchmarks/baselines.json`, schema v2).
+
+| Preset | @1K | @8K | @32K | TTFT @32K |
+|--------|:---:|:---:|:----:|:---------:|
+| qwen36 | 82.4 | 72.8 | **57.8** | 57 s |
+| coder-30b | 80.1 | 55.8 | 28.7 | 100 s |
+| qwen3-moe | 78.0 | 55.7 | 28.8 | 99 s |
+| devstral | 16.5 | 14.8 | OOM | — |
+
+**DeltaNet holds decode flat at genuine depth**: qwen36 keeps 70% of its
+short-context speed at a true 32,768-token context while the full-attention
+MoEs halve twice; its 32K prefill is ~1.7× faster too (DeltaNet layers carry
+recurrent state, not KV). Full curves (128→32K, 9 points) + concurrency rows:
+`benchmarks/{coder-30b-4bit,qwen3-30b-moe-4bit}/results.json`. Serving-envelope
+receipts (radix-on 32K prefill OOM, radix-off conc-8 OOM, devstral dense 32K
+OOM) live in the same files' error rows — feeding the radix/overlap A/B and
+beyond-128K queue items.
+
+### Legacy tables (earlier stack pins)
+
+> **Everything below was measured on earlier stack pins** and pre-dates the
+> `--random-range-ratio 1` pin — labeled depths drew uniform [1,N] and are
+> flagged suspect ([benchmarks/LEGACY-DEPTH-SUSPECT.md](benchmarks/LEGACY-DEPTH-SUSPECT.md)).
+> Re-measure for the remaining presets is in the action queue.
 
 ### Short-sweep decode tok/s (fp16 KV, single user, 64 output tokens)
 
