@@ -46,7 +46,7 @@ The empty-patch instances (`django-11019`, `flask-4045`, `sphinx-10451`, `reques
 | Preset | codegen | vision | video | thinking |
 |--------|:-------:|:------:|:-----:|:--------:|
 | `qwen36` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen35` | **STRONG** | **STRONG** | PARTIAL | skipped (known greedy loop) |
+| `qwen35` | **STRONG** | **STRONG** | PARTIAL | **VERIFIED** |
 | `devstral` | **STRONG** | **STRONG** | PARTIAL | n/a |
 | `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
 | `coder-30b` / `qwen3-moe` / `qwen3-32b` | **STRONG** | n/a | n/a | pass validate gate |

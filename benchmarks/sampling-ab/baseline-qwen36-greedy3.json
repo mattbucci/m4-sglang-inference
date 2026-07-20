@@ -1,0 +1,38 @@
+[
+  {
+    "prompt": "List the first 8 prime numbers, comma-separated.",
+    "content": "2, 3, 5, 7, 11, 13, 17, 19",
+    "finish": "stop",
+    "usage": {
+      "prompt_tokens": 23,
+      "total_tokens": 50,
+      "completion_tokens": 27,
+      "prompt_tokens_details": null,
+      "reasoning_tokens": 0
+    }
+  },
+  {
+    "prompt": "Write a Python one-liner that reverses a string. Just the code.",
+    "content": "```python\nreversed_string = original_string[::-1]\n```",
+    "finish": "stop",
+    "usage": {
+      "prompt_tokens": 28,
+      "total_tokens": 43,
+      "completion_tokens": 15,
+      "prompt_tokens_details": null,
+      "reasoning_tokens": 0
+    }
+  },
+  {
+    "prompt": "What is the capital of Australia? Answer in one word.",
+    "content": "Canberra",
+    "finish": "stop",
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 27,
+      "completion_tokens": 3,
+      "prompt_tokens_details": null,
+      "reasoning_tokens": 0
+    }
+  }
+]

@@ -1,0 +1,12 @@
+[2026-07-19 21:50:12] Decode batch, #running-req: 1, #full token: 80, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.39, #queue-req: 0
+[2026-07-19 21:50:15] Decode batch, #running-req: 1, #full token: 120, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.43, #queue-req: 0
+[2026-07-19 21:50:17] Decode batch, #running-req: 1, #full token: 160, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.42, #queue-req: 0
+[2026-07-19 21:50:20] Decode batch, #running-req: 1, #full token: 200, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.39, #queue-req: 0
+[2026-07-19 21:50:23] Decode batch, #running-req: 1, #full token: 240, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.46, #queue-req: 0
+[2026-07-19 21:50:26] Decode batch, #running-req: 1, #full token: 280, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.46, #queue-req: 0
+[2026-07-19 21:50:29] Decode batch, #running-req: 1, #full token: 320, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.39, #queue-req: 0
+[2026-07-19 21:50:31] Decode batch, #running-req: 1, #full token: 360, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.46, #queue-req: 0
+[2026-07-19 21:50:34] Decode batch, #running-req: 1, #full token: 400, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.46, #queue-req: 0
+[2026-07-19 21:50:37] Decode batch, #running-req: 1, #full token: 440, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.40, #queue-req: 0
+[2026-07-19 21:50:40] Decode batch, #running-req: 1, #full token: 480, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.43, #queue-req: 0
+[2026-07-19 21:50:42] Decode batch, #running-req: 1, #full token: 520, full token usage: 0.00, mamba num: 2, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 14.44, #queue-req: 0

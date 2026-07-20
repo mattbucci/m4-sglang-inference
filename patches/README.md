@@ -92,7 +92,7 @@ produces token-for-token identical output to a cold run, and branched suffixes
 | preset | codegen | vision | video | thinking |
 |--------|---------|--------|-------|----------|
 | qwen36 | STRONG | STRONG | STRONG | VERIFIED |
-| qwen35 | STRONG | STRONG | PARTIAL | skipped (known greedy loop) |
+| qwen35 | STRONG | STRONG | PARTIAL | VERIFIED |
 | devstral | STRONG | STRONG | PARTIAL | — |
 | nemotron-30b | STRONG | — | — | VERIFIED |
 
