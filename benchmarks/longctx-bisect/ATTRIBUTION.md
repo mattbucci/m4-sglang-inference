@@ -23,11 +23,30 @@ one-line runtime policy in the MLX backend.
 | phase0-cachelimit | 0.32.0 | 4 GB | CTX 32K, mf 0.4 | flat (no guard warns) | **32K completes** (in=31,458; 52.7s) |
 | phase1-deep 64K | 0.32.0 | 4 GB | CTX 140K, mf 0.5 | flat | **64K completes** (in=62,916; 139.3s) |
 | phase1-deep 128K | 0.32.0 | 4 GB | CTX 140K, mf 0.5 | flat plateau (~11.5 GB free through prefill) | **128K completes** (in=125,830; prefill 415.8s ≈ 6.9 min; decode 0.1 tok/s — matches the historical receipt) |
-| phase2-256k 192K | 0.32.0 | 4 GB | CTX 262K, mf 0.5 | flat until ~133K tokens | guard-killed at ~133K processed — the contiguous attention cache's capacity-doubling boundary (131K → 262K realloc spike), not steady growth |
+| phase2-256k 192K | 0.32.0 | 4 GB | CTX 262K, mf 0.5, chunked 2048 | flat until ~133K tokens | guard-killed at ~133K processed — the contiguous attention cache's capacity-doubling boundary (131K → 262K realloc spike), not steady growth |
+| presize-160k | 0.32.0 | 4 GB | CTX 210K, mf 0.5, **chunked 4096**, patch-015 pre-size | free oscillating 1–11 GB per chunk | guard-killed at ~100K — chunked-4096 transient floor (see below), NOT the pre-size design |
+| presize-160k-ctx175k | 0.32.0 | 2 GB | CTX 175K, mf 0.5, **chunked 4096**, patch-015 pre-size | same oscillation | guard-killed at ~113K |
+| presize-128k-control | 0.32.0 | 4 GB | CTX 140K, mf 0.5, **chunked 4096**, patch-015 pre-size | — | guard-killed at ~103.5K |
+| postrevert-128k | 0.32.0 | 4 GB | CTX 140K, mf 0.5, **chunked 4096**, 015 reverted | — | guard-killed at the IDENTICAL ~103.5K (pending-token 27526 in both logs) — pre-size ≡ ladder below the 131K crossover; the 4096 chunk size is the killer |
+| postrevert-128k-chunked2048 | 0.32.0 | 4 GB | CTX 140K, mf 0.5, chunked 2048 | worst WARN 10.86 GB | **128K completes** (in=125,830; prefill 424.9s — matches phase1-deep 415.8s) |
 
 Growth computed from mem_profile.sh (free+inactive delta over the prefill
 window ÷ server-verified prompt tokens); per-run receipts in the sibling
 directories (mem_profile.csv, bench-results.txt, server-log tails).
+
+## Chunk-size transient floor
+
+The deep-prefill envelope is **chunk-size sensitive**: at `chunked 4096` the
+per-chunk activation transients (MoE dispatch + attention scratch at 4096
+tokens) swing free memory 1–11 GB per chunk and cross the guard line at
+~100-113K depth regardless of pre-sizing, CTX, or the MLX cache cap; at
+`chunked 2048` the same 128K request completes with a worst-case dip of
+10.9 GB. The launch presets default to `CHUNKED=4096` — every deep run must
+pin `CHUNKED=2048` (now part of the documented recipe). vm_stat confirms
+full memory recovery between runs (no leak, no box-state degradation).
+Patch-015-style pre-sizing is unproven either way below the 131K crossover
+(identical death depths); the ladder-vs-presize A/B at chunked 2048 / 160K
+is the deciding experiment.
 
 ## Attribution chain
 

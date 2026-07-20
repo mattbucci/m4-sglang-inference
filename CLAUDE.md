@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.15.post1 + 7 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.15.post1 + 6 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass
@@ -20,11 +20,11 @@ upstream sliding-window gap.
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (7 patches on top of SGLang v0.5.15.post1) |
+| [patches/README.md](patches/README.md) | Per-patch notes (6 patches on top of SGLang v0.5.15.post1) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 7 patches
+scripts/setup.sh                                  # venv, SGLang v0.5.15.post1, MLX deps, apply 6 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
@@ -95,12 +95,14 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   for long-context: **use mem-fraction 0.4 for 32K+ work**. Right levers for
   memory pressure: `--max-total-tokens`, `MAX_RUNNING`, request `max_tokens`,
   `chat_template_kwargs={"enable_thinking": false}`,
-  `--kv-cache-dtype turboquant`. `--chunked-prefill-size` does NOT help —
-  prefill memory growth is per-token (activation side), so only
-  `--max-total-tokens` (cap KV size) and `--mem-fraction-static` (cap total
-  reservation) move the needle.
+  `--kv-cache-dtype turboquant`, and `CHUNKED=2048` — chunk size sets the
+  per-chunk transient floor: at the preset-default 4096 the transients swing
+  free memory 1–11 GB per chunk and kill deep prefills at ~100-113K that
+  complete at 2048 (`benchmarks/longctx-bisect/ATTRIBUTION.md`). Chunk size
+  does NOT change steady per-token growth (that was the buffer-cache story,
+  fixed by the patch-008 cap) — it changes the transient peak.
 - **Long-context: 128K validated** for qwen36 (35B-MoE-4bit) with
-  `CTX=140000 MEM_FRAC=0.5 EXTRA_ARGS="--disable-radix-cache" launch.sh
+  `CTX=140000 MEM_FRAC=0.5 CHUNKED=2048 EXTRA_ARGS="--disable-radix-cache" launch.sh
   qwen36 --kv-cache turboquant` — in=125,830 prefills in ~7 min, decode
   0.1 tok/s (receipts: `benchmarks/longctx-bisect/`). The prior ~32K
   ceiling was unbounded MLX buffer-cache accumulation across prefill chunks

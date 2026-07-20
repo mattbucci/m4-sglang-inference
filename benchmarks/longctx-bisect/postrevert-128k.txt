@@ -1,0 +1,8 @@
+Model: qwen36
+Output tokens per test: 32
+Label                               Input    Out     Time      TPOT  Throughput
+-------------------------------------------------------------------------------------
+  128K tokens                     ERROR: Remote end closed connection without response
+
+=====================================================================================
+Summary: TPOT at different context lengths (output=32 tokens)
