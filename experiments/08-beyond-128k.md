@@ -79,7 +79,10 @@ server-verified) → 160K →
 
 ## Kill criteria
 
-- Quantized-cache decode quality drifts (probe verdicts flip or greedy
-  determinism breaks vs the fp16 cache) → record, fall back to direction 2.
+- Quantized-cache decode quality drifts — the gate is
+  `scripts/eval/probe_depth_recall.py` (multi-needle, seeded, server-verified
+  depth): any score drop >1 vs the same-seed turboquant receipts in
+  `benchmarks/quality/depth-recall/`, or greedy token-identity breaks vs the
+  fp16 cache → record, fall back to direction 2.
 - Any change that fails the 128K control → revert through the gates, as
   with the pre-size attempt.

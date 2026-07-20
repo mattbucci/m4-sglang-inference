@@ -140,6 +140,12 @@
       "tok_per_sec": 72.8,
       "tpot_ms": 13.7,
       "ttft_ms": 10658.7
+    },
+    "recall_32k": {
+      "label": 28000,
+      "note": "label 28000 realizes ~32K tokens (probe filler overshoots ~15%) and fits the CTX=36000 tripwire serve",
+      "score": 6,
+      "seed": 42
     }
   },
   "qwen36-27b": {

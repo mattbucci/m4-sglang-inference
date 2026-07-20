@@ -1,0 +1,36 @@
+{
+  "label": 28000,
+  "seed": 42,
+  "tag": "tripwire",
+  "prompt_tokens": 32240,
+  "depth_verified": true,
+  "verdict": "6/6",
+  "score": 6,
+  "found": {
+    "Kestrel": true,
+    "Meridian": true,
+    "Obsidian": true,
+    "Cinnabar": true,
+    "Halcyon": true,
+    "Zephyr": true
+  },
+  "codes": {
+    "Kestrel": "770487",
+    "Meridian": "216739",
+    "Obsidian": "126225",
+    "Cinnabar": "877572",
+    "Halcyon": "388389",
+    "Zephyr": "356787"
+  },
+  "positions_char_frac": {
+    "Zephyr": 0.98,
+    "Halcyon": 0.85,
+    "Cinnabar": 0.65,
+    "Obsidian": 0.45,
+    "Meridian": 0.25,
+    "Kestrel": 0.05
+  },
+  "elapsed_s": 53.5,
+  "completion": "770487\n216739\n126225\n877572\n388389\n356787",
+  "finish_reason": "stop"
+}

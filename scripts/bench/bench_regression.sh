@@ -227,12 +227,37 @@ if [ "$SERVED" != "$PRESET" ]; then
     exit 2
 fi
 RUN_JSON="$RUNS_DIR/${PRESET}-$(date +%Y%m%dT%H%M%S).json"
+RECALL_FAIL=0
 echo "=== $PRESET (live bench @ $DEPTHS) ==="
 run_instrument "$PRESET" "$RUN_JSON"
+
+# Standing 32K recall tripwire (quality field, schema v2): when the baseline
+# stores recall_32k for this preset, re-run the seeded multi-needle probe at
+# 32768 and require score >= stored score - 1. Depth is server-verified by
+# the probe itself; same seed => byte-identical prompt (controlled A/B).
+RECALL_BASE=$(python3 -c "
+import json, sys
+b = json.load(open('$BASELINES')) if __import__('os').path.exists('$BASELINES') else {}
+q = b.get('$PRESET', {}).get('recall_32k')
+print(f\"{q['score']} {q['seed']} {q['label']}\" if q else '')" 2>/dev/null)
+if [ -n "$RECALL_BASE" ] && [ -z "$SAVE_BASELINE" ]; then
+    read -r R_SCORE R_SEED R_LABEL <<< "$RECALL_BASE"
+    echo "--- recall_32k tripwire (baseline ${R_SCORE}/6, seed $R_SEED, label $R_LABEL) ---"
+    R_OUT=$(SGLANG_USE_MLX=1 python3 "$REPO_DIR/scripts/eval/probe_depth_recall.py" \
+        --port "$PORT" --labels "$R_LABEL" --seed "$R_SEED" --tag tripwire 2>&1)
+    echo "$R_OUT" | tail -2
+    R_NOW=$(echo "$R_OUT" | grep -oE "score=[0-9]+" | head -1 | cut -d= -f2)
+    if [ -z "$R_NOW" ] || [ "$R_NOW" -lt $((R_SCORE - 1)) ]; then
+        echo "  recall_32k: ${R_NOW:-none} < $((R_SCORE - 1)) [REGRESSION]"
+        RECALL_FAIL=1
+    else
+        echo "  recall_32k: ${R_NOW}/6 [ok]"
+    fi
+fi
 echo "--- $([ -n "$SAVE_BASELINE" ] && echo saving baseline || echo comparing) ---"
 check_json "$PRESET" "$RUN_JSON" "$SAVE_BASELINE"
 RC=$?
-if [ $RC -eq 1 ] && [ -z "$SAVE_BASELINE" ]; then
+if { [ $RC -eq 1 ] || [ "$RECALL_FAIL" = 1 ]; } && [ -z "$SAVE_BASELINE" ]; then
     echo ""
     echo "RESULT: REGRESSION DETECTED"
     exit 1

@@ -11,6 +11,8 @@
 | **Depends on** | Exclusive serving window on m4-box.; Independent of disk-triage.; depth-recall-probe supplies the quality-parity gate any later decode-topk port needs.; R9700 patch 069 / 3090 patch 059 checkouts (verified present locally) — read-only, step 6 only. |
 | **Provides to** | Doc 08 phase 2's secondary criterion, rewritten against the true curve.; The decode-topk-mlx port decision (would be patch 017) — absorbed here as a go/no-go, not built blind.; The five doc locations currently citing 13-19 s/token, re-anchored. |
 
+> Gate handoff: any decode-topk port must pass the depth-recall gate — `scripts/eval/probe_depth_recall.py`, same-seed comparison against the `benchmarks/quality/depth-recall/` turboquant receipts (6/6 at every rung through 245,656 realized tokens).
+
 ## Objective
 
 The fleet-cited constraint "decode TPOT at depth = 13-19 s/token" is whole-request elapsed (prefill included) divided by completion tokens — an instrument artifact until proven otherwise. Fix the instrument, publish the true steady-decode s/token curve at depth, and decide the MLX decode-topk port on the measured curve instead of a number that may be ~96% prefill.
