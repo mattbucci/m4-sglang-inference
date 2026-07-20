@@ -12,6 +12,10 @@ Full specs and statuses live in [experiments/README.md](experiments/README.md); 
 - [ ] **Beyond 160K** — 192K exhausts the memory budget at ~180K prefilled (bf16 per-request attention cache + pool). Phase 2: quantize the per-request cache (also attacks decode TPOT at depth) or pool-backed prefill writes. Spec: [experiments/08](experiments/08-beyond-128k.md). Related envelope receipts: radix-off concurrent prefill (conc-8) and dense-devstral genuine-32K both trip the oom_guard.
 - [ ] **Re-measure on the current stack** — the remaining legacy tables (short-sweep, batched-decode peaks), the SWE-bench cell, the unswept presets (`qwen35-9b-8bit`, `qwen36-27b`). The four tripwire presets are re-measured at genuine depth (see Performance). *(hours per piece)*
 - [ ] **In-house qwen36 MLX 4-bit** with router/DeltaNet/vision exclusions — after disk + sampling. Spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md). *(days)*
+- [ ] **192K knob probes + GB-shortfall ledger** — sub-2048 chunks / exact-196,608 pool / MEM_FRAC 0.45 against the 192K death; failed arms yield the exact GB number phase 2 must recover. No patch, no download. Spec: [experiments/11](experiments/11-prefill-budget-ledger-192k.md). *(15-45 min/arm)*
+- [ ] **Depth-recall probe** — multi-needle positional recall to 157K + turboquant-vs-fp16 KV A/B + a standing 32K recall tripwire; supplies the drift gate beyond-160K presumes. Spec: [experiments/10](experiments/10-depth-recall-probe.md). *(~2-3h)*
+- [ ] **Decode-at-depth truth** — the cited 13-19 s/token TPOT is ~96% prefill amortization by construction (`bench_long_context.py` divides whole-request elapsed by out-tokens); fix the instrument, publish the true decode curve, go/no-go the decode-topk port. Spec: [experiments/09](experiments/09-decode-tpot-truth-and-depth-curve.md). *(1-2h per ladder pass)*
+- [ ] **Session endurance + extend turn tax** — radix-on retention past 10 requests and append-to-cached-prefix TTFT on the daily agentic workload (R97-J cross-rig request). Spec: [experiments/12](experiments/12-agentic-endurance-and-extend-tax.md). *(~4-6h)*
 
 ## Primary target: long-context agentic coding
 
