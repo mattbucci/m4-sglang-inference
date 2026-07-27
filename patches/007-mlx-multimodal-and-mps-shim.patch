@@ -40,13 +40,13 @@ index b463ff6..b2bcfc4 100644
  
      torch.Tensor.to = _patched_to
 diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
-index 67cf53e..d02d412 100644
+index 891d8df..c87f87c 100644
 --- a/python/sglang/srt/managers/mm_utils.py
 +++ b/python/sglang/srt/managers/mm_utils.py
-@@ -1688,7 +1688,11 @@ class ShmPointerMMData:
-             create=True, size=nbytes, name=make_shm_name("mm")
-         )
-         try:
+@@ -1869,7 +1869,11 @@ class ShmPointerMMData:
+                 # the process is killed with SIGBUS. Reserving the pages up
+                 # front turns exhaustion into a catchable OSError (ENOSPC).
+                 os.posix_fallocate(shm._fd, 0, nbytes)
 -            dst = torch.frombuffer(shm.buf, dtype=torch.uint8)
 +            # macOS rounds shm allocations up to a page (16 KB on Apple
 +            # Silicon), so torch.frombuffer(shm.buf, ...) returns a
@@ -56,7 +56,7 @@ index 67cf53e..d02d412 100644
              dst.copy_(tensor.view(torch.uint8).reshape(-1))
          except BaseException:
              shm.close()
-@@ -1712,10 +1716,16 @@ class ShmPointerMMData:
+@@ -1893,10 +1897,16 @@ class ShmPointerMMData:
          self.dtype = state["dtype"]
          self.precomputed_hash = state.get("precomputed_hash")
          self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
@@ -77,10 +77,10 @@ index 67cf53e..d02d412 100644
      def materialize(self) -> torch.Tensor:
          """Clone tensor from shm to owned memory, then release shm handle."""
 diff --git a/python/sglang/srt/managers/schedule_batch.py b/python/sglang/srt/managers/schedule_batch.py
-index 55c88af..0a65f7d 100755
+index a8cea65..7a18001 100755
 --- a/python/sglang/srt/managers/schedule_batch.py
 +++ b/python/sglang/srt/managers/schedule_batch.py
-@@ -217,6 +217,11 @@ class FINISH_ABORT(BaseFinishReason):
+@@ -220,6 +220,11 @@ class FINISH_ABORT(BaseFinishReason):
  
  class Modality(Enum):
      IMAGE = auto()
@@ -92,7 +92,7 @@ index 55c88af..0a65f7d 100755
      VIDEO = auto()
      AUDIO = auto()
  
-@@ -231,7 +236,7 @@ class Modality(Enum):
+@@ -234,7 +239,7 @@ class Modality(Enum):
  
      @staticmethod
      def all():

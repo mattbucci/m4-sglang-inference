@@ -1,30 +1,37 @@
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 3049e6d..1187daf 100644
+index 838b925..eaf530e 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -562,9 +562,19 @@ class ServerArgs:
-                 'Data type for kv cache storage. "auto" will use model data type. '
-                 '"bf16" or "bfloat16" for BF16 KV cache. "fp8_e5m2" and '
-                 '"fp8_e4m3" are supported for CUDA 11.8+. "fp4_e2m1" (only '
--                "mxfp4) is supported for CUDA 12.8+ and PyTorch 2.8.0+"
-+                "mxfp4) is supported for CUDA 12.8+ and PyTorch 2.8.0+. "
+@@ -611,7 +611,8 @@ class ServerArgs:
+                 'by the FA4 backend. "nvfp4" selects '
+                 'the NVFP4 FP4 E2M1 KV cache recipe; "fp4_mx_block16" '
+                 "selects the MX-style block-size-16 FP4 E2M1 KV cache "
+-                "recipe. Both require CUDA 12.8+ and PyTorch 2.8.0+"
++                "recipe. Both require CUDA 12.8+ and PyTorch 2.8.0+. "
 +                'MLX/Apple-Silicon aliases: "fp8"/"mxfp8"/"turboquant"/"tq"/"4bit".'
              ),
--            choices=["auto", "fp8_e5m2", "fp8_e4m3", "bf16", "bfloat16", "fp4_e2m1"],
-+            choices=[
-+                "auto", "fp8_e5m2", "fp8_e4m3", "bf16", "bfloat16", "fp4_e2m1",
+             choices=[
+                 "auto",
+@@ -623,6 +624,18 @@ class ServerArgs:
+                 "nvfp4",
+                 "fp4_mx_block16",
+                 "fp4_e2m1",
 +                # MLX backend aliases — friendlier names accepted by the Apple
 +                # Silicon path so the launch presets (default KV_CACHE=fp8) and
 +                # the long-context turboquant recipe pass CLI validation. The
 +                # MLX runner currently stores fp16 KV regardless (kv_quant is a
 +                # dormant follow-up); these just keep argparse from rejecting the
 +                # preset before the server can boot.
-+                "fp16", "fp8", "mxfp8", "turboquant", "turbo", "tq", "4bit",
-+            ],
++                "fp16",
++                "fp8",
++                "turboquant",
++                "turbo",
++                "tq",
++                "4bit",
+             ],
              resolvable=True,
          ),
-     ] = "auto"
-@@ -3142,6 +3152,15 @@ class ServerArgs:
+@@ -3518,6 +3531,15 @@ class ServerArgs:
          if self.device == "mps":
              if not use_mlx():
                  self.disable_overlap_schedule = True
@@ -40,3 +47,15 @@ index 3049e6d..1187daf 100644
  
      def _handle_xpu_backends(self):
          if self.device == "xpu":
+@@ -5065,6 +5087,11 @@ class ServerArgs:
+         """MXFP8 KV cache uses operands available only on SM100+ (Blackwell)."""
+         if self.kv_cache_dtype != "mxfp8":
+             return
++        # On MLX/Apple Silicon "mxfp8" is a documented kv-cache-dtype alias
++        # (see the choices list above); the FA4/Blackwell requirement is a
++        # CUDA-path constraint.
++        if use_mlx():
++            return
+         if not is_blackwell_supported():
+             raise ValueError(
+                 "--kv-cache-dtype mxfp8 requires an SM100+ (Blackwell) GPU for the "

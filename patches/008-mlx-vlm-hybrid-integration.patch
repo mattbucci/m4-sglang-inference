@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
-index 9439b6d..0f76792 100644
+index 5e96769..4964743 100644
 --- a/python/sglang/srt/arg_groups/overrides.py
 +++ b/python/sglang/srt/arg_groups/overrides.py
-@@ -1034,12 +1034,20 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
+@@ -1186,12 +1186,20 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
      if view.disable_radix_cache:
          return {}
  
@@ -49,7 +49,7 @@ index 80f989f..3a50db2 100644
  NUM_KV_HEAD_ATTRS = ("n_kv_heads", "num_k_heads", "num_kv_heads", "num_key_value_heads")
  SLIDING_ATTENTION_ATTRS = (
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
-index be59121..d37e646 100644
+index 27284bf..5f6031b 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
 +++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
 @@ -10,7 +10,7 @@ storing model-agnostic native cache snapshots.
@@ -108,7 +108,7 @@ index be59121..d37e646 100644
          if need_size > self.available_size():
              return None
          slots = self.free_slots[:need_size].clone()
-@@ -215,6 +247,11 @@ class MlxAuxiliaryStateReqToTokenPool(ReqToTokenPool):
+@@ -231,6 +263,11 @@ class MlxAuxiliaryStateReqToTokenPool(ReqToTokenPool):
          # Keep the MLX-owned name beside it so local code can avoid model-
          # specific terminology.
          self.auxiliary_state_pool = self.mamba_pool
@@ -120,7 +120,7 @@ index be59121..d37e646 100644
          self.enable_mamba_extra_buffer = False
          self.req_index_to_auxiliary_state_index_mapping = torch.zeros(
              self._alloc_size, dtype=torch.int32, device=device
-@@ -294,6 +331,24 @@ class MlxAuxiliaryStateComponent(MambaComponent):
+@@ -317,6 +354,24 @@ class MlxAuxiliaryStateComponent(MambaComponent):
          self.enable_mamba_extra_buffer = False
          self._mamba_pool_host = None
  
@@ -146,7 +146,7 @@ index be59121..d37e646 100644
      def _tracked_value(req) -> tuple[object | None, bool]:
          track_buffer = getattr(req, "mamba_ping_pong_track_buffer", None)
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index d76671c..f26b6fe 100644
+index 86674ad..e2b4fb4 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 @@ -112,6 +112,43 @@ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
@@ -601,10 +601,10 @@ index d76671c..f26b6fe 100644
                  caches, batched_input, prev.req_ids
              )
 diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-index ea51daf..3f8a7c5 100644
+index 53f9b88..c0fbc6a 100644
 --- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
 +++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-@@ -132,6 +132,78 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -133,6 +133,78 @@ class MlxTpModelWorker(TpModelWorker):
              # insert. Any older tracked slot is released during component cleanup.
              req.mamba_last_track_seqlen = None
  
@@ -683,7 +683,7 @@ index ea51daf..3f8a7c5 100644
      def _route_extend_request(self, rid: str, decoding_rids: set[str]) -> str:
          """Classify a request within an extend / mixed batch.
  
-@@ -209,6 +281,7 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -210,6 +282,7 @@ class MlxTpModelWorker(TpModelWorker):
                  else:  # "prefill"
                      prefix_slot_ids = req.prefix_indices.tolist()
                      full_token_ids = list(req.get_fill_ids())
@@ -691,7 +691,7 @@ index ea51daf..3f8a7c5 100644
                      next_token = self._mlx_runner.prefill(
                          req_id=req.rid,
                          new_token_ids=req_token_ids,
-@@ -217,6 +290,8 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -218,6 +291,8 @@ class MlxTpModelWorker(TpModelWorker):
                          new_slot_ids=req_new_slots,
                          req_pool_idx=req.req_pool_idx,
                          req=req,
@@ -700,7 +700,7 @@ index ea51daf..3f8a7c5 100644
                      )
                      prefill_rids.append((req.rid, next_token))
  
-@@ -354,6 +429,7 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -355,6 +430,7 @@ class MlxTpModelWorker(TpModelWorker):
              else:  # "prefill"
                  prefix_slot_ids = req.prefix_indices.tolist()
                  full_token_ids = list(req.get_fill_ids())
@@ -708,7 +708,7 @@ index ea51daf..3f8a7c5 100644
                  pending_prefills.append(
                      self._mlx_runner.prefill_start(
                          req_id=req.rid,
-@@ -363,6 +439,8 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -364,6 +440,8 @@ class MlxTpModelWorker(TpModelWorker):
                          new_slot_ids=req_new_slots,
                          req_pool_idx=req.req_pool_idx,
                          req=req,
@@ -718,10 +718,10 @@ index ea51daf..3f8a7c5 100644
                  )
  
 diff --git a/python/sglang/srt/managers/overlap_utils.py b/python/sglang/srt/managers/overlap_utils.py
-index 5ce62ba..c51beba 100644
+index 9e2f191..11b0115 100644
 --- a/python/sglang/srt/managers/overlap_utils.py
 +++ b/python/sglang/srt/managers/overlap_utils.py
-@@ -324,7 +324,10 @@ class FutureMap:
+@@ -476,7 +476,10 @@ class FutureMap:
          indices = future_indices
          if indices.shape[0] == 0:
              return  # DP idle
@@ -730,10 +730,10 @@ index 5ce62ba..c51beba 100644
 +            dtype=self.new_seq_lens_buf.dtype,
 +            device=self.new_seq_lens_buf.device,
 +        )
-         # Only spec_v2 needs the event; it gates the seq_lens D2H on the private stream.
-         if self.spec_algo.is_some():
-             if self.publish_ready is None:
-@@ -342,8 +345,12 @@ class FutureMap:
+         publish_confidence = self.needs_confidence_relay and confidence is not None
+         if publish_confidence:
+             self.confidence_relay.scatter(indices, confidence)
+@@ -509,8 +512,12 @@ class FutureMap:
          if not self._forward_buf_initialized:
              self._lazy_init_forward_buf(payload)
          self._maybe_init_dsa_topk_indices_buf(payload)
@@ -748,14 +748,13 @@ index 5ce62ba..c51beba 100644
  
          if self.need_topk:
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index ea17a25..86c4f89 100644
+index 547494b..c99991e 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -896,6 +896,19 @@ class ModelRunner(ModelRunnerKVCacheMixin):
-         # TODO: Refactor device-specific init branches into platform interface (separate PR).
-         # Must be called BEFORE init_decode_cuda_graph() so CUDA graph capture
-         # runs with aux hidden state capture enabled.
-+
+@@ -818,6 +818,22 @@ class ModelRunner:
+ 
+     def init_attention_backends(self):
+         """Initialize attention backends only (no cuda graph capture)."""
 +        # MLX backend: MlxTpModelWorker overrides forward_batch_generation to run
 +        # attention/decode in MlxModelRunner, so the general attention backends
 +        # built here are never used on MLX. Skipping is also load-bearing for
@@ -766,16 +765,20 @@ index ea17a25..86c4f89 100644
 +
 +        if use_mlx():
 +            self.attn_backend = None
++            self.decode_attn_backend = None
++            self.decode_attn_backend_group = None
++            self.prefill_attention_backend_str = None
++            self.decode_attention_backend_str = None
 +            return
 +
-         self.init_aux_hidden_state_capture()
- 
-         if self.device == "cuda" or self.device == "musa":
+         # Must be called BEFORE init_decode_cuda_graph() so CUDA graph capture
+         # runs with aux hidden state capture enabled.
+         configure_aux_hidden_state_capture(
 diff --git a/python/sglang/srt/utils/hf_transformers/tokenizer.py b/python/sglang/srt/utils/hf_transformers/tokenizer.py
-index 40b1693..5094806 100644
+index def8d25..7e897f3 100644
 --- a/python/sglang/srt/utils/hf_transformers/tokenizer.py
 +++ b/python/sglang/srt/utils/hf_transformers/tokenizer.py
-@@ -49,6 +49,18 @@ _FAST_LLAMA_TOKENIZER = "hf-internal-testing/llama-tokenizer"
+@@ -50,6 +50,18 @@ _FAST_LLAMA_TOKENIZER = "hf-internal-testing/llama-tokenizer"
  _TOKENIZERS_BACKEND = "TokenizersBackend"
  
  
@@ -794,42 +797,42 @@ index 40b1693..5094806 100644
  def _load_tokenizer_by_declared_class(tokenizer_name, *args, **kwargs):
      """Load tokenizer by the class declared in tokenizer_config.json.
  
-@@ -503,14 +515,39 @@ def get_tokenizer(
-         # With fastokens, the patched TokenizersBackend.from_pretrained already
-         # returned a tokenizer whose backend is a fastokens shim. Re-resolving via
-         # the declared class (e.g. Qwen2Tokenizer) would discard that work.
-+        # A checkpoint that EXPLICITLY declares tokenizer_class=TokenizersBackend
-+        # is also left alone: re-resolution can only downgrade it — e.g.
-+        # mlx-community Devstral declares TokenizersBackend, but the
-+        # use_fast=False retry returns MistralCommonBackend, which ignores
-+        # custom jinja chat templates, cannot render image chat messages
-+        # (HTTP 400), and is unsupported by XGrammar.
-         if (
-             type(tokenizer).__name__ == _TOKENIZERS_BACKEND
-             and tokenizer_backend != "fastokens"
-+            and _declared_tokenizer_class(tokenizer_name, tokenizer_revision)
-+            != _TOKENIZERS_BACKEND
-         ):
-             tokenizer = _resolve_tokenizers_backend(
-                 tokenizer_name, *args, **common_kwargs
-             )
+@@ -521,14 +533,39 @@ def get_tokenizer(
+             # With fastokens, the patched TokenizersBackend.from_pretrained already
+             # returned a tokenizer whose backend is a fastokens shim. Re-resolving via
+             # the declared class (e.g. Qwen2Tokenizer) would discard that work.
++            # A checkpoint that EXPLICITLY declares tokenizer_class=TokenizersBackend
++            # is also left alone: re-resolution can only downgrade it — e.g.
++            # mlx-community Devstral declares TokenizersBackend, but the
++            # use_fast=False retry returns MistralCommonBackend, which ignores
++            # custom jinja chat templates, cannot render image chat messages
++            # (HTTP 400), and is unsupported by XGrammar.
+             if (
+                 type(tokenizer).__name__ == _TOKENIZERS_BACKEND
+                 and tokenizer_backend != "fastokens"
++                and _declared_tokenizer_class(tokenizer_name, tokenizer_revision)
++                != _TOKENIZERS_BACKEND
+             ):
+                 tokenizer = _resolve_tokenizers_backend(
+                     tokenizer_name, *args, **common_kwargs
+                 )
  
-+        # AutoTokenizer prefers mistral-common (tekken.json) for Mistral-family
-+        # checkpoints even when tokenizer_config.json explicitly declares
-+        # TokenizersBackend. Honor the declaration and load the declared class
-+        # directly: MistralCommonBackend ignores jinja chat templates, cannot
-+        # render image chat messages (HTTP 400), and is unsupported by
-+        # XGrammar. (mlx-community Devstral ships a full HF tokenizer.json.)
-+        if "MistralCommon" in type(tokenizer).__name__ and (
-+            _declared_tokenizer_class(tokenizer_name, tokenizer_revision)
-+            == _TOKENIZERS_BACKEND
-+        ):
-+            tokenizer = (
-+                _load_tokenizer_by_declared_class(
-+                    tokenizer_name, *args, **common_kwargs
++            # AutoTokenizer prefers mistral-common (tekken.json) for Mistral-family
++            # checkpoints even when tokenizer_config.json explicitly declares
++            # TokenizersBackend. Honor the declaration and load the declared class
++            # directly: MistralCommonBackend ignores jinja chat templates, cannot
++            # render image chat messages (HTTP 400), and is unsupported by
++            # XGrammar. (mlx-community Devstral ships a full HF tokenizer.json.)
++            if "MistralCommon" in type(tokenizer).__name__ and (
++                _declared_tokenizer_class(tokenizer_name, tokenizer_revision)
++                == _TOKENIZERS_BACKEND
++            ):
++                tokenizer = (
++                    _load_tokenizer_by_declared_class(
++                        tokenizer_name, *args, **common_kwargs
++                    )
++                    or tokenizer
 +                )
-+                or tokenizer
-+            )
 +
          return _apply_post_load_fixes(tokenizer, tokenizer_name, tokenizer_revision)
      except Exception as e:

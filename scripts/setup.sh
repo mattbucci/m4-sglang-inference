@@ -25,7 +25,7 @@ SGLANG_BRANCH="main"
 # Update when rebasing patches onto a newer upstream (upstream MLX covers
 # hybrid radix cache, attention duck-typing, and gated-attn batched decode
 # natively at this pin — see patches/README.md for the current stack).
-SGLANG_COMMIT="${SGLANG_COMMIT:-v0.5.15.post1}"
+SGLANG_COMMIT="${SGLANG_COMMIT:-v0.5.16}"
 PATCH_DIR="${PATCH_DIR:-$REPO_DIR/patches}"
 
 SKIP_ENV=false
