@@ -53,7 +53,7 @@ echo "gate (a): $A_OK/$N apply clean on pristine $SGLANG_TAG"
 
 # --- gate (b): byte-identity vs live tree ---
 DIFFS=$(diff -rq "$WT/python/sglang" "$SGLANG_DIR/python/sglang" 2>&1 \
-  | grep -v "_version.py\|egg-info\|__pycache__" || true)
+  | grep -v "_version.py\|egg-info\|__pycache__\|\.cpython-.*-darwin\.so" || true)
 if [ -n "$DIFFS" ]; then
   echo "gate (b): FAIL — live tree differs from pristine+patches:"; echo "$DIFFS" | head -10; FAIL=1
 else

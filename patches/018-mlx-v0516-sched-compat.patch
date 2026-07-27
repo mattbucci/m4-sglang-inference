@@ -1,0 +1,46 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 84f58ea..c032f60 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -170,7 +170,11 @@ class MlxModelRunnerStub(ModelRunner):
+             requested_per_worker = None
+             resolved = min(capacity_cap, 4096)
+         else:
+-            requested_per_worker = requested // self.dp_size
++            # Parallel sizes live on the ParallelState (self.ps); the runner
++            # has no dp_size attribute. attn_dp_size may be None when dp is
++            # unconfigured — MLX is a single-device backend, so treat that
++            # as 1.
++            requested_per_worker = requested // (self.ps.attn_dp_size or 1)
+             resolved = min(requested_per_worker, capacity_cap)
+ 
+         aux_state_size = self.server_args.max_mamba_cache_size
+diff --git a/python/sglang/srt/mem_cache/allocation.py b/python/sglang/srt/mem_cache/allocation.py
+index 3d6c8cf..50f3d16 100644
+--- a/python/sglang/srt/mem_cache/allocation.py
++++ b/python/sglang/srt/mem_cache/allocation.py
+@@ -281,6 +281,24 @@ def alloc_req_slots(
+             if tree_cache is not None and tree_cache.supports_mamba():
+                 mamba_num = max(0, mamba_state_needed - mamba_available_size)
+                 tree_cache.evict(EvictParams(num_tokens=0, mamba_num=mamba_num))
++    else:
++        # MLX auxiliary-state pool (MlxAuxiliaryStateReqToTokenPool) — not a
++        # HybridReqToTokenPool, but the same admission-time guarantee is
++        # needed: every finished request donates its live snapshot slot to
++        # the radix tree, so without an eviction pre-pass here the tree
++        # accumulates the whole pool and per-request allocation asserts on
++        # an exhausted free list a few requests in.
++        mamba_allocator = getattr(req_to_token_pool, "mamba_allocator", None)
++        if (
++            mamba_allocator is not None
++            and tree_cache is not None
++            and tree_cache.supports_mamba()
++        ):
++            mamba_available_size = mamba_allocator.schedulable_available_size()
++            mamba_state_needed = num_reqs * MAMBA_STATE_PER_REQ_PREFIX_CACHE
++            if mamba_available_size < mamba_state_needed:
++                mamba_num = mamba_state_needed - mamba_available_size
++                tree_cache.evict(EvictParams(num_tokens=0, mamba_num=mamba_num))
+     req_pool_indices = req_to_token_pool.alloc(reqs)
+     if req_pool_indices is None:
+         raise RuntimeError(
