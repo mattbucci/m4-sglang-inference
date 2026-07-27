@@ -8,6 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
 # --- Python environment ---
+# Primary environment is the conda env (miniforge). A VENV_DIR virtualenv
+# takes precedence when it exists so bisect arms / scratch stacks can still
+# point VENV_DIR at a throwaway env.
+CONDA_ENV="${CONDA_ENV:-sglang-0516}"
 VENV_DIR="${VENV_DIR:-$REPO_DIR/.venv}"
 SGLANG_DIR="${SGLANG_DIR:-$REPO_DIR/components/sglang}"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
@@ -15,13 +19,21 @@ PORT="${PORT:-23334}"
 BASE_URL="http://localhost:${PORT}"
 
 activate_venv() {
-    if [ -d "$VENV_DIR" ]; then
+    if [ -f "$VENV_DIR/bin/activate" ]; then
         source "$VENV_DIR/bin/activate"
-    else
-        echo "ERROR: Virtual environment not found at $VENV_DIR"
-        echo "Run scripts/setup.sh first."
-        exit 1
+        return
     fi
+    local conda_base
+    conda_base="$(conda info --base 2>/dev/null)"
+    if [ -n "$conda_base" ] && [ -d "$conda_base/envs/$CONDA_ENV" ]; then
+        source "$conda_base/etc/profile.d/conda.sh"
+        conda activate "$CONDA_ENV"
+        return
+    fi
+    echo "ERROR: no Python environment found."
+    echo "Expected conda env '$CONDA_ENV' or a virtualenv at $VENV_DIR."
+    echo "Run scripts/setup.sh first."
+    exit 1
 }
 
 # MLX environment setup

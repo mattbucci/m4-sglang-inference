@@ -115,14 +115,21 @@ fi
 # -------------------------------------------------------------------
 if [ "$SKIP_ENV" = false ]; then
     echo ""
-    echo "[2/3] Creating virtual environment at $VENV_DIR"
-
-    if [ -d "$VENV_DIR" ]; then
-        echo "  Removing existing venv..."
-        rm -rf "$VENV_DIR"
+    if command -v conda &>/dev/null; then
+        echo "[2/3] Creating conda env '$CONDA_ENV'"
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        conda env remove -n "$CONDA_ENV" -y 2>/dev/null || true
+        conda create -y -n "$CONDA_ENV" python=3.12
+        conda activate "$CONDA_ENV"
+    else
+        echo "[2/3] Creating virtual environment at $VENV_DIR (conda not found)"
+        if [ -d "$VENV_DIR" ]; then
+            echo "  Removing existing venv..."
+            rm -rf "$VENV_DIR"
+        fi
+        $PYTHON_CMD -m venv "$VENV_DIR"
+        source "$VENV_DIR/bin/activate"
     fi
-    $PYTHON_CMD -m venv "$VENV_DIR"
-    source "$VENV_DIR/bin/activate"
 
     echo "  Upgrading pip..."
     pip install --upgrade pip setuptools wheel 2>/dev/null
@@ -139,7 +146,7 @@ if [ "$SKIP_ENV" = false ]; then
     # mlx-vlm: VLM (image) model loading for the *ForConditionalGeneration
     # presets (Qwen3.5/3.6, Devstral/Mistral3, Gemma 4) that mlx_lm cannot
     # load. Installed with --no-deps: mlx-vlm 0.6.5 requires
-    # transformers>=5.14.0 while SGLang v0.5.15.post1 hard-pins
+    # transformers>=5.14.0 while SGLang v0.5.16 hard-pins
     # transformers==5.12.1 — 5.12.1 works for our model set (verified via
     # mlx_vlm model-only load). Without this, launch.sh
     # {devstral,qwen35,qwen36,gemma4*} cannot load the model. See patch 008
@@ -227,6 +234,6 @@ echo "  # (models download automatically on first use)"
 echo "  ./scripts/launch.sh devstral"
 echo ""
 echo "  # Option 2: Convert a HuggingFace model to MLX 4-bit"
-echo "  source .venv/bin/activate"
+echo "  conda activate $CONDA_ENV   # (or source .venv/bin/activate on venv installs)"
 echo "  python -m mlx_lm.convert --hf-path <model-id> --mlx-path ~/AI/models/<name>-4bit -q --q-bits 4"
 echo ""

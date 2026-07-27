@@ -30,7 +30,7 @@ case "$PATCH_DIR" in /*) ;; *) PATCH_DIR="$REPO/$PATCH_DIR" ;; esac
 SGLANG_DIR="${SGLANG_DIR:-$REPO/components/sglang}"
 [ -d "$SGLANG_DIR/.git" ] || [ -f "$SGLANG_DIR/.git" ] \
   || { echo "FATAL: SGLANG_DIR $SGLANG_DIR is not a git tree"; exit 2; }
-SGLANG_TAG="${SGLANG_TAG:-v0.5.15.post1}"
+SGLANG_TAG="${SGLANG_TAG:-v0.5.16}"
 
 # setup.sh's exact apply glob — the gate must test the chain setup.sh applies.
 PATCHES=("$PATCH_DIR"/0[01][0-9]-*.patch)

@@ -57,7 +57,7 @@ BASE_URL="http://localhost:$PORT"
 THRESHOLD="${THRESHOLD:-10}"
 SAVE_BASELINE="${BASELINE:-}"
 DEPTHS="1024,8192,32768"
-STACK_TAG="${STACK_TAG:-sglang-v0.5.15.post1}"
+STACK_TAG="${STACK_TAG:-sglang-v0.5.16}"
 
 # One preset per distinct M4 arch path: MoE (coder-30b), MoE-DWQ (qwen3-moe),
 # dense Mistral3+VL (devstral), MoE+DeltaNet hybrid+VL (qwen36).
