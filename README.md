@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.15.post1** (commit `0b3bb0c`) + 8 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.16** (commit `fdebc93`) + 9 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked by an upstream sliding-window gap.
 
 **Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), and turboquant KV costs zero recall vs fp16 at genuine 32K (same-seed A/B). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
 
@@ -131,7 +131,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # venv, SGLang v0.5.15.post1, MLX deps, 8 patches
+./scripts/setup.sh                          # conda env, SGLang v0.5.16, MLX deps, 9 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -303,8 +303,8 @@ error rows.
 
 Manually:
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-git clone --depth 1 --branch v0.5.15.post1 https://github.com/sgl-project/sglang.git components/sglang
+conda create -y -n sglang-0516 python=3.12 && conda activate sglang-0516
+git clone --depth 1 --branch v0.5.16 https://github.com/sgl-project/sglang.git components/sglang
 cd components/sglang
 for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done
 cd python && cp pyproject_other.toml pyproject.toml
@@ -325,7 +325,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.15.post1** (`0b3bb0c`) + 8 patches |
+| SGLang | **v0.5.16** (`fdebc93`) + 9 patches |
 | MLX | 0.32.0 |
 | mlx-lm | 0.31.3 |
 | mlx-vlm | 0.6.5 |
@@ -335,7 +335,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Eight patches on top of `v0.5.15.post1` — full rationale per patch in [patches/README.md](patches/README.md):
+Nine patches on top of `v0.5.16` — full rationale per patch in [patches/README.md](patches/README.md):
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -345,11 +345,14 @@ Eight patches on top of `v0.5.15.post1` — full rationale per patch in [patches
 | 007 | mlx-multimodal-and-mps-shim | cuda→cpu redirect, shm page-rounding, `MULTI_IMAGES` modality. |
 | 008 | mlx-vlm-hybrid-integration | The VLM/hybrid path: mlx_vlm loader, attention detection, mamba-allocator contract, radix-for-hybrids, vision plumbing, NemotronH. |
 | 014 | mlx-hf-processor-fixes | Gemma 4 image-only processor; Mistral3/Devstral processor + tokenizer resolution. |
+| 015 | mlx-presize-attention-cache | Exact per-request attention-cache pre-sizing (replaces the doubling ladder for known-length requests). |
+| 016 | mlx-sampling | Real per-request temperature/top-p/top-k/min-p via `mlx_lm.make_sampler`; greedy stays bit-stable argmax. |
+| 018 | mlx-v0516-sched-compat | Stub dp sizing (`ps.attn_dp_size`) + admission-time auxiliary-slot eviction for the MLX pool. |
 
 ## Repo layout
 
 ```
-patches/                    # 6 numbered patches — see patches/README.md
+patches/                    # 9 numbered patches — see patches/README.md
 experiments/                # Vetted execution queue (specs + statuses)
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts
