@@ -61,14 +61,27 @@ scratchpad) against the server:
 Flint's own evaluation harnesses (mini-swe-agent, Terminus 2) expose a
 single-argument bash tool, and under sampling it drops the unfamiliar
 required key; once one omission is in the conversation history the
-template replays it and the model copies its own prior call. The rule
-line used for the re-run (`PROMPT_EXTRA` in `smoke.sh`):
+template replays it and the model copies its own prior call.
 
-> Tool-call rule: the `bash` tool has two REQUIRED arguments, `command`
-> and `description` (5-10 words saying what the command does). Every bash
-> call must include both; a call without `description` is rejected.
+The rule line only works on that two-line user prompt. Replaying the
+harness's real request (opencode's system prompt plus the 3K-character
+task prompt, captured from the `-14182` turn) with the rule in six
+placements, 10 samples each, model sampling:
 
-For interactive use put the same line in the project's `AGENTS.md`.
+| Placement | bash calls with `description` |
+|-----------|------------------------------:|
+| no rule | 0/12 |
+| rule at the end of the task prompt (what `../flint-oQ8e-bash-description-rule-2026-10-31/` ran) | 1/11 |
+| rule at the top of the task prompt | 0/15 |
+| rule appended to the system prompt | 1/14 |
+| stronger rule with an example call, system prompt | 0/9 |
+| stronger rule with an example call, end of task prompt | 3/13 |
+
+So the harness repairs the call instead: `no_thinking_proxy.py` with
+`BACKFILL_BASH_DESCRIPTION=1` (`smoke.sh` passes it through) buffers each
+streamed `bash` tool call and adds a `description` derived from the command
+when the call closes without one. The task prompt stays identical to the
+qwen36 runs.
 
 ## Cause 2: 50-70 s per agent turn
 

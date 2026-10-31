@@ -30,6 +30,10 @@
 #   OUT              output directory for predictions/logs (default: /tmp/swebench-smoke)
 #   PROMPT_EXTRA     text appended to every task prompt (passed to run_rollouts.py
 #                    --prompt-extra); use for model-specific tool-call rules
+#   BACKFILL_BASH_DESCRIPTION=1
+#                    make the proxy add opencode's required bash `description`
+#                    argument to tool calls that omit it (Flint; see the
+#                    proxy's docstring)
 
 set -euo pipefail
 # Save our own dir before sourcing common.sh — it redefines SCRIPT_DIR.
@@ -67,6 +71,7 @@ EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size
 # "6 tool calls including 1 edit, 506-byte plausible patch" on
 # astropy__astropy-12907. Set NO_THINKING_PROXY=0 to disable.
 NO_THINKING_PROXY="${NO_THINKING_PROXY:-1}"
+BACKFILL_BASH_DESCRIPTION="${BACKFILL_BASH_DESCRIPTION:-0}"
 
 mkdir -p "$OUT"
 LOG="$OUT/launch.log"
@@ -135,6 +140,7 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
     # incorrectly, so build the URL in a plain var first.
     upstream_url="http://127.0.0.1:$PORT"
     PORT="$PROXY_PORT" UPSTREAM="$upstream_url" \
+        BACKFILL_BASH_DESCRIPTION="$BACKFILL_BASH_DESCRIPTION" \
         nohup python3 "$SWE_SCRIPT_DIR/no_thinking_proxy.py" > "$OUT/proxy.log" 2>&1 &
     PROXY_PID=$!
     disown
