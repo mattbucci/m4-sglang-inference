@@ -193,7 +193,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 |------------|---------------------|
 | `gemma-4-26b-a4b-it-4bit` / `gemma-4-31b-it-mxfp4` | `embed_vision.embedding_projection` quantized — the exact layer class sister teams' calibration disaster zero-scaled. |
 | `Qwen3.5-27B-4bit` / `Qwen3.5-9B-MLX-8bit` / `Qwen3.6-27B-4bit` | DeltaNet `linear_attn.in_proj_a/b` quantized across all layers — recurrent-state gate scalars that sister-team rules say must stay BF16. Candidate contributor to the Qwen3.5 infinite-`<think>` loop. |
-| `Qwen3.6-35B-A3B-4bit` | DeltaNet in_proj INT4 (60 layers) **and** MoE `mlp.gate` router INT4 (40 layers). |
+| `Qwen3.6-35B-A3B-4bit` | DeltaNet `in_proj_a/b` INT4 (60 layers); MoE `mlp.gate` router and shared-expert gate 8-bit (40 layers each, per-path entries in its config). |
 | `Qwen3.6-35B-A3B-4bit-inhouse` (local build, `scripts/quantize/convert_qwen36_inhouse.py`) | **clean** — router (`mlp.gate`), shared-expert gate, DeltaNet `in_proj_a/b` and the vision tower stay bf16, 371 quantized layers healthy; A/B on the same stack: MMLU 83/100 vs 85, HumanEval 17/20 both, needle 4/4 both, SWE-bench smoke 3/3 byte-identical, decode −2.4% (`benchmarks/quality/Qwen36-inhouse-2026-10-31.json` vs `Qwen36-incumbent-2026-10-31.json`). Serve with `MODEL=~/AI/models/Qwen3.6-35B-A3B-4bit-inhouse scripts/launch.sh qwen36`. |
 | `Qwen3-Coder-30B-A3B-4bit-DWQ` / `Qwen3-30B-A3B-4bit-DWQ` / `Qwen3-Coder-Next-4bit` | MoE router `mlp.gate` INT4 — bounded impact in practice. |
 | `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B` | **clean** |
@@ -282,7 +282,7 @@ bash   scripts/bench/bench_256k_all.sh                      # long-context sweep
 
 | Preset | Checkpoint (mlx-community) | Type | Wts | 1-user tok/s* | Max ctx* | Audit hazards |
 |--------|---------------------------|------|:---:|:------------:|:-------:|:-------------|
-| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 51.8 (148 MR=2) | **128K measured** (262K label) | router INT4 + DeltaNet INT4 |
+| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 51.8 (148 MR=2) | **128K measured** (262K label) | DeltaNet INT4 (router 8-bit) |
 | `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 68.4 | 256K (3.2) | router INT4 |
 | `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 69.0 | 64K (6.3) | router INT4 |
 | `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.3 (34 MR=2) | 256K label | DeltaNet `in_proj_a/b` INT4 |
