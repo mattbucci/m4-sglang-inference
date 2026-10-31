@@ -282,11 +282,13 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
                 {"type": "text", "text": "Describe this image in one short sentence."},
             ],
         }],
-        "max_tokens": 128,
+        # Thinking models spend their budget in the reasoning channel first;
+        # 128 tokens left qwen36's visible answer at a single character.
+        "max_tokens": 1024,
         "temperature": 0,
     }
     try:
-        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=180)
+        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=300)
     except Exception as e:
         return False, f"request failed: {e!r}"
     content = (r["choices"][0]["message"].get("content") or "").lower()

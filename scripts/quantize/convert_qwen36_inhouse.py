@@ -78,6 +78,23 @@ def verify_output(out_dir: str) -> dict:
             "quantized_modules": len(scaled), "modules": len(modules)}
 
 
+def fix_processor_files(out_dir: str) -> None:
+    """Make the processor resolve the way the HF source does.
+
+    transformers 5.19 saves a processor_config.json naming
+    Qwen3VLImageProcessor, a class AutoProcessor cannot load back; the
+    source ships preprocessor_config.json only and resolves to the Qwen2VL
+    image processor, so the artifact keeps that layout.
+    """
+    stale = os.path.join(out_dir, "processor_config.json")
+    if os.path.exists(stale):
+        os.remove(stale)
+    from transformers import AutoProcessor
+
+    proc = AutoProcessor.from_pretrained(out_dir, trust_remote_code=True)
+    print(f"[processor] {type(proc).__name__} / {type(proc.image_processor).__name__}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--hf-path", default="Qwen/Qwen3.6-35B-A3B")
@@ -123,6 +140,7 @@ def main() -> int:
     del model
     convert(a.hf_path, mlx_path=a.out, quantize=True, q_group_size=a.q_group_size, q_bits=a.q_bits,
             q_mode="affine", quant_predicate=predicate)
+    fix_processor_files(a.out)
     rep = verify_output(a.out)
     print(json.dumps(rep, indent=1))
     print(f"[done] {time.time() - t0:.0f}s, violations={len(rep['violations'])}")

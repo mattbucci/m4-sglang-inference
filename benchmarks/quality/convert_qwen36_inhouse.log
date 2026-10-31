@@ -1,0 +1,69 @@
+Fetching 37 files:   0%|          | 0/37 [00:00<?, ?it/s]Fetching 37 files: 100%|██████████| 37/37 [00:00<00:00, 4522.09it/s]
+[recipe] Qwen/Qwen3.6-35B-A3B -> /Users/letsrtfm/AI/models/Qwen3.6-35B-A3B-4bit-inhouse: 4-bit g64 affine, kept BF16: ('.mlp.gate', '.mlp.shared_expert_gate', '.linear_attn.in_proj_a', '.linear_attn.in_proj_b') + vision
+  language_model.model.layers.N.linear_attn.in_proj_a                    quantize=  0 bf16= 30
+  language_model.model.layers.N.linear_attn.in_proj_b                    quantize=  0 bf16= 30
+  language_model.model.layers.N.linear_attn.in_proj_qkv                  quantize= 30 bf16=  0
+  language_model.model.layers.N.linear_attn.in_proj_z                    quantize= 30 bf16=  0
+  language_model.model.layers.N.mlp.gate                                 quantize=  0 bf16= 40
+  language_model.model.layers.N.mlp.shared_expert.gate_proj              quantize= 40 bf16=  0
+  language_model.model.layers.N.mlp.shared_expert_gate                   quantize=  0 bf16= 40
+  language_model.model.layers.N.mlp.switch_mlp.gate_proj                 quantize= 40 bf16=  0
+  vision_tower.blocks.N.attn.proj                                        quantize=  0 bf16= 27
+  vision_tower.blocks.N.attn.qkv                                         quantize=  0 bf16= 27
+  vision_tower.blocks.N.mlp.linear_fc1                                   quantize=  0 bf16= 27
+  vision_tower.blocks.N.mlp.linear_fc2                                   quantize=  0 bf16= 27
+  vision_tower.merger.linear_fc1                                         quantize=  0 bf16=  1
+  vision_tower.merger.linear_fc2                                         quantize=  0 bf16=  1
+  vision_tower.pos_embed                                                 quantize=  0 bf16=  1
+  linear modules: 372 quantize, 251 bf16 (0s)
+[INFO] Loading
+Fetching 37 files:   0%|          | 0/37 [00:00<?, ?it/s]Fetching 37 files: 100%|██████████| 37/37 [00:00<00:00, 5597.65it/s]
+[INFO] Using dtype: bfloat16
+[INFO] Quantizing
+[INFO] Quantized model with 4.655 bits per weight.
+{
+ "classes": {
+  "language_model.lm_head [quantized]": 1,
+  "language_model.model.embed_tokens [quantized]": 1,
+  "language_model.model.layers.N.input_layernorm [bf16]": 40,
+  "language_model.model.layers.N.linear_attn.conv1d [bf16]": 30,
+  "language_model.model.layers.N.linear_attn.in_proj_a [bf16]": 30,
+  "language_model.model.layers.N.linear_attn.in_proj_b [bf16]": 30,
+  "language_model.model.layers.N.linear_attn.in_proj_qkv [quantized]": 30,
+  "language_model.model.layers.N.linear_attn.in_proj_z [quantized]": 30,
+  "language_model.model.layers.N.linear_attn.norm [bf16]": 30,
+  "language_model.model.layers.N.linear_attn.out_proj [quantized]": 30,
+  "language_model.model.layers.N.mlp.gate [bf16]": 40,
+  "language_model.model.layers.N.mlp.shared_expert.down_proj [quantized]": 40,
+  "language_model.model.layers.N.mlp.shared_expert.gate_proj [quantized]": 40,
+  "language_model.model.layers.N.mlp.shared_expert.up_proj [quantized]": 40,
+  "language_model.model.layers.N.mlp.shared_expert_gate [bf16]": 40,
+  "language_model.model.layers.N.mlp.switch_mlp.down_proj [quantized]": 40,
+  "language_model.model.layers.N.mlp.switch_mlp.gate_proj [quantized]": 40,
+  "language_model.model.layers.N.mlp.switch_mlp.up_proj [quantized]": 40,
+  "language_model.model.layers.N.post_attention_layernorm [bf16]": 40,
+  "language_model.model.layers.N.self_attn.k_norm [bf16]": 10,
+  "language_model.model.layers.N.self_attn.k_proj [quantized]": 10,
+  "language_model.model.layers.N.self_attn.o_proj [quantized]": 10,
+  "language_model.model.layers.N.self_attn.q_norm [bf16]": 10,
+  "language_model.model.layers.N.self_attn.q_proj [quantized]": 10,
+  "language_model.model.layers.N.self_attn.v_proj [quantized]": 10,
+  "language_model.model.norm [bf16]": 1,
+  "vision_tower.blocks.N.attn.proj [bf16]": 27,
+  "vision_tower.blocks.N.attn.qkv [bf16]": 27,
+  "vision_tower.blocks.N.mlp.linear_fc1 [bf16]": 27,
+  "vision_tower.blocks.N.mlp.linear_fc2 [bf16]": 27,
+  "vision_tower.blocks.N.norm1 [bf16]": 27,
+  "vision_tower.blocks.N.norm2 [bf16]": 27,
+  "vision_tower.merger.linear_fc1 [bf16]": 1,
+  "vision_tower.merger.linear_fc2 [bf16]": 1,
+  "vision_tower.merger.norm [bf16]": 1,
+  "vision_tower.patch_embed.proj [bf16]": 1,
+  "vision_tower.pos_embed [bf16]": 1
+ },
+ "violations": [],
+ "quantized_modules": 372,
+ "modules": 840
+}
+[done] 18s, violations=0
+CONVERT_DONE rc=0

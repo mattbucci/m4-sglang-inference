@@ -1,0 +1,7 @@
+Scanning: /Users/letsrtfm/AI/models/Qwen3.6-35B-A3B-4bit-inhouse
+  4 safetensor file(s)
+  max-mag threshold: 1000.0
+
+
+======================================================================
+OK: all 371 quantized layers (weight+scales+biases) healthy

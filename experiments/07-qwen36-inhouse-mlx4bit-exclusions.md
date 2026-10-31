@@ -4,7 +4,7 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | blocked: disk (~70+ GB needed — 67 GB BF16 + conversion scratch; run the queue's disk-triage item first) |
+| **Status** | done (A/B complete, all gates pass); promotion pending the HF upload decision |
 | **Execution host** | m4-box |
 | **Wall clock** | 2-3 days (67 GB BF16 download + hours-scale conversion + ~2h eval A/B per build + 3-instance agentic smoke) |
 | **GPU time** | none (Apple unified memory — no discrete GPU; box is exclusively occupied during conversion and evals, ~1-2 days cumulative) |
@@ -106,3 +106,34 @@ Incumbent mlx-community/Qwen3.6-35B-A3B-4bit re-measured on the current stack be
 - Incumbent baselines are 2 months old on a since-rebased stack; skipping the re-baseline (step 8) would make the A/B unattributable.
 - shared_expert kept INT4 (unlike the 3090's full shared_expert.* BF16 exclusion) to bound size on 64 GB — if quality gates fail marginally, widening to shared_expert.* is the one sanctioned recipe iteration before declaring the null.
 - Vision-prefix name mismatch between HF BF16 source and mlx-vlm module paths could silently no-op the vision exclusion — Gate 1's index scan catches it post-convert.
+
+
+## Results
+
+Converter: `scripts/quantize/convert_qwen36_inhouse.py` (mlx-vlm `convert` with a callable predicate; the
+`quant_predicate` string type on the wrapper is a hint only, `quantize_model` passes a callable through).
+Kept BF16: `mlp.gate` (40), `mlp.shared_expert_gate` (40), `linear_attn.in_proj_a/b` (60), vision tower (111
+modules); 372 linear modules at 4-bit affine g64; 4.655 bits per weight, 19 GB; conversion 18 s with the
+source in the page cache (4 min cold), peak RSS 22 GB. Two artifact fixes live in the script: mlx-vlm copies
+the source JSON files with the read-only mode of HF cache blobs (the processor save then fails), and
+transformers 5.19 writes a `processor_config.json` naming `Qwen3VLImageProcessor` that it cannot load back
+(the artifact keeps the source's `preprocessor_config.json`-only layout). The incumbent's router and
+shared-expert gate turned out to be 8-bit, not INT4; only `in_proj_a/b` were INT4.
+
+| Gate | Incumbent (`mlx-community/Qwen3.6-35B-A3B-4bit`, re-baselined) | In-house |
+|---|---|---|
+| recipe / scales scan | router + shared-expert gate 8-bit, `in_proj_a/b` INT4 | 0 violations; 371 quantized layers healthy |
+| validator `--include-vision` | 4/4 | 4/4 |
+| probe trio | thinking VERIFIED, vision STRONG, codegen STRONG | same |
+| MMLU-100 / HumanEval-20 (no-thinking) | 85 / 17 | 83 / 17 |
+| needle 1K–64K | 4/4 | 4/4 |
+| LabBench overall | 0.345 | 0.369 |
+| decode (server-log mean, 200 logs) | 62.1 tok/s | 60.6 tok/s |
+| SWE-bench Lite 3-instance smoke | 3/3 | 3/3, byte-identical diffs |
+
+Receipts: `benchmarks/quality/Qwen36-incumbent-2026-10-31.json`, `Qwen36-inhouse-2026-10-31.json`,
+`inhouse-quant-recipe-2026-10-31.json`, `inhouse-quant-scan-2026-10-31.txt`, `probe-trio/qwen36-{incumbent,inhouse}-2026-10-31.*.log`,
+`evals/swebench/runs/qwen36-inhouse-2026-10-31/`. Verdict: quality-equivalent (MMLU at the −2pp noise edge,
+everything else equal or better) with the fleet-banned classes removed; no DWQ-style lift, which the
+calibration-free recipe never promised. `probe_thinking` terminates on both arms, so the in_proj hypothesis
+is a documented null for thinking termination.

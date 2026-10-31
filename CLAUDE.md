@@ -57,6 +57,7 @@ python scripts/eval/validate_chat_template.py    --model <path>
 python scripts/eval/test_swa_snapshot_unit.py                 # patch 021: windowed-KV snapshot round-trip (CPU, no server)
 python scripts/eval/test_pool_backed_cache_unit.py            # patch 022: pool-backed cache across the split final chunk (CPU, no server)
 python scripts/eval/test_release_finished_request_unit.py     # patch 023: finished requests release their MLX caches at the scheduler hook (CPU, no server)
+python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
 
 # Quality + benchmarks
 python scripts/eval/eval_and_chart.py --run --port 23334 --tag "Coder-30B"
