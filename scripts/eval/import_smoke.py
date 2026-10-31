@@ -46,6 +46,8 @@ ATTR_CHECKS = {
     "sglang.srt.hardware_backend.mlx.kv_cache.attention_kv_cache": [
         ("ContiguousAttentionKVCache.reserve",                         # 015
          lambda m: m.ContiguousAttentionKVCache.reserve),
+        ("WindowedAttentionKVCache.snapshot_state",                    # 021
+         lambda m: m.WindowedAttentionKVCache.snapshot_state),
     ],
     "sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state": [
         ("MlxAuxiliaryStateComponent.finalize_match_result_in_cache",  # 008
@@ -61,6 +63,16 @@ ATTR_CHECKS = {
          lambda m: m.MlxModelRunner._reset_mlx_vlm_position_cache),
         ("MlxModelRunner._last_position_logits",                        # 020
          lambda m: m.MlxModelRunner._last_position_logits),
+        ("MlxModelRunner.snapshots_sliding_window_prefix",             # 021
+         lambda m: m.MlxModelRunner.snapshots_sliding_window_prefix),
+    ],
+    "sglang.srt.hardware_backend.mlx.swa_prefix": [
+        ("mlx_snapshots_sliding_window_prefix",                        # 021
+         lambda m: m.mlx_snapshots_sliding_window_prefix),
+    ],
+    "sglang.srt.mem_cache.kv_cache_builder": [
+        ("_mlx_sliding_window_snapshot_state",                         # 021
+         lambda m: m._mlx_sliding_window_snapshot_state),
     ],
     "sglang.srt.hardware_backend.mlx.tp_worker": [
         ("MlxTpModelWorker._extract_mm_inputs",                        # 008

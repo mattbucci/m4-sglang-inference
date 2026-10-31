@@ -1,0 +1,508 @@
+diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
+index 112a0d3480..a787a8bf5a 100644
+--- a/python/sglang/srt/arg_groups/overrides.py
++++ b/python/sglang/srt/arg_groups/overrides.py
+@@ -464,6 +464,15 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
+             layer_type == "mamba"
+             for layer_type in getattr(hf_config, "layer_types", [])
+         )
++    # The MLX backend keeps sliding-window prefix KV in auxiliary snapshots
++    # and needs the same no_buffer bookkeeping as a hybrid SSM model.
++    from sglang.srt.hardware_backend.mlx.swa_prefix import (
++        mlx_snapshots_sliding_window_prefix,
++    )
++
++    in_branch = in_branch or mlx_snapshots_sliding_window_prefix(
++        hf_config, disable_radix_cache=bool(view.disable_radix_cache)
++    )
+     # Specs registered by config predicate (archs=[]) are only reachable
+     # through the HF config, not the architecture name.
+     spec = get_linear_attn_spec(hf_config)
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+index d8f49904a7..0fb131c376 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+@@ -203,11 +203,49 @@ class WindowedAttentionKVCache:
+ 
+     @property
+     def state(self):
+-        """Arrays for ``mx.eval`` unpacking."""
++        """Arrays for ``mx.eval`` unpacking (the live buffers, no copy)."""
+         if self.keys is None:
+             return ()
+         return (self.keys, self.values)
+ 
++    @state.setter
++    def state(self, value) -> None:
++        """Install buffers holding exactly the kept trailing window.
++
++        The counterpart of :meth:`snapshot_state`: ``value`` is ``()`` for an
++        empty cache or ``(keys, values)`` with ``kept`` tokens on axis 2. The
++        next :meth:`_append` grows the buffer to its working capacity and
++        copies the window forward, so no capacity is assumed here. ``offset``
++        is restored separately (it is a plain attribute).
++        """
++        if not value:
++            self.keys = None
++            self.values = None
++            self._local = 0
++            return
++        keys, values = value
++        self.keys = keys
++        self.values = values
++        self._local = keys.shape[2]
++
++    def snapshot_state(self):
++        """Compact state for an auxiliary-state snapshot.
++
++        Only the kept trailing window (``min(local, window)`` tokens) can ever
++        be read again, so a prefix snapshot stores just that slice -- about
++        ``2 * window`` tokens less than the live buffer after a prefill
++        chunk. ``state`` keeps returning the live buffers because it is handed
++        to ``mx.async_eval`` every step, where a slice would cost a copy.
++        """
++        if self.keys is None:
++            return ()
++        kept = min(self._local, self.window)
++        start = self._local - kept
++        return (
++            self.keys[:, :, start : self._local, :],
++            self.values[:, :, start : self._local, :],
++        )
++
+     def reset(self) -> None:
+         """Reset for reuse, keeping allocated buffers."""
+         self.offset = 0
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+index 848ed36ac8..8924804fdc 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+@@ -68,7 +68,13 @@ class _CacheSnapshot:
+ 
+ 
+ def _snapshot_cache(cache: Any) -> _CacheSnapshot:
+-    state = _clone_tree(getattr(cache, "state", ()))
++    # A cache may offer a compact ``snapshot_state()`` next to its live
++    # ``state`` (WindowedAttentionKVCache: the kept window instead of the
++    # whole working buffer); ``state`` stays the eval-time view.
++    if hasattr(cache, "snapshot_state"):
++        state = _clone_tree(cache.snapshot_state())
++    else:
++        state = _clone_tree(getattr(cache, "state", ()))
+     meta_state = (
+         _clone_tree(cache.meta_state) if hasattr(cache, "meta_state") else _MISSING
+     )
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 275defda86..7c5f5a4be4 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -10,7 +10,10 @@ layers use a fixed-size ``WindowedAttentionKVCache`` on both KV paths,
+ and auxiliary layers use native ``mlx-lm`` cache objects.
+ 
+ The shared pool stores full-attention layers only, so no cross-request
+-SWA prefix KV exists: a radix prefix hit on a sliding-window model
++SWA prefix KV exists in it.  With the radix cache on, the windowed caches
++are instead snapshotted through the auxiliary-state pool at the prefix
++boundaries the tree names and restored on an exact hit
++(``swa_prefix.py``); with the radix cache off, a sliding-window model
+ recomputes the whole prefix (a trailing-band rebuild is inexact because
+ window receptive fields chain backwards through layers).  The
+ scheduler's slot bookkeeping is untouched.
+@@ -197,6 +200,10 @@ class MlxModelRunner:
+     # ``_trunk`` is the headless trunk, resolved in _load_model.
+     _trunk = None
+     _enable_sampling = False
++    _snapshot_swa = False
++    _snapshot_layer_indices: tuple[int, ...] = ()
++    _has_snapshot_state = False
++    _pool_dirty = False
+     _sanitize_nan = False
+     _deterministic_seeding = False
+ 
+@@ -292,6 +299,23 @@ class MlxModelRunner:
+                 "MLX runner does not support models with both auxiliary "
+                 "cache state and sliding-window attention layers."
+             )
++        # Sliding-window layers join the auxiliary snapshot set when the radix
++        # cache is on: their windowed caches are stored at the prefix
++        # boundaries the tree names and restored on an exact hit
++        # (hardware_backend/mlx/swa_prefix.py). Without the radix cache nothing
++        # is ever restored, so the per-chunk snapshots are skipped.
++        self._snapshot_swa = (
++            self._cache_layout.has_sliding_window_layers
++            and not self.disable_radix_cache
++        )
++        self._snapshot_layer_indices = tuple(
++            self._cache_layout.auxiliary_layer_indices
++        ) + (
++            tuple(self._cache_layout.swa_attention_layer_indices)
++            if self._snapshot_swa
++            else ()
++        )
++        self._has_snapshot_state = bool(self._snapshot_layer_indices)
+         if self._cache_layout.has_auxiliary_state:
+             self._maybe_adapt_compact_cache_model()
+             self._model_embed, self._model_norm, self._model_lm_head = (
+@@ -330,6 +354,11 @@ class MlxModelRunner:
+         self._pool_size = self._compute_pool_size(pool_size)
+         self._aot_kernels = self._build_aot_kernels()
+ 
++    @property
++    def snapshots_sliding_window_prefix(self) -> bool:
++        """Sliding-window prefix KV is kept in auxiliary-state snapshots."""
++        return self._snapshot_swa
++
+     def _maybe_adapt_compact_cache_model(self):
+         """Install :class:`_CompactCacheModel` when ``make_cache`` is compact.
+ 
+@@ -426,7 +455,7 @@ class MlxModelRunner:
+ 
+     def _get_auxiliary_state_pool_index(self, req_pool_idx: int) -> Any | None:
+         if (
+-            not self._cache_layout.has_auxiliary_state
++            not self._has_snapshot_state
+             or self._req_to_token_pool is None
+             or not hasattr(self._req_to_token_pool, "get_auxiliary_state_indices")
+         ):
+@@ -444,7 +473,7 @@ class MlxModelRunner:
+         return pool.restore_cache(
+             pool_index,
+             cache,
+-            self._cache_layout.auxiliary_layer_indices,
++            self._snapshot_layer_indices,
+         )
+ 
+     def _store_auxiliary_state(self, req_pool_idx: int, cache: list[Any]) -> None:
+@@ -455,7 +484,7 @@ class MlxModelRunner:
+         pool.store_cache(
+             pool_index,
+             cache,
+-            self._cache_layout.auxiliary_layer_indices,
++            self._snapshot_layer_indices,
+         )
+ 
+     def store_auxiliary_state_for_request(self, req_id: str) -> None:
+@@ -475,7 +504,7 @@ class MlxModelRunner:
+         req: Any | None,
+     ) -> int | None:
+         if (
+-            not self._cache_layout.has_auxiliary_state
++            not self._has_snapshot_state
+             or req is None
+             or new_token_count <= 0
+         ):
+@@ -504,7 +533,7 @@ class MlxModelRunner:
+         if (
+             req is None
+             or track_len is None
+-            or not self._cache_layout.has_auxiliary_state
++            or not self._has_snapshot_state
+         ):
+             return
+         pool = self._get_auxiliary_state_pool()
+@@ -528,7 +557,7 @@ class MlxModelRunner:
+         pool.store_cache(
+             track_buffer[0],
+             cache,
+-            self._cache_layout.auxiliary_layer_indices,
++            self._snapshot_layer_indices,
+         )
+         req.kv.mamba_last_track_seqlen = track_len
+ 
+@@ -537,13 +566,20 @@ class MlxModelRunner:
+     ) -> list[Any]:
+         """Build a prefill cache list gathering *prefix_len* pool tokens.
+ 
+-        Only reachable without sliding-window layers (SWA prefix hits
+-        recompute instead), so every attention layer here is pool-backed.
++        Full-attention layers gather from the pool. Sliding-window layers get
++        an empty windowed cache that the caller restores from the request's
++        auxiliary snapshot (only reachable with
++        ``snapshots_sliding_window_prefix``; otherwise SWA prefix hits
++        recompute and never get here).
+         """
+         assert self._attention_kv_pool is not None
+         slot_ids_mx = mx.array(prefix_slot_ids, dtype=mx.int32)
+         cache = self._new_cache_skeleton()
+         for layer_idx in self._cache_layout.attention_layer_indices:
++            window = self._cache_layout.window_size(layer_idx)
++            if window is not None:
++                cache[layer_idx] = WindowedAttentionKVCache(window)
++                continue
+             cache[layer_idx] = PoolBackedAttentionKVCache(
+                 self._attention_kv_pool,
+                 self._cache_layout.full_kv_pool_index(layer_idx),
+@@ -554,11 +590,14 @@ class MlxModelRunner:
+ 
+     def _materialize_pool_backed_attention(self, cache: list[Any]) -> list[Any]:
+         contiguous_cache = self._acquire_cache()
+-        for layer_idx in self._cache_layout.attention_layer_indices:
++        for layer_idx in self._cache_layout.full_attention_layer_indices:
+             pbc = cache[layer_idx]
+             contiguous_cache[layer_idx].update_and_fetch(
+                 pbc._full_keys, pbc._full_values
+             )
++        # Windowed and auxiliary caches already hold the request's state.
++        for layer_idx in self._cache_layout.swa_attention_layer_indices:
++            contiguous_cache[layer_idx] = cache[layer_idx]
+         for layer_idx in self._cache_layout.auxiliary_layer_indices:
+             contiguous_cache[layer_idx] = cache[layer_idx]
+         return contiguous_cache
+@@ -919,7 +958,7 @@ class MlxModelRunner:
+         if self.disable_radix_cache:
+             return
+         num_pool_layers = self._cache_layout.num_full_attention_layers
+-        if self._cache_layout.has_sliding_window_layers:
++        if self._cache_layout.has_sliding_window_layers and not self._snapshot_swa:
+             # Allocating it anyway would burn the whole auto-sized KV budget
+             # (_compute_pool_size fills mem_fraction_static) on a write-only
+             # buffer.  This also disables the fused AOT RoPE + pool-scatter
+@@ -1055,6 +1094,24 @@ class MlxModelRunner:
+             ]
+         )
+         self._attention_kv_pool.set_kv_all_layers(slot_ids_mx, k_all, v_all)
++        self._pool_dirty = True
++
++    def pending_pool_arrays(self) -> list[mx.array]:
++        """Pool buffers with unevaluated scatters, for the caller's ``mx.eval``.
++
++        ``_sync_new_kv_to_pool`` builds each scatter lazily and nothing reads
++        the pool until a prefix hit gathers from it, so left alone the
++        scatters chain across chunks and requests. Every unevaluated scatter
++        pins the request KV buffers it reads (their next in-place write then
++        copies the whole buffer) and the pool version it replaces: a cold
++        13K-token prefill on the flint pool bottomed 6 GB below the radix-off
++        run and the pinned buffers outlived a cache flush. Evaluating the
++        latest buffers runs the chain with donation, in place.
++        """
++        if not self._pool_dirty or self._attention_kv_pool is None:
++            return []
++        self._pool_dirty = False
++        return self._attention_kv_pool.all_buffers()
+ 
+     def _sync_decode_kv_to_pool(self, req_id: str, end: int | None = None) -> None:
+         """Sync un-flushed decode KV for *req_id* to the shared pool, up to
+@@ -1090,6 +1147,11 @@ class MlxModelRunner:
+         scheduler may reuse once released."""
+         if not self.disable_radix_cache:
+             self._sync_decode_kv_to_pool(req_id, end=owned_len)
++            pool_arrays = self.pending_pool_arrays()
++            if pool_arrays:
++                # Outside a forward launch: submit the scatter now so the
++                # released cache is not pinned until the next prefix hit.
++                mx.async_eval(*pool_arrays)
+         self._req_pool_idx.pop(req_id, None)
+ 
+     def decode_batch(self, req_ids: list[str]) -> list[int]:
+@@ -1207,7 +1269,13 @@ class MlxModelRunner:
+         # exact: each rebuilt position needs its own window of exact hidden
+         # states, and that dependency chains back through every layer. Only the
+         # run is clamped -- slot ids and synced offsets stay unclamped.
+-        if prefix_len > 0 and self._cache_layout.has_sliding_window_layers:
++        # With sliding-window snapshots the windowed caches come back from the
++        # auxiliary pool instead, exactly as stored at the matched boundary.
++        if (
++            prefix_len > 0
++            and self._cache_layout.has_sliding_window_layers
++            and not self._snapshot_swa
++        ):
+             trusted_prefix_len = 0
+             run_token_ids = list(full_token_ids[:prefix_len]) + new_token_ids
+         else:
+@@ -1220,11 +1288,11 @@ class MlxModelRunner:
+             )
+             pool_backed_attention = True
+             restored_auxiliary_state = (
+-                not self._cache_layout.has_auxiliary_state
++                not self._has_snapshot_state
+                 or self._restore_auxiliary_state(req_pool_idx, cache)
+             )
+             if (
+-                self._cache_layout.has_auxiliary_state
++                self._has_snapshot_state
+                 and (not restored_auxiliary_state or new_token_count == 0)
+             ) or model_kwargs:
+                 # TODO(MLX): exact full-prefix hits need auxiliary state at
+@@ -1271,8 +1339,9 @@ class MlxModelRunner:
+                 and 0 < track_new_count < new_token_count
+                 and not model_kwargs
+             ):
+-                # aux + SWA is rejected at init, so run_token_ids is
+-                # new_token_ids on this branch.
++                # run_token_ids is new_token_ids here: the SWA clamp above
++                # only fires without snapshot state, and then track_len is
++                # None.
+                 input_ids = mx.array([new_token_ids[:track_new_count]], dtype=mx.int32)
+                 # Cache side effects only — this intermediate forward's
+                 # output is never read, so skip the head when possible.
+@@ -1603,6 +1672,7 @@ class MlxModelRunner:
+             tokens,
+             *self.cache_state_arrays(caches),
+             *lazy_logprob_arrays(pending.lazy_logprobs),
++            *self.pending_pool_arrays(),
+         )
+ 
+     @staticmethod
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+index 386412e83b..25d0bd1698 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -142,11 +142,25 @@ class MlxModelRunnerStub(ModelRunner):
+                 "--startup-weight-load-mode=overlap is not supported: CUDA only"
+             )
+ 
+-    def __init__(self, *args, mlx_pool_size: int | None = None, **kwargs):
++    def __init__(
++        self,
++        *args,
++        mlx_pool_size: int | None = None,
++        mlx_snapshot_state: bool = False,
++        **kwargs,
++    ):
+         self.validate_startup_weight_load_mode()
+         self._mlx_pool_size = mlx_pool_size
++        # The MLX runner keeps sliding-window prefix KV in auxiliary snapshots
++        # (hardware_backend/mlx/swa_prefix.py); the scheduler-side pools then
++        # need the same slots a hybrid SSM model gets.
++        self._mlx_snapshot_state = mlx_snapshot_state
+         super().__init__(*args, **kwargs)
+ 
++    def _uses_auxiliary_state(self) -> bool:
++        """Hybrid SSM state, or sliding-window prefix snapshots."""
++        return self._mlx_snapshot_state or mambaish_config(self.model_config) is not None
++
+     def load_model(self):
+         """Set only the metadata that downstream code needs, without
+         loading any PyTorch model weights."""
+@@ -219,10 +233,7 @@ class MlxModelRunnerStub(ModelRunner):
+             resolved = min(requested_per_worker, capacity_cap)
+ 
+         aux_state_size = self._explicit_aux_state_size_per_worker()
+-        if (
+-            mambaish_config(self.model_config) is not None
+-            and aux_state_size is not None
+-        ):
++        if self._uses_auxiliary_state() and aux_state_size is not None:
+             ratio = self._aux_state_slots_per_request()
+             resolved = min(resolved, aux_state_size // ratio)
+             if resolved <= 0:
+@@ -289,7 +300,7 @@ class MlxModelRunnerStub(ModelRunner):
+         self.is_hybrid_swa = False
+ 
+         # Create minimal pools
+-        if mambaish_config(self.model_config) is not None:
++        if self._uses_auxiliary_state():
+             auxiliary_state_size = self._explicit_aux_state_size_per_worker()
+             if auxiliary_state_size is None:
+                 auxiliary_state_size = (
+diff --git a/python/sglang/srt/hardware_backend/mlx/swa_prefix.py b/python/sglang/srt/hardware_backend/mlx/swa_prefix.py
+new file mode 100644
+index 0000000000..7ba7745ec7
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/swa_prefix.py
+@@ -0,0 +1,50 @@
++"""Prefix reuse for sliding-window attention on the MLX backend.
++
++The MLX attention KV pool stores full-attention KV only; a sliding-window
++layer keeps a per-request ``WindowedAttentionKVCache`` holding its trailing
++``window`` tokens. Rebuilding that band from pooled KV is inexact (each
++rebuilt position needs its own window of exact hidden states, chaining back
++through every layer), so upstream recomputes the whole prefix on a hit.
++
++The exact alternative is to treat the windowed caches like recurrent state:
++snapshot them at the prefix boundaries the radix tree names (chunk ends and
++mamba-checkpoint-grid points) through the auxiliary-state pool, and restore
++them on an exact-prefix match. The scheduler side then needs the same
++bookkeeping a hybrid SSM model gets (auxiliary-state req-to-token pool,
++MAMBA tree component with the ``no_buffer`` strategy); the predicate below is
++what those sites consult.
++"""
++
++from __future__ import annotations
++
++from typing import Any
++
++from sglang.srt.hardware_backend.mlx.runtime import use_mlx
++
++
++def config_declares_sliding_window_layers(hf_config: Any) -> bool:
++    """True when the text config lists per-layer ``layer_types`` with at least
++    one ``sliding_attention`` entry and a ``sliding_window`` width -- the
++    container convention ``get_layer_window_sizes`` reads at model load."""
++    if hf_config is None:
++        return False
++    text_config = (
++        hf_config.get_text_config()
++        if hasattr(hf_config, "get_text_config")
++        else hf_config
++    )
++    layer_types = getattr(text_config, "layer_types", None)
++    window = getattr(text_config, "sliding_window", None)
++    if not layer_types or not window:
++        return False
++    return any(layer_type == "sliding_attention" for layer_type in layer_types)
++
++
++def mlx_snapshots_sliding_window_prefix(
++    hf_config: Any, *, disable_radix_cache: bool
++) -> bool:
++    """Whether this server keeps sliding-window prefix state in auxiliary
++    snapshots: MLX backend, radix cache enabled, sliding-window layers declared."""
++    if disable_radix_cache or not use_mlx():
++        return False
++    return config_declares_sliding_window_layers(hf_config)
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index 8e94a3b545..77eb7b1179 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -115,6 +115,7 @@ class MlxTpModelWorker(TpModelWorker):
+             token_to_kv_pool_allocator=self.token_to_kv_pool_allocator,
+             memory_pool_config=self.memory_pool_config,
+             mlx_pool_size=self._mlx_runner.pool_size,
++            mlx_snapshot_state=self._mlx_runner.snapshots_sliding_window_prefix,
+         )
+ 
+         self._mlx_active_rids: set[str] = set()
+@@ -634,6 +635,9 @@ class MlxTpModelWorker(TpModelWorker):
+         for pending in (*pending_prefills, *pending_extends):
+             async_args.extend(self._mlx_runner.cache_state_arrays([pending.cache]))
+             async_args.extend(lazy_logprob_arrays(pending.lazy_logprobs))
++        # Pool scatters queued by this step's prefills/extends go out with the
++        # same submission (see MlxModelRunner.pending_pool_arrays).
++        async_args.extend(self._mlx_runner.pending_pool_arrays())
+         if pending_mixed_decode is not None:
+             async_args.append(pending_mixed_decode.lazy_tokens)
+             async_args.extend(lazy_logprob_arrays(pending_mixed_decode.lazy_logprobs))
+diff --git a/python/sglang/srt/mem_cache/kv_cache_builder.py b/python/sglang/srt/mem_cache/kv_cache_builder.py
+index 3df242ca90..f41c589c76 100644
+--- a/python/sglang/srt/mem_cache/kv_cache_builder.py
++++ b/python/sglang/srt/mem_cache/kv_cache_builder.py
+@@ -170,6 +170,20 @@ def decode_retraction_max_tokens(req_to_token_pool, kv_cache) -> int:
+     )
+ 
+ 
++def _mlx_sliding_window_snapshot_state(model_config) -> bool:
++    """The MLX backend keeps sliding-window prefix KV in auxiliary snapshots,
++    which the scheduler treats like recurrent state
++    (hardware_backend/mlx/swa_prefix.py)."""
++    from sglang.srt.hardware_backend.mlx.swa_prefix import (
++        mlx_snapshots_sliding_window_prefix,
++    )
++
++    return mlx_snapshots_sliding_window_prefix(
++        model_config.hf_config,
++        disable_radix_cache=get_memory().disable_radix_cache,
++    )
++
++
+ def uses_ssm_state(model_config) -> bool:
+     """Whether the model keeps recurrent/conv state alongside its attention KV."""
+     spec = linear_attn_model_spec(model_config)
+@@ -180,6 +194,7 @@ def uses_ssm_state(model_config) -> bool:
+         or kimi_linear_config(model_config) is not None
+         or glm5_next_config(model_config) is not None
+         or hybrid_lightning_config(model_config) is not None
++        or _mlx_sliding_window_snapshot_state(model_config)
+     )
+ 
+ 

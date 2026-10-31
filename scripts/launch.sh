@@ -320,21 +320,29 @@ apply_preset() {
             # 17 GB available (vs 15 GB at 2048/4 GB, which is also slower
             # at depth: 585 vs 634 tok/s prefill). oQ6e (32.9 GB) and oQ4e
             # (23.5 GB) pass the same gates: MODEL=mlx-community/flint-oQ6e.
-            # --disable-radix-cache: sliding-window layers keep no pool KV
-            # upstream, so a prefix hit recomputes the prefix anyway.
-            # --max-total-tokens from CTX*MAX_RUNNING: with no shared pool the
-            # auto-sized budget collapses to 256 slots once the weights exceed
-            # the memory fraction; the per-request caches bound memory
-            # instead (28 KB/token on the 14 full layers at 32K = 0.9 GB per
-            # request). --sampling-defaults model: Flint ships temperature
-            # 1.0 / top-p 0.95 / top-k 20 and Recursive does not validate
-            # greedy decoding (requests that set temperature=0 stay greedy).
+            # Radix cache ON: patch 021 keeps the 35 windowed caches in
+            # auxiliary-state snapshots at the prefix boundaries the tree
+            # names and restores them on an exact hit, so an agent turn
+            # re-prefills only its new tokens (the 14 full layers gather from
+            # the shared pool). The scheduler runs the hybrid no_buffer
+            # bookkeeping for it, which disables the overlap schedule.
+            # --max-total-tokens from CTX*MAX_RUNNING sizes the shared pool:
+            # 28 KB/token on the 14 full layers, 3.7 GB at the default
+            # 131072 slots, on top of the per-request contiguous copies of
+            # the same layers (0.9 GB per 32K request). Set
+            # MAX_TOTAL_TOKENS=131072 explicitly for CTX=131072 single-user
+            # runs (CTX*4 would be a 14.7 GB pool); with the radix cache off
+            # (EXTRA_ARGS="--disable-radix-cache") no pool is allocated and
+            # the flag is only the scheduler's token budget.
+            # --sampling-defaults model: Flint ships temperature 1.0 / top-p
+            # 0.95 / top-k 20 and Recursive does not validate greedy decoding
+            # (requests that set temperature=0 stay greedy).
             MODEL="${MODEL:-mlx-community/flint-oQ8e}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=1024
             SGLANG_MLX_CACHE_LIMIT_GB="${SGLANG_MLX_CACHE_LIMIT_GB:-2}"
             MAX_TOTAL_FROM_CTX=1
             REASONING="--reasoning-parser flint"
-            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser flint --disable-radix-cache --sampling-defaults model"
+            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser flint --sampling-defaults model"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         *)

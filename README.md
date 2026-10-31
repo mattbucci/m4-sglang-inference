@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 10 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 11 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
 
 **Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), (the `--kv-cache-dtype` flag is inert on this backend — the MLX pool stores KV in the attention compute dtype — so the earlier turboquant-vs-fp16 recall A/B compared identical bf16 arms). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
 
@@ -196,7 +196,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 10 patches
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 11 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -395,7 +395,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 10 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 11 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev — carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -405,7 +405,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Ten patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
+Eleven patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
 
 | # | Patch | What |
 |:-:|-------|------|
