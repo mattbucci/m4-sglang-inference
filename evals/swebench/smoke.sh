@@ -187,6 +187,8 @@ preflight_arg=""
 if [ "${SKIP_PREFLIGHT:-0}" = "1" ]; then
     preflight_arg="--skip-preflight"
 fi
+# ${arr[@]+"${arr[@]}"}: bash 3.2 (macOS /bin/bash) treats an empty array as
+# unbound under set -u.
 extra_args=()
 if [ -n "$PROMPT_EXTRA" ]; then
     extra_args+=(--prompt-extra "$PROMPT_EXTRA")
@@ -199,7 +201,7 @@ if [ -n "$INSTANCE_IDS" ]; then
         --out "$OUT" \
         --server-url "http://127.0.0.1:$PORT" \
         --served-name "$PRESET" \
-        $preflight_arg "${extra_args[@]}" 2>&1 | tee "$OUT/rollout.log"
+        $preflight_arg ${extra_args[@]+"${extra_args[@]}"} 2>&1 | tee "$OUT/rollout.log"
 else
     python3 run_rollouts.py \
         --model "sglang/$MODEL_KEY" \
@@ -208,7 +210,7 @@ else
         --out "$OUT" \
         --server-url "http://127.0.0.1:$PORT" \
         --served-name "$PRESET" \
-        $preflight_arg "${extra_args[@]}" 2>&1 | tee "$OUT/rollout.log"
+        $preflight_arg ${extra_args[@]+"${extra_args[@]}"} 2>&1 | tee "$OUT/rollout.log"
 fi
 RC=$?
 set -e
