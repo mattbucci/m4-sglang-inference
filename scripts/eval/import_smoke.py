@@ -79,6 +79,30 @@ ATTR_CHECKS = {
         ("MLX aux-slot admission eviction",                            # 018
          lambda m: _src_has(m, "MLX auxiliary-state pool")),
     ],
+    "sglang.srt.hardware_backend.mlx.text_checkpoint": [
+        ("load_text_model", lambda m: m.load_text_model),              # 019
+    ],
+    "sglang.srt.hardware_backend.mlx.kv_cache.attention_contract": [
+        ("_window_declaration", lambda m: m._window_declaration),      # 019
+    ],
+    "sglang.srt.configs.flint": [
+        ("FlintConfig", lambda m: m.FlintConfig),                      # 019
+    ],
+    "sglang.srt.utils.hf_transformers.common": [
+        ("_CONFIG_REGISTRY flint",                                     # 019
+         lambda m: m._CONFIG_REGISTRY["flint"]),
+    ],
+    "sglang.srt.function_call.flint_detector": [
+        ("FlintDetector", lambda m: m.FlintDetector),                  # 019
+    ],
+    "sglang.srt.function_call.function_call_parser": [
+        ("ToolCallParserEnum flint",                                   # 019
+         lambda m: m.FunctionCallParser.ToolCallParserEnum["flint"]),
+    ],
+    "sglang.srt.parser.reasoning_parser": [
+        ("DetectorMap flint",                                          # 019
+         lambda m: m.ReasoningParser.DetectorMap["flint"]),
+    ],
 }
 
 # Modules whose import has environment side effects that cannot run here.

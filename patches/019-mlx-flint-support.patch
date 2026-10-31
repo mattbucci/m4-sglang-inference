@@ -1,0 +1,533 @@
+diff --git a/python/sglang/srt/configs/__init__.py b/python/sglang/srt/configs/__init__.py
+index 83004cf1af..5dba565411 100644
+--- a/python/sglang/srt/configs/__init__.py
++++ b/python/sglang/srt/configs/__init__.py
+@@ -74,6 +74,7 @@ from sglang.srt.configs.nano_nemotron_vl import (
+     NemotronH_Omni_Reasoning_V3_Config,
+ )
+ from sglang.srt.configs.nemotron_h import NemotronHConfig, NemotronHPuzzleConfig
++from sglang.srt.configs.flint import FlintConfig
+ from sglang.srt.configs.olmo3 import Olmo3Config
+ from sglang.srt.configs.qwen3_5 import (
+     Qwen3_5Config,
+@@ -120,6 +121,7 @@ __all__ = [
+     "Step3TextConfig",
+     "Step3VisionEncoderConfig",
+     "Olmo3Config",
++    "FlintConfig",
+     "MuseGlimmerConfig",
+     "MuseGlimmerAssistantConfig",
+     "MuseSparkConfig",
+diff --git a/python/sglang/srt/configs/flint.py b/python/sglang/srt/configs/flint.py
+new file mode 100644
+index 0000000000..88e81fc4d2
+--- /dev/null
++++ b/python/sglang/srt/configs/flint.py
+@@ -0,0 +1,105 @@
++"""Flint model configuration.
++
++Transformers has no native Flint support; registering this class lets
++``AutoConfig`` resolve ``model_type: flint`` so Flint checkpoints load without
++``--trust-remote-code``. Field names and defaults follow RecursiveSI/flint's
++``config.json``.
++"""
++
++from transformers.configuration_utils import PretrainedConfig
++
++
++class FlintConfig(PretrainedConfig):
++    """Decoder-only MoE transformer.
++
++    Sliding-window layers use RoPE; the full-attention layers listed in
++    ``no_rope_layer_indices`` use no positional encoding. Every head carries a
++    learned attention sink (``softmax_type="learnable"``), and the layers in
++    ``mlp_only_layers`` are dense SwiGLU blocks instead of MoE blocks.
++    ``sliding_window`` counts the current token.
++    """
++
++    model_type = "flint"
++    keys_to_ignore_at_inference = ["past_key_values"]
++
++    def __init__(
++        self,
++        vocab_size=150144,
++        hidden_size=2048,
++        intermediate_size=6144,
++        num_hidden_layers=49,
++        num_attention_heads=32,
++        num_key_value_heads=4,
++        head_dim=128,
++        hidden_act="silu",
++        max_position_embeddings=262144,
++        initializer_range=0.02,
++        rms_norm_eps=1e-6,
++        use_cache=True,
++        tie_word_embeddings=False,
++        rope_theta=10000.0,
++        attention_bias=False,
++        attention_dropout=0.0,
++        use_sliding_window=True,
++        sliding_window=513,
++        layer_types=None,
++        no_rope_layer_indices=None,
++        softmax_type="learnable",
++        decoder_sparse_step=1,
++        moe_intermediate_size=512,
++        shared_expert_intermediate_size=1024,
++        num_experts=256,
++        num_experts_per_tok=6,
++        norm_topk_prob=True,
++        router_score_function="sigmoid",
++        router_aux_loss_coef=0.0005,
++        output_router_logits=False,
++        mlp_only_layers=None,
++        pad_token_id=150001,
++        bos_token_id=150000,
++        eos_token_id=None,
++        **kwargs,
++    ):
++        self.vocab_size = vocab_size
++        self.hidden_size = hidden_size
++        self.intermediate_size = intermediate_size
++        self.num_hidden_layers = num_hidden_layers
++        self.num_attention_heads = num_attention_heads
++        self.num_key_value_heads = num_key_value_heads
++        self.head_dim = head_dim
++        self.hidden_act = hidden_act
++        self.max_position_embeddings = max_position_embeddings
++        self.initializer_range = initializer_range
++        self.rms_norm_eps = rms_norm_eps
++        self.use_cache = use_cache
++        self.rope_theta = rope_theta
++        self.attention_bias = attention_bias
++        self.attention_dropout = attention_dropout
++        self.use_sliding_window = use_sliding_window
++        self.sliding_window = sliding_window
++        self.layer_types = (
++            list(layer_types)
++            if layer_types is not None
++            else ["full_attention"] * num_hidden_layers
++        )
++        self.no_rope_layer_indices = list(no_rope_layer_indices or [])
++        self.softmax_type = softmax_type
++        self.decoder_sparse_step = decoder_sparse_step
++        self.moe_intermediate_size = moe_intermediate_size
++        self.shared_expert_intermediate_size = shared_expert_intermediate_size
++        self.num_experts = num_experts
++        self.num_experts_per_tok = num_experts_per_tok
++        self.norm_topk_prob = norm_topk_prob
++        self.router_score_function = router_score_function
++        self.router_aux_loss_coef = router_aux_loss_coef
++        self.output_router_logits = output_router_logits
++        self.mlp_only_layers = list(mlp_only_layers or [])
++        if eos_token_id is None:
++            eos_token_id = [150001, 150003, 150005, 150018]
++        super().__init__(
++            pad_token_id=pad_token_id,
++            bos_token_id=bos_token_id,
++            eos_token_id=eos_token_id,
++            tie_word_embeddings=tie_word_embeddings,
++            **kwargs,
++        )
+diff --git a/python/sglang/srt/function_call/flint_detector.py b/python/sglang/srt/function_call/flint_detector.py
+new file mode 100644
+index 0000000000..7c0bde6e31
+--- /dev/null
++++ b/python/sglang/srt/function_call/flint_detector.py
+@@ -0,0 +1,19 @@
++import re
++
++from sglang.srt.function_call.glm47_moe_detector import Glm47MoeDetector
++
++
++class FlintDetector(Glm47MoeDetector):
++    """Detector for Flint's tool calls.
++
++    Flint writes GLM-4.7's XML call format without line breaks:
++      <tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call>
++    """
++
++    def __init__(self):
++        super().__init__()
++        # The name ends at the first ``<arg_key>``; any whitespace a grammar
++        # admits after it is not part of the name.
++        self.func_detail_regex = re.compile(
++            r"<tool_call>(.*?)\s*(<arg_key>.*?)?</tool_call>", re.DOTALL
++        )
+diff --git a/python/sglang/srt/function_call/function_call_parser.py b/python/sglang/srt/function_call/function_call_parser.py
+index af2f84e1cf..c7e4eaa0d2 100644
+--- a/python/sglang/srt/function_call/function_call_parser.py
++++ b/python/sglang/srt/function_call/function_call_parser.py
+@@ -22,6 +22,7 @@ from sglang.srt.function_call.deepseekv31_detector import DeepSeekV31Detector
+ from sglang.srt.function_call.deepseekv32_detector import DeepSeekV32Detector
+ from sglang.srt.function_call.deepseekv41_detector import DeepSeekV41Detector
+ from sglang.srt.function_call.dots_detector import DotsToolDetector
++from sglang.srt.function_call.flint_detector import FlintDetector
+ from sglang.srt.function_call.gemma4_detector import Gemma4Detector
+ from sglang.srt.function_call.gigachat3_detector import GigaChat3Detector
+ from sglang.srt.function_call.gigachat35_detector import GigaChat35Detector
+@@ -84,6 +85,7 @@ class FunctionCallParser:
+         "deepseekv4": DeepSeekV4Detector,
+         "deepseekv41": DeepSeekV41Detector,
+         "dots": DotsToolDetector,
++        "flint": FlintDetector,
+         "glm": Glm4MoeDetector,
+         "glm45": Glm4MoeDetector,
+         "glm47": Glm47MoeDetector,
+diff --git a/python/sglang/srt/function_call/parser_names.py b/python/sglang/srt/function_call/parser_names.py
+index 4da63fbfe2..1ba11f91a7 100644
+--- a/python/sglang/srt/function_call/parser_names.py
++++ b/python/sglang/srt/function_call/parser_names.py
+@@ -17,6 +17,7 @@ TOOL_CALL_PARSER_NAMES = [
+     "deepseekv4",
+     "deepseekv41",
+     "dots",
++    "flint",
+     "glm",
+     "glm45",
+     "glm47",
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
+index f4b824f52f..517797720e 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
+@@ -83,18 +83,32 @@ def get_container_window_size(model: Any) -> int | None:
+     return first_present_attr(language_model_container(model), WINDOW_SIZE_ATTRS)
+ 
+ 
++def _window_declaration(container: Any) -> tuple[Any, int | None]:
++    """``(layer_types, window)`` from the container, else from its ``args``.
++
++    mlx-lm models keep their ``ModelArgs`` on ``args``; some (flint, ...)
++    expose ``layer_types`` and the scalar window only there.
++    """
++    for source in (container, getattr(container, "args", None)):
++        if source is None:
++            continue
++        layer_types = getattr(source, "layer_types", None)
++        window_size = first_present_attr(source, WINDOW_SIZE_ATTRS)
++        if layer_types and window_size is not None:
++            return layer_types, window_size
++    return None, None
++
++
+ def get_layer_window_sizes(model: Any) -> dict[int, int | None]:
+     """Per-layer sliding-window sizes from the mlx-lm container convention.
+ 
+     Containers such as gpt_oss or olmo3 expose ``layer_types`` (one entry
+     per layer, ``"sliding_attention"`` marking windowed layers) plus a
+-    scalar window (see ``WINDOW_SIZE_ATTRS``).  Returns
+-    ``{layer_idx: window or None}``, or ``{}`` when the model does not
++    scalar window (see ``WINDOW_SIZE_ATTRS``), directly or on ``args``.
++    Returns ``{idx: window or None}``, or ``{}`` when the model does not
+     follow the convention.
+     """
+-    container = language_model_container(model)
+-    layer_types = getattr(container, "layer_types", None)
+-    window_size = first_present_attr(container, WINDOW_SIZE_ATTRS)
++    layer_types, window_size = _window_declaration(language_model_container(model))
+     if not layer_types or window_size is None:
+         return {}
+     return {
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+index 95aa361510..db3f47cb01 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -222,8 +222,11 @@ class MLXAttentionWrapper(nn.Module):
+         object.__setattr__(self, "_has_q_norm", hasattr(inner, "q_norm"))
+         object.__setattr__(self, "_has_k_norm", hasattr(inner, "k_norm"))
+         # Only pass sinks when the module has them: the kwarg requires a
+-        # recent mlx and must not constrain models without sinks.
++        # recent mlx and must not constrain models without sinks. gpt_oss
++        # names the learned per-head sink ``sinks``; flint ``softmax_offset``.
+         sinks = getattr(inner, "sinks", None)
++        if sinks is None:
++            sinks = getattr(inner, "softmax_offset", None)
+         object.__setattr__(self, "_sinks", sinks)
+         object.__setattr__(
+             self, "_sink_kwargs", {} if sinks is None else {"sinks": sinks}
+@@ -301,7 +304,10 @@ class MLXAttentionWrapper(nn.Module):
+         cache_idx = ctx.attention_pool_index_by_layer[layer_idx]
+         window = self._window_size
+ 
+-        if ctx.aot.rope is not None and window is None:
++        if inner.rope is None:
++            # NoPE layer (flint's full-attention layers): no rotation at all.
++            pass
++        elif ctx.aot.rope is not None and window is None:
+             # AOT path: real .metallib RoPE + fused scatter into this layer's
+             # pool buffer.
+             queries, keys = self._rope_custom_aot(
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index c7e0be9a59..c2484968a2 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -33,7 +33,6 @@ import mlx.core as mx
+ import numpy as np
+ import psutil
+ from mlx.utils import tree_flatten
+-from mlx_lm import load as mlx_lm_load
+ from mlx_lm.utils import quantize_model as mlx_lm_quantize_model
+ 
+ from sglang.srt.environ import envs
+@@ -63,6 +62,7 @@ from sglang.srt.hardware_backend.mlx.remote_code_gate import (
+     ensure_remote_code_allowed,
+     resolve_model_directory,
+ )
++from sglang.srt.hardware_backend.mlx.text_checkpoint import load_text_model
+ from sglang.srt.hardware_backend.mlx.sampling import (
+     GREEDY_PARAMS,
+     MlxLazyLogprobs,
+@@ -704,14 +704,11 @@ class MlxModelRunner:
+             )
+             return
+ 
+-        # We need the config dict to pass into quantize_model so it knows tied/embedding
+-        # layout. return_config=True is cheap and ignored when no quantization is requested.
+-        loaded = mlx_lm_load(
+-            str(model_dir),
+-            tokenizer_config={"trust_remote_code": self.trust_remote_code},
+-            return_config=True,
++        # The config dict feeds quantize_model (tied/embedding layout); the
++        # tokenizer is SGLang's, so only the model is loaded here.
++        self.model, config = load_text_model(
++            model_dir, trust_remote_code=self.trust_remote_code
+         )
+-        self.model, _tokenizer, config = loaded
+ 
+         if self._quantization in _MLX_QUANTIZATION_PRESETS:
+             bits, group_size = _MLX_QUANTIZATION_PRESETS[self._quantization]
+diff --git a/python/sglang/srt/hardware_backend/mlx/text_checkpoint.py b/python/sglang/srt/hardware_backend/mlx/text_checkpoint.py
+new file mode 100644
+index 0000000000..060301b158
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/text_checkpoint.py
+@@ -0,0 +1,109 @@
++"""mlx-lm text-model loading that accepts mlx-vlm's checkpoint layout."""
++
++from __future__ import annotations
++
++import logging
++from pathlib import Path
++from typing import Any
++
++import mlx.core as mx
++from mlx.utils import tree_flatten
++from mlx_lm.utils import _get_classes
++from mlx_lm.utils import load_model as mlx_lm_load_model
++
++logger = logging.getLogger(__name__)
++
++# mlx-vlm wraps a text model as ``Model.language_model``; quantizers that go
++# through its model class (oMLX's oQ series, ...) save a text-only checkpoint
++# with every tensor and per-tensor quantization override under this prefix,
++# which mlx-lm's own model classes do not expect.
++VLM_TEXT_PREFIX = "language_model."
++# mlx-vlm synthesizes a zero DeepSeek-style routing bias for Flint MoE blocks
++# and saves it; mlx-lm's Flint routes without one.
++_SYNTHESIZED_ZERO_SUFFIXES = (".mlp.expert_bias",)
++
++
++def _strip_prefix(name: str) -> str:
++    if name.startswith(VLM_TEXT_PREFIX):
++        return name[len(VLM_TEXT_PREFIX) :]
++    return name
++
++
++def _strip_quantization_keys(config: dict) -> None:
++    """Rename per-tensor quantization overrides to match the stripped weights."""
++    for key in ("quantization", "quantization_config"):
++        section = config.get(key)
++        if isinstance(section, dict):
++            config[key] = {_strip_prefix(k): v for k, v in section.items()}
++
++
++def _drop_synthesized_zero_params(model: Any, weights: dict) -> dict:
++    """Drop all-zero tensors the model declares no parameter for.
++
++    Only the known synthesized names qualify; any other unexpected tensor is
++    left for ``load_weights(strict=True)`` to report.
++    """
++    expected = {name for name, _ in tree_flatten(model.parameters())}
++    dropped = []
++    for name in list(weights):
++        if name in expected or not name.endswith(_SYNTHESIZED_ZERO_SUFFIXES):
++            continue
++        if mx.any(weights[name] != 0).item():
++            raise ValueError(
++                f"checkpoint tensor {name} is not a parameter of "
++                f"{type(model).__name__} and is not all-zero; refusing to drop it"
++            )
++        del weights[name]
++        dropped.append(name)
++    if dropped:
++        logger.info(
++            "Dropped %d all-zero checkpoint tensors without a model parameter "
++            "(e.g. %s)",
++            len(dropped),
++            dropped[0],
++        )
++    return weights
++
++
++def _adapt_model_class(model_class: type, config: dict) -> type:
++    """Subclass whose ``sanitize`` accepts mlx-vlm's text-checkpoint layout."""
++
++    class _AdaptedModel(model_class):
++        def sanitize(self, weights):
++            if not hasattr(self, "language_model") and any(
++                k.startswith(VLM_TEXT_PREFIX) for k in weights
++            ):
++                weights = {_strip_prefix(k): v for k, v in weights.items()}
++                _strip_quantization_keys(config)
++                logger.info(
++                    "Stripped the %r prefix from %d checkpoint tensors",
++                    VLM_TEXT_PREFIX,
++                    len(weights),
++                )
++            if hasattr(model_class, "sanitize"):
++                weights = super().sanitize(weights)
++            return _drop_synthesized_zero_params(self, weights)
++
++    _AdaptedModel.__name__ = model_class.__name__
++    _AdaptedModel.__qualname__ = model_class.__qualname__
++    _AdaptedModel.__module__ = model_class.__module__
++    return _AdaptedModel
++
++
++def load_text_model(model_dir: Path, trust_remote_code: bool) -> tuple[Any, dict]:
++    """Load a text checkpoint through mlx-lm; returns ``(model, config)``.
++
++    The config dict handed to ``get_model_classes`` is the one mlx-lm later
++    reads its per-tensor quantization overrides from, so the adapted
++    ``sanitize`` can rename those keys in place alongside the weights.
++    """
++
++    def get_model_classes(config: dict):
++        model_class, model_args_class = _get_classes(config)
++        return _adapt_model_class(model_class, config), model_args_class
++
++    return mlx_lm_load_model(
++        Path(model_dir),
++        get_model_classes=get_model_classes,
++        trust_remote_code=trust_remote_code,
++    )
+diff --git a/python/sglang/srt/model_loader/utils.py b/python/sglang/srt/model_loader/utils.py
+index c3bdbafa59..bdae60384b 100644
+--- a/python/sglang/srt/model_loader/utils.py
++++ b/python/sglang/srt/model_loader/utils.py
+@@ -195,6 +195,21 @@ def resolve_transformers_arch(model_config: ModelConfig, architectures: list[str
+     return [backend_arch]
+ 
+ 
++class MlxServedModel(nn.Module):
++    """Stand-in for architectures the MLX backend serves through mlx-lm.
++
++    The MLX runner never builds a Torch model, so the Torch registry is not a
++    boot gate there; callers that resolve the architecture for bookkeeping
++    (KV-cache builder, tokenizer manager, multimodal processor) get this class.
++    """
++
++
++def _mlx_serves_through_mlx_lm() -> bool:
++    from sglang.srt.hardware_backend.mlx.runtime import use_mlx
++
++    return use_mlx()
++
++
+ def get_model_architecture(model_config: ModelConfig) -> Tuple[Type[nn.Module], str]:
+     from sglang.srt.models.registry import ModelRegistry
+ 
+@@ -225,6 +240,12 @@ def get_model_architecture(model_config: ModelConfig) -> Tuple[Type[nn.Module],
+         ModelRegistry.is_arch_supported(arch) for arch in architectures
+     )
+ 
++    if not is_native_supported and _mlx_serves_through_mlx_lm():
++        resolved_arch = architectures[0] if architectures else MlxServedModel.__name__
++        setattr(model_config, "_resolved_model_arch", resolved_arch)
++        setattr(model_config, "_resolved_model_impl", ModelImpl.SGLANG)
++        return MlxServedModel, resolved_arch
++
+     if model_config.model_impl == ModelImpl.MINDSPORE:
+         architectures = ["MindSporeForCausalLM"]
+     elif not is_native_supported or model_config.model_impl == ModelImpl.TRANSFORMERS:
+diff --git a/python/sglang/srt/parser/reasoning_parser.py b/python/sglang/srt/parser/reasoning_parser.py
+index b85d1563e5..970947b346 100644
+--- a/python/sglang/srt/parser/reasoning_parser.py
++++ b/python/sglang/srt/parser/reasoning_parser.py
+@@ -485,6 +485,36 @@ class Qwen3Detector(BaseReasoningFormatDetector):
+         )
+ 
+ 
++class FlintReasoningDetector(BaseReasoningFormatDetector):
++    """Detector for Flint: ``<think>...</think>`` only where the model writes it.
++
++    Flint decides per turn whether to reason and its chat template has no
++    thinking switch, so a turn is never assumed to start inside reasoning.
++    It always closes ``</think>`` before a tool call, so a ``<tool_call>``
++    inside the reasoning stays reasoning.
++    """
++
++    def __init__(
++        self,
++        stream_reasoning: bool = True,
++        force_reasoning: bool = False,
++        continue_final_message: bool = False,
++        previous_content: str = "",
++        force_nonempty_content: bool = False,
++    ):
++        super().__init__(
++            "<think>",
++            "</think>",
++            force_reasoning=force_reasoning,
++            stream_reasoning=stream_reasoning,
++            continue_final_message=continue_final_message,
++            previous_content=previous_content,
++            # No template toggle: chat_template_kwargs never turn reasoning on.
++            reasoning_default=None,
++            force_nonempty_content=force_nonempty_content,
++        )
++
++
+ class KimiDetector(BaseReasoningFormatDetector):
+     """
+     Detector for Kimi Thinking model.
+@@ -2277,6 +2307,7 @@ class ReasoningParser:
+         "deepseek-v4": DeepSeekV4Detector,
+         "deepseek-v41": DeepSeekV4Detector,
+         "dots": Qwen3Detector,
++        "flint": FlintReasoningDetector,
+         "glm45": Glm45Detector,
+         "ling3": Ling3Detector,
+         "hunyuan": HunyuanDetector,
+diff --git a/python/sglang/srt/parser/reasoning_parser_names.py b/python/sglang/srt/parser/reasoning_parser_names.py
+index 6c3a9636e2..c639ea5c32 100644
+--- a/python/sglang/srt/parser/reasoning_parser_names.py
++++ b/python/sglang/srt/parser/reasoning_parser_names.py
+@@ -11,6 +11,7 @@ REASONING_PARSER_NAMES = [
+     "deepseek-v4",
+     "deepseek-v41",
+     "dots",
++    "flint",
+     "glm45",
+     "ling3",
+     "hunyuan",
+diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
+index 6a46a40ffd..b64d1afa4a 100644
+--- a/python/sglang/srt/utils/hf_transformers/common.py
++++ b/python/sglang/srt/utils/hf_transformers/common.py
+@@ -81,6 +81,7 @@ from sglang.srt.configs import (
+     NemotronH_Omni_Reasoning_V3_Config,
+     NemotronHConfig,
+     NemotronHPuzzleConfig,
++    FlintConfig,
+     Olmo3Config,
+     Qwen3_5Config,
+     Qwen3_5MoeConfig,
+@@ -136,6 +137,7 @@ _CONFIG_REGISTRY: Dict[str, Type[PretrainedConfig]] = {
+         Step3VLConfig,
+         LongcatFlashConfig,
+         Olmo3Config,
++        FlintConfig,
+         MuseGlimmerConfig,
+         MuseGlimmerAssistantConfig,
+         KimiK3Config,

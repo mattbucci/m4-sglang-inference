@@ -60,6 +60,9 @@ DEFAULT_REPOS = [
     "mlx-community/Qwen3.6-35B-A3B-4bit",
     "mlx-community/Qwen3.6-27B-4bit",
     "mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit",
+    "mlx-community/flint-oQ6e",
+    "mlx-community/flint-oQ8e",
+    "mlx-community/flint-oQ4e",
 ]
 
 

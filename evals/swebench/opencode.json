@@ -9,6 +9,11 @@
         "apiKey": "not-needed"
       },
       "models": {
+        "flint": {
+          "name": "Recursive Flint 40B-A2.5B (oMLX oQ8e)",
+          "limit": { "context": 131072, "output": 16384 },
+          "tool_call": true
+        },
         "coder-30b": {
           "name": "Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ",
           "limit": { "context": 131072, "output": 8192 },

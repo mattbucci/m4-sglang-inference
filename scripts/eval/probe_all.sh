@@ -57,8 +57,21 @@ probes_for() {
         qwen36)            echo "codegen vision video thinking" ;;
         qwen36-27b)        echo "codegen vision video thinking" ;;
         nemotron-30b)      echo "codegen thinking" ;;
+        flint)             echo "codegen thinking" ;;   # text-only MoE; reasons when it decides to
         nemotron-omni)     echo "codegen vision video thinking" ;;  # patch 017 enables multi-image
         *)                 echo "codegen" ;;
+    esac
+}
+
+# Per-preset probe arguments. Flint reasons before answering and has no
+# thinking toggle, so the probes' default budgets (400 codegen / 2000
+# thinking tokens) truncate its answer (finish=length) and grade a truncation
+# as PARTIAL; give it the budget its card recommends for coding work.
+probe_args() {
+    case "$1:$2" in
+        flint:codegen)  echo "--max-tokens 4096" ;;
+        flint:thinking) echo "--max-tokens 4096" ;;
+        *)              echo "" ;;
     esac
 }
 
@@ -150,7 +163,7 @@ json.dump({
         echo "  >>> probe_${probe} <<<"
         local probe_log="$LOG_DIR/${preset}-${probe}.log"
         set +e
-        python "$REPO_DIR/scripts/eval/probe_${probe}.py" --port "$PORT" > "$probe_log" 2>&1
+        python "$REPO_DIR/scripts/eval/probe_${probe}.py" --port "$PORT" $(probe_args "$preset" "$probe") > "$probe_log" 2>&1
         local probe_rc=$?
         set -e
         local verdict

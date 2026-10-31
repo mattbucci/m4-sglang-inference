@@ -8,6 +8,7 @@
 #   ./scripts/launch.sh devstral --context-length 262144 --kv-cache fp8
 #   ./scripts/launch.sh devstral --context-length 262144 --kv-cache turboquant
 #   MODEL=/path/to/weights ./scripts/launch.sh coder-next
+#   MODEL=mlx-community/flint-oQ6e ./scripts/launch.sh flint
 #
 # Models:
 #   devstral       Devstral-24B 4-bit (32K context, best all-round)
@@ -19,6 +20,7 @@
 #   qwen35-9b-8bit Qwen3.5-9B DeltaNet 8-bit (32K, smaller+higher-precision)
 #   qwen36         Qwen3.6-35B-A3B-4bit MoE+DeltaNet+VL (sister-team flagship)
 #   qwen36-27b     Qwen3.6-27B-4bit Dense DeltaNet+VL (new — no MoE variant)
+#   flint          Recursive Flint 40B-A2.5B MoE coding agent (oMLX oQ8e, 32K)
 #
 # KV cache modes (--kv-cache):
 #   fp8            MXFP8 quantized (default, ~2x memory savings)
@@ -53,6 +55,9 @@ WARMUP=""
 WATCHDOG=600
 KV_CACHE="fp8"
 EXTRA_ARGS="${EXTRA_ARGS:-}"
+# Presets that set this derive --max-total-tokens from the resolved
+# CTX * MAX_RUNNING (after env/CLI overrides). MAX_TOTAL_TOKENS=<n> overrides.
+MAX_TOTAL_FROM_CTX=""
 
 # --- Model presets (tuned for 64GB unified memory) ---
 apply_preset() {
@@ -298,6 +303,41 @@ apply_preset() {
             REASONING="--reasoning-parser nemotron_3"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
+        flint)
+            # Recursive Flint (FlintForCausalLM): 39.8B-total / ~2.5B-active
+            # MoE for coding agents — 35 sliding-window (513-token) + 14
+            # full-attention layers with learned attention sinks; the full
+            # layers carry no RoPE. mlx-lm's `flint` model (git pin in
+            # setup.sh) runs it; patch 019 adds the mlx-vlm checkpoint-layout
+            # adapter (oMLX's oQ*e quantizations store every tensor under
+            # `language_model.`), the per-layer window map, NoPE + sink
+            # handling in batched decode, FlintConfig registration and the
+            # `flint` reasoning / tool-call parsers.
+            # oQ8e (42.3 GB resident, 8.5 bpw, the highest-fidelity oMLX
+            # variant) is the default. 42.3 GB of weights sit under the
+            # 51.8 GB Metal working set, and the envelope is set by prefill
+            # transients, not weights: with CHUNKED=1024 and a 2 GB MLX
+            # buffer cache a 27K-token prefill leaves the kernel reporting
+            # 17 GB available (vs 15 GB at 2048/4 GB, which is also slower
+            # at depth: 585 vs 634 tok/s prefill). oQ6e (32.9 GB) and oQ4e
+            # (23.5 GB) pass the same gates: MODEL=mlx-community/flint-oQ6e.
+            # --disable-radix-cache: sliding-window layers keep no pool KV
+            # upstream, so a prefix hit recomputes the prefix anyway.
+            # --max-total-tokens from CTX*MAX_RUNNING: with no shared pool the
+            # auto-sized budget collapses to 256 slots once the weights exceed
+            # the memory fraction; the per-request caches bound memory
+            # instead (28 KB/token on the 14 full layers at 32K = 0.9 GB per
+            # request). --sampling-defaults model: Flint ships temperature
+            # 1.0 / top-p 0.95 / top-k 20 and Recursive does not validate
+            # greedy decoding (requests that set temperature=0 stay greedy).
+            MODEL="${MODEL:-mlx-community/flint-oQ8e}"
+            CTX=32768; MAX_RUNNING=4; CHUNKED=1024
+            SGLANG_MLX_CACHE_LIMIT_GB="${SGLANG_MLX_CACHE_LIMIT_GB:-2}"
+            MAX_TOTAL_FROM_CTX=1
+            REASONING="--reasoning-parser flint"
+            EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser flint --disable-radix-cache --sampling-defaults model"
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
@@ -357,6 +397,11 @@ apply_preset "$PRESET"
 [[ -n "$CLI_CHUNKED" ]] && CHUNKED="$CLI_CHUNKED"
 [[ -n "$CLI_WATCHDOG" ]] && WATCHDOG="$CLI_WATCHDOG"
 [[ -n "$CLI_KV_CACHE" ]] && KV_CACHE="$CLI_KV_CACHE"
+if [[ -n "${MAX_TOTAL_TOKENS:-}" ]]; then
+    EXTRA_ARGS="$EXTRA_ARGS --max-total-tokens $MAX_TOTAL_TOKENS"
+elif [[ -n "$MAX_TOTAL_FROM_CTX" ]]; then
+    EXTRA_ARGS="$EXTRA_ARGS --max-total-tokens $((CTX * MAX_RUNNING))"
+fi
 
 # Resolve chat template (deferred $MODEL / $SCRIPT_DIR expansion)
 CHAT_TEMPLATE=$(eval echo "$CHAT_TEMPLATE")
