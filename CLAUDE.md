@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.23 + 12 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.23 + 13 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint`
@@ -21,11 +21,11 @@ radix-on-hybrid disables the overlap schedule. `gemma4*` is blocked at boot
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (12 patches on top of SGLang v0.5.23) |
+| [patches/README.md](patches/README.md) | Per-patch notes (13 patches on top of SGLang v0.5.23) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 12 patches
+scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 13 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
@@ -55,6 +55,7 @@ python scripts/eval/audit_mlx_quant_metadata.py               # recipe-level haz
 python scripts/eval/validate_chat_template.py    --model <path>
 python scripts/eval/test_swa_snapshot_unit.py                 # patch 021: windowed-KV snapshot round-trip (CPU, no server)
 python scripts/eval/test_pool_backed_cache_unit.py            # patch 022: pool-backed cache across the split final chunk (CPU, no server)
+python scripts/eval/test_release_finished_request_unit.py     # patch 023: finished requests release their MLX caches at the scheduler hook (CPU, no server)
 
 # Quality + benchmarks
 python scripts/eval/eval_and_chart.py --run --port 23334 --tag "Coder-30B"

@@ -30,11 +30,12 @@ def _own(cls, name):
     return vars(cls)[name]
 
 
-def _src_has(module, needle):
+def _src_has(obj, needle):
+    """``obj`` is a module or a function; the needle must be in its source."""
     import inspect
 
-    if needle not in inspect.getsource(module):
-        raise AttributeError(f"{needle!r} not in {module.__name__} source")
+    if needle not in inspect.getsource(obj):
+        raise AttributeError(f"{needle!r} not in {obj.__name__} source")
     return True
 
 
@@ -82,6 +83,14 @@ ATTR_CHECKS = {
     "sglang.srt.hardware_backend.mlx.tp_worker": [
         ("MlxTpModelWorker._extract_mm_inputs",                        # 008
          lambda m: m.MlxTpModelWorker._extract_mm_inputs),
+        ("MlxTpModelWorker.prepare_for_kv_cache_release drops the request",  # 023
+         lambda m: _src_has(m.MlxTpModelWorker.prepare_for_kv_cache_release,
+                            "self._mlx_runner.remove_request(req.rid)")),
+    ],
+    "sglang.srt.managers.scheduler_components.batch_result_processor": [
+        ("KV-release hook for every finished request",                # 023
+         lambda m: _src_has(m, "self._prepare_kv_cache_release(req)\n"
+                               "                        release_kv_cache(")),
     ],
     "sglang.srt.utils.hf_transformers.tokenizer": [
         ("_declared_tokenizer_class",                                  # 008
