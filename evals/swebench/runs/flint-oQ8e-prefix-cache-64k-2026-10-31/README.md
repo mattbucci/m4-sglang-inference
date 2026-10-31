@@ -1,4 +1,4 @@
-# flint (oQ8e), prefix cache, bash backfill, 64K context bound — 0/3, runaway turns are stochastic
+# flint (oQ8e), prefix cache, bash backfill, 64K context bound — 0/3, two runaway turns (stack before patch 022)
 
 Same configuration as `../flint-oQ8e-prefix-cache-2026-10-31/` with the
 context bounded at 64K (`CTX=65536`, a 65536-slot pool, opencode
@@ -47,6 +47,16 @@ events under the model's sampling (two in ~70 radix-on turns across the
 two prefix-cache runs), not a property of the cached-prefix path. The
 harness now caps Flint's per-turn output at 4,096 tokens (`limit.output`
 in the opencode config) so a runaway costs ~90 s instead of ~450 s.
+
+The replays never exercised the defect: a replay of a captured turn is a
+full-prefix hit with no new tokens, while a live turn's new tokens run
+through the split final chunk of a prefix hit, where the upstream
+pool-backed cache dropped the first forward's tokens (patch 022). The
+bash-only pair exposed it (`../flint-oQ8e-bashonly-64k-2026-10-31/`: 9
+runaways in 170 radix-on turns against 0 in 133 with the cache off), and
+the rerun of this configuration on patches 022–023
+(`../flint-oQ8e-prefix-cache-64k-p023-2026-10-31/`) has 0 runaways in 187
+turns.
 
 ## Files
 

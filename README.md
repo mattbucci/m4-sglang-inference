@@ -115,9 +115,15 @@ on all three quantizations.
   restores the pool-free recompute path. Set `MAX_TOTAL_TOKENS=131072`
   explicitly for CTX=131072 runs (`CTX * MAX_RUNNING` would be a 14.7 GB
   pool). Per-request KV is 28 KB/token on top of the pool: 0.9 GB at 32K.
-- **Agentic cell:** the SWE-bench Lite run (opencode harness, `flint` entry
-  in the opencode config) is queued as experiments row 5; `flint` is not
-  ranked in the recommended-picks table until that cell exists.
+- **Agentic cell:** SWE-bench Lite 3-instance smoke (opencode harness,
+  `flint` entry in the opencode config, model sampling, 64K context
+  bound): 1/3 with the default tool set and 1/3 bash-only, the `(?i)` fix
+  on `astropy-14365` both times; 0 runaway turns in 521 radix-on turns,
+  1.7–2.7 s median per turn; the other two instances explore with bash to
+  the 64K cap without an edit, where qwen36 patches all three in 51–70 s
+  (`evals/swebench/runs/flint-oQ8e-*-p023-2026-10-31/`). `flint` stays out
+  of the recommended-picks ranking: three instances are a smoke, not the
+  26-instance cell qwen36 is scored on.
 
 ### Probe matrix (current stack, radix on)
 
