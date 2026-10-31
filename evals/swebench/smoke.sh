@@ -34,6 +34,8 @@
 #                    make the proxy add opencode's required bash `description`
 #                    argument to tool calls that omit it (Flint; see the
 #                    proxy's docstring)
+#   PROXY_UPSTREAM   where the harness proxy forwards (default: the server);
+#                    point it at a recording proxy to capture every request
 
 set -euo pipefail
 # Save our own dir before sourcing common.sh — it redefines SCRIPT_DIR.
@@ -138,7 +140,7 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
     echo "[$(date +%H:%M:%S)] Starting no_thinking_proxy on :$PROXY_PORT..."
     # Bash env-prefix scoping bites here — $PORT inside UPSTREAM resolves
     # incorrectly, so build the URL in a plain var first.
-    upstream_url="http://127.0.0.1:$PORT"
+    upstream_url="${PROXY_UPSTREAM:-http://127.0.0.1:$PORT}"
     PORT="$PROXY_PORT" UPSTREAM="$upstream_url" \
         BACKFILL_BASH_DESCRIPTION="$BACKFILL_BASH_DESCRIPTION" \
         nohup python3 "$SWE_SCRIPT_DIR/no_thinking_proxy.py" > "$OUT/proxy.log" 2>&1 &

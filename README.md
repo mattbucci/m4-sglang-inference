@@ -9,7 +9,7 @@ Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) usin
 Full specs and statuses live in [experiments/README.md](experiments/README.md); one-line summary, in execution order:
 
 - [x] **Disk triage** — 213 GiB free of 926 GiB after the HF cache was thinned (hub 120 GB + 39 GB content store incl. the three Flint checkpoints); the in-house quant and bisect arms are no longer disk-gated.
-- [ ] **SWE-bench re-run** — the qwen36 SWE-bench cell is from the earlier stack pin; needs a dedicated opencode-harness session. Depth/concurrency re-measure is complete: eight presets at genuine depth, all armed as schema-v2 baselines (see Performance).
+- [x] **SWE-bench re-run** — the 3-instance smoke on the current stack reproduces the qwen36 cell (3/3 patches, same files, 56–78 s per instance with the prefix cache: `evals/swebench/runs/qwen36-v0523-2026-10-31/`); the full scorecard stays the earlier stack pin's. Depth/concurrency re-measure is complete: eight presets at genuine depth, all armed as schema-v2 baselines (see Performance).
 - [ ] **In-house qwen36 MLX 4-bit** with router/DeltaNet/vision exclusions — after disk + sampling. Spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md). *(days)*
 - [ ] **192K knob probes + GB-shortfall ledger** — sub-2048 chunks / exact-196,608 pool / MEM_FRAC 0.45 against the 192K death; failed arms yield the exact GB number phase 2 must recover. No patch, no download. Spec: [experiments/11](experiments/11-prefill-budget-ledger-192k.md). *(15-45 min/arm)*
 - [ ] **Depth-recall probe** — multi-needle positional recall to 157K + a standing 32K recall tripwire (the KV-dtype A/B is moot: `--kv-cache-dtype` is inert on MLX); supplies the drift gate beyond-160K presumes. Spec: [experiments/10](experiments/10-depth-recall-probe.md). *(~2-3h)*
@@ -21,7 +21,7 @@ Single-user agentic coding at long context (tool-call-heavy multi-turn sessions,
 
 ### Recommended picks (ranked by SWE-bench Lite agentic-coding ability)
 
-**`qwen36` is the only configuration verified to produce real SWE-bench Lite patches on M4, reproducibly, at scale, across all 12 ecosystems in our test set.** Measured on the previous stack pin (re-run queued):
+**`qwen36` is the only configuration verified to produce real SWE-bench Lite patches on M4, reproducibly, at scale, across all 12 ecosystems in our test set.** Scorecard measured on the previous stack pin; the current stack reproduces its 3-instance smoke (3/3, same target files, `evals/swebench/runs/qwen36-v0523-2026-10-31/`):
 
 - **Patch-engagement: 21/26 (80.8%) across 12 ecosystems** — model produces a non-empty patch targeting the canonical issue file.
 - **Resolved (official Docker harness, scored on the 3090 rig): 9/26 = 34.6%** (9/21 = 42.9% of non-empty; 0 errors — all 21 non-empty ran, incl. the 8 old-Python instances M4 can't build). All 5 M4-local resolves re-resolved (no flips); 4 additional resolves came from the M4-untestable class. Receipt: [`exports/qwen36-docker-summary.json`](evals/swebench/exports/qwen36-docker-summary.json) + [exports/README.md](evals/swebench/exports/README.md) Results.

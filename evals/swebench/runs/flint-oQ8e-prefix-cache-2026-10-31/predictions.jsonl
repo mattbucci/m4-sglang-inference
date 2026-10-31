@@ -1,0 +1,2 @@
+{"instance_id": "astropy__astropy-12907", "model_name_or_path": "sglang/flint", "model_patch": "", "rollout_returncode": 124, "rollout_seconds": 1804.7}
+{"instance_id": "astropy__astropy-14182", "model_name_or_path": "sglang/flint", "model_patch": "", "rollout_returncode": -2, "server_dead": true, "server_dead_info": "URLError: <urlopen error [Errno 61] Connection refused>", "rollout_seconds": 0.0}

@@ -11,7 +11,7 @@
       "models": {
         "flint": {
           "name": "Recursive Flint 40B-A2.5B (oMLX oQ8e)",
-          "limit": { "context": 131072, "output": 16384 },
+          "limit": { "context": 65536, "output": 16384 },
           "tool_call": true
         },
         "coder-30b": {
