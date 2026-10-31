@@ -45,12 +45,17 @@ class Runner:
         self.known.discard(rid)
 
 
-def worker(runner, rids):
-    return SimpleNamespace(
+def worker(runner, rids, inflight=()):
+    w = SimpleNamespace(
         _mlx_runner=runner,
         _mlx_active_rids=set(rids),
         _req_retraction_count={rid: 0 for rid in rids},
+        _inflight_launches={},
+        _remove_after_inflight=set(),
     )
+    for rid in inflight:
+        MlxTpModelWorker._note_launch(w, [rid])
+    return w
 
 
 def req(rid, n_out):
@@ -94,6 +99,26 @@ check(len(r.calls) == n and pruned(w, "d"), "second call: no further runner call
 r = Runner(["e", "f"]); w = worker(r, ["e", "f"]); hook(w, req("e", 1))
 check(r.has_request("f") and "f" in w._mlx_active_rids and "f" in w._req_retraction_count,
       "other live request untouched")
+
+# Overlap schedule: a launch that includes the request is still in flight when it
+# finishes; the state goes only once that launch is finalized.
+r = Runner(["h"]); w = worker(r, ["h"], inflight=["h"]); q = req("h", 3); hook(w, q)
+check(r.calls == [("store", "h"), ("release", "h", 1234)] and r.has_request("h") and pruned(w, "h"),
+      f"in-flight request: synced, not removed yet ({r.calls})")
+MlxTpModelWorker._note_finalized(w, ["h"])
+check(r.calls[-1] == ("remove", "h") and not r.has_request("h") and not w._inflight_launches
+      and not w._remove_after_inflight, "in-flight request: removed when its launch finalizes")
+
+# Two launches queued (chained decode): the second finalize removes, not the first.
+r = Runner(["i"]); w = worker(r, ["i"], inflight=["i", "i"]); hook(w, req("i", 2))
+MlxTpModelWorker._note_finalized(w, ["i"])
+check(r.has_request("i") and w._inflight_launches == {"i": 1}, "two launches in flight: first finalize keeps the state")
+MlxTpModelWorker._note_finalized(w, ["i"])
+check(not r.has_request("i") and not w._inflight_launches, "two launches in flight: second finalize removes")
+
+# A finalize for a request that never finished leaves its state alone.
+r = Runner(["j"]); w = worker(r, ["j"], inflight=["j"]); MlxTpModelWorker._note_finalized(w, ["j"])
+check(r.calls == [] and r.has_request("j"), "finalize of a live request: untouched")
 
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

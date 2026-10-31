@@ -438,7 +438,7 @@ Thirteen patches on top of `v0.5.23` — full rationale per patch in [patches/RE
 | 020 | mlx-prefill-last-token-logits | Final-chunk prefill computes logits for the last position only (drops the `[chunk, vocab]` transient: 1.2 GB at chunk 4096 on a 150K vocab). |
 | 021 | mlx-swa-prefix-snapshots | Exact prefix cache for sliding-window models: the windowed caches are snapshotted through the auxiliary-state pool at the boundaries the radix tree names and restored on a hit; full layers gather from the pool; pool scatters evaluated per step. |
 | 022 | mlx-pool-backed-cache-append | The pool-backed attention cache keeps the chunks already fetched in front of the next forward, so the trunk-then-last-token split of a prefix hit's final chunk sees every new token (the upstream cache re-gathered only the prefix: a blind first token and stale pool rows on every hit). |
-| 023 | mlx-release-finished-request | The scheduler's KV-release hook runs for every finished request and the MLX worker drops the request's caches there (upstream sweeps them only at the next decode batch: a request that never decodes keeps its KV for the server's lifetime; the last turn's KV sits idle between agent turns). |
+| 023 | mlx-release-finished-request | The scheduler's KV-release hook runs for every finished request and the MLX worker drops the request's caches there, deferred while an overlap-schedule launch that includes the request is in flight (upstream sweeps them only at the next decode batch: a request that never decodes keeps its KV for the server's lifetime; the last turn's KV sits idle between agent turns). |
 
 ## Repo layout
 

@@ -1,8 +1,20 @@
 diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-index 77eb7b1179..b7cf677de6 100644
+index 77eb7b1179..e69b197a82 100644
 --- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
 +++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-@@ -171,13 +171,23 @@ class MlxTpModelWorker(TpModelWorker):
+@@ -121,6 +121,11 @@ class MlxTpModelWorker(TpModelWorker):
+         self._mlx_active_rids: set[str] = set()
+         # rid -> req.retraction_count when its MLX state was created.
+         self._req_retraction_count: dict[str, int] = {}
++        # rid -> launches handed to mx.async_eval and not yet finalized. The
++        # overlap loop processes a step's result while the next step, which
++        # still includes a request that just finished, is on the GPU.
++        self._inflight_launches: dict[str, int] = {}
++        self._remove_after_inflight: set[str] = set()
+         self._mlx_pool_initialized = False
+ 
+     def get_pad_input_ids_func(self):
+@@ -171,13 +176,42 @@ class MlxTpModelWorker(TpModelWorker):
  
      def prepare_for_kv_cache_release(self, req) -> None:
          """Write the request's MLX state to the pool at the scheduler's radix
@@ -26,12 +38,55 @@ index 77eb7b1179..b7cf677de6 100644
 +            # The pool now holds everything a later hit reads; the decode-batch
 +            # sweep alone keeps a request that never decodes resident for the
 +            # server's lifetime.
-+            self._mlx_runner.remove_request(req.rid)
++            if self._inflight_launches.get(req.rid):
++                self._remove_after_inflight.add(req.rid)
++            else:
++                self._mlx_runner.remove_request(req.rid)
 +        self._mlx_active_rids.discard(req.rid)
 +        self._req_retraction_count.pop(req.rid, None)
++
++    def _note_launch(self, rids) -> None:
++        for rid in rids:
++            self._inflight_launches[rid] = self._inflight_launches.get(rid, 0) + 1
++
++    def _note_finalized(self, rids) -> None:
++        """Drop a finished request's state once no launch still reads it."""
++        for rid in rids:
++            left = self._inflight_launches.get(rid, 0) - 1
++            if left > 0:
++                self._inflight_launches[rid] = left
++                continue
++            self._inflight_launches.pop(rid, None)
++            if rid in self._remove_after_inflight:
++                self._remove_after_inflight.discard(rid)
++                self._mlx_runner.remove_request(rid)
  
      def _drop_state_if_retracted(self, req: Req) -> None:
          """Drop the MLX state of a request retracted since its state was made.
+@@ -509,6 +543,7 @@ class MlxTpModelWorker(TpModelWorker):
+             )
+ 
+         self._cleanup_stale_rids(forward_mode, {req.rid for req in reqs})
++        self._note_launch(req.rid for req in reqs)
+ 
+         if forward_mode.is_decode():
+             req_ids = [req.rid for req in reqs]
+@@ -683,6 +718,7 @@ class MlxTpModelWorker(TpModelWorker):
+         """
+         pending = self._mlx_runner.decode_batch_start_chained(prev_pending)
+         mx.async_eval(pending.lazy_tokens)
++        self._note_launch(pending.req_ids)
+         return MlxLaunch(
+             lazy_tokens=pending.lazy_tokens,
+             prefills=[],
+@@ -765,6 +801,7 @@ class MlxTpModelWorker(TpModelWorker):
+             if step_logprob_rows
+             else LogitsProcessorOutput(next_token_logits=None)
+         )
++        self._note_finalized(req.rid for req in reqs)
+         return GenerationBatchResult(
+             logits_output=logits_output,
+             next_token_ids=next_token_ids,
 diff --git a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
 index c1bc4a00e2..b9b3155a46 100644
 --- a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
