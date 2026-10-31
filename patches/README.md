@@ -121,9 +121,11 @@ top token matches at 20–21 of 24 for hits and at 20 of 24 for a cold run at
 chunk 2048 versus 1024, median top-1 shift 0.016–0.048 nats in every arm,
 with every mismatch at a position where the cold top token sits below 0.75
 probability (`benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md`).
-qwen36's answers matched cold at all three conversation sizes (its top token
-leads by ≥ 5 nats); Flint's reasoning prose diverged at a near-tie beyond 3K
-tokens. Branched suffixes (eager-COW path) answer correctly.
+On the three-turn conversations Flint's text is identical at 3K and 6.9K
+tokens and diverges in reasoning prose at 13.4K; qwen36's is identical at
+3.2K and 14.4K and drops a trailing list item at 7.4K — near-ties either
+way, the top token's logprob moving ≤ 0.01 nats. Branched suffixes
+(eager-COW path) answer correctly.
 
 **Probe matrix (radix on):**
 

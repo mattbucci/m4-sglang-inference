@@ -48,7 +48,7 @@ the first build hit Metal's working-set limit
 (`kIOGPUCommandBufferCallbackErrorOutOfMemory`); the shipped build serves
 the same request.
 
-## Determinism (hit-vs-cold-*.log, stats_fixed2.log, cold_chunk*.json)
+## Determinism (hit-vs-cold-p023.log, stats_fixed2.log, cold_chunk*.json)
 
 Repeated cold runs are token-identical at every size; repeated hits on the
 same cached prefix are token-identical (gate second pass). A hit versus a
@@ -56,9 +56,9 @@ cold run of the same prompt, three-turn conversation:
 
 | Context (turn-2 prompt) | Flint text identical | Flint first-token top-5 logprob shift | qwen36 text identical | qwen36 shift |
 |------------------------:|:--------------------:|--------------------------------------:|:---------------------:|-------------:|
-| 2,975 tokens | yes | ≤ 0.36 nats (tail), top token 0.00 | yes | — |
-| 6,873 / 7,368 tokens | no (reasoning prose, char 26) | ≤ 1.13 nats (tail), top token 0.00 | yes | ≤ 0.43 nats (tail), top token 0.003 |
-| 13,396 / 14,386 tokens | no (reasoning prose, char 14) | — | yes | — |
+| 2,975 / 3,183 tokens | yes | ≤ 0.36 nats (tail), top token 0.00 | yes | — |
+| 6,877 / 7,371 tokens | yes | ≤ 0.51 nats (tail), top token 0.00 | no (a trailing list item dropped, char 53) | ≤ 0.25 nats (tail), top token 0.001 |
+| 13,387 / 14,376 tokens | no (reasoning prose, char 241) | ≤ 0.31 nats (tail), top token 0.00 | yes | — |
 
 Over 24 random positions (3.1K–16.1K tokens) of a captured 16.6K-token
 agent request, greedy, the next-token distribution against the cold run at
@@ -80,8 +80,10 @@ chunk boundary the cold run never had, and the bf16 accumulation order
 moves the logits by that much. The attention kernel itself is
 layout-invariant (contiguous, strided-view and pool-gathered K/V give
 bit-identical `scaled_dot_product_attention` output at 2K–14K keys, bf16,
-GQA 32/4). The same shift exists on qwen36's pre-existing hybrid path; its
-answers stayed identical because its top token led by ≥ 5 nats.
+GQA 32/4). The same shift exists on qwen36's hybrid path, where it drops a
+trailing list item at 7.4K tokens with the first token's top-1 moving
+0.001 nats; the gate's three-turn conversation (13.3K–13.5K tokens) is
+token-identical on Flint across all three turns.
 
 ## opencode `bash` tool: required `description` (hit-vs-cold-and-rule-placement.log)
 

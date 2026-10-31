@@ -1,0 +1,58 @@
+##### flint patches 022-023 ctx-chars=60000
+flush failed: Expecting value: line 1 column 1 (char 0)
+T1 cold : prompt=13302 comp=64 18.83s top5=[('<think>', 0.0), ('</think>', -16.75), ('{\n', -17.3125), ('<tool_call>', -18.0625), ('</arg_value>', -18.625)]
+T2 hit  : prompt=13387 comp=64 1.74s top5=[('<think>', -0.0), ('UMP', -13.6875), ('</think>', -14.6875), ('</arg_value>', -16.1875), ('Since', -16.3125)]
+flush failed: Expecting value: line 1 column 1 (char 0)
+T1 cold2: 19.27s identical_to_T1=True top5=[('<think>', 0.0), ('</think>', -16.75), ('{\n', -17.3125), ('<tool_call>', -18.0625), ('</arg_value>', -18.625)]
+flush failed: Expecting value: line 1 column 1 (char 0)
+T2 cold : 20.5s top5=[('<think>', -0.0), ('UMP', -13.375), ('</think>', -14.5625), ('</arg_value>', -16.1875), ('ML', -16.25)]
+T2 hit vs cold identical: False
+  diverge at char 241: hit='be careful. Module docstring mentions:\n\n"Slot allocation and radix-trie prefix m' cold='be careful. Module docstring mentions:\n\nSlot allocation and radix-trie prefix ma'
+  first-token logprob deltas (hit-cold): [('<think>', 0.0), ('UMP', -0.3125), ('</think>', -0.125), ('</arg_value>', 0.0)]
+##### flint patches 022-023 ctx-chars=30000
+flush failed: Expecting value: line 1 column 1 (char 0)
+T1 cold : prompt=6792 comp=64 9.99s top5=[('<think>', 0.0), ('</think>', -17.0469), ('<tool_call>', -17.2344), ('</arg_value>', -18.1094), ('{\n', -18.7969)]
+T2 hit  : prompt=6877 comp=64 1.62s top5=[('<think>', -0.0), ('</think>', -14.5938), ('UMP', -15.9688), ('</arg_value>', -16.2188), ('I', -16.4063)]
+flush failed: Expecting value: line 1 column 1 (char 0)
+T1 cold2: 9.92s identical_to_T1=True top5=[('<think>', 0.0), ('</think>', -17.0469), ('<tool_call>', -17.2344), ('</arg_value>', -18.1094), ('{\n', -18.7969)]
+flush failed: Expecting value: line 1 column 1 (char 0)
+T2 cold : 10.02s top5=[('<think>', -0.0), ('</think>', -14.3359), ('</arg_value>', -15.7734), ('I', -15.8984), ('Since', -16.1484)]
+T2 hit vs cold identical: True
+  first-token logprob deltas (hit-cold): [('<think>', 0.0), ('</think>', -0.2579), ('</arg_value>', -0.4454), ('I', -0.5079)]
+##### flint patches 022-023 ctx-chars=12000
+flush failed: Expecting value: line 1 column 1 (char 0)
+T1 cold : prompt=2890 comp=64 4.64s top5=[('<think>', 0.0), ('</think>', -16.9844), ('<tool_call>', -17.5469), ('</arg_value>', -18.6094), ('</tool_call>', -18.9844)]
+T2 hit  : prompt=2975 comp=64 1.55s top5=[('<think>', -0.0), ('</think>', -13.9219), ('UMP', -14.8594), ('</arg_value>', -15.1094), ('Before', -15.1719)]
+flush failed: Expecting value: line 1 column 1 (char 0)
+T1 cold2: 4.59s identical_to_T1=True top5=[('<think>', 0.0), ('</think>', -16.9844), ('<tool_call>', -17.5469), ('</arg_value>', -18.6094), ('</tool_call>', -18.9844)]
+flush failed: Expecting value: line 1 column 1 (char 0)
+T2 cold : 4.69s top5=[('<think>', -0.0), ('</think>', -13.9063), ('UMP', -15.1563), ('</arg_value>', -15.2813), ('Before', -15.5313)]
+T2 hit vs cold identical: True
+  first-token logprob deltas (hit-cold): [('<think>', 0.0), ('</think>', -0.0156), ('UMP', 0.2969), ('</arg_value>', 0.1719), ('Before', 0.3594)]
+##### qwen36 patches 022-023 ctx-chars=60000
+T1 cold : prompt=14281 comp=64 20.72s top5=None
+T2 hit  : prompt=14376 comp=12 3.31s top5=None
+T1 cold2: 22.4s identical_to_T1=True top5=None
+T2 cold : 21.67s top5=None
+T2 hit vs cold identical: True
+##### qwen36 patches 022-023 ctx-chars=30000
+T1 cold : prompt=7276 comp=64 10.78s top5=None
+T2 hit  : prompt=7371 comp=12 4.37s top5=None
+T1 cold2: 10.79s identical_to_T1=True top5=None
+T2 cold : 10.07s top5=None
+T2 hit vs cold identical: False
+  diverge at char 53: hit='tentionKVCache, WindowedAttentionKVCache' cold='tentionKVCache, WindowedAttentionKVCache, MlxAttentionKVPool'
+##### qwen36 patches 022-023 ctx-chars=12000
+T1 cold : prompt=3088 comp=64 4.22s top5=None
+T2 hit  : prompt=3183 comp=12 0.47s top5=None
+T1 cold2: 4.17s identical_to_T1=True top5=None
+T2 cold : 3.52s top5=None
+T2 hit vs cold identical: True
+##### qwen36 patches 022-023 ctx-chars=30000 logprobs
+T1 cold : prompt=7276 comp=64 10.72s top5=[('`', -0.1291), ('The', -2.5041), ('Based', -3.7541), ('It', -5.6291), ('I', -5.7541)]
+T2 hit  : prompt=7371 comp=12 4.18s top5=[('Cont', -0.0097), ('M', -5.0097), ('Pool', -7.8847), ('ML', -8.0722), ('Full', -8.1347)]
+T1 cold2: 10.56s identical_to_T1=True top5=[('`', -0.1291), ('The', -2.5041), ('Based', -3.7541), ('It', -5.6291), ('I', -5.7541)]
+T2 cold : 9.83s top5=[('Cont', -0.0108), ('M', -4.8858), ('Pool', -7.6358), ('ML', -7.9483), ('Full', -8.0733)]
+T2 hit vs cold identical: False
+  diverge at char 53: hit='tentionKVCache, WindowedAttentionKVCache' cold='tentionKVCache, WindowedAttentionKVCache, MlxAttentionKVPool'
+  first-token logprob deltas (hit-cold): [('Cont', 0.0011), ('M', -0.1239), ('Pool', -0.2489), ('ML', -0.1239), ('Full', -0.0614)]
