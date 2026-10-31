@@ -45,11 +45,11 @@ the first build hit Metal's working-set limit
 (`kIOGPUCommandBufferCallbackErrorOutOfMemory`); the shipped build serves
 the same request.
 
-## Determinism (hit-vs-cold-*.log)
+## Determinism (hit-vs-cold-*.log, stats_fixed2.log, cold_chunk*.json)
 
 Repeated cold runs are token-identical at every size; repeated hits on the
 same cached prefix are token-identical (gate second pass). A hit versus a
-cold run of the same prompt:
+cold run of the same prompt, three-turn conversation:
 
 | Context (turn-2 prompt) | Flint text identical | Flint first-token top-5 logprob shift | qwen36 text identical | qwen36 shift |
 |------------------------:|:--------------------:|--------------------------------------:|:---------------------:|-------------:|
@@ -57,15 +57,28 @@ cold run of the same prompt:
 | 6,873 / 7,368 tokens | no (reasoning prose, char 26) | ≤ 1.13 nats (tail), top token 0.00 | yes | ≤ 0.43 nats (tail), top token 0.003 |
 | 13,396 / 14,386 tokens | no (reasoning prose, char 14) | — | yes | — |
 
-Cause: the hit prefills the new tokens from the cached prefix length and
-splits the first new chunk at the 64-token checkpoint grid (the tracked
-snapshot), where the cold run prefills on its 1024-token chunk grid; the
-different accumulation order moves bf16 logits at the noise level. The
-attention kernel itself is layout-invariant (contiguous, strided-view and
-pool-gathered K/V give bit-identical `scaled_dot_product_attention` output
-at 2K–14K keys, bf16, GQA 32/4). The same shift exists on qwen36's
-pre-existing hybrid path; its answers stayed identical because its top token
-led by ≥ 5 nats.
+Over 24 random positions (3.1K–16.1K tokens) of a captured 16.6K-token
+agent request, greedy, the next-token distribution against the cold run at
+chunk 1024 (`kvhit_stats.py`; `kvcold_record.py` / `kvcold_compare.py` for
+the chunk-size arm):
+
+| Arm | Top token same | Top-1 logprob shift, median / max | True-token shift, median / max |
+|-----|:--------------:|----------------------------------:|-------------------------------:|
+| hit, 1 new token after the cached prefix | 21/24 | 0.016 / 4.39 nats | 0.021 / 8.05 nats |
+| hit, 2–1000 new tokens | 20/24 | 0.048 / 1.70 | 0.034 / 5.23 |
+| cold run at chunk 2048 | 20/24 | 0.016 / 1.87 | 0.022 / 4.04 |
+
+Every mismatch sits at a position where the cold top token has at most
+0.74 probability (logprob −0.30 to −1.58: positions 4033, 9245, 9915, 12685,
+15467), and the same positions move between the two cold runs. A hit
+therefore differs from a cold run exactly as two cold runs on different
+chunk grids differ: the new tokens prefill from the cached length on a
+chunk boundary the cold run never had, and the bf16 accumulation order
+moves the logits by that much. The attention kernel itself is
+layout-invariant (contiguous, strided-view and pool-gathered K/V give
+bit-identical `scaled_dot_product_attention` output at 2K–14K keys, bf16,
+GQA 32/4). The same shift exists on qwen36's pre-existing hybrid path; its
+answers stayed identical because its top token led by ≥ 5 nats.
 
 ## opencode `bash` tool: required `description` (hit-vs-cold-and-rule-placement.log)
 
