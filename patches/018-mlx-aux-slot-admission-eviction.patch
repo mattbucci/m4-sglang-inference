@@ -1,0 +1,49 @@
+diff --git a/python/sglang/srt/mem_cache/allocation.py b/python/sglang/srt/mem_cache/allocation.py
+index c2df820115..d401d35d89 100644
+--- a/python/sglang/srt/mem_cache/allocation.py
++++ b/python/sglang/srt/mem_cache/allocation.py
+@@ -295,6 +295,35 @@ def _kv_shard_rotation_bases(
+     return bases
+ 
+ 
++def _ensure_mlx_auxiliary_capacity(
++    req_to_token_pool: ReqToTokenPool,
++    reqs: list[Req],
++    tree_cache: BasePrefixCache | None,
++) -> bool:
++    """Admission-time eviction for the MLX auxiliary-state pool.
++
++    ``MlxAuxiliaryStateReqToTokenPool`` is not a ``HybridReqToTokenPool``, but
++    the same guarantee is needed: every finished request donates its live
++    snapshot slot to the radix tree, so without an eviction pre-pass the tree
++    absorbs the whole pool and per-request allocation asserts on an exhausted
++    free list a few requests in.
++    """
++    allocator = getattr(req_to_token_pool, "mamba_allocator", None)
++    if allocator is None or tree_cache is None or not tree_cache.supports_mamba():
++        return True
++    from sglang.srt.hardware_backend.mlx.model_runner_stub import MLX_AUX_STATE_SIZE_MAX_RUNNING_REQUESTS_RATIO
++
++    # Same per-request slot ratio the MLX stub sizes the pool with (live
++    # snapshot plus ping-pong tracking slots).
++    needed = len(reqs) * MLX_AUX_STATE_SIZE_MAX_RUNNING_REQUESTS_RATIO
++    available = allocator.schedulable_available_size()
++    if available < needed:
++        tree_cache.evict_for_alloc(
++            EvictParams(num_tokens=0, mamba_num=needed - available)
++        )
++    return allocator.schedulable_available_size() >= needed
++
++
+ def ensure_mamba_capacity(
+     req_to_token_pool: ReqToTokenPool,
+     reqs: list[Req],
+@@ -302,7 +331,7 @@ def ensure_mamba_capacity(
+ ) -> bool:
+     """Reclaim the Mamba slots needed before binding any request rows."""
+     if not isinstance(req_to_token_pool, HybridReqToTokenPool):
+-        return True
++        return _ensure_mlx_auxiliary_capacity(req_to_token_pool, reqs, tree_cache)
+ 
+     # Count the slots HybridReqToTokenPool.alloc will allocate for each request.
+     needed = 0

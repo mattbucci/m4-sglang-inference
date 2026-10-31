@@ -1,8 +1,26 @@
-diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 838b925..eaf530e 100644
---- a/python/sglang/srt/server_args.py
-+++ b/python/sglang/srt/server_args.py
-@@ -611,7 +611,8 @@ class ServerArgs:
+diff --git a/python/sglang/srt/arg_groups/fields/mm.py b/python/sglang/srt/arg_groups/fields/mm.py
+index 12991acc43..97d408d488 100644
+--- a/python/sglang/srt/arg_groups/fields/mm.py
++++ b/python/sglang/srt/arg_groups/fields/mm.py
+@@ -27,7 +27,12 @@ class Mm(msgspec.Struct):
+     _NS_PATH = "mm"
+     enable_multimodal: A[
+         Optional[bool],
+-        "Enable the multimodal functionality for the served model. If the model being served is not multimodal, nothing will happen",
++        Arg(
++            help="Enable the multimodal functionality for the served model. If the model being served is not multimodal, nothing will happen",
++            # Resolvable so the MPS platform hook can default it off
++            # (handle_mps_backends); an explicit CLI value always wins.
++            resolvable=True,
++        ),
+     ] = None
+     mm_attention_backend: A[
+         Optional[str],
+diff --git a/python/sglang/srt/arg_groups/fields/model.py b/python/sglang/srt/arg_groups/fields/model.py
+index 65ede5cd25..662e71ed6e 100644
+--- a/python/sglang/srt/arg_groups/fields/model.py
++++ b/python/sglang/srt/arg_groups/fields/model.py
+@@ -204,7 +204,8 @@ class Model(msgspec.Struct):
                  'by the FA4 backend. "nvfp4" selects '
                  'the NVFP4 FP4 E2M1 KV cache recipe; "fp4_mx_block16" '
                  "selects the MX-style block-size-16 FP4 E2M1 KV cache "
@@ -12,10 +30,10 @@ index 838b925..eaf530e 100644
              ),
              choices=[
                  "auto",
-@@ -623,6 +624,18 @@ class ServerArgs:
+@@ -215,6 +216,18 @@ class Model(msgspec.Struct):
+                 "bfloat16",
                  "nvfp4",
                  "fp4_mx_block16",
-                 "fp4_e2m1",
 +                # MLX backend aliases — friendlier names accepted by the Apple
 +                # Silicon path so the launch presets (default KV_CACHE=fp8) and
 +                # the long-context turboquant recipe pass CLI validation. The
@@ -31,31 +49,42 @@ index 838b925..eaf530e 100644
              ],
              resolvable=True,
          ),
-@@ -3518,6 +3531,15 @@ class ServerArgs:
-         if self.device == "mps":
-             if not use_mlx():
-                 self.disable_overlap_schedule = True
-+            # Default multimodal OFF on Apple Silicon. The MLX backend serves a
-+            # text-only forward path by default; VLM presets re-enable the image
-+            # path explicitly with --enable-multimodal, and the launch presets
-+            # rely on this default being False. (Our old patch also forced
-+            # attention_backend=torch_native + cuda-graph disables here; those
-+            # are now handled upstream by the MPS attention-backend resolver and
-+            # the torch_native cuda-graph rule, so only this line survives.)
-+            if self.enable_multimodal is None:
-+                self.enable_multimodal = False
+diff --git a/python/sglang/srt/arg_groups/kv_cache_hook.py b/python/sglang/srt/arg_groups/kv_cache_hook.py
+index 2fe7977c2c..7755d44d6a 100644
+--- a/python/sglang/srt/arg_groups/kv_cache_hook.py
++++ b/python/sglang/srt/arg_groups/kv_cache_hook.py
+@@ -102,6 +102,13 @@ def handle_mxfp8_kv_cache_compatibility(server_args: Any) -> None:
+     cfg = resolving_view(server_args)
+     if cfg.kv_cache_dtype != "mxfp8":
+         return
++    # On MLX/Apple Silicon "mxfp8" is a documented kv-cache-dtype alias
++    # (see the kv_cache_dtype choices); the FA4/Blackwell requirement is a
++    # CUDA-path constraint.
++    from sglang.srt.hardware_backend.mlx.runtime import use_mlx
++
++    if use_mlx():
++        return
+     if not get_platform().is_blackwell:
+         raise ValueError(
+             "--kv-cache-dtype mxfp8 requires an SM100+ (Blackwell) GPU for the "
+diff --git a/python/sglang/srt/arg_groups/platform_hook.py b/python/sglang/srt/arg_groups/platform_hook.py
+index 99078d0e1c..751d71e159 100644
+--- a/python/sglang/srt/arg_groups/platform_hook.py
++++ b/python/sglang/srt/arg_groups/platform_hook.py
+@@ -47,6 +47,16 @@ def handle_mps_backends(server_args: Any):
+                 "_handle_mps_backends",
+                 disable_overlap_schedule=True,
+             )
++        # Default multimodal OFF on Apple Silicon. The MLX backend serves a
++        # text-only forward path by default; VLM presets re-enable the image
++        # path explicitly with --enable-multimodal, and the launch presets
++        # rely on this default being False.
++        if cfg.enable_multimodal is None:
++            declare_resolution(
++                server_args,
++                "_handle_mps_backends",
++                enable_multimodal=False,
++            )
  
-     def _handle_xpu_backends(self):
-         if self.device == "xpu":
-@@ -5065,6 +5087,11 @@ class ServerArgs:
-         """MXFP8 KV cache uses operands available only on SM100+ (Blackwell)."""
-         if self.kv_cache_dtype != "mxfp8":
-             return
-+        # On MLX/Apple Silicon "mxfp8" is a documented kv-cache-dtype alias
-+        # (see the choices list above); the FA4/Blackwell requirement is a
-+        # CUDA-path constraint.
-+        if use_mlx():
-+            return
-         if not is_blackwell_supported():
-             raise ValueError(
-                 "--kv-cache-dtype mxfp8 requires an SM100+ (Blackwell) GPU for the "
+ 
+ def handle_amd_specifics(server_args: Any):

@@ -22,39 +22,62 @@ PATCH_DIR = os.environ.get("PATCH_DIR", os.path.join(REPO, "patches"))
 
 # Load-bearing symbols per patched module (checked when the module appears in
 # the generated inventory). Each entry maps to the patch that introduces it.
+def _own(cls, name):
+    """Require ``name`` defined on ``cls`` itself, not inherited — an override
+    check that passes via the base class would prove nothing."""
+    if name not in vars(cls):
+        raise AttributeError(f"{cls.__name__}.{name} is inherited, not overridden")
+    return vars(cls)[name]
+
+
+def _src_has(module, needle):
+    import inspect
+
+    if needle not in inspect.getsource(module):
+        raise AttributeError(f"{needle!r} not in {module.__name__} source")
+    return True
+
+
 ATTR_CHECKS = {
-    "sglang.srt.managers.schedule_batch": [
-        ("Modality.MULTI_IMAGES", lambda m: m.Modality.MULTI_IMAGES),  # 007
-    ],
     "sglang.srt.hardware_backend.mlx.kv_cache.attention_wrapper": [
         ("MLXAttentionWrapper.__getattr__",                            # 005
-         lambda m: m.MLXAttentionWrapper.__getattr__),
+         lambda m: _own(m.MLXAttentionWrapper, "__getattr__")),
+    ],
+    "sglang.srt.hardware_backend.mlx.kv_cache.attention_kv_cache": [
+        ("ContiguousAttentionKVCache.reserve",                         # 015
+         lambda m: m.ContiguousAttentionKVCache.reserve),
     ],
     "sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state": [
-        ("MlxAuxiliaryStatePool.alloc_group_begin",                    # 008
-         lambda m: m.MlxAuxiliaryStatePool.alloc_group_begin),
-        ("MlxAuxiliaryStatePool.schedulable_available_size",
-         lambda m: m.MlxAuxiliaryStatePool.schedulable_available_size),
-        ("MlxAuxiliaryStateComponent.finalize_match_result",
-         lambda m: m.MlxAuxiliaryStateComponent.finalize_match_result),
+        ("MlxAuxiliaryStateComponent.finalize_match_result_in_cache",  # 008
+         lambda m: _own(m.MlxAuxiliaryStateComponent,
+                        "finalize_match_result_in_cache")),
     ],
     "sglang.srt.hardware_backend.mlx.model_runner": [
-        # (_TextOnlyVLMShim is nested inside _load_model — not module-level)
         ("_CompactCacheModel", lambda m: m._CompactCacheModel),        # 008
         ("_NullLayerCache", lambda m: m._NullLayerCache),              # 008
+        ("MlxModelRunner._load_vlm_model",                             # 008
+         lambda m: m.MlxModelRunner._load_vlm_model),
+        ("MlxModelRunner._reset_mlx_vlm_position_cache",               # 008
+         lambda m: m.MlxModelRunner._reset_mlx_vlm_position_cache),
+    ],
+    "sglang.srt.hardware_backend.mlx.tp_worker": [
+        ("MlxTpModelWorker._extract_mm_inputs",                        # 008
+         lambda m: m.MlxTpModelWorker._extract_mm_inputs),
     ],
     "sglang.srt.utils.hf_transformers.tokenizer": [
         ("_declared_tokenizer_class",                                  # 008
          lambda m: m._declared_tokenizer_class),
     ],
     "sglang.srt.utils.hf_transformers.processor": [
-        ("wrap_as_pixtral", lambda m: m.wrap_as_pixtral),              # 014
+        ("_build_gemma4_image_only_processor",                         # 014
+         lambda m: m._build_gemma4_image_only_processor),
     ],
-    "sglang.srt.managers.overlap_utils": [
-        ("FutureMap", lambda m: m.FutureMap),                          # 008
+    "sglang.srt.arg_groups.fields.model": [
+        ("kv_cache_dtype MLX aliases", lambda m: _src_has(m, '"turboquant"')),  # 002
     ],
-    "sglang.srt.server_args": [
-        ("ServerArgs", lambda m: m.ServerArgs),                        # 002
+    "sglang.srt.mem_cache.allocation": [
+        ("MLX aux-slot admission eviction",                            # 018
+         lambda m: _src_has(m, "MLX auxiliary-state pool")),
     ],
 }
 

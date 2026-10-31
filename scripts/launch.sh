@@ -409,6 +409,10 @@ CMD=(python3 -m sglang.launch_server
     --host 0.0.0.0
     --enable-metrics
     --kv-cache-dtype "$KV_CACHE"
+    # Real per-request sampling (temperature/top-p/top-k/min-p). The MLX
+    # backend serves greedy argmax for every request unless this is set;
+    # greedy requests keep exact argmax either way.
+    --mlx-enable-sampling
 )
 
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)

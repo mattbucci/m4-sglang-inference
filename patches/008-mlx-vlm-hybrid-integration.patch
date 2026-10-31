@@ -1,19 +1,19 @@
 diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
-index 5e96769..4964743 100644
+index d29583d124..112a0d3480 100644
 --- a/python/sglang/srt/arg_groups/overrides.py
 +++ b/python/sglang/srt/arg_groups/overrides.py
-@@ -1186,12 +1186,20 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
+@@ -473,12 +473,20 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
      if view.disable_radix_cache:
          return {}
  
-+    from sglang.srt.utils.tensor_bridge import use_mlx
++    from sglang.srt.hardware_backend.mlx.runtime import use_mlx
 +
      declared: Dict[str, Any] = {"uses_mamba_radix_cache": True}
      if view.mamba_radix_cache_strategy == "auto":
          wants_overlap = not view.disable_overlap_schedule
          wants_paging = view.page_size is not None and view.page_size > 1
 -        if (wants_overlap or wants_paging) and supports_mamba_cache_extra_buffer(
--            view, model_arch
+-            view, hf_config
 +        # extra_buffer needs FLA (CUDA/MUSA/NPU) kernels — see
 +        # _validate_mamba_extra_buffer. On MLX resolve auto to no_buffer so
 +        # hybrid models can still use the radix cache (auxiliary-state
@@ -21,135 +21,95 @@ index 5e96769..4964743 100644
 +        if (
 +            (wants_overlap or wants_paging)
 +            and not use_mlx()
-+            and supports_mamba_cache_extra_buffer(view, model_arch)
++            and supports_mamba_cache_extra_buffer(view, hf_config)
          ):
              declared["mamba_radix_cache_strategy"] = "extra_buffer"
          else:
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
-index 80f989f..3a50db2 100644
+index 19414dc0bd..f4b824f52f 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
 +++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
 @@ -4,10 +4,14 @@ from __future__ import annotations
  
  from typing import Any, Iterable
  
--# ``rope`` and ``scale`` are required by MLXAttentionWrapper. Keeping them in
--# the contract also prevents recurrent mixers such as DeltaNet from being
--# mistaken for softmax attention just because they expose projection layers.
--ATTENTION_API_ATTRS = ("q_proj", "k_proj", "v_proj", "o_proj", "rope", "scale")
-+# ``scale`` (the softmax 1/sqrt(d) factor) is the marker that distinguishes real
-+# softmax attention from recurrent mixers — DeltaNet/Mamba expose projection
-+# layers but no ``scale``. ``rope`` is NOT required: mlx_vlm attention names it
-+# ``rotary_emb`` and NemotronH attention is position-free (no rope at all); both
-+# are still real attention. Positional encoding is applied by the module's own
-+# forward (delegate path) or, for wrapper batched decode, gated on
-+# ``_attention_wrapper_batchable`` in the model runner.
-+ATTENTION_API_ATTRS = ("q_proj", "k_proj", "v_proj", "o_proj", "scale")
+-# ``rope`` and a softmax scale are required by MLXAttentionWrapper. Keeping
+-# them in the contract also prevents recurrent mixers such as DeltaNet from
+-# being mistaken for softmax attention just because they expose projections.
+-ATTENTION_API_ATTRS = ("q_proj", "k_proj", "v_proj", "o_proj", "rope")
++# A softmax scale is the attention marker: requiring it keeps recurrent
++# mixers such as DeltaNet (projections, no softmax scale) out of the
++# contract. ``rope`` is NOT required: mlx_vlm attention names it
++# ``rotary_emb`` and NemotronH attention is position-free. Modules without
++# ``rope`` are routed to the model's own forward for decode
++# (``MlxModelRunner._attention_wrapper_batchable``), since the batched
++# wrapper path calls ``inner.rope``.
++ATTENTION_API_ATTRS = ("q_proj", "k_proj", "v_proj", "o_proj")
+ # Any one of these satisfies the scale requirement (gpt_oss uses ``sm_scale``).
+ SCALE_ATTRS = ("scale", "sm_scale")
  NUM_HEAD_ATTRS = ("n_heads", "num_heads", "num_attention_heads")
- NUM_KV_HEAD_ATTRS = ("n_kv_heads", "num_k_heads", "num_kv_heads", "num_key_value_heads")
- SLIDING_ATTENTION_ATTRS = (
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
-index 27284bf..5f6031b 100644
+index 0f4d27d94d..848ed36ac8 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
 +++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
-@@ -10,7 +10,7 @@ storing model-agnostic native cache snapshots.
- from __future__ import annotations
+@@ -21,6 +21,11 @@ from sglang.srt.mem_cache.unified_cache.components.base import TreeComponent
+ from sglang.srt.mem_cache.unified_cache.components.mamba import (
+     MambaComponent,
+ )
++from sglang.srt.runtime_context import (
++    get_exec,
++    mamba_cache_chunk_size,
++    mamba_checkpoint_grid,
++)
  
- from dataclasses import dataclass
--from typing import Any, Iterable, Optional
-+from typing import Any, Iterable, Iterator, Optional
- 
- import mlx.core as mx
- import torch
-@@ -95,6 +95,11 @@ class MlxAuxiliaryStatePool:
-         self.mamba_cache = None
-         self.mem_usage = 0
-         self._snapshots: dict[int, dict[int, _CacheSnapshot]] = {}
-+        # Active preallocated batch for `alloc_group_begin` / `alloc_group_end`
-+        # (the scheduler's batch-admission window). Mirrors
-+        # ``MambaSlotAllocator``: when non-None, ``alloc(1)`` consumes the next
-+        # slot from this iterator instead of hitting the free list per call.
-+        self._alloc_iter: Optional[Iterator] = None
-         self.clear()
- 
-     def _tensor(self, indices: Any) -> torch.Tensor:
-@@ -108,7 +113,34 @@ class MlxAuxiliaryStatePool:
-     def available_size(self) -> int:
-         return int(self.free_slots.numel())
- 
-+    def schedulable_available_size(self) -> int:
-+        # Identity: the snapshot pool has no byte-coordinated peer view.
-+        return self.available_size()
-+
-+    def alloc_group_begin(self, num_reqs: int) -> None:
-+        """Pre-allocate a batch of slots to amortize match_prefix overhead."""
-+        self._alloc_iter = None
-+        if num_reqs > 0:
-+            result = self._do_alloc(num_reqs)
-+            if result is not None:
-+                self._alloc_iter = iter(result.split(1))
-+
-+    def alloc_group_end(self) -> None:
-+        """Return any unused pre-allocated slots from the current group."""
-+        if self._alloc_iter is not None:
-+            remaining = list(self._alloc_iter)
-+            if remaining:
-+                self.free(torch.cat(remaining))
-+        self._alloc_iter = None
-+
-     def alloc(self, need_size: int) -> Optional[torch.Tensor]:
-+        if self._alloc_iter is not None and need_size == 1:
-+            slot = next(self._alloc_iter, None)
-+            if slot is not None:
-+                return slot
-+        return self._do_alloc(need_size)
-+
-+    def _do_alloc(self, need_size: int) -> Optional[torch.Tensor]:
-         if need_size > self.available_size():
-             return None
-         slots = self.free_slots[:need_size].clone()
-@@ -231,6 +263,11 @@ class MlxAuxiliaryStateReqToTokenPool(ReqToTokenPool):
-         # Keep the MLX-owned name beside it so local code can avoid model-
-         # specific terminology.
-         self.auxiliary_state_pool = self.mamba_pool
-+        # The general scheduler's pool-stats observer (on_idle → get_pool_stats
-+        # → _get_mamba_token_info) reads ``mamba_allocator.available_size()``.
-+        # The MLX auxiliary-state pool fills the allocator role (alloc / free /
-+        # available_size / size), so alias it here.
-+        self.mamba_allocator = self.mamba_pool
+ _CACHE_ATTRS = ("offset", "lengths", "left_padding")
+ _MISSING = object()
+@@ -317,10 +322,32 @@ class MlxAuxiliaryStateComponent(MambaComponent):
+                 "MlxAuxiliaryStateComponent requires MlxAuxiliaryStatePool, "
+                 f"got {type(pool)}"
+             )
++        # MambaComponent.__init__ asserts a HybridReqToTokenPool, so it is
++        # skipped; mirror every attribute it sets, since the base component's
++        # insert/evict paths read them.
+         TreeComponent.__init__(self, cache, params)
          self.enable_mamba_extra_buffer = False
-         self.req_index_to_auxiliary_state_index_mapping = torch.zeros(
-             self._alloc_size, dtype=torch.int32, device=device
-@@ -317,6 +354,24 @@ class MlxAuxiliaryStateComponent(MambaComponent):
-         self.enable_mamba_extra_buffer = False
++        self.mamba_cache_chunk_size = mamba_cache_chunk_size()
++        self.mamba_checkpoint_grid = mamba_checkpoint_grid(params.page_size)
++        self.mamba_max_states_per_path = get_exec().mamba.mamba_max_states_per_path
          self._mamba_pool_host = None
  
-+    def finalize_match_result(self, result, params, value_chunks, best_value_len):
-+        result = super().finalize_match_result(
-+            result, params, value_chunks, best_value_len
-+        )
++    def finalize_match_result_in_cache(self, params, result):
++        result = super().finalize_match_result_in_cache(params, result)
 +        # The base implementation stages a deferred COW (matched node's slot →
-+        # req.mamba_pool_idx) that the general model runner applies on-device
-+        # inside the forward pass. The MLX forward path never sees those staged
-+        # tensors, so apply the copy eagerly here — MLX auxiliary state is a
-+        # host-side snapshot dict; the copy is stream-free.
++        # req.kv.mamba_pool_idx) that the general model runner applies
++        # on-device inside the forward pass. The MLX forward path never sees
++        # those staged tensors, so apply the copy eagerly here — MLX auxiliary
++        # state is a host-side snapshot dict; the copy is stream-free.
 +        req = params.req
-+        if req is not None and req.mamba_cow_src_index is not None:
++        if req is not None and req.kv.mamba_cow_src_index is not None:
 +            self.cache.req_to_token_pool.auxiliary_state_pool.copy_from(
-+                req.mamba_cow_src_index, req.mamba_pool_idx.unsqueeze(0)
++                req.kv.mamba_cow_src_index, req.kv.mamba_pool_idx.unsqueeze(0)
 +            )
-+            req.mamba_cow_src_index = None
-+            req.mamba_needs_clear = False
++            req.kv.mamba_cow_src_index = None
++            req.kv.mamba_needs_clear = False
 +        return result
 +
      @staticmethod
      def _tracked_value(req) -> tuple[object | None, bool]:
-         track_buffer = getattr(req, "mamba_ping_pong_track_buffer", None)
+         track_buffer = req.kv.mamba_ping_pong_track_buffer
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 86674ad..e2b4fb4 100644
+index 90d74690fb..8e7ea0fc0b 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -112,6 +112,43 @@ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
+@@ -24,6 +24,7 @@ state.
+ """
+ 
+ import logging
++import os
+ import time
+ from dataclasses import dataclass
+ from typing import Any
+@@ -151,6 +152,43 @@ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
  _MLX_KV_FLOAT_DTYPES = {mx.float16, mx.bfloat16, mx.float32}
  
  
@@ -193,38 +153,18 @@ index 86674ad..e2b4fb4 100644
  class MlxModelRunner:
      """MLX model runner with radix-cache prefix sharing."""
  
-@@ -127,6 +164,10 @@ class MlxModelRunner:
-         self.model_path = model_path
+@@ -179,6 +217,9 @@ class MlxModelRunner:
          self.trust_remote_code = trust_remote_code
+         self.revision = revision
          self.model = None
 +        # VLM state (set by _load_model). mlx_vlm-loaded checkpoints are wrapped
 +        # in a _TextOnlyVLMShim; is_vlm gates the image path (pixel_values).
 +        self.is_vlm = False
-+        self.processor = None
          self.disable_radix_cache = disable_radix_cache
          self._mem_fraction_static = mem_fraction_static
-         # Counter used to trigger periodic mx.clear_cache() calls.
-@@ -147,6 +188,18 @@ class MlxModelRunner:
-             mx.set_wired_limit(max_wired)
-             logger.info(f"Wired memory limit set to {max_wired / (1024**3):.1f} GB")
- 
-+        # Cap the MLX buffer cache. Freed transient buffers (per-chunk prefill
-+        # activations — MoE dispatch, attention scratch) are retained in the
-+        # cache by default; across a chunked prefill the shapes shift every
-+        # chunk, so retained buffers accumulate instead of being reused and
-+        # long prefills eat unified memory at ~0.6 MB/token until jetsam.
-+        # A bounded cache keeps the reuse win without unbounded growth.
-+        import os as _os
-+
-+        cache_limit_gb = float(_os.environ.get("SGLANG_MLX_CACHE_LIMIT_GB", "4"))
-+        mx.set_cache_limit(int(cache_limit_gb * (1 << 30)))
-+        logger.info(f"MLX buffer cache limit set to {cache_limit_gb:.1f} GB")
-+
-         patch_model_attention(self.model)
- 
-         layer_list, attn_attrs = find_attention_layers(self.model)
-@@ -163,9 +216,24 @@ class MlxModelRunner:
-                 "MLX models with auxiliary cache state require model.make_cache()."
+         self._enable_sampling = enable_sampling
+@@ -252,9 +293,24 @@ class MlxModelRunner:
+                 "cache state and sliding-window attention layers."
              )
          if self._cache_layout.has_auxiliary_state:
 +            self._maybe_adapt_compact_cache_model()
@@ -239,16 +179,16 @@ index 86674ad..e2b4fb4 100644
 +        # per-request decode, which delegates to the model's own forward and
 +        # applies the correct positional encoding. Batching is a throughput
 +        # optimization only; correctness holds either way.
-+        _first_attn = self._attention_module_for_layer(
-+            self._cache_layout.first_attention_layer_index
++        self._attention_wrapper_batchable = hasattr(
++            self._attention_module_for_layer(
++                self._cache_layout.first_attention_layer_index
++            ),
++            "rope",
 +        )
-+        _first_attn_inner = getattr(_first_attn, "_inner", _first_attn)
-+        self._attention_wrapper_batchable = hasattr(_first_attn_inner, "rope")
-+
          self._max_seq_len = 4096  # doubles on overflow
  
          self._req_caches: dict[str, list[Any]] = {}
-@@ -180,6 +248,29 @@ class MlxModelRunner:
+@@ -271,6 +327,29 @@ class MlxModelRunner:
          self._pool_size = self._compute_pool_size(pool_size)
          self._aot_kernels = self._build_aot_kernels()
  
@@ -278,141 +218,135 @@ index 86674ad..e2b4fb4 100644
      @staticmethod
      def _extract_logits(model_output):
          """Extract logits from model output, handling both tuple and direct returns."""
-@@ -397,14 +488,114 @@ class MlxModelRunner:
+@@ -493,10 +572,91 @@ class MlxModelRunner:
              for s in MlxModelRunner._cache_arrays(cache)
          ]
  
-+    def _is_vlm_config(self) -> bool:
-+        """Detect a VLM architecture from config.json.
++    @staticmethod
++    def _is_vlm_config(model_dir) -> bool:
++        """Detect a VLM architecture from the checkpoint's config.json.
 +
 +        mlx_lm cannot load ``*ForConditionalGeneration`` VLM checkpoints
-+        (Qwen3.5/3.6, Mistral3/Devstral, Gemma 4); mlx_vlm can, exposing an
-+        image-aware ``__call__`` plus a text ``language_model``. When the arch
-+        is a VLM we load via mlx_vlm and wrap it so text-only requests route to
-+        ``language_model`` (see _load_model / _TextOnlyVLMShim).
++        (Qwen3.5/3.6/3.8, Mistral3/Devstral, Gemma 4); mlx_vlm can, exposing
++        an image-aware ``__call__`` plus a text ``language_model``.
 +        """
++        import json as _json
++
 +        try:
-+            import json as _json
-+
-+            from huggingface_hub import hf_hub_download
-+
-+            cfg_path = hf_hub_download(repo_id=self.model_path, filename="config.json")
-+            with open(cfg_path) as f:
++            with open(os.path.join(str(model_dir), "config.json")) as f:
 +                cfg = _json.load(f)
-+            return any(
-+                k in cfg
-+                for k in ("vision_config", "image_token_id", "image_token_index")
-+            )
-+        except Exception as _e:  # noqa: BLE001
-+            logger.debug(f"_is_vlm_config: detection failed ({_e}); assuming text-only")
++        except (OSError, ValueError) as e:
++            logger.debug(f"_is_vlm_config: cannot read config ({e}); text-only")
 +            return False
++        return any(
++            k in cfg for k in ("vision_config", "image_token_id", "image_token_index")
++        )
++
++    def _load_vlm_model(self, model_dir) -> None:
++        """Load a VLM checkpoint via mlx_vlm behind a ``_TextOnlyVLMShim``.
++
++        The shim routes the runner's ``self.model(input_ids, cache=...)`` text
++        path to ``language_model`` while the hybrid cache / attention machinery
++        keeps working through ``__getattr__`` unwrapping. Image-bearing calls
++        (``pixel_values`` set) go through the VLM's full forward.
++        """
++        from mlx_vlm.utils import load_model as mlx_vlm_load_model
++
++        # Model-only load. ``mlx_vlm.load()`` also builds its own processor +
++        # detokenizer, which crashes on tokenizer backends without ``.vocab``
++        # (Devstral's MistralCommonBackend on the pinned transformers).
++        # SGLang's multimodal pipeline supplies the processed features, so the
++        # mlx_vlm processor is never used.
++        vlm_model = mlx_vlm_load_model(model_dir)
++        self.is_vlm = True
++
++        # Probe the VLM __call__ signature once: Mistral3 requires a positional
++        # ``mask`` after pixel_values; Qwen-VL takes it as a keyword default.
++        import inspect as _insp
++
++        needs_mask_positional = any(
++            p.name == "mask" and p.default is _insp.Parameter.empty
++            for p in _insp.signature(vlm_model.__call__).parameters.values()
++        )
++
++        class _TextOnlyVLMShim:
++            def __init__(self, vlm):
++                self._vlm = vlm
++
++            def __call__(self, input_ids, cache=None, pixel_values=None, **kwargs):
++                if pixel_values is not None:
++                    if needs_mask_positional:
++                        out = self._vlm(
++                            input_ids, pixel_values, None, cache=cache, **kwargs
++                        )
++                    else:
++                        out = self._vlm(input_ids, pixel_values, cache=cache, **kwargs)
++                else:
++                    out = self._vlm.language_model(input_ids, cache=cache)
++                return getattr(out, "logits", out)
++
++            def make_cache(self):
++                # Hybrid (DeltaNet/Mamba) make_cache lives on the language
++                # model for mlx_vlm wrappers.
++                vlm = self._vlm
++                if hasattr(vlm, "make_cache"):
++                    return vlm.make_cache()
++                return vlm.language_model.make_cache()
++
++            def __getattr__(self, name):
++                return getattr(self._vlm, name)
++
++        self.model = _TextOnlyVLMShim(vlm_model)
++        # No headless trunk: calling mlx_vlm's inner text model directly would
++        # bypass the language model's position-id (mRoPE) computation, so
++        # non-final chunks run the full forward.
++        self._trunk = None
 +
      def _load_model(self):
 -        """Load model using mlx_lm. If ``self._quantization`` requests a preset
 -        (e.g. ``mlx_q4``), quantize fp16 weights in-place via
 -        :func:`mlx_lm.utils.quantize_model` after load.
-+        """Load model using mlx_lm (text) or mlx_vlm (VLM archs).
-+
-+        VLM checkpoints are loaded via mlx_vlm and wrapped in a
-+        ``_TextOnlyVLMShim`` so the native runner's ``self.model(input_ids,
-+        cache=cache)`` text path routes to ``language_model`` while the hybrid
-+        cache / attention machinery keeps working through ``__getattr__``
-+        unwrapping. If ``self._quantization`` requests a preset (e.g.
-+        ``mlx_q4``), quantize fp16 weights in-place via
-+        :func:`mlx_lm.utils.quantize_model` after load (mlx_lm path only).
++        """Load model using mlx_lm (text) or mlx_vlm (VLM archs). If
++        ``self._quantization`` requests a preset (e.g. ``mlx_q4``), quantize
++        fp16 weights in-place via :func:`mlx_lm.utils.quantize_model` after
++        load (mlx_lm path only).
          """
          logger.info(f"Loading MLX model: {self.model_path}")
          start_time = time.time()
+@@ -509,6 +669,16 @@ class MlxModelRunner:
+         model_dir = resolve_model_directory(self.model_path, revision=self.revision)
+         ensure_remote_code_allowed(model_dir, self.trust_remote_code)
  
-+        if self._is_vlm_config():
++        if self._is_vlm_config(model_dir):
 +            logger.info("Detected VLM architecture; loading via mlx_vlm.")
-+            from mlx_vlm.utils import get_model_path
-+            from mlx_vlm.utils import load_model as mlx_vlm_load_model
-+
-+            # Model-only load. ``mlx_vlm.load()`` also builds its own
-+            # processor + detokenizer, which crashes on tokenizer backends
-+            # without ``.vocab`` (Devstral's MistralCommonBackend on the
-+            # pinned transformers). SGLang's multimodal pipeline supplies the
-+            # processed features, so the mlx_vlm processor is never used.
-+            vlm_model = mlx_vlm_load_model(get_model_path(self.model_path))
-+            self.is_vlm = True
-+
-+            # Probe the VLM __call__ signature once: Mistral3 requires a
-+            # positional ``mask`` after pixel_values; Qwen-VL takes it as a
-+            # keyword default. Only relevant for the image (pixel_values) path.
-+            import inspect as _insp
-+
-+            _needs_mask_positional = any(
-+                p.name == "mask" and p.default is _insp.Parameter.empty
-+                for p in _insp.signature(vlm_model.__call__).parameters.values()
-+            )
-+
-+            class _TextOnlyVLMShim:
-+                """Route ``model(input_ids, cache=...)`` to the VLM's text
-+                ``language_model``; image-bearing calls (pixel_values set) go
-+                through the VLM's full forward. Everything else (``layers``,
-+                ``language_model``, ``parameters`` …) delegates via
-+                ``__getattr__`` so the native cache/attention machinery — which
-+                unwraps ``language_model`` itself — works unchanged.
-+                """
-+
-+                def __init__(self, vlm):
-+                    self._vlm = vlm
-+
-+                def __call__(self, input_ids, cache=None, pixel_values=None, **kwargs):
-+                    if pixel_values is not None:
-+                        if _needs_mask_positional:
-+                            out = self._vlm(
-+                                input_ids, pixel_values, None, cache=cache, **kwargs
-+                            )
-+                        else:
-+                            out = self._vlm(
-+                                input_ids, pixel_values, cache=cache, **kwargs
-+                            )
-+                    else:
-+                        out = self._vlm.language_model(input_ids, cache=cache)
-+                    return getattr(out, "logits", out)
-+
-+                def make_cache(self):
-+                    # Hybrid (DeltaNet/Mamba) make_cache lives on the language
-+                    # model for mlx_vlm wrappers; the native runner calls
-+                    # self.model.make_cache() directly (not via language_model).
-+                    vlm = self._vlm
-+                    if hasattr(vlm, "make_cache"):
-+                        return vlm.make_cache()
-+                    return vlm.language_model.make_cache()
-+
-+                def __getattr__(self, name):
-+                    return getattr(self._vlm, name)
-+
-+            self.model = _TextOnlyVLMShim(vlm_model)
++            self._load_vlm_model(model_dir)
 +            mx.eval(self.model.parameters())
 +            logger.info(
 +                f"MLX model loaded in {time.time() - start_time:.2f}s "
-+                f"(vlm=True via mlx_vlm)"
++                "(vlm=True via mlx_vlm)"
 +            )
 +            return
 +
          # We need the config dict to pass into quantize_model so it knows tied/embedding
          # layout. return_config=True is cheap and ignored when no quantization is requested.
          loaded = mlx_lm_load(
-@@ -625,6 +816,8 @@ class MlxModelRunner:
-         new_slot_ids: list[int],
+@@ -770,6 +940,8 @@ class MlxModelRunner:
          req_pool_idx: int,
          req: Any | None = None,
+         needs_logits: bool = True,
 +        pixel_values=None,
 +        mm_kwargs: dict | None = None,
      ) -> int:
-         """Prefill a request.  Returns next_token_id."""
-         pending = self.prefill_start(
-@@ -635,10 +828,32 @@ class MlxModelRunner:
-             new_slot_ids=new_slot_ids,
+         """Prefill a request.  Returns next_token_id.
+ 
+@@ -786,10 +958,32 @@ class MlxModelRunner:
              req_pool_idx=req_pool_idx,
              req=req,
+             needs_logits=needs_logits,
 +            pixel_values=pixel_values,
 +            mm_kwargs=mm_kwargs,
          )
-         self._eval_with_cache(pending.lazy_token, pending.cache)
+         self.eval_pending(pending)
          return self.prefill_finalize(pending)
  
 +    def _reset_mlx_vlm_position_cache(self) -> None:
@@ -438,24 +372,24 @@ index 86674ad..e2b4fb4 100644
      def extend(
          self,
          req_id: str,
-@@ -731,6 +946,8 @@ class MlxModelRunner:
-         new_slot_ids: list[int],
-         req_pool_idx: int,
-         req: Any | None = None,
+@@ -897,6 +1091,8 @@ class MlxModelRunner:
+         needs_logits: bool = True,
+         logit_edit_row: mx.array | None = None,
+         logprob_spec: MlxLogprobSpec | None = None,
 +        pixel_values=None,
 +        mm_kwargs: dict | None = None,
      ) -> MlxPendingPrefill:
          """Queue a prefill forward pass without evaluating.
  
-@@ -738,15 +955,33 @@ class MlxModelRunner:
-         next-token ``mx.array`` plus everything needed to commit the
-         request in :meth:`prefill_finalize`.  The caller drives the GPU
-         by handing ``lazy_token`` (and cache state) to ``mx.async_eval``.
+@@ -907,8 +1103,25 @@ class MlxModelRunner:
+ 
+         ``needs_logits=False`` marks the first chunk of a chunked prompt
+         (its next-token output is discarded); see :meth:`extend_start`.
 +
 +        ``pixel_values`` — optional mlx array for VLM image input. When set,
-+        the ``_TextOnlyVLMShim`` (see ``_load_model``) routes the call through
-+        the VLM's full forward instead of ``language_model``. ``mm_kwargs``
-+        carries model-specific extras (``image_grid_thw`` for Qwen-VL,
++        the ``_TextOnlyVLMShim`` routes the call through the VLM's full
++        forward instead of ``language_model``. ``mm_kwargs`` carries
++        model-specific extras (``image_grid_thw`` for Qwen-VL,
 +        ``image_sizes`` for Mistral3/Pixtral, …) forwarded as keyword args.
 +        The image features merge at image-token positions present in the
 +        forwarded ``input_ids`` — a prefix-cache hit that swallows image
@@ -463,26 +397,32 @@ index 86674ad..e2b4fb4 100644
 +        prefills route through the full-prompt paths below.
          """
          prefix_len = len(prefix_slot_ids)
-         if req is not None:
-             req.mamba_last_track_seqlen = None
- 
-+        _model_kwargs: dict = {}
++        model_kwargs: dict = {}
 +        if pixel_values is not None:
-+            _model_kwargs["pixel_values"] = pixel_values
++            model_kwargs["pixel_values"] = pixel_values
 +        if mm_kwargs:
-+            _model_kwargs.update(mm_kwargs)
++            model_kwargs.update(mm_kwargs)
 +        if self.is_vlm:
 +            self._reset_mlx_vlm_position_cache()
-+
-         if self.disable_radix_cache:
+         if req is not None:
+             req.kv.mamba_last_track_seqlen = None
+         if self._enable_sampling:
+@@ -924,7 +1137,13 @@ class MlxModelRunner:
              cache = self._acquire_cache()
              input_ids = mx.array([new_token_ids], dtype=mx.int32)
--            model_output = self.model(input_ids, cache=cache)
-+            model_output = self.model(input_ids, cache=cache, **_model_kwargs)
-             logits = self._extract_logits(model_output)
-             lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
+             lazy_token, lazy_logprobs = self._forward_lazy_token(
+-                input_ids, cache, needs_logits, req_id, logit_edit_row, logprob_spec
++                input_ids,
++                cache,
++                needs_logits,
++                req_id,
++                logit_edit_row,
++                logprob_spec,
++                model_kwargs=model_kwargs,
+             )
              return MlxPendingPrefill(
-@@ -775,17 +1010,21 @@ class MlxModelRunner:
+                 lazy_token=lazy_token,
+@@ -974,18 +1193,28 @@ class MlxModelRunner:
                  not self._cache_layout.has_auxiliary_state
                  or self._restore_auxiliary_state(req_pool_idx, cache)
              )
@@ -492,50 +432,88 @@ index 86674ad..e2b4fb4 100644
 +            if (
 +                self._cache_layout.has_auxiliary_state
 +                and (not restored_auxiliary_state or new_token_count == 0)
-+            ) or _model_kwargs:
++            ) or model_kwargs:
                  # TODO(MLX): exact full-prefix hits need auxiliary state at
                  # prefix_len - 1 to recompute last-token logits. The unified
                  # tree stores state at the match boundary today, so use a
                  # full-prompt fallback for that edge while still syncing newly
 -                # allocated attention KV below.
 +                # allocated attention KV below. Image-bearing prefills
-+                # (_model_kwargs set) also take this path: their image tokens
++                # (model_kwargs set) also take this path: their image tokens
 +                # may sit inside the cached prefix, and the VLM feature merge
 +                # only sees the input_ids it is called with.
                  cache = self._acquire_cache()
                  input_ids = mx.array([full_token_ids or new_token_ids], dtype=mx.int32)
--                model_output = self.model(input_ids, cache=cache)
-+                model_output = self.model(input_ids, cache=cache, **_model_kwargs)
-                 logits = self._extract_logits(model_output)
-                 lazy_token = mx.argmax(logits[:, -1, :], axis=-1)
+                 lazy_token, lazy_logprobs = self._forward_lazy_token(
+-                    input_ids, cache, needs_logits, req_id, logit_edit_row, logprob_spec
++                    input_ids,
++                    cache,
++                    needs_logits,
++                    req_id,
++                    logit_edit_row,
++                    logprob_spec,
++                    model_kwargs=model_kwargs,
+                 )
                  if new_slot_ids:
-@@ -804,7 +1043,14 @@ class MlxModelRunner:
+                     self._sync_new_kv_to_pool(cache, prefix_len, new_slot_ids)
+@@ -1004,7 +1233,14 @@ class MlxModelRunner:
  
-         if new_token_count > 0:
+         if run_token_ids:
              track_new_count = track_len - prefix_len if track_len is not None else None
 -            if track_new_count is not None and 0 < track_new_count < new_token_count:
 +            # Image-bearing prefills skip the mid-prompt tracked-state split:
 +            # splitting input_ids across two calls would sever the image-token
-+            # ↔ pixel-feature merge. Leaf-only auxiliary caching still applies.
++            # <-> pixel-feature merge. Leaf-only auxiliary caching still applies.
 +            if (
 +                track_new_count is not None
 +                and 0 < track_new_count < new_token_count
-+                and not _model_kwargs
++                and not model_kwargs
 +            ):
+                 # aux + SWA is rejected at init, so run_token_ids is
+                 # new_token_ids on this branch.
                  input_ids = mx.array([new_token_ids[:track_new_count]], dtype=mx.int32)
-                 self.model(input_ids, cache=cache)
-                 self._store_tracked_auxiliary_state(req, cache, track_len)
-@@ -821,7 +1067,7 @@ class MlxModelRunner:
-                 c.offset = max(c.offset - 1, 0)
+@@ -1029,7 +1265,13 @@ class MlxModelRunner:
  
          input_ids = mx.array([extend_tokens], dtype=mx.int32)
--        model_output = self.model(input_ids, cache=cache)
-+        model_output = self.model(input_ids, cache=cache, **_model_kwargs)
-         logits = self._extract_logits(model_output)
+         lazy_token, lazy_logprobs = self._forward_lazy_token(
+-            input_ids, cache, needs_logits, req_id, logit_edit_row, logprob_spec
++            input_ids,
++            cache,
++            needs_logits,
++            req_id,
++            logit_edit_row,
++            logprob_spec,
++            model_kwargs=model_kwargs,
+         )
  
          if track_len is not None and track_len == prefix_len + new_token_count:
-@@ -915,15 +1161,31 @@ class MlxModelRunner:
-         return next_token
+@@ -1151,11 +1393,24 @@ class MlxModelRunner:
+         req_id: str,
+         logit_edit_row: mx.array | None = None,
+         logprob_spec: MlxLogprobSpec | None = None,
++        model_kwargs: dict | None = None,
+     ) -> tuple[mx.array, MlxLazyLogprobs | None]:
+         """Forward one chunk, returning (lazy next-token, lazy logprobs).
+ 
+         Skips the logit head for discarded-output chunks when possible.
++        ``model_kwargs`` (VLM image inputs) force the full model: the image
++        features merge inside the VLM forward, which the headless trunk skips.
+         """
++        model_kwargs = model_kwargs or {}
++        if model_kwargs:
++            model_output = self.model(input_ids, cache=cache, **model_kwargs)
++            logits = self._extract_logits(model_output)
++            if not needs_logits:
++                return mx.argmax(logits[:, -1, :], axis=-1), None
++            edits = logit_edit_row[None, :] if logit_edit_row is not None else None
++            return self._select_tokens_with_logprobs(
++                logits[:, -1, :], [req_id], [cache], edits, logprob_spec
++            )
+         if not needs_logits:
+             hidden = self._trunk_forward(input_ids, cache)
+             if hidden is not None:
+@@ -1315,15 +1570,29 @@ class MlxModelRunner:
+         return (hidden[:, -1, 0] * 0).astype(mx.int32)
  
      def _extract_model_components(self):
 -        """Cache embedding, norm, and lm_head for layer-by-layer hybrid forward."""
@@ -555,14 +533,12 @@ index 86674ad..e2b4fb4 100644
 +            text_model = root.backbone
 +        else:
 +            text_model = root
-+        if hasattr(text_model, "embed_tokens"):
-+            embed = text_model.embed_tokens
-+        else:
-+            embed = text_model.embeddings
-+        if hasattr(text_model, "norm"):
-+            norm = text_model.norm
-+        else:
-+            norm = text_model.norm_f
++        embed = (
++            text_model.embed_tokens
++            if hasattr(text_model, "embed_tokens")
++            else text_model.embeddings
++        )
++        norm = text_model.norm if hasattr(text_model, "norm") else text_model.norm_f
          if hasattr(root, "lm_head"):
              lm_head = root.lm_head
          elif hasattr(root, "args") and getattr(root.args, "tie_word_embeddings", False):
@@ -571,7 +547,7 @@ index 86674ad..e2b4fb4 100644
          else:
              lm_head = root.lm_head
          return embed, norm, lm_head
-@@ -1167,7 +1429,14 @@ class MlxModelRunner:
+@@ -1573,7 +1842,14 @@ class MlxModelRunner:
          last_tokens = [self._req_token_ids[rid][-1] for rid in req_ids]
          batched_input = mx.array(last_tokens, dtype=mx.int32)[:, None]
  
@@ -580,33 +556,33 @@ index 86674ad..e2b4fb4 100644
 +            # Serial per-request decode for mlx_vlm (rotary_emb) / position-free
 +            # (NemotronH) attention — the batched wrapper's inner.rope path does
 +            # not apply. Delegates to the model's own forward (correct RoPE).
-+            lazy_tokens = self._decode_with_native_cache(
++            last_logits = self._decode_with_native_cache(
 +                caches, [batched_input[i : i + 1] for i in range(len(req_ids))]
 +            )
 +        elif self._cache_layout.has_auxiliary_state:
-             lazy_tokens = self._decode_with_hybrid_batching(
+             last_logits = self._decode_with_hybrid_batching(
                  caches, batched_input, list(req_ids)
              )
-@@ -1212,7 +1481,11 @@ class MlxModelRunner:
+@@ -1631,7 +1907,11 @@ class MlxModelRunner:
          # So layer-0 offsets reflect the position the NEW token will
          # be written at in step N+1 (and equivalently the RoPE offset).
          batched_input = prev.lazy_tokens[:, None]
 -        if self._cache_layout.has_auxiliary_state:
 +        if not self._attention_wrapper_batchable:
-+            lazy_tokens = self._decode_with_native_cache(
++            last_logits = self._decode_with_native_cache(
 +                caches, [batched_input[i : i + 1] for i in range(len(prev.req_ids))]
 +            )
 +        elif self._cache_layout.has_auxiliary_state:
-             lazy_tokens = self._decode_with_hybrid_batching(
+             last_logits = self._decode_with_hybrid_batching(
                  caches, batched_input, prev.req_ids
              )
 diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-index 53f9b88..c0fbc6a 100644
+index fad0aaac56..8e94a3b545 100644
 --- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
 +++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
-@@ -133,6 +133,78 @@ class MlxTpModelWorker(TpModelWorker):
-             # insert. Any older tracked slot is released during component cleanup.
-             req.mamba_last_track_seqlen = None
+@@ -191,6 +191,78 @@ class MlxTpModelWorker(TpModelWorker):
+             self._mlx_runner.remove_request(req.rid)
+             self._mlx_active_rids.discard(req.rid)
  
 +    @staticmethod
 +    def _extract_mm_inputs(req) -> tuple[Optional[mx.array], dict]:
@@ -683,102 +659,56 @@ index 53f9b88..c0fbc6a 100644
      def _route_extend_request(self, rid: str, decoding_rids: set[str]) -> str:
          """Classify a request within an extend / mixed batch.
  
-@@ -210,6 +282,7 @@ class MlxTpModelWorker(TpModelWorker):
-                 else:  # "prefill"
-                     prefix_slot_ids = req.prefix_indices.tolist()
-                     full_token_ids = list(req.get_fill_ids())
-+                    pixel_values, mm_kwargs = self._extract_mm_inputs(req)
-                     next_token = self._mlx_runner.prefill(
-                         req_id=req.rid,
-                         new_token_ids=req_token_ids,
-@@ -218,6 +291,8 @@ class MlxTpModelWorker(TpModelWorker):
-                         new_slot_ids=req_new_slots,
-                         req_pool_idx=req.req_pool_idx,
-                         req=req,
-+                        pixel_values=pixel_values,
-+                        mm_kwargs=mm_kwargs,
-                     )
-                     prefill_rids.append((req.rid, next_token))
- 
-@@ -355,6 +430,7 @@ class MlxTpModelWorker(TpModelWorker):
-             else:  # "prefill"
-                 prefix_slot_ids = req.prefix_indices.tolist()
+@@ -518,6 +590,7 @@ class MlxTpModelWorker(TpModelWorker):
+                     else []
+                 )
                  full_token_ids = list(req.get_fill_ids())
 +                pixel_values, mm_kwargs = self._extract_mm_inputs(req)
                  pending_prefills.append(
                      self._mlx_runner.prefill_start(
                          req_id=req.rid,
-@@ -364,6 +440,8 @@ class MlxTpModelWorker(TpModelWorker):
-                         new_slot_ids=req_new_slots,
-                         req_pool_idx=req.req_pool_idx,
-                         req=req,
+@@ -530,6 +603,8 @@ class MlxTpModelWorker(TpModelWorker):
+                         needs_logits=self._chunk_needs_logits(req),
+                         logit_edit_row=edit_rows[req.rid] if edit_rows else None,
+                         logprob_spec=self._logprob_spec_for(logprob_rows, [req.rid]),
 +                        pixel_values=pixel_values,
 +                        mm_kwargs=mm_kwargs,
                      )
                  )
  
 diff --git a/python/sglang/srt/managers/overlap_utils.py b/python/sglang/srt/managers/overlap_utils.py
-index 9e2f191..11b0115 100644
+index afbb183e7b..c44eb28cc2 100644
 --- a/python/sglang/srt/managers/overlap_utils.py
 +++ b/python/sglang/srt/managers/overlap_utils.py
-@@ -476,7 +476,10 @@ class FutureMap:
-         indices = future_indices
-         if indices.shape[0] == 0:
-             return  # DP idle
--        self.new_seq_lens_buf[indices] = new_seq_lens.to(self.new_seq_lens_buf.dtype)
-+        self.new_seq_lens_buf[indices] = new_seq_lens.to(
-+            dtype=self.new_seq_lens_buf.dtype,
-+            device=self.new_seq_lens_buf.device,
-+        )
+@@ -660,7 +660,8 @@ class FutureMap:
+             relay.published_seq_lens = None
+         else:
+             self.new_seq_lens_buf[indices] = new_seq_lens.to(
+-                self.new_seq_lens_buf.dtype
++                dtype=self.new_seq_lens_buf.dtype,
++                device=self.new_seq_lens_buf.device,
+             )
          publish_confidence = self.needs_confidence_relay and confidence is not None
          if publish_confidence:
-             self.confidence_relay.scatter(indices, confidence)
-@@ -509,8 +512,12 @@ class FutureMap:
-         if not self._forward_buf_initialized:
-             self._lazy_init_forward_buf(payload)
-         self._maybe_init_dsa_topk_indices_buf(payload)
-+        # device= is a no-op on the CUDA overlap path (payload already lives on
-+        # the buffer's device). The MLX worker emits host tensors, and its
-+        # normal-loop stash writes into device-allocated buffers.
-         self.output_tokens_buf[indices] = payload.bonus_tokens.to(
--            self.output_tokens_buf.dtype
-+            dtype=self.output_tokens_buf.dtype,
-+            device=self.output_tokens_buf.device,
-         )
+@@ -693,8 +694,12 @@ class FutureMap:
+         if relay is not None and payload.bonus_tokens is relay.published_bonus:
+             relay.published_bonus = None
+         else:
++            # device= is a no-op on the CUDA overlap path (payload already lives
++            # on the buffer's device). The MLX worker emits host tensors, and its
++            # normal-loop stash writes into device-allocated buffers.
+             self.output_tokens_buf[indices] = payload.bonus_tokens.to(
+-                self.output_tokens_buf.dtype
++                dtype=self.output_tokens_buf.dtype,
++                device=self.output_tokens_buf.device,
+             )
  
-         if self.need_topk:
-diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index 547494b..c99991e 100644
---- a/python/sglang/srt/model_executor/model_runner.py
-+++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -818,6 +818,22 @@ class ModelRunner:
- 
-     def init_attention_backends(self):
-         """Initialize attention backends only (no cuda graph capture)."""
-+        # MLX backend: MlxTpModelWorker overrides forward_batch_generation to run
-+        # attention/decode in MlxModelRunner, so the general attention backends
-+        # built here are never used on MLX. Skipping is also load-bearing for
-+        # hybrid GDN models (Qwen3.5/3.6): the general path would build
-+        # GDNAttnBackend against the MLX auxiliary-state pool (mamba_cache=None)
-+        # and crash. attn_backend stays None, matching the MLX runner stub.
-+        from sglang.srt.utils.tensor_bridge import use_mlx
-+
-+        if use_mlx():
-+            self.attn_backend = None
-+            self.decode_attn_backend = None
-+            self.decode_attn_backend_group = None
-+            self.prefill_attention_backend_str = None
-+            self.decode_attention_backend_str = None
-+            return
-+
-         # Must be called BEFORE init_decode_cuda_graph() so CUDA graph capture
-         # runs with aux hidden state capture enabled.
-         configure_aux_hidden_state_capture(
+         # Staging transitions refresh only the bonus token. Preserve top-k and
 diff --git a/python/sglang/srt/utils/hf_transformers/tokenizer.py b/python/sglang/srt/utils/hf_transformers/tokenizer.py
-index def8d25..7e897f3 100644
+index 9a76031b0b..d0bc32a167 100644
 --- a/python/sglang/srt/utils/hf_transformers/tokenizer.py
 +++ b/python/sglang/srt/utils/hf_transformers/tokenizer.py
-@@ -50,6 +50,18 @@ _FAST_LLAMA_TOKENIZER = "hf-internal-testing/llama-tokenizer"
+@@ -52,6 +52,18 @@ _FAST_LLAMA_TOKENIZER = "hf-internal-testing/llama-tokenizer"
  _TOKENIZERS_BACKEND = "TokenizersBackend"
  
  
@@ -797,7 +727,7 @@ index def8d25..7e897f3 100644
  def _load_tokenizer_by_declared_class(tokenizer_name, *args, **kwargs):
      """Load tokenizer by the class declared in tokenizer_config.json.
  
-@@ -521,14 +533,39 @@ def get_tokenizer(
+@@ -542,14 +554,39 @@ def get_tokenizer(
              # With fastokens, the patched TokenizersBackend.from_pretrained already
              # returned a tokenizer whose backend is a fastokens shim. Re-resolving via
              # the declared class (e.g. Qwen2Tokenizer) would discard that work.

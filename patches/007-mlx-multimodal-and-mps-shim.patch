@@ -1,8 +1,8 @@
-diff --git a/python/sglang/_mps_stub.py b/python/sglang/_mps_stub.py
-index b463ff6..b2bcfc4 100644
---- a/python/sglang/_mps_stub.py
-+++ b/python/sglang/_mps_stub.py
-@@ -208,16 +208,27 @@ def _patch_non_blocking() -> None:
+diff --git a/python/sglang/_platform_stubs.py b/python/sglang/_platform_stubs.py
+index 90d8c1d3e4..15f687215e 100644
+--- a/python/sglang/_platform_stubs.py
++++ b/python/sglang/_platform_stubs.py
+@@ -362,16 +362,27 @@ def _patch_non_blocking() -> None:
  
      @functools.wraps(_original_to)
      def _patched_to(self, *args, **kwargs):
@@ -40,10 +40,10 @@ index b463ff6..b2bcfc4 100644
  
      torch.Tensor.to = _patched_to
 diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
-index 891d8df..c87f87c 100644
+index bac20d0750..5f6e3db6fc 100644
 --- a/python/sglang/srt/managers/mm_utils.py
 +++ b/python/sglang/srt/managers/mm_utils.py
-@@ -1869,7 +1869,11 @@ class ShmPointerMMData:
+@@ -1384,7 +1384,11 @@ class ShmPointerMMData:
                  # the process is killed with SIGBUS. Reserving the pages up
                  # front turns exhaustion into a catchable OSError (ENOSPC).
                  os.posix_fallocate(shm._fd, 0, nbytes)
@@ -56,78 +56,18 @@ index 891d8df..c87f87c 100644
              dst.copy_(tensor.view(torch.uint8).reshape(-1))
          except BaseException:
              shm.close()
-@@ -1893,10 +1897,16 @@ class ShmPointerMMData:
-         self.dtype = state["dtype"]
-         self.precomputed_hash = state.get("precomputed_hash")
-         self._shm_handle = shared_memory.SharedMemory(name=self.shm_name)
-+        # macOS rounds shm allocations up to a page so the buffer is
-+        # larger than self.shape implies. Slice to logical element count
-+        # before reshape — mirrors the write-side fix above.
-+        n_elements = 1
-+        for d in self.shape:
-+            n_elements *= d
-         # Zero-copy view into shared memory (no clone, no unlink)
--        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype).reshape(
--            self.shape
--        )
-+        self.tensor = torch.frombuffer(self._shm_handle.buf, dtype=self.dtype)[
-+            :n_elements
-+        ].reshape(self.shape)
- 
-     def materialize(self) -> torch.Tensor:
-         """Clone tensor from shm to owned memory, then release shm handle."""
-diff --git a/python/sglang/srt/managers/schedule_batch.py b/python/sglang/srt/managers/schedule_batch.py
-index a8cea65..7a18001 100755
---- a/python/sglang/srt/managers/schedule_batch.py
-+++ b/python/sglang/srt/managers/schedule_batch.py
-@@ -220,6 +220,11 @@ class FINISH_ABORT(BaseFinishReason):
- 
- class Modality(Enum):
-     IMAGE = auto()
-+    # SGLang's transformers_auto multimodal processor references
-+    # ``Modality.MULTI_IMAGES`` when assembling multi-image batches; without
-+    # it, multimodal requests crash with AttributeError before reaching
-+    # the model.
-+    MULTI_IMAGES = auto()
-     VIDEO = auto()
-     AUDIO = auto()
- 
-@@ -234,7 +239,7 @@ class Modality(Enum):
- 
-     @staticmethod
-     def all():
--        return [Modality.IMAGE, Modality.VIDEO, Modality.AUDIO]
-+        return [Modality.IMAGE, Modality.MULTI_IMAGES, Modality.VIDEO, Modality.AUDIO]
- 
- 
- class MultimodalInputFormat(Enum):
-diff --git a/python/sglang/srt/multimodal/processors/pixtral.py b/python/sglang/srt/multimodal/processors/pixtral.py
-index a9ee65e..fe82ec4 100644
---- a/python/sglang/srt/multimodal/processors/pixtral.py
-+++ b/python/sglang/srt/multimodal/processors/pixtral.py
-@@ -99,15 +99,23 @@ class PixtralProcessor(BaseMultimodalProcessor):
-             if len(mm_data.images) > 1:
-                 from sglang.srt.managers.schedule_batch import MultimodalDataItem
- 
-+                # Multi-image requests may combine into a single MULTI_IMAGES
-+                # item (see Modality.MULTI_IMAGES); match either so the
-+                # per-image split below still runs instead of raising
-+                # StopIteration inside the coroutine (surfaces as HTTP 500).
-                 old_item = next(
--                    item for item in mm_items if item.modality == Modality.IMAGE
-+                    item
-+                    for item in mm_items
-+                    if item.modality in (Modality.IMAGE, Modality.MULTI_IMAGES)
-                 )
-                 all_offsets = old_item.offsets
-                 old_feature = old_item.feature
-                 old_image_sizes = getattr(old_item, "image_sizes", None)
- 
-                 mm_items = [
--                    item for item in mm_items if item.modality != Modality.IMAGE
-+                    item
-+                    for item in mm_items
-+                    if item.modality not in (Modality.IMAGE, Modality.MULTI_IMAGES)
-                 ]
-                 offset_idx = 0
-                 for i, img in enumerate(mm_data.images):
+@@ -1416,7 +1420,13 @@ class ShmPointerMMData:
+         try:
+             handle = shared_memory.SharedMemory(name=self.shm_name)
+             tensor = torch.frombuffer(handle.buf, dtype=self.dtype)
+-            self.tensor = tensor.reshape(self.shape)
++            # macOS rounds shm allocations up to a page so the buffer is
++            # larger than self.shape implies. Slice to logical element count
++            # before reshape — mirrors the write-side fix above.
++            n_elements = 1
++            for d in self.shape:
++                n_elements *= d
++            self.tensor = tensor[:n_elements].reshape(self.shape)
+             self._shm_handle = handle
+         except Exception as error:
+             tensor = None

@@ -11,7 +11,7 @@ REPO_DIR="$(dirname "$SCRIPT_DIR")"
 # Primary environment is the conda env (miniforge). A VENV_DIR virtualenv
 # takes precedence when it exists so bisect arms / scratch stacks can still
 # point VENV_DIR at a throwaway env.
-CONDA_ENV="${CONDA_ENV:-sglang-0516}"
+CONDA_ENV="${CONDA_ENV:-sglang-0523}"
 VENV_DIR="${VENV_DIR:-$REPO_DIR/.venv}"
 SGLANG_DIR="${SGLANG_DIR:-$REPO_DIR/components/sglang}"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
@@ -57,6 +57,13 @@ setup_mlx_env() {
     # Default 20s is too short — a single prefill chunk at 64K+ context
     # can take 50-90s on Apple Silicon, blocking the scheduler heartbeat.
     export SGLANG_HEALTH_CHECK_TIMEOUT=${SGLANG_HEALTH_CHECK_TIMEOUT:-120}
+
+    # Cap the MLX buffer cache. Upstream leaves it uncapped unless this is set;
+    # uncapped, chunked prefill retains ~0.6 MB/token of shape-shifting
+    # transient buffers and long prefills jetsam around 30K. The 256K
+    # validation runs on the 4 GB cap
+    # (benchmarks/longctx-bisect/ATTRIBUTION.md).
+    export SGLANG_MLX_CACHE_LIMIT_GB=${SGLANG_MLX_CACHE_LIMIT_GB:-4}
 
     # Allow context length override beyond model's default max.
     # Required for 256K context on models with shorter native limits.

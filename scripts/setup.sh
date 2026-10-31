@@ -25,7 +25,7 @@ SGLANG_BRANCH="main"
 # Update when rebasing patches onto a newer upstream (upstream MLX covers
 # hybrid radix cache, attention duck-typing, and gated-attn batched decode
 # natively at this pin — see patches/README.md for the current stack).
-SGLANG_COMMIT="${SGLANG_COMMIT:-v0.5.16}"
+SGLANG_COMMIT="${SGLANG_COMMIT:-v0.5.23}"
 PATCH_DIR="${PATCH_DIR:-$REPO_DIR/patches}"
 
 SKIP_ENV=false
@@ -39,7 +39,7 @@ done
 echo "=============================================="
 echo "M4 Pro Inference — MLX Backend Setup"
 echo "=============================================="
-echo "SGLang:  $SGLANG_BRANCH (includes MLX backend)"
+echo "SGLang:  $SGLANG_COMMIT (includes MLX backend)"
 echo "Backend: MLX (native Apple Silicon)"
 echo "Venv:    $VENV_DIR"
 echo "=============================================="
@@ -121,6 +121,10 @@ if [ "$SKIP_ENV" = false ]; then
         conda env remove -n "$CONDA_ENV" -y 2>/dev/null || true
         conda create -y -n "$CONDA_ENV" python=3.12
         conda activate "$CONDA_ENV"
+        # SGLang builds its multimodal Rust extension at install time and its
+        # crate graph needs rustc >= 1.88 (Homebrew ships older); install the
+        # toolchain into the env rather than touching the system one.
+        conda install -y -c conda-forge "rust>=1.88"
     else
         echo "[2/3] Creating virtual environment at $VENV_DIR (conda not found)"
         if [ -d "$VENV_DIR" ]; then
@@ -143,14 +147,16 @@ if [ "$SKIP_ENV" = false ]; then
     echo "  Installing additional dependencies..."
     pip install openai requests matplotlib
 
+    # mlx-lm from a pinned git commit: the Flint model (`flint` preset) landed
+    # on mlx-lm main after the 0.32.2 release, so no PyPI build has it. The
+    # pin is a commit, not a branch, so a rebuild reproduces the same stack.
+    pip install "mlx-lm @ git+https://github.com/ml-explore/mlx-lm.git@736ab0d8c1d0edc79c3d798044fe6904e2fa23be"
+
     # mlx-vlm: VLM (image) model loading for the *ForConditionalGeneration
     # presets (Qwen3.5/3.6, Devstral/Mistral3, Gemma 4) that mlx_lm cannot
-    # load. Installed with --no-deps: mlx-vlm 0.6.5 requires
-    # transformers>=5.14.0 while SGLang v0.5.16 hard-pins
-    # transformers==5.12.1 — 5.12.1 works for our model set (verified via
-    # mlx_vlm model-only load). Without this, launch.sh
-    # {devstral,qwen35,qwen36,gemma4*} cannot load the model. See patch 008
-    # (mlx-vlm-hybrid-integration).
+    # load. Installed with --no-deps so it cannot move SGLang's transformers
+    # / mlx-lm pins. Without this, launch.sh {devstral,qwen35,qwen36,gemma4*}
+    # cannot load the model. See patch 008 (mlx-vlm-hybrid-integration).
     pip install "mlx-vlm==0.6.5" --no-deps
 
     # swebench: SWE-bench Lite dataset + harness for evals/swebench/run_rollouts.py.

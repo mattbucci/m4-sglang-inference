@@ -1,10 +1,10 @@
 diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
-index 13f731f..5a80b0a 100644
+index 689b8fa1c6..95aa361510 100644
 --- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
 +++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
-@@ -127,10 +127,29 @@ class MLXAttentionWrapper(nn.Module):
-         object.__setattr__(self, "_inner", inner)
-         object.__setattr__(self, "_layer_idx", layer_idx)
+@@ -229,10 +229,29 @@ class MLXAttentionWrapper(nn.Module):
+             self, "_sink_kwargs", {} if sinks is None else {"sinks": sinks}
+         )
  
 -    def __call__(self, x: mx.array, mask: Any = None, cache: Any = None) -> mx.array:
 +    def __getattr__(self, name: str):
@@ -28,8 +28,8 @@ index 13f731f..5a80b0a 100644
 +            # pass attn_scale as an extra positional arg — attn(x, attn_scale,
 +            # mask, cache) — so the wrapper must accept *args/**kwargs rather
 +            # than a fixed (x, mask, cache) signature, or those forwards raise
-+            # TypeError. Batched decode uses inner.scale (required by the
-+            # attention contract) so the extra positional is not needed there.
++            # TypeError. Batched decode uses the scale resolved at patch time,
++            # so the extra positional is not needed there.
 +            return self._inner(x, *args, **kwargs)
          return self._batched_decode(x, ctx)
  
