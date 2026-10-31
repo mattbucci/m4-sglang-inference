@@ -160,8 +160,12 @@ if [ "$SKIP_ENV" = false ]; then
     pip install "mlx-vlm==0.6.5" --no-deps
 
     # swebench: SWE-bench Lite dataset + harness for evals/swebench/run_rollouts.py.
-    # Required to load `princeton-nlp/SWE-bench_Lite` for the agentic-coding probe.
-    pip install swebench
+    # Pinned: the rollout driver and eval_env.py read
+    # swebench.harness.constants.MAP_REPO_VERSION_TO_SPECS (per-repo install
+    # specs for the pre-rollout venv), which swebench 5.x removed; 4.1.0 is
+    # the release the harness was validated on and installs without moving
+    # any other pin.
+    pip install "swebench==4.1.0"
 
     # librosa: required by sglang/srt/models/parakeet.py (ParakeetExtractor),
     # which SGLang's nano_nemotron_vl.py processor unconditionally
