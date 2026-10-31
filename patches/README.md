@@ -113,14 +113,17 @@ Hybrid presets (qwen35 / qwen35-9b-8bit / qwen36 / qwen36-27b / nemotron-30b)
 and `flint` run with the radix cache. Determinism, measured on 3-turn greedy
 conversations at 3K–14K tokens: repeated cold runs are token-identical, and
 repeated hits on the same cached prefix are token-identical. A hit and a cold
-run of the same prompt are not bit-identical: the new tokens prefill from the
-cached prefix length and split at the 64-token checkpoint grid instead of the
-cold run's 1024-token chunk grid, which perturbs bf16 logits at the noise
-level (first-token top-5 logprobs move ≤ 0.4 nats on qwen36 and ≤ 1.1 nats on
-Flint's tail tokens; the top token's logprob is unchanged). qwen36's answers
-matched cold at all three sizes; Flint's reasoning prose diverged at a
-near-tie beyond 3K tokens. Branched suffixes (eager-COW path) answer
-correctly.
+run of the same prompt differ only as much as two cold runs on different
+chunk sizes differ: the new tokens prefill from the cached prefix length on
+a chunk boundary the cold run never had, which perturbs bf16 logits at the
+noise level. Over 24 positions of a 16.6K-token agent request on Flint the
+top token matches at 20–21 of 24 for hits and at 20 of 24 for a cold run at
+chunk 2048 versus 1024, median top-1 shift 0.016–0.048 nats in every arm,
+with every mismatch at a position where the cold top token sits below 0.75
+probability (`benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md`).
+qwen36's answers matched cold at all three conversation sizes (its top token
+leads by ≥ 5 nats); Flint's reasoning prose diverged at a near-tie beyond 3K
+tokens. Branched suffixes (eager-COW path) answer correctly.
 
 **Probe matrix (radix on):**
 
