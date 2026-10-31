@@ -99,6 +99,37 @@ the radix cache off); vm pressure level never above 1. Decode is ~12%
 lower because the hybrid `no_buffer` bookkeeping disables the overlap
 schedule.
 
+## Finished-request release (patch 023): one-token hit cycles (memcycle-*.log)
+
+Server: oQ8e, `CTX=65536`, a 65536-slot pool, 2 GB MLX cache, radix on,
+chunk 1024. Each cycle: `/flush_cache`, a cold prefill of the first 10,068
+tokens of a captured 16.6K-token agent request, then a hit on the first
+10,737 (669 new tokens); `max_new_tokens` 1 with output logprobs, the shape
+of the hit-vs-cold probes. `vm_stat` wired pages sampled after each request
+(Metal's working-set limit on this box is 51.8 GB; `kern.memorystatus_level`
+reads 94% available once the server has idled a minute, so it is not the
+number to watch).
+
+| Cycle | Without 023, wired after the hit | With 023 |
+|------:|---------------------------------:|---------:|
+| 0 | 53.0 GB | 46.7 GB |
+| 1 | 53.6 GB | 46.7 GB |
+| 2 | 54.0 GB, Metal OOM on the next cold prefill | 46.5 GB |
+| 3 | — | 46.4 GB |
+
+In-process (`mx.get_active_memory()` logged at prefill finalize and at
+request removal): without 023 the runner's per-request cache table gains
+one entry per request and no request is ever removed, because the
+scheduler calls the worker's KV-release hook only for finished decoding
+requests and the stale-rid sweep runs only on decode batches. Each retained
+entry is the request's full-layer K/V, 0.27–0.29 GB at 10K tokens, cold or
+hit alike, surviving `/flush_cache`; the first request that decodes sweeps
+them all (2.2 GB back on a 2-token request after ten 1-token ones). The
+first probe server on the unfixed stack died this way after 66 one-token
+requests and 43 flushes. With 023 every request is removed as it finishes
+and active memory holds at 41.5–41.9 GB across the cycles; the hits still
+report their cached prefix.
+
 ## Harness ceiling (evals/swebench/runs/flint-oQ8e-prefix-cache-2026-10-31)
 
 A 77K-token request (61K context + a 16K output) with the 3.7 GB pool
