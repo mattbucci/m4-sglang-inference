@@ -59,6 +59,8 @@ ATTR_CHECKS = {
          lambda m: m.MlxModelRunner._load_vlm_model),
         ("MlxModelRunner._reset_mlx_vlm_position_cache",               # 008
          lambda m: m.MlxModelRunner._reset_mlx_vlm_position_cache),
+        ("MlxModelRunner._last_position_logits",                        # 020
+         lambda m: m.MlxModelRunner._last_position_logits),
     ],
     "sglang.srt.hardware_backend.mlx.tp_worker": [
         ("MlxTpModelWorker._extract_mm_inputs",                        # 008
@@ -112,7 +114,7 @@ SKIPS = {}
 
 def patched_modules():
     mods = set()
-    for patch in sorted(glob.glob(os.path.join(PATCH_DIR, "0[01][0-9]-*.patch"))):
+    for patch in sorted(glob.glob(os.path.join(PATCH_DIR, "0[012][0-9]-*.patch"))):
         with open(patch) as f:
             for line in f:
                 m = re.match(r"\+\+\+ b/python/(sglang/\S+)\.py$", line)

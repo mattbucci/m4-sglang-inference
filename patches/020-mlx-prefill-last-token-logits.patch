@@ -1,0 +1,37 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index c2484968a2..275defda86 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1451,13 +1451,30 @@ class MlxModelRunner:
+             model_output = self.model(input_ids, cache=cache)
+             logits = self._extract_logits(model_output)
+             return mx.argmax(logits[:, -1, :], axis=-1), None
+-        model_output = self.model(input_ids, cache=cache)
+-        logits = self._extract_logits(model_output)
++        logits = self._last_position_logits(input_ids, cache)
+         edits = logit_edit_row[None, :] if logit_edit_row is not None else None
+         return self._select_tokens_with_logprobs(
+             logits[:, -1, :], [req_id], [cache], edits, logprob_spec
+         )
+ 
++    def _last_position_logits(self, input_ids: mx.array, cache: list[Any]) -> mx.array:
++        """Logits for the chunk's last position only.
++
++        The full model on a whole chunk materialises [chunk, vocab] logits that
++        are then sliced to one row (1.2 GB bf16 at chunk 4096 on a 150K vocab,
++        the largest final-chunk transient). With a headless trunk the chunk is
++        split: trunk on all but the last token (cache side effects only), then
++        the full model on the last token, so every post-head transform the
++        model applies (softcapping, scaling) still runs and only [1, vocab] is
++        produced. Consecutive forwards on one cache are exactly chunked prefill,
++        so the split is numerically the single-call result.
++        """
++        if self._trunk is not None and input_ids.shape[1] > 1:
++            self._trunk(input_ids[:, :-1], cache=cache)
++            input_ids = input_ids[:, -1:]
++        model_output = self.model(input_ids, cache=cache)
++        return self._extract_logits(model_output)
++
+     def _select_tokens_with_logprobs(
+         self,
+         last_logits: mx.array,

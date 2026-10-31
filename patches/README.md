@@ -1,11 +1,12 @@
 # Patches — SGLang v0.5.23 on Apple Silicon
 
-Nine patches on top of the `v0.5.23` pin (commit `297e54f`), applied in
+Ten patches on top of the `v0.5.23` pin (commit `297e54f`), applied in
 numeric order by `scripts/setup.sh`. Numbering is sparse; retired numbers are
 not reused. 002–007 and 014 form the text/processor stack; 008 adds the VLM /
 hybrid (DeltaNet/Mamba2) path; 015 removes the deep-prefill growth ladder; 018
 keeps the MLX auxiliary-state pool from exhausting under the radix cache; 019
-runs Recursive Flint (sliding-window + attention-sink MoE) on the MLX path.
+runs Recursive Flint (sliding-window + attention-sink MoE) on the MLX path; 020
+computes prefill logits for the last chunk position only.
 
 Sampling is upstream: `--mlx-enable-sampling` (set by every `launch.sh`
 preset) turns on per-request temperature/top-p/top-k/min-p, logit_bias,
@@ -27,6 +28,7 @@ applied.
 | 015 | mlx-presize-attention-cache | `mlx/model_runner.py`, `kv_cache/attention_kv_cache.py` | `ContiguousAttentionKVCache.reserve()` + per-request pre-sizing in `_acquire_cache`/`prefill_start` (target: `origin_input_ids` + `max_new_tokens`; continuation chunks reuse the cache via `_req_caches`, so first acquisition covers the whole chunked prefill; `_release_cache` trims back to default so the reuse pool never hoards deep-request buffers). Only full-attention layers are sized — sliding-window caches are bounded by their window. Replaces the doubling ladder for known-length requests: the ladder both spikes at each grow (old+new+copy per attention layer) and overshoots to the next power of two — at 160K it holds 262,144-token bf16 buffers and dies at ~156K, while exact pre-size (163,872) completes 157,287 server-verified tokens (A/B receipts: `benchmarks/longctx-bisect/{ladder,presize}-160k-chunked2048*`). |
 | 018 | mlx-aux-slot-admission-eviction | `mem_cache/allocation.py` | Admission-time auxiliary-slot eviction for the MLX pool. Every finished request donates its live snapshot slot to the radix tree, and upstream's `ensure_mamba_capacity` returns early for anything that is not a `HybridReqToTokenPool`, which the MLX pool is not — without an MLX branch the tree absorbs the entire pool and per-request allocation asserts (`Not enough MLX auxiliary state slots`) after ~pool-size requests. `_ensure_mlx_auxiliary_capacity` mirrors the Hybrid branch: `evict_for_alloc` of `3×num_reqs − free` snapshots (`MAMBA_STATE_PER_REQ_PREFIX_CACHE`). |
 | 019 | mlx-flint-support | `configs/flint.py`, `configs/__init__.py`, `utils/hf_transformers/common.py`, `model_loader/utils.py`, `hardware_backend/mlx/text_checkpoint.py`, `hardware_backend/mlx/model_runner.py`, `kv_cache/attention_contract.py`, `kv_cache/attention_wrapper.py`, `parser/reasoning_parser.py`, `parser/reasoning_parser_names.py`, `function_call/flint_detector.py`, `function_call/function_call_parser.py`, `function_call/parser_names.py` | Recursive Flint (`FlintForCausalLM`: 35 sliding-window + 14 full-attention layers, learned attention sinks, NoPE full layers, 256-expert MoE) on the MLX path. (a) `FlintConfig` registered with `AutoConfig` — transformers has no `flint` model type and the checkpoint ships no remote code, so `get_config` would reject it. (b) `load_text_model`: mlx-lm `load_model` through a `sanitize` adapter that strips mlx-vlm's `language_model.` prefix from the weights **and** the per-tensor quantization overrides (oMLX's oQ*e conversions go through mlx-vlm's model class) and drops the all-zero `mlp.expert_bias` tensors mlx-vlm synthesizes and mlx-lm's Flint declares no parameter for; the tokenizer is no longer loaded twice. (c) The per-layer window map falls back to the mlx-lm `ModelArgs` on `container.args` (`layer_types` + `sliding_window`) — Flint declares its 513-token windows only there, and without a map the runner raises `NotImplementedError` at construction. (d) Batched decode: learned sinks stored as `softmax_offset` (gpt_oss: `sinks`) reach SDPA, and NoPE layers (`rope is None`) skip rotation instead of crashing. (e) `--reasoning-parser flint` (`<think>` only where the model writes it; never forced; no template toggle) and `--tool-call-parser flint` (GLM-4.7's XML call format without line breaks). (f) `get_model_architecture` returns a stand-in class on MLX for architectures the Torch registry lacks — the scheduler's KV-cache builder and the tokenizer manager resolve the architecture even though no Torch model is ever built, and `resolve_transformers_arch` otherwise aborts the boot. Also adds `model_loader/utils.py` to the file list. Needs mlx-lm at or past its Flint commit (git pin in `setup.sh`). |
+| 020 | mlx-prefill-last-token-logits | `hardware_backend/mlx/model_runner.py` | Final-chunk prefill ran the full model on the whole chunk and materialised `[chunk, vocab]` logits that were sliced to one row — 1.2 GB bf16 at chunk 4096 on a 150K vocabulary, the largest final-chunk transient (Flint oQ8e at 42.3 GB resident has ~9 GB of headroom at 27K tokens). `_last_position_logits` splits the final chunk when a headless trunk exists: trunk on all but the last token (cache side effects only), then the full model on the last token, so every post-head transform (softcapping, scaling) still runs and only `[1, vocab]` is produced. Consecutive forwards on one cache are exactly chunked prefill, so the result is the single-call result; VLM shims (no trunk) and NemotronH are unchanged. |
 
 The MLX buffer-cache cap is upstream (`SGLANG_MLX_CACHE_LIMIT_GB`, applied
 before model load) but off unless set; `scripts/common.sh` exports it at 4 GB.
@@ -134,5 +136,5 @@ static pool).
 
 ```bash
 cd components/sglang && git checkout v0.5.23
-for p in ../../patches/0[01][0-9]-*.patch; do git apply "$p"; done   # 9 patches, all clean
+for p in ../../patches/0[012][0-9]-*.patch; do git apply "$p"; done   # 10 patches, all clean
 ```

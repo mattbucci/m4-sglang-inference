@@ -33,8 +33,8 @@ SGLANG_DIR="${SGLANG_DIR:-$REPO/components/sglang}"
 SGLANG_TAG="${SGLANG_TAG:-v0.5.23}"
 
 # setup.sh's exact apply glob — the gate must test the chain setup.sh applies.
-PATCHES=("$PATCH_DIR"/0[01][0-9]-*.patch)
-[ -e "${PATCHES[0]}" ] || { echo "FATAL: no patches match $PATCH_DIR/0[01][0-9]-*.patch"; exit 2; }
+PATCHES=("$PATCH_DIR"/0[012][0-9]-*.patch)
+[ -e "${PATCHES[0]}" ] || { echo "FATAL: no patches match $PATCH_DIR/0[012][0-9]-*.patch"; exit 2; }
 N=${#PATCHES[@]}
 WT_PARENT="$(mktemp -d "${TMPDIR:-/tmp}/patch-gates-XXXXXX")"
 WT="$WT_PARENT/wt"

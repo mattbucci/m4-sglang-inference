@@ -15,7 +15,7 @@
 #   kill $GUARD_PID 2>/dev/null
 #
 # Tunables (env vars):
-#   GUARD_KILL_GB   — kill server when free+inactive drops below this many GB (default 4)
+#   GUARD_KILL_GB   — kill server when the kernel's available memory (kern.memorystatus_level) drops below this many GB (default 8)
 #   GUARD_WARN_GB   — log a warning when below this (default 8)
 #   GUARD_INTERVAL  — seconds between checks (default 10)
 #   GUARD_LOG       — log path (default /tmp/oom_guard.log)
@@ -39,9 +39,22 @@ LOG="${GUARD_LOG:-/tmp/oom_guard.log}"
 ts() { date -u "+%Y-%m-%dT%H:%M:%SZ"; }
 log() { echo "[$(ts)] $*" | tee -a "$LOG" >&2; }
 
+TOTAL_GB=$(( $(sysctl -n hw.memsize) / 1073741824 ))
+
 free_gb() {
-    # Use awk to avoid printf locale issues. Pages free + inactive,
-    # 16KB pages on M-series.
+    # The kernel's own availability figure (kern.memorystatus_level, the
+    # percentage jetsam decides on), scaled to GB. vm_stat free+inactive
+    # undercounts by the file pages a model load is streaming through the
+    # page cache: a 42 GB checkpoint load reads free+inactive=6.9 GB while
+    # the kernel still reports 15+ GB available, so the old metric reaped
+    # loads that completed fine. Fall back to free+inactive when the sysctl
+    # is unavailable.
+    local level
+    level=$(sysctl -n kern.memorystatus_level 2>/dev/null)
+    if [ -n "$level" ]; then
+        awk -v l="$level" -v t="$TOTAL_GB" 'BEGIN { printf "%.2f", l * t / 100 }'
+        return
+    fi
     vm_stat | awk '
         /Pages free/     { f=$3 }
         /Pages inactive/ { i=$3 }
