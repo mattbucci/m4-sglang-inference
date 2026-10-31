@@ -60,6 +60,9 @@ def parse_args():
     p.add_argument("--no-venv", action="store_true",
                    help="Skip pre-rollout venv setup — agent runs read-edit-pray "
                         "without a working test loop. Compatible with v1 runs.")
+    p.add_argument("--prompt-style", choices=["default", "bash"], default="default",
+                   help="Task prompt variant: 'bash' describes a bash-only tool set (for runs "
+                        "that disable opencode's read/edit/write tools, as Flint's own harnesses do).")
     p.add_argument("--prompt-extra", default="",
                    help="Text appended to the task prompt (harness-level rule for a specific "
                         "model, e.g. a required-argument reminder). Record it in the run README.")
@@ -193,6 +196,34 @@ any file's contents, the `glob` and `grep` tools to navigate, and the `edit`
 or `write` tools to apply your fix. **Never ask the user for file contents —
 you can read them yourself.** Iterate: read the file, understand the bug,
 edit it, then verify by re-reading. Do not stop after a single tool call.
+
+Read the problem carefully, locate the relevant code, and write the minimal
+patch that fixes the bug. Do not modify tests. Do not add new files unless
+strictly required. When you're confident the fix is correct, stop — your
+final state will be captured as a `git diff`.
+
+# Problem
+
+{problem_statement}
+
+# Hints (optional, may be empty)
+
+{hints}
+"""
+
+
+PROMPT_NO_VENV_BASH = """\
+You are working on a GitHub issue in this repository. The repo's dependencies
+could NOT be installed locally, so `pytest` and `import` will not work — you
+must reason about correctness from the source alone.
+
+**Your only tool is `bash`**, run in the cloned repo at the relevant base
+commit. Use it to inspect files (`sed -n`, `grep -n`, `cat`) and to apply
+your fix (`python - <<'EOF'` with `pathlib` read/replace/write, or `sed -i`),
+then re-read the changed lines to verify. **Never ask the user for file
+contents — you can read them yourself.** Iterate: read the code, understand
+the bug, edit it, then verify by re-reading. Do not stop after a single tool
+call.
 
 Read the problem carefully, locate the relevant code, and write the minimal
 patch that fixes the bug. Do not modify tests. Do not add new files unless
@@ -396,7 +427,13 @@ def main():
                         except subprocess.CalledProcessError as e:
                             print(f"  env: venv setup crashed: {e} — falling back", flush=True)
 
-                prompt = (PROMPT_TEMPLATE if venv else PROMPT_NO_VENV).format(
+                if venv:
+                    template = PROMPT_TEMPLATE
+                elif args.prompt_style == "bash":
+                    template = PROMPT_NO_VENV_BASH
+                else:
+                    template = PROMPT_NO_VENV
+                prompt = template.format(
                     problem_statement=row["problem_statement"],
                     hints=row.get("hints_text", "") or "(none)",
                 )

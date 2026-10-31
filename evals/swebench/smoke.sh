@@ -36,6 +36,11 @@
 #                    proxy's docstring)
 #   PROXY_UPSTREAM   where the harness proxy forwards (default: the server);
 #                    point it at a recording proxy to capture every request
+#   DISABLE_TOOLS    comma-separated opencode tools to switch off for the run
+#                    (in addition to `task`), e.g. "edit,write,read,grep,glob"
+#                    to make the agent bash-only like Flint's native harnesses
+#   PROMPT_STYLE     task prompt variant passed to run_rollouts.py --prompt-style
+#                    (default | bash); use bash with a bash-only DISABLE_TOOLS set
 
 set -euo pipefail
 # Save our own dir before sourcing common.sh — it redefines SCRIPT_DIR.
@@ -74,6 +79,8 @@ EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size
 # astropy__astropy-12907. Set NO_THINKING_PROXY=0 to disable.
 NO_THINKING_PROXY="${NO_THINKING_PROXY:-1}"
 BACKFILL_BASH_DESCRIPTION="${BACKFILL_BASH_DESCRIPTION:-0}"
+DISABLE_TOOLS="${DISABLE_TOOLS:-}"
+PROMPT_STYLE="${PROMPT_STYLE:-default}"
 
 mkdir -p "$OUT"
 LOG="$OUT/launch.log"
@@ -161,15 +168,17 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
     # patch. Backup/restore around the rollout keeps the user's
     # interactive opencode config untouched.
     cp "$OPENCODE_CFG" "$OPENCODE_CFG_BACKUP"
-    python3 -c "
-import json, re, sys
+    DISABLE_TOOLS="$DISABLE_TOOLS" python3 -c "
+import json, os, re, sys
 src = open('$OPENCODE_CFG').read()
 src = src.replace('http://127.0.0.1:$PORT/v1', 'http://127.0.0.1:$PROXY_PORT/v1')
-# Inject \"tools\": {\"task\": false} after the \$schema line if not already present.
+# Inject a \"tools\" block (task off, plus DISABLE_TOOLS) after the \$schema line if not already present.
+off = ['task'] + [t.strip() for t in os.environ.get('DISABLE_TOOLS', '').split(',') if t.strip()]
+block = '\n  \"tools\": {\n' + ',\n'.join('    \"%s\": false' % t for t in off) + '\n  },'
 if '\"task\": false' not in src:
     src = re.sub(
         r'(\"\\\$schema\":\\s*\"[^\"]+\",)',
-        r'\1\n  \"tools\": {\n    \"task\": false\n  },',
+        lambda m: m.group(1) + block,
         src,
         count=1,
     )
@@ -200,6 +209,9 @@ fi
 extra_args=()
 if [ -n "$PROMPT_EXTRA" ]; then
     extra_args+=(--prompt-extra "$PROMPT_EXTRA")
+fi
+if [ "$PROMPT_STYLE" != "default" ]; then
+    extra_args+=(--prompt-style "$PROMPT_STYLE")
 fi
 if [ -n "$INSTANCE_IDS" ]; then
     python3 run_rollouts.py \
