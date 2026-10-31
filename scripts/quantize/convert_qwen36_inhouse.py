@@ -93,8 +93,20 @@ def main() -> int:
         print(json.dumps(rep, indent=1))
         return 1 if rep["violations"] else 0
 
+    import importlib
+    import shutil
+
     from mlx_vlm.convert import convert
     from mlx_vlm.utils import fetch_from_hub, get_model_path
+
+    def copy_into(src, dst):
+        # HF cache blobs are mode 0444 and shutil.copy keeps the mode, so the
+        # processor save that follows the copy fails on tokenizer.json.
+        target = os.path.join(dst, os.path.basename(src)) if os.path.isdir(dst) else dst
+        shutil.copyfile(src, target)
+        return target
+
+    importlib.import_module("mlx_vlm.convert").shutil.copy = copy_into
 
     predicate = build_predicate()
     t0 = time.time()
