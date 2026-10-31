@@ -11,13 +11,16 @@ turn texts inside).
 
 | Turn | Prompt tokens | Radix on, cold tree | Radix on, second pass (full-prefix hits) | Radix off |
 |-----:|--------------:|--------------------:|------------------------------------------:|----------:|
-| 1 | 13,339 | 17.25 s | 0.22 s | 17.43 s |
-| 2 | 13,456 | 0.60 s | 0.48 s | 19.17 s |
-| 3 | 13,571 | 0.62 s | 0.61 s | 19.47 s |
+| 1 | 13,305 | 17.34 s | 1.73 s | 28.35 s (first request of the process) |
+| 2 | 13,422 | 0.48 s | 0.27 s | 19.32 s |
+| 3 | 13,537 | 0.62 s | 0.25 s | 18.10 s |
 
-Radix on also passed, on the same server: `validate_capabilities.py` 3/3,
-`probe_codegen.py --max-tokens 4096` STRONG, `test_radix_cache_repeat.py`
-4/4 consistent, 0 OOM-guard warnings.
+Both sides produce token-identical text on all three turns (96 / 96 / 83
+tokens). Radix on also passed, on the same server: `validate_capabilities.py`
+3/3, `probe_codegen.py --max-tokens 4096` STRONG, `test_radix_cache_repeat.py`
+4/4 consistent, 0 OOM-guard warnings. Radix off (overlap schedule on, patch
+023): `validate_capabilities.py` 3/3 and two rounds of 8 concurrent requests
+finishing at different decode steps, no server errors.
 
 ## Memory: kernel-available minimum per phase (memprobe-*.summary.txt)
 
