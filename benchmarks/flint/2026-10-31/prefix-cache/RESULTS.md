@@ -85,3 +85,25 @@ row, counting bash calls that carry `description`:
 (On a two-line user prompt the same rule gives 10/10; unchanged it gives
 2/10.) The harness proxy backfills the argument instead
 (`evals/swebench/no_thinking_proxy.py`, `BACKFILL_BASH_DESCRIPTION=1`).
+
+## Envelope with the radix cache on (`envelope_sampled` run, preset defaults, 3.7 GB pool)
+
+| Depth | Prompt tokens | Prefill tok/s | Decode tok/s | Radix-off prefill / decode |
+|------:|--------------:|--------------:|-------------:|---------------------------:|
+| 4K | 3,495 | 924 | 50.3 | 931 / 58.6 |
+| 16K | 13,863 | 794 | 47.0 | 805 / 54.9 |
+| 32K | 27,039 | 645 | 43.1 | 633 / 49.7 |
+
+Kernel-available minimum during the 27K prefill: 12.8 GB (17.3 GB with
+the radix cache off); vm pressure level never above 1. Decode is ~12%
+lower because the hybrid `no_buffer` bookkeeping disables the overlap
+schedule.
+
+## Harness ceiling (evals/swebench/runs/flint-oQ8e-prefix-cache-2026-10-31)
+
+A 77K-token request (61K context + a 16K output) with the 3.7 GB pool
+took the process to Metal's 51.8 GB working set
+(`kIOGPUCommandBufferCallbackErrorOutOfMemory` on the next cold prefill,
+kernel-available 9.0 GB). The SWE-bench harness bounds Flint at 64K:
+`CTX=65536`, a 65536-slot pool (1.85 GB), opencode `limit.context` 65536.
+

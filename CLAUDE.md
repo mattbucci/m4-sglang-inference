@@ -53,6 +53,7 @@ PRESETS="nemotron-30b" bash scripts/eval/probe_all.sh         # single-preset sw
 python scripts/eval/check_mlx_quant_scales.py    <repo>       # per-layer scale corruption scan
 python scripts/eval/audit_mlx_quant_metadata.py               # recipe-level hazards across M4 set
 python scripts/eval/validate_chat_template.py    --model <path>
+python scripts/eval/test_swa_snapshot_unit.py                 # patch 021: windowed-KV snapshot round-trip (CPU, no server)
 
 # Quality + benchmarks
 python scripts/eval/eval_and_chart.py --run --port 23334 --tag "Coder-30B"

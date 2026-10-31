@@ -62,9 +62,15 @@ checkpoint-layout adapter.
 | `flint-oQ6e` | 6.6 | 32.9 GB | 64.8 / 61.2 / 56.0 / — | 760 / 638 / — | 3/3 · STRONG · VERIFIED | identical |
 | `flint-oQ4e` | 4.7 | 23.5 GB | 70.5 / 67.5 / 61.5 / — | 708 / 595 / — | 3/3 · STRONG · VERIFIED | identical |
 
-oQ8e rows are the preset configuration (`CHUNKED=1024`, 2 GB MLX buffer
-cache, `MAX_RUNNING=4`); the oQ6e/oQ4e rows were measured at `CHUNKED=4096`
-with the 4 GB cache. The 42.3 GB of oQ8e weights sit under the 51.8 GB Metal
+The table is measured with the radix cache off; the oQ8e row uses the
+preset's `CHUNKED=1024`, 2 GB MLX buffer cache and `MAX_RUNNING=4`, the
+oQ6e/oQ4e rows `CHUNKED=4096` with the 4 GB cache. The preset as shipped
+runs the radix cache (patch 021), which keeps prefill where it is (924 /
+794 / 645 tok/s at 3.5K / 13.9K / 27K) and costs ~12% of decode because
+the hybrid `no_buffer` bookkeeping turns the overlap schedule off
+(50.3 / 47.0 / 43.1 tok/s at the same depths); the 27K prefill then leaves
+12.8 GB kernel-available instead of 17 GB
+(`benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md`). The 42.3 GB of oQ8e weights sit under the 51.8 GB Metal
 working set, and the serving envelope is set by prefill transients rather
 than weights: a 27K-token prefill at chunk 1024 leaves the kernel reporting
 17 GB available (`kern.memorystatus_level`, the figure jetsam acts on) and
