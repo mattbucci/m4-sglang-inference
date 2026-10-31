@@ -22,10 +22,9 @@
 #   qwen36-27b     Qwen3.6-27B-4bit Dense DeltaNet+VL (new — no MoE variant)
 #   flint          Recursive Flint 40B-A2.5B MoE coding agent (oMLX oQ8e, 32K)
 #
-# KV cache modes (--kv-cache):
-#   fp8            MXFP8 quantized (default, ~2x memory savings)
-#   turboquant     Affine 4-bit quantized (~3.5x savings, large KV heads)
-#   fp16           Full precision float16 (no quantization)
+# KV cache modes (--kv-cache): fp8 (default), turboquant, fp16 — accepted for
+# CLI compatibility, inert on the MLX backend (KV is stored in the attention
+# compute dtype; the aliases come from patch 002 so presets pass argparse).
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

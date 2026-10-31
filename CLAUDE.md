@@ -99,8 +99,9 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   effective; jetsam reaped the server; required reboot). The lever moves DOWN
   for long-context: **use mem-fraction 0.4 for 32K+ work**. Right levers for
   memory pressure: `--max-total-tokens`, `MAX_RUNNING`, request `max_tokens`,
-  `chat_template_kwargs={"enable_thinking": false}`,
-  `--kv-cache-dtype turboquant`, and `CHUNKED=2048` — chunk size sets the
+  `chat_template_kwargs={"enable_thinking": false}`, and `CHUNKED=2048`
+  (`--kv-cache-dtype` is accepted but inert on the MLX backend: the KV pool
+  stays in the attention compute dtype) — chunk size sets the
   per-chunk transient floor: at the preset-default 4096 the transients swing
   free memory 1–11 GB per chunk and kill deep prefills at ~100-113K that
   complete at 2048 (`benchmarks/longctx-bisect/ATTRIBUTION.md`). Chunk size

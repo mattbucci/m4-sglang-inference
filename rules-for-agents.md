@@ -65,7 +65,7 @@ Levers that actually optimize memory on M4 (not `MEM_FRAC`):
 - `--max-running-requests` / `MAX_RUNNING` — bounds concurrent decode state
 - Request-side `max_tokens` — caps per-request decode activation
 - `chat_template_kwargs={"enable_thinking": false}` — skips the `<think>` channel for non-reasoning workloads, frees the budget for the actual response
-- `--kv-cache-dtype turboquant` — 4-bit KV, 4× pool slots at same MEM_FRAC
+- `--kv-cache-dtype` — accepted for CLI compatibility only; the MLX pool stores KV in the attention compute dtype (bf16/fp16), so `turboquant`/`fp8` change nothing on this backend
 
 ### Memory Bandwidth
 The M4 Pro has ~273 GB/s memory bandwidth. For autoregressive decode, throughput is
@@ -101,7 +101,7 @@ Always source `common.sh` and call `setup_mlx_env` before launching.
 - No `--tensor-parallel-size` (always 1)
 - No `--quantization` flag needed (MLX handles quantization internally)
 - No `--attention-backend` flag (MLX handles attention)
-- No `--kv-cache-dtype` flag (MLX manages KV cache format)
+- `--kv-cache-dtype` is inert (MLX stores KV in the attention compute dtype; the aliases only exist so the presets pass argparse)
 
 ## Quantization
 

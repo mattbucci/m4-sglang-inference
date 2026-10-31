@@ -2,7 +2,7 @@
 
 Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 10 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
 
-**Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), and turboquant KV costs zero recall vs fp16 at genuine 32K (same-seed A/B). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
+**Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), (the `--kv-cache-dtype` flag is inert on this backend — the MLX pool stores KV in the attention compute dtype — so the earlier turboquant-vs-fp16 recall A/B compared identical bf16 arms). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
 
 ## Action queue
 
@@ -12,7 +12,7 @@ Full specs and statuses live in [experiments/README.md](experiments/README.md); 
 - [ ] **SWE-bench re-run** — the qwen36 SWE-bench cell is from the earlier stack pin; needs a dedicated opencode-harness session. Depth/concurrency re-measure is complete: eight presets at genuine depth, all armed as schema-v2 baselines (see Performance).
 - [ ] **In-house qwen36 MLX 4-bit** with router/DeltaNet/vision exclusions — after disk + sampling. Spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md). *(days)*
 - [ ] **192K knob probes + GB-shortfall ledger** — sub-2048 chunks / exact-196,608 pool / MEM_FRAC 0.45 against the 192K death; failed arms yield the exact GB number phase 2 must recover. No patch, no download. Spec: [experiments/11](experiments/11-prefill-budget-ledger-192k.md). *(15-45 min/arm)*
-- [ ] **Depth-recall probe** — multi-needle positional recall to 157K + turboquant-vs-fp16 KV A/B + a standing 32K recall tripwire; supplies the drift gate beyond-160K presumes. Spec: [experiments/10](experiments/10-depth-recall-probe.md). *(~2-3h)*
+- [ ] **Depth-recall probe** — multi-needle positional recall to 157K + a standing 32K recall tripwire (the KV-dtype A/B is moot: `--kv-cache-dtype` is inert on MLX); supplies the drift gate beyond-160K presumes. Spec: [experiments/10](experiments/10-depth-recall-probe.md). *(~2-3h)*
 - [ ] **Session endurance + extend turn tax** — radix-on retention past 10 requests and append-to-cached-prefix TTFT on the daily agentic workload (R97-J cross-rig request). Spec: [experiments/12](experiments/12-agentic-endurance-and-extend-tax.md). *(~4-6h)*
 
 ## Primary target: long-context agentic coding
@@ -182,7 +182,8 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 
 - **Sampling caveats.** Real per-request sampling (temperature/top-p/top-k/min-p, logit_bias, grammar masks, logprobs) is upstream on the MLX path behind `--mlx-enable-sampling` (every preset sets it); greedy stays bit-stable argmax and `--sampling-defaults model` applies checkpoint generation configs. Caveats: `top_k==1` is served greedy, and repetition/frequency/presence penalties are not applied. Earlier gate receipts: [benchmarks/sampling-ab.md](benchmarks/sampling-ab.md).
 - **`gemma4` / `gemma4-31b` blocked at boot** — the per-layer sliding-window map now resolves on this pin, but mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head` (`AttributeError: 'LanguageModel' object has no attribute 'lm_head'`). Needs the attention contract to recognise mlx-vlm's Gemma 4 attention module (or a Gemma 4 entry like the NemotronH adapter); receipt in `benchmarks/quality/probe-trio/gemma4.json`.
-- **Long-context ceiling is 256K** (validated: in=251,659, ~23 min prefill; recipe: `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024`, radix off, turboquant). Four load-bearing settings: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), patch-015 cache pre-sizing (the doubling ladder's power-of-two overshoot kills deep runs), EXACT pool sizing (overallocating CTX costs the last GBs — a 192K label at CTX=210K dies where CTX=196608 completes), and `CHUNKED=1024` (the 4096 default's transients kill deep prefills at ~100-113K; 1024 buys ~4.3 GB margin over 2048 at no speed cost). There is no decode wall: true streamed decode is 61.7 tok/s @32K → 36.0 @128K → 30.2 @151K (`benchmarks/longctx-bisect/decode-curve/DECISION.md`); the historical "13-19 s/token" figures were whole-request prefill amortization, since corrected in `bench_long_context.py`.
+- **Long-context ceiling is 256K** (validated: in=251,659, ~23 min prefill; recipe: `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024`, radix off; the `--kv-cache turboquant` flag in the original recipe is inert, see below). Four load-bearing settings: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), patch-015 cache pre-sizing (the doubling ladder's power-of-two overshoot kills deep runs), EXACT pool sizing (overallocating CTX costs the last GBs — a 192K label at CTX=210K dies where CTX=196608 completes), and `CHUNKED=1024` (the 4096 default's transients kill deep prefills at ~100-113K; 1024 buys ~4.3 GB margin over 2048 at no speed cost). There is no decode wall: true streamed decode is 61.7 tok/s @32K → 36.0 @128K → 30.2 @151K (`benchmarks/longctx-bisect/decode-curve/DECISION.md`); the historical "13-19 s/token" figures were whole-request prefill amortization, since corrected in `bench_long_context.py`.
+- **`--kv-cache-dtype` is inert on the MLX backend.** The `fp8`/`mxfp8`/`turboquant`/`fp16` aliases (patch 002) exist so the launch presets pass argparse; the MLX attention pool and the per-request caches store KV in the attention compute dtype (bf16 for the mlx-community checkpoints) at every pin this stack has run on. Memory levers that do work: `--max-total-tokens`, `CHUNKED`, `MAX_RUNNING`, request `max_tokens`, `SGLANG_MLX_CACHE_LIMIT_GB`. 4-bit KV on Apple Silicon remains a prospect ([MLX discussion](https://github.com/ml-explore/mlx/discussions/3134)), not a shipped lever.
 - **64K dense-attention ceiling is structural.** The per-chunk attention-score tensor `mx.fast.scaled_dot_product_attention` materializes hits 30–90 GB at deep offsets. Without flash-attention-style block-streaming SDPA in MLX, decode at 32K is the practical ceiling for dense standard-attention models; DeltaNet hybrids (`qwen35`, `qwen36`, `qwen36-27b`) are the workaround.
 - **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
 - **Coder-Next-80B infeasible** — 42 GB weights alone exceed the safe budget; model load OOMs. No path on a single 64 GB Mac.
@@ -219,7 +220,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 # Long-context (128K validated; OOM guard mandatory for ≥32K)
 bash scripts/common/oom_guard.sh &
 CTX=140000 MEM_FRAC=0.5 CHUNKED=2048 EXTRA_ARGS="--disable-radix-cache" \
-    bash scripts/launch.sh qwen36 --kv-cache turboquant
+    bash scripts/launch.sh qwen36
 
 # Agentic coding (qwen36 + opencode). The Qwen3 <think> template blocks break
 # the opencode loop (reasoning_content invisible to opencode / stray </think>
@@ -280,7 +281,7 @@ bash   scripts/bench/bench_256k_all.sh                      # long-context sweep
 
 Decode tok/s with the server-verified depth instrument (every point's
 `actual_input_tokens` == label). Tripwire recipe: `CTX=36000 MEM_FRAC=0.45
-SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant`.
+SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache` (bf16 KV; the `--kv-cache turboquant` the rows were run with is inert).
 These rows are the regression baselines (`benchmarks/baselines.json`, schema v2).
 
 | Preset | @1K | @8K | @32K | TTFT @32K |
@@ -339,7 +340,7 @@ error rows.
 
 `—` = OOM-guard tripped at that context. Two patterns: **MoE shapes the short-context win** (small active-weight reads); **DeltaNet keeps decode flat** (qwen35: 14.7→12.6 across the whole sweep — the O(1) linear-attention signature, and the load-bearing reason DeltaNet hybrids stay viable at long context on Apple Silicon).
 
-**Turboquant works:** ~7× more KV slots than fp16 at the same mem-fraction, outputs identical within tolerance, decode within 1% of fp16 at short context. The win is at long context (reduced KV bandwidth) and memory budget.
+The KV column records the flag each row was launched with; `--kv-cache-dtype` is inert on the MLX backend (bf16 KV in every row), so the "turboquant" and "fp8" rows differ only by model.
 
 ### Batched-decode peaks (single-server multi-prompt)
 
@@ -352,12 +353,13 @@ error rows.
 
 ### Memory budget at 256K (64 GB Mac)
 
-| Model class | Weights | KV @256K fp8 | Fits? |
-|-------|:-------:|:------------:|:------|
-| MoE 3B-active (Coder-30B, Qwen3-30B-DWQ) | 16 GB | 12 GB | **fp8** comfortably |
-| MoE+DeltaNet (Qwen3.6-35B-A3B) | 17 GB | varies† | **turboquant** |
-| Dense+VL (Devstral, Qwen3.5-27B) | 14–15 GB | 21 GB | **fp8** |
-| Dense (Qwen3-32B) | 18 GB | 33 GB | **turboquant** required |
+| Model class | Weights | KV @256K (bf16, what the MLX pool stores) | Fits? |
+|-------|:-------:|:-----------------------------------------:|:------|
+| MoE 3B-active (Coder-30B, Qwen3-30B-DWQ) | 16 GB | 24 GB | yes, with the long-context recipe |
+| MoE+DeltaNet (Qwen3.6-35B-A3B) | 17 GB | varies† | yes (256K validated) |
+| Flint 40B-A2.5B (oQ8e) | 42 GB | 7.5 GB (14 full layers, 4 KV heads) | 32K preset validated; deeper runs need the headroom measured per depth |
+| Dense+VL (Devstral, Qwen3.5-27B) | 14–15 GB | 42 GB | no — and the dense 32K attention ceiling applies first |
+| Dense (Qwen3-32B) | 18 GB | 66 GB | no |
 
 † DeltaNet layers hold recurrent state instead of KV; only full-attention layers store KV.
 
@@ -449,13 +451,7 @@ macOS 26.2 (Tahoe)
 
 ## Long context: how it works
 
-```bash
---kv-cache fp8          # MXFP8, ~1.9× memory savings (default)
---kv-cache turboquant   # Affine 4-bit, ~3.6× savings (large-KV models / deep context)
---kv-cache fp16         # Debugging only
-```
-
-[Research](https://github.com/ml-explore/mlx/discussions/3134) shows 4-bit KV can be *faster* than unquantized on M4 Pro — less memory traffic outweighs dequant cost.
+`launch.sh --kv-cache {fp8,turboquant,fp16}` is accepted for CLI compatibility but inert on this backend: the MLX attention pool and the per-request caches hold KV in the attention compute dtype (bf16). Capacity comes from exact pool sizing (`CTX = label + 64`), the MLX buffer-cache cap, patch-015 pre-sizing and small prefill chunks (see Known Issues). [Research](https://github.com/ml-explore/mlx/discussions/3134) suggests 4-bit KV could be *faster* than unquantized on M4 Pro (less memory traffic outweighs the dequant cost); it is a candidate for the backend, not a shipped lever.
 
 **Health check timeout** — SGLang's 20 s default is too short for chunked prefill at depth on Apple Silicon (each 4 K chunk takes 50–80 s); `common.sh` sets `SGLANG_HEALTH_CHECK_TIMEOUT=120`.
 
