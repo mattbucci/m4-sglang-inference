@@ -48,6 +48,8 @@ ATTR_CHECKS = {
          lambda m: m.ContiguousAttentionKVCache.reserve),
         ("WindowedAttentionKVCache.snapshot_state",                    # 021
          lambda m: m.WindowedAttentionKVCache.snapshot_state),
+        ("PoolBackedAttentionKVCache appends across calls",            # 022
+         lambda m: _src_has(m, "if self._full_keys is not None:")),
     ],
     "sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state": [
         ("MlxAuxiliaryStateComponent.finalize_match_result_in_cache",  # 008
@@ -65,6 +67,9 @@ ATTR_CHECKS = {
          lambda m: m.MlxModelRunner._last_position_logits),
         ("MlxModelRunner.snapshots_sliding_window_prefix",             # 021
          lambda m: m.MlxModelRunner.snapshots_sliding_window_prefix),
+        ("MlxModelRunner._materialize_pool_backed_attention(required_len)",  # 022
+         lambda m: "required_len"
+         in m.MlxModelRunner._materialize_pool_backed_attention.__code__.co_varnames),
     ],
     "sglang.srt.hardware_backend.mlx.swa_prefix": [
         ("mlx_snapshots_sliding_window_prefix",                        # 021

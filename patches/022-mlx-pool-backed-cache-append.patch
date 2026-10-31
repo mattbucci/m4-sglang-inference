@@ -1,0 +1,78 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+index 0fb131c376..8872fab3aa 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+@@ -331,6 +331,15 @@ class PoolBackedAttentionKVCache:
+     Each ``update_and_fetch`` gathers this layer's prefix from the pool
+     on demand, keeping operations in the lazy compute graph.  Convert to
+     ``ContiguousAttentionKVCache`` via ``to_contiguous`` after the forward pass.
++
++    Consecutive forwards on one instance append, as on every other cache:
++    the first call gathers the pool prefix and the chunks already fetched
++    stay in front of each later one. A chunk split across two calls (the
++    runner's last-position logits run the trunk on all but the last token,
++    then the model on that token) therefore attends to the same keys as a
++    single call. Re-gathering ``slots[:offset]`` on the later call instead
++    would drop the first call's tokens: the pool holds nothing for them
++    until the request syncs after the forward.
+     """
+ 
+     __slots__ = (
+@@ -382,10 +391,14 @@ class PoolBackedAttentionKVCache:
+     def update_and_fetch(
+         self, keys: mx.array, values: mx.array
+     ) -> tuple[mx.array, mx.array]:
+-        """Gather cached prefix from pool, concatenate with new K/V."""
++        """Append new K/V; return the pool prefix plus every chunk fetched so far."""
+         S = keys.shape[2]
+ 
+-        if self.offset > 0:
++        if self._full_keys is not None:
++            # A chunk is already in front: extend it, the pool prefix included.
++            k_all = mx.concatenate([self._full_keys, keys], axis=2)
++            v_all = mx.concatenate([self._full_values, values], axis=2)
++        elif self.offset > 0:
+             k_cached, v_cached = self._pool.get_kv(
+                 self._layer_idx, self._slots[: self.offset]
+             )
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 7c5f5a4be4..8e9f1b6078 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -588,8 +588,16 @@ class MlxModelRunner:
+             )
+         return cache
+ 
+-    def _materialize_pool_backed_attention(self, cache: list[Any]) -> list[Any]:
+-        contiguous_cache = self._acquire_cache()
++    def _materialize_pool_backed_attention(
++        self, cache: list[Any], required_len: int | None = None
++    ) -> list[Any]:
++        """Copy pool-backed full-attention KV into a contiguous cache.
++
++        ``required_len`` pre-sizes the contiguous caches exactly as a cold
++        prefill's ``_acquire_cache`` does, so a prefix hit's decode does not
++        walk the growth ladder either.
++        """
++        contiguous_cache = self._acquire_cache(required_len)
+         for layer_idx in self._cache_layout.full_attention_layer_indices:
+             pbc = cache[layer_idx]
+             contiguous_cache[layer_idx].update_and_fetch(
+@@ -1349,7 +1357,7 @@ class MlxModelRunner:
+                     self.model(input_ids, cache=cache)
+                 self._store_tracked_auxiliary_state(req, cache, track_len)
+                 if pool_backed_attention:
+-                    cache = self._materialize_pool_backed_attention(cache)
++                    cache = self._materialize_pool_backed_attention(cache, required_len)
+                     pool_backed_attention = False
+                 extend_tokens = new_token_ids[track_new_count:]
+             else:
+@@ -1380,7 +1388,7 @@ class MlxModelRunner:
+         # This appends a lazy slice-assign onto the forward graph; the
+         # arrays get materialised when the caller evaluates lazy_token.
+         if pool_backed_attention:
+-            cache = self._materialize_pool_backed_attention(cache)
++            cache = self._materialize_pool_backed_attention(cache, required_len)
+ 
+         if new_slot_ids:
+             self._sync_new_kv_to_pool(cache, prefix_len, new_slot_ids)
