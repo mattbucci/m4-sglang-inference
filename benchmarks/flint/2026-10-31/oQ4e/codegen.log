@@ -1,0 +1,46 @@
+============================================================
+PROBE: is_balanced (parens)
+finish=stop  usage={'prompt_tokens': 56, 'total_tokens': 270, 'completion_tokens': 214, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def is_balanced(s):
+    balance = 0
+    for char in s:
+        if char == '(':
+            balance += 1
+        elif char == ')':
+            balance -= 1
+            if balance < 0:
+                return False
+    return balance == 0
+```
+
+  is_balanced('()') = True  expected True  OK
+  is_balanced('(())') = True  expected True  OK
+  is_balanced('(()') = False  expected False  OK
+  is_balanced(')(') = False  expected False  OK
+  is_balanced('') = True  expected True  OK
+
+============================================================
+PROBE: merge_intervals
+finish=length  usage={'prompt_tokens': 69, 'total_tokens': 469, 'completion_tokens': 400, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+We need answer user. Need write complete Python function merge_intervals(intervals) takes list intervals like [[1,3],[2,6],[8,10],[15,18]] returns merged non-overlapping intervals as list. Just function — no imports, no examples. Use markdown code fences.
+
+Need likely include function code. Should we include type hints? No imports. Just function. Need maybe handle unsorted? Usually merge intervals
+
+FAIL: code did not exec: SyntaxError('invalid syntax', ('<string>', 1, 4, 'We need answer user. Need write complete Python function merge_intervals(intervals) takes list intervals like [[1,3],[2,6],[8,10],[15,18]] returns merged non-overlapping intervals as list. Just function - no imports, no examples. Use markdown code fences.\n', 1, 8))
+
+============================================================
+  is_balanced (parens): 5/5
+  merge_intervals: exec failed (SyntaxError)
+OVERALL: 5/8
+
+VERDICT: PARTIAL
+
+Notes:
+- STRONG = all 8 algorithmic test cases pass.
+- PARTIAL = some tests fail (algorithm mostly right, edge cases broken).
+- FAIL = no working code returned.

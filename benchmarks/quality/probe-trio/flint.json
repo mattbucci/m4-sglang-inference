@@ -1,0 +1,14 @@
+{
+  "preset": "flint",
+  "timestamp": "2026-10-31T01:11:58",
+  "probes": {
+    "codegen": {
+      "verdict": "STRONG",
+      "log": "/tmp/probe-trio-logs/flint-codegen.log"
+    },
+    "thinking": {
+      "verdict": "THINKING VERIFIED",
+      "log": "/tmp/probe-trio-logs/flint-thinking.log"
+    }
+  }
+}

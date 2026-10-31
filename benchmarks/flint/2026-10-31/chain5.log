@@ -1,0 +1,41 @@
+######## A2 sampled: oQ8e CHUNKED=1024 CACHE=2 MR=4 (patch 020)  Sat Oct 31 01:16:37 PDT 2026
+READY in 29s (CHUNKED=1024 CACHE=2GB MR=4)
+depth~4096: prompt_tokens=3495 ttft=3.78s prefill_tps=926 completion_tokens=96 decode_tps=59.1 wall=5.4s
+depth~16384: prompt_tokens=13863 ttft=17.14s prefill_tps=809 completion_tokens=96 decode_tps=54.4 wall=18.9s
+depth~32000: prompt_tokens=27039 ttft=42.62s prefill_tps=634 completion_tokens=96 decode_tps=49.3 wall=44.5s
+server alive after bench
+min memorystatus level GB: 17.3 at 01:17:34.884 (level=27% pressure=1 free=0.1 inactive=10.4 spec=0.0)
+min free+inactive GB: 10.3 at 01:18:16.096 (level=27% pressure=1 free=0.2 inactive=10.1 spec=0.0)
+min free GB: 0.0 at 01:17:00.736 (level=87% pressure=1 free=0.0 inactive=27.0 spec=0.5)
+max vm pressure level: 1
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/envelope_sampled.sh: line 26: 51825 Terminated: 15          bash $S/tools/mem_sampler.sh $OUT/mem.log
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/envelope_sampled.sh: line 26: 51826 Killed: 9               MODEL=mlx-community/flint-oQ8e CHUNKED=$CH MAX_RUNNING=$MR SGLANG_MLX_CACHE_LIMIT_GB=$CACHE bash scripts/launch.sh flint > $OUT/server.log 2>&1
+DONE A2
+######## B2 sampled: oQ8e CHUNKED=2048 CACHE=4 MR=4 (patch 020)  Sat Oct 31 01:18:24 PDT 2026
+READY in 31s (CHUNKED=2048 CACHE=4GB MR=4)
+depth~4096: prompt_tokens=3495 ttft=3.78s prefill_tps=924 completion_tokens=96 decode_tps=59.1 wall=5.4s
+depth~16384: prompt_tokens=13863 ttft=18.82s prefill_tps=736 completion_tokens=96 decode_tps=54.0 wall=20.6s
+depth~32000: prompt_tokens=27039 ttft=46.20s prefill_tps=585 completion_tokens=96 decode_tps=49.1 wall=48.1s
+server alive after bench
+min memorystatus level GB: 15.4 at 01:20:09.850 (level=24% pressure=1 free=0.1 inactive=8.5 spec=0.0)
+min free+inactive GB: 8.5 at 01:20:09.850 (level=24% pressure=1 free=0.1 inactive=8.5 spec=0.0)
+min free GB: 0.0 at 01:18:49.702 (level=90% pressure=1 free=0.0 inactive=28.3 spec=0.4)
+max vm pressure level: 1
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/envelope_sampled.sh: line 26: 53491 Terminated: 15          bash $S/tools/mem_sampler.sh $OUT/mem.log
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/envelope_sampled.sh: line 26: 53492 Killed: 9               MODEL=mlx-community/flint-oQ8e CHUNKED=$CH MAX_RUNNING=$MR SGLANG_MLX_CACHE_LIMIT_GB=$CACHE bash scripts/launch.sh flint > $OUT/server.log 2>&1
+DONE B2
+######## greedy equivalence after patch 020: oQ6e vs mlx-lm ref, oQ8e divergence gap  Sat Oct 31 01:20:18 PDT 2026
+--- oQ6e greedy_equiv
+server finish={'type': 'length', 'length': 96} completion_tokens=96
+identical=True common_prefix_chars=486/486
+--- oQ6e greedy_diverge
+server greedy tokens=96 ref=96 first_divergence_index=None
+IDENTICAL token stream
+--- oQ8e greedy_equiv
+server finish={'type': 'length', 'length': 96} completion_tokens=96
+identical=True common_prefix_chars=500/500
+--- oQ8e greedy_diverge
+server greedy tokens=96 ref=96 first_divergence_index=None
+IDENTICAL token stream
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/chain5.sh: line 14: 55293 Killed: 9               MODEL=mlx-community/flint-$v bash scripts/launch.sh flint > $OUT/server.log 2>&1
+CHAIN5_DONE Sat Oct 31 01:21:38 PDT 2026

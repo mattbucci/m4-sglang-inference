@@ -1,0 +1,4 @@
+[2026-10-31 01:07:41] server_args={'model_path': 'mlx-community/flint-oQ8e', 'tokenizer_path': 'mlx-community/flint-oQ8e', 'tokenizer_mode': 'auto', 'tokenizer_backend': 'huggingface', 'tokenizer_worker_num': 1, 'detokenizer_worker_num': 1, 'skip_tokenizer_init': False, 'load_format': 'auto', 'model_loader_extra_config': '{}', 'trust_remote_code': True, 'context_length': 32768, 'is_embedding': Fal
+[2026-10-31 01:07:50] MLX buffer cache limit set to 2.0 GB
+[2026-10-31 01:07:50] Stripped the 'language_model.' prefix from 1798 checkpoint tensors
+[2026-10-31 01:07:50] Dropped 47 all-zero checkpoint tensors without a model parameter (e.g. model.layers.47.mlp.expert_bias)

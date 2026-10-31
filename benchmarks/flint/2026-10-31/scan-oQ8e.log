@@ -1,0 +1,7 @@
+Scanning: /Users/letsrtfm/.cache/huggingface/hub/models--mlx-community--flint-oQ8e/snapshots/d2beb5c89772cdd49f50a5fb790cd270e5b80a55
+  9 safetensor file(s)
+  max-mag threshold: 1000.0
+
+
+======================================================================
+OK: all 486 quantized layers (weight+scales+biases) healthy

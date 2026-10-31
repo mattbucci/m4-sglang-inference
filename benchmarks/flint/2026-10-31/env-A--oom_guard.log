@@ -1,0 +1,5 @@
+[2026-10-31T08:07:28Z] oom_guard started: kill<8GB warn<12GB interval=2s pid=50040
+[2026-10-31T08:07:57Z] CRITICAL free=6.88GB < 8GB — killing SGLang pids: 50041 
+  PID    RSS COMMAND
+50041 994352 python3 -m sglang.launch_server --model-path mlx-community/flint-oQ8e --served-model-name flint --context-length 32768 --max-running-requests 2 --chunked-prefill-size 1024 --mem-fraction-static 0.7 --trust-remote-code --watchdog-timeout 1800 --port 23334 --host 0.0.0.0 --enable-metrics --kv-cache-dtype fp8 --mlx-enable-sampling --reasoning-parser flint --skip-server-warmup --tool-call-parser flint --disable-radix-cache --sampling-defaults model --max-total-tokens 65536                                   
+[2026-10-31T08:08:00Z] oom_guard exiting

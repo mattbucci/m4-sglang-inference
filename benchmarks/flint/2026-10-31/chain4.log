@@ -1,0 +1,96 @@
+######## envelope A: oQ8e CHUNKED=1024 CACHE=2 MR=2  Sat Oct 31 01:07:25 PDT 2026
+[mem before] free=36.3 inactive=18.1 spec=0.0 active=5.0 GB
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/oq8e_envelope.sh: line 16: 50041 Killed: 9               MODEL=mlx-community/flint-oQ8e CHUNKED=$CH MAX_RUNNING=$MR SGLANG_MLX_CACHE_LIMIT_GB=$CACHE bash scripts/launch.sh flint > $OUT/server.log 2>&1
+SERVER DIED
+[2026-10-31 01:07:47] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e "HTTP/1.1 200 OK"
+[2026-10-31 01:07:47] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-10-31 01:07:47] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-10-31 01:07:47] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[2026-10-31 01:07:48] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[2026-10-31 01:07:48] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e "HTTP/1.1 200 OK"
+[2026-10-31 01:07:48] Tokenizer for mlx-community/flint-oQ8e is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-10-31 01:07:48] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e "HTTP/1.1 200 OK"
+[2026-10-31 01:07:48] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e "HTTP/1.1 200 OK"
+[2026-10-31 01:07:48] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-10-31 01:07:48] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[2026-10-31 01:07:49] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e "HTTP/1.1 200 OK"
+[2026-10-31 01:07:49] Tokenizer for mlx-community/flint-oQ8e is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-10-31 01:07:50] Initializing MlxModelRunner for end-to-end MLX inference
+[2026-10-31 01:07:50] MLX buffer cache limit set to 2.0 GB
+[2026-10-31 01:07:50] Loading MLX model: mlx-community/flint-oQ8e
+[2026-10-31 01:07:50] HTTP Request: GET https://huggingface.co/api/models/mlx-community/flint-oQ8e/revision/main "HTTP/1.1 200 OK"
+Fetching 16 files:   0%|          | 0/16 [00:00<?, ?it/s]Fetching 16 files: 100%|██████████| 16/16 [00:00<00:00, 2195.11it/s]
+[2026-10-31 01:07:50] Stripped the 'language_model.' prefix from 1798 checkpoint tensors
+[2026-10-31 01:07:50] Dropped 47 all-zero checkpoint tensors without a model parameter (e.g. model.layers.47.mlp.expert_bias)
+######## envelope B: oQ8e CHUNKED=2048 CACHE=4 MR=4 (preset-like)  Sat Oct 31 01:07:59 PDT 2026
+[mem before] free=14.5 inactive=5.5 spec=0.2 active=6.4 GB
+READY in 32s  (CHUNKED=2048 CACHE=4GB MAX_RUNNING=4)
+depth~4096: prompt_tokens=3495 ttft=3.92s prefill_tps=893 completion_tokens=96 decode_tps=59.2 wall=5.5s
+depth~16384: prompt_tokens=13863 ttft=18.20s prefill_tps=762 completion_tokens=96 decode_tps=54.6 wall=19.9s
+depth~32000: prompt_tokens=27039 ttft=44.70s prefill_tps=605 completion_tokens=96 decode_tps=49.1 wall=46.6s
+guard: 34 WARN lines, 0 CRITICAL; min free seen: 9.00 GB
+server alive after bench
+DONE B
+######## flint session on oQ8e (CHUNKED=1024 CACHE=2 MR=4)  Sat Oct 31 01:09:48 PDT 2026
+ready in 31s
+--- stream_toolcall
+chunks=22 finish=tool_calls reasoning_chars=0 content=''
+  tool_call[0] name='get_weather' args={'location': 'Tokyo', 'unit': 'celsius'} (json-ok)
+  tool_call[1] name='search_files' args={'pattern': 'TODO', 'max_results': 5} (json-ok)
+STREAM_TOOLCALL PASS
+--- concurrency
+solo: [160, 160, 160, 160] tokens, 10.4s sequential
+concurrent(4): [160, 160, 160, 160] tokens in 5.2s -> aggregate 122.9 tok/s; finish=['length', 'length', 'length', 'length']
+greedy outputs identical solo vs batched: 1/4
+  prompt 0: diverge at char 119/513: solo='. Haiku about sea.\n\nLet\'s craft:\n"Salt wind whispers low,\nwa' batched=' count. Haiku about sea.\n\nLet\'s craft:\n"Salt wind whispers l'
+  prompt 1: diverge at char 324/650: solo='a thin atmosphere primarily composed of carbon dioxide.\n6.  ' batched='two small moons, Phobos and Deimos.\n6.  Check: Are they each'
+  prompt 2: diverge at char 346/719: solo="s like `''.join(reversed(my_string))` but the simplest is sl" batched=" one-liners like `''.join(reversed(my_string))` but the simp"
+CONCURRENCY PASS
+--- codegen 4096 budget (oQ8e)
+finish=stop  usage={'prompt_tokens': 56, 'total_tokens': 346, 'completion_tokens': 290, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+finish=stop  usage={'prompt_tokens': 69, 'total_tokens': 617, 'completion_tokens': 548, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+OVERALL: 8/8
+VERDICT: STRONG
+guard CRITICAL count: 0; min free: 
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/chain4.sh: line 23: 50852 Killed: 9               MODEL=mlx-community/flint-oQ8e CHUNKED=1024 MAX_RUNNING=4 SGLANG_MLX_CACHE_LIMIT_GB=2 bash scripts/launch.sh flint > $OUT/server.log 2>&1
+######## probe_all flint (oQ8e, 4096 budget)  Sat Oct 31 01:10:56 PDT 2026
+Probe trio: flint
+  server ready in 34s
+VERDICT: STRONG (rc=0)  log=/tmp/probe-trio-logs/flint-codegen.log
+THINKING VERIFIED (rc=0)  log=/tmp/probe-trio-logs/flint-thinking.log
+  wrote /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/quality/probe-trio/flint.json
+Probe trio sweep complete.
+######## codegen 4096 budget on oQ6e and oQ4e  Sat Oct 31 01:12:17 PDT 2026
+oQ6e: VERDICT: STRONG OVERALL: 8/8
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/chain4.sh: line 28: 51352 Killed: 9               MODEL=mlx-community/flint-$v bash scripts/launch.sh flint > $OUT/server.log 2>&1
+oQ4e: VERDICT: STRONG OVERALL: 8/8
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/chain4.sh: line 28: 51435 Killed: 9               MODEL=mlx-community/flint-$v bash scripts/launch.sh flint > $OUT/server.log 2>&1
+######## probe_all qwen36  Sat Oct 31 01:13:45 PDT 2026
+Probe trio: qwen36
+  server ready in 25s
+VERDICT: STRONG (rc=0)  log=/tmp/probe-trio-logs/qwen36-codegen.log
+VERDICT: STRONG (rc=0)  log=/tmp/probe-trio-logs/qwen36-vision.log
+VERDICT: STRONG (rc=0)  log=/tmp/probe-trio-logs/qwen36-video.log
+THINKING VERIFIED (rc=0)  log=/tmp/probe-trio-logs/qwen36-thinking.log
+  wrote /Users/letsrtfm/AI/m4-sglang-inference/benchmarks/quality/probe-trio/qwen36.json
+Probe trio sweep complete.
+######## oQ8e run-to-run determinism  Sat Oct 31 01:14:55 PDT 2026
+prompt_tps=33.5 gen_tps=64.8 peak_mem=42.32 GB wall=3.1s
+prompt_tps=9.9 gen_tps=64.4 peak_mem=42.32 GB wall=4.0s
+rep1==rep2: True common 96 | rep1==orig: True common 96
+######## per-layer quant scans  Sat Oct 31 01:15:25 PDT 2026
+--- oQ8e
+  9 safetensor file(s)
+  max-mag threshold: 1000.0
+
+
+======================================================================
+OK: all 486 quantized layers (weight+scales+biases) healthy
+--- oQ6e
+  7 safetensor file(s)
+  max-mag threshold: 1000.0
+
+
+======================================================================
+OK: all 486 quantized layers (weight+scales+biases) healthy
+CHAIN4_DONE Sat Oct 31 01:15:42 PDT 2026

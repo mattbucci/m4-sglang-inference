@@ -1,0 +1,10 @@
+[2026-10-31 01:16:50] server_args={'model_path': 'mlx-community/flint-oQ8e', 'tokenizer_path': 'mlx-community/flint-oQ8e', 'tokenizer_mode': 'auto', 'tokenizer_backend': 'huggingface', 'tokenizer_worker_num': 1, 'detokenizer_worker_num': 1, 'skip_tokenizer_init': False, 'load_format': 'auto', 'model_loader_extra_config': '{}', 'trust_remote_code': True, 'context_length': 32768, 'is_embedding': Fal
+[2026-10-31 01:16:57] MLX buffer cache limit set to 2.0 GB
+[2026-10-31 01:16:57] Stripped the 'language_model.' prefix from 1798 checkpoint tensors
+[2026-10-31 01:16:57] Dropped 47 all-zero checkpoint tensors without a model parameter (e.g. model.layers.47.mlp.expert_bias)
+[2026-10-31 01:17:02] MLX model loaded in 4.85s
+[2026-10-31 01:17:03] Wired memory limit set to 51.8 GB
+[2026-10-31 01:17:03] MLX stub: skipping PyTorch model weight loading (inference runs through MLX)
+[2026-10-31 01:17:03] MLX stub: initialized minimal pools (max_total_num_tokens=131072, max_running_requests=4, zero GPU KV cache allocation)
+[2026-10-31 01:17:05] max_total_num_tokens=131072, chunked_prefill_size=1024, max_prefill_tokens=16384, max_running_requests=4, context_len=32768, available_gpu_mem=21.29 GB
+[2026-10-31 01:17:06] OpenAI Responses API (/v1/responses) disabled: OpenAIServingResponses init failed (ImportError: cannot import name 'ResponseFunctionShellToolCall' from 'openai.types.responses' (/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/site-packages/openai/types/responses/__init__.py))

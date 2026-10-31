@@ -1,0 +1,24 @@
+######## FINAL guarded envelope (explicit knobs 1024/2/4, new guard metric)  Sat Oct 31 01:23:16 PDT 2026
+[mem before] free=42.5 inactive=13.3 spec=0.0 active=4.7 GB
+READY in 29s  (CHUNKED=1024 CACHE=2GB MAX_RUNNING=4)
+depth~4096: prompt_tokens=3495 ttft=3.76s prefill_tps=931 completion_tokens=96 decode_tps=58.6 wall=5.4s
+depth~16384: prompt_tokens=13863 ttft=17.21s prefill_tps=805 completion_tokens=96 decode_tps=54.9 wall=18.9s
+depth~32000: prompt_tokens=27039 ttft=42.69s prefill_tps=633 completion_tokens=96 decode_tps=49.7 wall=44.6s
+guard: 0 WARN lines, 0 CRITICAL; min free seen:  GB
+server alive after bench
+DONE FINAL
+######## plain preset boot check + validator  Sat Oct 31 01:25:04 PDT 2026
+ready in 31s
+'model_path': 'mlx-community/flint-oQ8e'
+'max_running_requests': 4
+'max_total_tokens': 131072
+'chunked_prefill_size': 1024
+MLX buffer cache limit set to 2.0 GB
+=== M4 capability validator — http://localhost:23334  model=flint ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (307 tok, finish=stop)
+--- 3/3 passed in 7.7s ---
+depth~64: prompt_tokens=83 ttft=0.27s prefill_tps=307 completion_tokens=192 decode_tps=62.6 wall=3.3s
+guard: 0 CRITICAL, 0 WARN
+FINAL_DONE Sat Oct 31 01:25:48 PDT 2026

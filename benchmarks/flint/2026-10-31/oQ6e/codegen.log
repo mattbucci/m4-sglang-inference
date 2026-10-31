@@ -1,0 +1,59 @@
+============================================================
+PROBE: is_balanced (parens)
+finish=stop  usage={'prompt_tokens': 56, 'total_tokens': 311, 'completion_tokens': 255, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def is_balanced(s):
+    balance = 0
+    for ch in s:
+        if ch == '(':
+            balance += 1
+        elif ch == ')':
+            balance -= 1
+            if balance < 0:
+                return False
+    return balance == 0
+```
+
+  is_balanced('()') = True  expected True  OK
+  is_balanced('(())') = True  expected True  OK
+  is_balanced('(()') = False  expected False  OK
+  is_balanced(')(') = False  expected False  OK
+  is_balanced('') = True  expected True  OK
+
+============================================================
+PROBE: merge_intervals
+finish=length  usage={'prompt_tokens': 69, 'total_tokens': 469, 'completion_tokens': 400, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+
+    intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [intervals[0]]
+
+    for start, end in intervals[1:]:
+        last_start, last_end = merged[-1]
+        if start <= last_end:
+            merged[-1] = [last_start, max(last_end, end)]
+        else:
+            merged.append
+
+  merge_intervals([[1, 3], [2, 6], [8, 10], [15, 18]]) = None  expected [[1, 6], [8, 10], [15, 18]]  FAIL
+  merge_intervals([[1, 4], [4, 5]]) = None  expected [[1, 5]]  FAIL
+  merge_intervals([[1, 4]]) = None  expected [[1, 4]]  FAIL
+
+============================================================
+  is_balanced (parens): 5/5
+  merge_intervals: 0/3
+OVERALL: 5/8
+
+VERDICT: PARTIAL
+
+Notes:
+- STRONG = all 8 algorithmic test cases pass.
+- PARTIAL = some tests fail (algorithm mostly right, edge cases broken).
+- FAIL = no working code returned.

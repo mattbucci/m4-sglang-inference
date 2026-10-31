@@ -32,13 +32,14 @@ No vLLM, no llama.cpp, no direct mlx_lm serving — SGLang is the serving layer.
 ### Memory Budget
 64 GB unified memory, shared between OS, CPU, and GPU. Practical GPU budget ~55 GB.
 
-| Model | 4-bit size (approx) | Fits? |
-|-------|:-------------------:|:-----:|
-| Devstral-24B | ~14 GB | Yes |
-| Coder-30B MoE | ~16 GB | Yes |
-| Gemma 4 26B MoE | ~15 GB | Yes |
-| Qwen3.5-27B | ~15 GB | Yes |
-| Coder-Next-80B MoE | ~42 GB | No — model load itself OOMs |
+| Model | Weights (resident) | Fits? |
+|-------|:------------------:|:-----:|
+| Devstral-24B 4-bit | ~14 GB | Yes |
+| Coder-30B MoE 4-bit | ~16 GB | Yes |
+| Gemma 4 26B MoE 4-bit | ~15 GB | Yes |
+| Qwen3.5-27B 4-bit | ~15 GB | Yes |
+| Flint 40B-A2.5B oQ4e / oQ6e / oQ8e | 23.5 / 32.9 / 42.3 GB | Yes — all three load and serve; oQ8e (the preset default) prefills 27K tokens at `CHUNKED=2048` with the kernel still reporting 9 GB available, so run it with the OOM guard and the desktop lightly loaded |
+| Coder-Next-80B MoE 4-bit | ~42 GB | Untested on the current stack (its load OOMed on the earlier, heavier import surface; a 42 GB Flint load now succeeds) |
 
 ### `--mem-fraction-static` on unified memory
 

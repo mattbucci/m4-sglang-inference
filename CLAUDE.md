@@ -4,15 +4,15 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.16 + 9 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.23 + 10 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
-`qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, and `nemotron-30b` all pass
-their gates — full probe matrix in [patches/README.md](patches/README.md).
+`qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint`
+(Recursive's coding-agent MoE, oQ8e default) all pass their gates — full probe matrix in [patches/README.md](patches/README.md).
 Hybrid (DeltaNet/Mamba2) presets run with the radix cache (`no_buffer`
 strategy, greedy-determinism-validated prefix caching); the trade-off is that
-radix-on-hybrid disables the overlap schedule. `gemma4*` is blocked by an
-upstream sliding-window gap.
+radix-on-hybrid disables the overlap schedule. `gemma4*` is blocked at boot
+(mlx-vlm Gemma 4 attention is not recognised by the MLX attention contract).
 
 ## Documentation
 
@@ -20,11 +20,11 @@ upstream sliding-window gap.
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (9 patches on top of SGLang v0.5.16) |
+| [patches/README.md](patches/README.md) | Per-patch notes (10 patches on top of SGLang v0.5.23) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # conda env, SGLang v0.5.16, MLX deps, apply 9 patches
+scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 10 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
@@ -33,10 +33,11 @@ scripts/launch.sh qwen3-moe                       # [OK]  Qwen3-30B-A3B-DWQ MoE
 scripts/launch.sh qwen35                          # [OK]  Qwen3.5-27B DeltaNet hybrid+VL
 scripts/launch.sh devstral                        # [OK]  Devstral 24B + image VLM
 scripts/launch.sh nemotron-30b                    # [OK]  NemotronH Mamba2+Attn+MoE
+scripts/launch.sh flint                           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for oQ6e/oQ4e)
 scripts/launch.sh qwen35-9b-8bit                  # [unswept] Qwen3.5-9B 8-bit (same path as qwen35)
 scripts/launch.sh qwen36-27b                      # [unswept] Qwen3.6-27B Dense+DeltaNet+VL (same path as qwen36)
-scripts/launch.sh gemma4                          # [WIP] Gemma 4 26B MoE (sliding-window gap upstream)
-scripts/launch.sh gemma4-31b                      # [WIP] Gemma 4 31B Dense (sliding-window gap upstream)
+scripts/launch.sh gemma4                          # [WIP] Gemma 4 26B MoE (boot: mlx-vlm attention not recognised)
+scripts/launch.sh gemma4-31b                      # [WIP] Gemma 4 31B Dense (same model class as gemma4)
 # coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
 
 # Capability gates (run AFTER server is up on PORT 23334)
@@ -71,9 +72,9 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 ## Critical Rules
 - **SGLang + MLX only** — all models must run on SGLang with `SGLANG_USE_MLX=1`
 - **No tensor parallelism** — MLX runs on a single unified memory device
-- **Real sampling supported** (patch 016) — per-request temperature/top-p/
-  top-k/min-p via `mlx_lm.make_sampler`; greedy (the default) stays
-  bit-stable argmax, `--sampling-defaults model` applies checkpoint
+- **Real sampling supported** (upstream `--mlx-enable-sampling`, set by every
+  preset) — per-request temperature/top-p/top-k/min-p; greedy (the default)
+  stays bit-stable argmax, `--sampling-defaults model` applies checkpoint
   generation configs. Validate every Qwen-family model with
   `validate_capabilities.py` before publishing numbers — the 3090 confirmed
   Qwen3.x can enter `</think>` repetition loops at temperature=0, so
@@ -90,7 +91,8 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   Linux-style OOM killer; once a process touches a page past physical RAM, the
   whole system stalls until reboot. Never run a 32K+ bench without
   `bash scripts/common/oom_guard.sh &` running in the background — it pkill's
-  the SGLang server when free+inactive drops below 8 GB.
+  the SGLang server when the kernel-reported available memory
+  (`kern.memorystatus_level`) drops below 8 GB.
 - **DO NOT raise `MEM_FRAC` / `--mem-fraction-static` above 0.7 default.**
   On unified memory the flag is a fraction of TOTAL system RAM, not "GPU
   memory." 0.85 has crashed the box (macOS compressor + swap hit ~150 GB

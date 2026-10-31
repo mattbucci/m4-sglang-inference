@@ -1,0 +1,23 @@
+[2026-10-31T07:49:44Z] oom_guard started: kill<8GB warn<12GB interval=2s pid=46631
+[2026-10-31T07:50:16Z] WARN free=10.18GB < 12GB
+[2026-10-31T07:50:18Z] WARN free=8.47GB < 12GB
+[2026-10-31T07:50:20Z] WARN free=8.29GB < 12GB
+[2026-10-31T07:50:22Z] WARN free=8.23GB < 12GB
+[2026-10-31T07:50:24Z] WARN free=8.14GB < 12GB
+[2026-10-31T07:50:26Z] WARN free=8.51GB < 12GB
+[2026-10-31T07:50:28Z] WARN free=8.37GB < 12GB
+[2026-10-31T07:50:30Z] WARN free=8.50GB < 12GB
+[2026-10-31T07:50:32Z] WARN free=8.49GB < 12GB
+[2026-10-31T07:50:34Z] WARN free=8.50GB < 12GB
+[2026-10-31T07:50:36Z] WARN free=8.46GB < 12GB
+[2026-10-31T07:50:38Z] WARN free=8.48GB < 12GB
+[2026-10-31T07:50:40Z] WARN free=8.34GB < 12GB
+[2026-10-31T07:50:42Z] WARN free=8.47GB < 12GB
+[2026-10-31T07:50:44Z] WARN free=8.47GB < 12GB
+[2026-10-31T07:50:46Z] WARN free=8.41GB < 12GB
+[2026-10-31T07:50:48Z] WARN free=8.29GB < 12GB
+[2026-10-31T07:50:51Z] WARN free=8.48GB < 12GB
+[2026-10-31T07:50:53Z] CRITICAL free=7.47GB < 8GB — killing SGLang pids: 46632 
+  PID    RSS COMMAND
+46632 1011728 python3 -m sglang.launch_server --model-path mlx-community/flint-oQ8e --served-model-name flint --context-length 32768 --max-running-requests 4 --chunked-prefill-size 4096 --mem-fraction-static 0.7 --trust-remote-code --watchdog-timeout 1800 --port 23334 --host 0.0.0.0 --enable-metrics --kv-cache-dtype fp8 --mlx-enable-sampling --reasoning-parser flint --skip-server-warmup --tool-call-parser flint --disable-radix-cache --sampling-defaults model --max-total-tokens 131072                                   
+[2026-10-31T07:50:55Z] oom_guard exiting

@@ -1,0 +1,3 @@
+[2026-10-31T07:50:56Z] oom_guard started: kill<8GB warn<12GB interval=2s pid=47089
+[2026-10-31T07:52:24Z] WARN free=11.71GB < 12GB
+[2026-10-31T07:52:28Z] oom_guard exiting

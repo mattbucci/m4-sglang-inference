@@ -1,0 +1,31 @@
+depth~64: prompt_tokens=83 ttft=0.26s prefill_tps=316 completion_tokens=192 decode_tps=61.9 wall=3.3s
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/quick_bench.py", line 14, in <module>
+    with urllib.request.urlopen(req, timeout=1800) as resp:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/urllib/request.py", line 515, in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/urllib/request.py", line 532, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/urllib/request.py", line 1386, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/urllib/request.py", line 1361, in do_open
+    r = h.getresponse()
+        ^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/http/client.py", line 1478, in getresponse
+    response.begin()
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/http/client.py", line 343, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/Users/letsrtfm/miniforge3/envs/sglang-0523/lib/python3.12/http/client.py", line 312, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
