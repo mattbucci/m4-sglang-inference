@@ -60,6 +60,9 @@ def parse_args():
     p.add_argument("--no-venv", action="store_true",
                    help="Skip pre-rollout venv setup — agent runs read-edit-pray "
                         "without a working test loop. Compatible with v1 runs.")
+    p.add_argument("--prompt-extra", default="",
+                   help="Text appended to the task prompt (harness-level rule for a specific "
+                        "model, e.g. a required-argument reminder). Record it in the run README.")
     p.add_argument("--skip-preflight", action="store_true",
                    help="Skip the tool-call-round-trip canary. Required for chat "
                         "templates that don't accept the canary's user→assistant"
@@ -232,9 +235,13 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
     # Run in a fresh process group so SIGKILL on timeout reaps the Node spawned
     # children too (default subprocess kill leaves them dangling — observed at
     # instance 23 where the parent died but a child kept the rollout stalled).
+    # stdin must be closed explicitly: `opencode run` reads a non-TTY stdin to
+    # EOF before it sends its first model request, so an inherited pipe or
+    # socket that stays open (background launchers, task runners) parks the
+    # rollout at 0% CPU until the per-instance timeout fires.
     proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        env=env, start_new_session=True,
+        cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, env=env, start_new_session=True,
     )
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
@@ -393,6 +400,8 @@ def main():
                     problem_statement=row["problem_statement"],
                     hints=row.get("hints_text", "") or "(none)",
                 )
+                if args.prompt_extra:
+                    prompt += "\n\n" + args.prompt_extra.strip() + "\n"
                 log_path = out / "logs" / f"{iid}.log"
                 extra_env = {}
                 if venv:

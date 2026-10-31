@@ -28,6 +28,8 @@
 #   CTX              context length passed to launch.sh (default: 131072)
 #   EXTRA_LAUNCH     extra args to launch.sh (default: long-context recipe)
 #   OUT              output directory for predictions/logs (default: /tmp/swebench-smoke)
+#   PROMPT_EXTRA     text appended to every task prompt (passed to run_rollouts.py
+#                    --prompt-extra); use for model-specific tool-call rules
 
 set -euo pipefail
 # Save our own dir before sourcing common.sh — it redefines SCRIPT_DIR.
@@ -53,6 +55,7 @@ CTX="${CTX:-131072}"
 PORT=23334
 PROXY_PORT="${PROXY_PORT:-23335}"
 OUT="${OUT:-/tmp/swebench-smoke}"
+PROMPT_EXTRA="${PROMPT_EXTRA:-}"
 EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.5}"
 # NO_THINKING_PROXY=1 (default): start no_thinking_proxy.py on $PROXY_PORT
 # and route opencode through it. The proxy injects
@@ -170,9 +173,10 @@ fi
 # --- Run opencode rollout (1 instance by default) ---
 echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout..."
 
-# opencode reads ./opencode.json from the cwd OR --config-file. We have
-# evals/swebench/opencode.json; the rollout driver doesn't take a config
-# path so we run with cwd=evals/swebench.
+# opencode resolves its project config from --dir (the task worktree), not
+# from the cwd, so the rollout uses the global ~/.config/opencode/opencode.jsonc
+# (the copy of evals/swebench/opencode.json installed by setup). cwd is only
+# for run_rollouts.py's sibling imports.
 cd "$SWE_SCRIPT_DIR"
 set +e
 # Optional: skip the tool-call-round-trip canary (some chat templates,
@@ -183,6 +187,10 @@ preflight_arg=""
 if [ "${SKIP_PREFLIGHT:-0}" = "1" ]; then
     preflight_arg="--skip-preflight"
 fi
+extra_args=()
+if [ -n "$PROMPT_EXTRA" ]; then
+    extra_args+=(--prompt-extra "$PROMPT_EXTRA")
+fi
 if [ -n "$INSTANCE_IDS" ]; then
     python3 run_rollouts.py \
         --model "sglang/$MODEL_KEY" \
@@ -191,7 +199,7 @@ if [ -n "$INSTANCE_IDS" ]; then
         --out "$OUT" \
         --server-url "http://127.0.0.1:$PORT" \
         --served-name "$PRESET" \
-        $preflight_arg 2>&1 | tee "$OUT/rollout.log"
+        $preflight_arg "${extra_args[@]}" 2>&1 | tee "$OUT/rollout.log"
 else
     python3 run_rollouts.py \
         --model "sglang/$MODEL_KEY" \
@@ -200,7 +208,7 @@ else
         --out "$OUT" \
         --server-url "http://127.0.0.1:$PORT" \
         --served-name "$PRESET" \
-        $preflight_arg 2>&1 | tee "$OUT/rollout.log"
+        $preflight_arg "${extra_args[@]}" 2>&1 | tee "$OUT/rollout.log"
 fi
 RC=$?
 set -e
