@@ -1,0 +1,36 @@
+=== (a) radix ON ===
+[2026-10-31 04:02:58] server_args={'model_path': 'mlx-community/flint-oQ8e', 'tokenizer_path': 'mlx-community/flint-oQ8e', 'tokenizer_mode': 'auto', 'tokenizer_backend': 'huggingface', 'tokenizer_worker_num': 1, 'detoken
+[2026-10-31 04:03:13] MLX stub: initialized minimal pools (max_total_num_tokens=131072, max_running_requests=4, zero GPU KV cache allocation)
+[2026-10-31 04:03:15] max_total_num_tokens=131072, chunked_prefill_size=1024, max_prefill_tokens=16384, max_running_requests=4, context_len=32768, available_gpu_mem=19.65 GB
+[2026-10-31 04:03:20] Attention KV pool initialized: pool_size=131072 (buffer size 131073 incl. padding slot 0), 14 full-attention layers (35 sliding-window layers stay per-request), 4 kv_heads, 128 head_dim
+turn 1: prompt=13339 completion=96 ttft=17.25s total=19.26s :: 'We need answer question based on module. Need parse. User asks: "In one short paragraph, w'
+turn 2: prompt=13456 completion=96 ttft=0.6s total=2.61s :: 'We need answer only names of cache classes mentioned in module docstring, comma-separated,'
+turn 3: prompt=13571 completion=78 ttft=0.62s total=2.26s :: 'We need answer method name only. From module, method `_materialize_pool_backed_attention` '
+wrote /private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/gate021/prefix_on.json
+--- second pass (fully warm tree) ---
+turn 1: prompt=13339 completion=96 ttft=0.22s total=2.22s :: 'We need answer question: "In the provided Python module, answer: "In the provided code, `p'
+turn 2: prompt=13456 completion=96 ttft=0.48s total=2.49s :: 'We need answer. Need parse. User asks: "Now list the names of the cache classes mentioned '
+turn 3: prompt=13571 completion=96 ttft=0.61s total=2.62s :: 'We need answer method name only. The question: "Which method converts pool-backed attentio'
+wrote /private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/gate021/prefix_on2.json
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (307 tok, finish=stop)
+--- 3/3 passed in 9.0s ---
+VERDICT: STRONG
+- FAIL = no working code returned.
+
+PASS: all 4 iterations returned consistent correct answer.
+0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/gate021.sh: line 11: 93654 Killed: 9               nohup bash scripts/launch.sh flint > $OUT/launch-on.log 2>&1 < /dev/null
+=== (b) radix OFF ===
+turn 1: prompt=13339 completion=96 ttft=17.43s total=19.13s :: 'We need answer question based on module. Need parse. User asks: "In one short paragraph, w'
+turn 2: prompt=13456 completion=96 ttft=19.17s total=20.9s :: 'We need answer only names comma-separated, nothing else. Need identify cache classes menti'
+turn 3: prompt=13571 completion=81 ttft=19.47s total=20.9s :: 'We need answer method name only. From module: `_materialize_pool_backed_attention` convert'
+wrote /private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/gate021/prefix_off.json
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/gate021.sh: line 11: 94062 Killed: 9               EXTRA_ARGS="--disable-radix-cache" nohup bash scripts/launch.sh flint > $OUT/launch-off.log 2>&1 < /dev/null
+=== (c) compare ===
+turn 1: prompt=13339 identical=True ttft on=17.25s off=17.43s on2=0.22s  completion on/off=96/96
+turn 2: prompt=13456 identical=False ttft on=0.6s off=19.17s on2=0.48s  completion on/off=96/96
+turn 3: prompt=13571 identical=False ttft on=0.62s off=19.47s on2=0.61s  completion on/off=78/81
+GATE021: FAIL
+GATE021_DONE

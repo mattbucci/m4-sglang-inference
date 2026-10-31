@@ -1,0 +1,47 @@
+=== flint: logprob quantification + SSE dump ===
+T1 cold : prompt=6788 comp=64 9.25s top5=[('<think>', 0.0), ('</think>', -17.0938), ('<tool_call>', -17.5938), ('</arg_value>', -18.2812), ('</tool_call>', -19.0312)]
+T2 hit  : prompt=6873 comp=64 1.62s top5=[('<think>', -0.0), ('</think>', -14.8672), ('I', -16.4922), ('</arg_value>', -16.4922), ('AIN', -16.5547)]
+T1 cold2: 9.2s identical_to_T1=True top5=[('<think>', 0.0), ('</think>', -17.0938), ('<tool_call>', -17.5938), ('</arg_value>', -18.2812), ('</tool_call>', -19.0312)]
+T2 cold : 9.48s top5=[('<think>', -0.0), ('</think>', -14.4297), ('I', -15.3672), ('</arg_value>', -15.6172), ('<tool_call>', -15.9297)]
+T2 hit vs cold identical: False
+  diverge at char 26: hit='We need answer. Need parse user. They ask: "Now list the names of ' cold='We need answer. Need parse. User asks: "Now list the names of the '
+  first-token logprob deltas (hit-cold): [('<think>', 0.0), ('</think>', -0.4375), ('I', -1.125), ('</arg_value>', -0.875)]
+T1 cold : prompt=2890 comp=64 4.55s top5=[('<think>', 0.0), ('</think>', -16.9844), ('<tool_call>', -17.5469), ('</arg_value>', -18.6094), ('</tool_call>', -18.9844)]
+T2 hit  : prompt=2975 comp=64 1.56s top5=[('<think>', -0.0), ('</think>', -13.9219), ('UMP', -14.8594), ('</arg_value>', -15.1094), ('Before', -15.1719)]
+T1 cold2: 4.6s identical_to_T1=True top5=[('<think>', 0.0), ('</think>', -16.9844), ('<tool_call>', -17.5469), ('</arg_value>', -18.6094), ('</tool_call>', -18.9844)]
+T2 cold : 4.73s top5=[('<think>', -0.0), ('</think>', -13.9063), ('UMP', -15.1563), ('</arg_value>', -15.2813), ('Before', -15.5313)]
+T2 hit vs cold identical: True
+  first-token logprob deltas (hit-cold): [('<think>', 0.0), ('</think>', -0.0156), ('UMP', 0.2969), ('</arg_value>', 0.1719), ('Before', 0.3594)]
+wrote /private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/capture/bash_call.sse
+flint health after: 200
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/det_chain.sh: line 7:  5669 Killed: 9               nohup bash scripts/launch.sh flint > $S/flint-det2.log 2>&1 < /dev/null
+=== qwen36: hit vs cold ===
+##### qwen36 ctx-chars=60000
+T1 cold : prompt=14291 comp=64 21.61s top5=None
+T2 hit  : prompt=14386 comp=12 3.46s top5=None
+T1 cold2: 22.78s identical_to_T1=True top5=None
+T2 cold : 22.01s top5=None
+T2 hit vs cold identical: True
+##### qwen36 ctx-chars=30000
+T1 cold : prompt=7273 comp=64 11.02s top5=None
+T2 hit  : prompt=7368 comp=12 4.38s top5=None
+T1 cold2: 10.96s identical_to_T1=True top5=None
+T2 cold : 10.18s top5=None
+T2 hit vs cold identical: True
+##### qwen36 ctx-chars=12000
+T1 cold : prompt=3088 comp=64 4.25s top5=None
+T2 hit  : prompt=3183 comp=12 0.48s top5=None
+T1 cold2: 4.2s identical_to_T1=True top5=None
+T2 cold : 3.56s top5=None
+T2 hit vs cold identical: True
+##### qwen36 ctx-chars=30000 logprobs
+T1 cold : prompt=7273 comp=64 10.88s top5=[('`', -0.248), ('The', -1.998), ('Based', -2.748), ('It', -5.498), ('I', -5.748)]
+T2 hit  : prompt=7368 comp=12 4.24s top5=[('Cont', -0.0077), ('M', -5.2577), ('Full', -8.1952), ('Pool', -8.2577), ('ML', -8.5702)]
+T1 cold2: 10.7s identical_to_T1=True top5=[('`', -0.248), ('The', -1.998), ('Based', -2.748), ('It', -5.498), ('I', -5.748)]
+T2 cold : 10.08s top5=[('Cont', -0.0106), ('M', -4.8856), ('Full', -7.8856), ('Pool', -7.8856), ('ML', -8.1356)]
+T2 hit vs cold identical: True
+  first-token logprob deltas (hit-cold): [('Cont', 0.0029), ('M', -0.3721), ('Full', -0.3096), ('Pool', -0.3721), ('ML', -0.4346)]
+qwen36 health after: 200
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/det_chain.sh: line 7:  6078 Killed: 9               nohup bash scripts/launch.sh qwen36 > $S/qwen36-det.log 2>&1 < /dev/null
+guard WARN: 0
+DET_CHAIN_DONE

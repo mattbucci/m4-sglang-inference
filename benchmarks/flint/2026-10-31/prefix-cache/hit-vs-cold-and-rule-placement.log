@@ -1,0 +1,33 @@
+READY 04:24:33 pool=pool_size=131072
+##### hit_vs_cold ctx-chars=60000
+T1 cold : prompt=13311 comp=64 18.63s top5=None
+T2 hit  : prompt=13396 comp=64 1.71s top5=None
+T1 cold2: 19.61s identical_to_T1=True top5=None
+T2 cold : 20.11s top5=None
+T2 hit vs cold identical: False
+  diverge at char 14: hit='We need answer only names comma-separated, nothing els' cold='We need answer. Need parse module docstring for cache '
+##### hit_vs_cold ctx-chars=30000
+T1 cold : prompt=6788 comp=64 9.71s top5=None
+T2 hit  : prompt=6873 comp=64 1.6s top5=None
+T1 cold2: 9.62s identical_to_T1=True top5=None
+T2 cold : 9.7s top5=None
+T2 hit vs cold identical: False
+  diverge at char 26: hit='We need answer. Need parse user. They ask: "Now list the names of ' cold='We need answer. Need parse. User asks: "Now list the names of the '
+##### hit_vs_cold ctx-chars=12000
+T1 cold : prompt=2890 comp=64 4.52s top5=None
+T2 hit  : prompt=2975 comp=64 1.54s top5=None
+T1 cold2: 4.5s identical_to_T1=True top5=None
+T2 cold : 4.57s top5=None
+T2 hit vs cold identical: True
+##### rule placement
+V4-no-rule                   bash calls with description: 0/12   other-tool first calls: 4   (samples=10)
+V0-rule-end-of-user          bash calls with description: 1/11   other-tool first calls: 0   (samples=10)
+V2-rule-top-of-user          bash calls with description: 0/15   other-tool first calls: 1   (samples=10)
+V1-rule-in-system            bash calls with description: 1/14   other-tool first calls: 2   (samples=10)
+V3-strong-in-system          bash calls with description: 0/9   other-tool first calls: 1   (samples=10)
+V5-strong-end-user           bash calls with description: 3/13   other-tool first calls: 4   (samples=10)
+RULE_PLACEMENT_DONE
+health after: 200
+guard WARN: 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/tools/det_and_rules.sh: line 15:  2683 Killed: 9               nohup bash scripts/launch.sh flint > $S/flint-det.log 2>&1 < /dev/null
+DET_AND_RULES_DONE

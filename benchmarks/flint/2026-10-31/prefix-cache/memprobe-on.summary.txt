@@ -1,0 +1,6 @@
+T1cold   min kernel-available  16.0 GB  prompt_tokens=13311
+T2hit    min kernel-available  15.4 GB  prompt_tokens=13333
+flush    min kernel-available  60.2 GB  prompt_tokens=Cache
+T1cold2  min kernel-available  15.4 GB  prompt_tokens=13311
+T2hit2   min kernel-available  15.4 GB  prompt_tokens=13333
+idle     min kernel-available  60.2 GB  prompt_tokens=None

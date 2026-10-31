@@ -38,7 +38,7 @@ No vLLM, no llama.cpp, no direct mlx_lm serving — SGLang is the serving layer.
 | Coder-30B MoE 4-bit | ~16 GB | Yes |
 | Gemma 4 26B MoE 4-bit | ~15 GB | Yes |
 | Qwen3.5-27B 4-bit | ~15 GB | Yes |
-| Flint 40B-A2.5B oQ4e / oQ6e / oQ8e | 23.5 / 32.9 / 42.3 GB | Yes — all three load and serve; oQ8e (the preset default) prefills 27K tokens at `CHUNKED=2048` with the kernel still reporting 9 GB available, so run it with the OOM guard and the desktop lightly loaded |
+| Flint 40B-A2.5B oQ4e / oQ6e / oQ8e | 23.5 / 32.9 / 42.3 GB | Yes — all three load and serve; oQ8e (the preset default) prefills 27K tokens at `CHUNKED=2048` with the kernel still reporting 9 GB available, so run it with the OOM guard and the desktop lightly loaded. The preset runs the radix cache (patch 021): the full-layer pool takes `--max-total-tokens` × 28 KB (3.7 GB at the default 131,072 slots) — size it explicitly (`MAX_TOTAL_TOKENS=131072`) for CTX=131072 launches, or `--disable-radix-cache` for pool-free single-shot work |
 | Coder-Next-80B MoE 4-bit | ~42 GB | Untested on the current stack (its load OOMed on the earlier, heavier import surface; a 42 GB Flint load now succeeds) |
 
 ### `--mem-fraction-static` on unified memory

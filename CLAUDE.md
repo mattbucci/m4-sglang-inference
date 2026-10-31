@@ -9,8 +9,9 @@ production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint`
 (Recursive's coding-agent MoE, oQ8e default) all pass their gates — full probe matrix in [patches/README.md](patches/README.md).
-Hybrid (DeltaNet/Mamba2) presets run with the radix cache (`no_buffer`
-strategy, greedy-determinism-validated prefix caching); the trade-off is that
+Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache
+(`no_buffer` strategy; hits and cold runs are each deterministic, a hit is not
+bit-identical to a cold run — chunk-boundary bf16 noise); the trade-off is that
 radix-on-hybrid disables the overlap schedule. `gemma4*` is blocked at boot
 (mlx-vlm Gemma 4 attention is not recognised by the MLX attention contract).
 

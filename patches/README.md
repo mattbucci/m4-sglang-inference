@@ -106,9 +106,17 @@ machinery assumes the CUDA model runner. Patch 008 closes that:
    rule.
 
 Hybrid presets (qwen35 / qwen35-9b-8bit / qwen36 / qwen36-27b / nemotron-30b)
-run with the radix cache. Greedy-determinism holds: a prefix-cache hit
-produces token-for-token identical output to a cold run, and branched suffixes
-(eager-COW path) answer correctly.
+and `flint` run with the radix cache. Determinism, measured on 3-turn greedy
+conversations at 3K–14K tokens: repeated cold runs are token-identical, and
+repeated hits on the same cached prefix are token-identical. A hit and a cold
+run of the same prompt are not bit-identical: the new tokens prefill from the
+cached prefix length and split at the 64-token checkpoint grid instead of the
+cold run's 1024-token chunk grid, which perturbs bf16 logits at the noise
+level (first-token top-5 logprobs move ≤ 0.4 nats on qwen36 and ≤ 1.1 nats on
+Flint's tail tokens; the top token's logprob is unchanged). qwen36's answers
+matched cold at all three sizes; Flint's reasoning prose diverged at a
+near-tie beyond 3K tokens. Branched suffixes (eager-COW path) answer
+correctly.
 
 **Probe matrix (radix on):**
 

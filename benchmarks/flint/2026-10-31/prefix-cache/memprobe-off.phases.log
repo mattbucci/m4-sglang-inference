@@ -1,0 +1,7 @@
+PHASE T1cold 04:18:08.536 04:18:26.638 13336
+PHASE T2hit 04:18:30.639 04:18:50.105 13358
+PHASE flush 04:18:54.111 04:18:54.116 Cache flushed.
+Please check backend logs for more details. (When there are runni
+PHASE T1cold2 04:18:58.116 04:19:17.485 13336
+PHASE T2hit2 04:19:21.493 04:19:41.047 13358
+PHASE idle 04:19:45.058 04:19:51.059 None

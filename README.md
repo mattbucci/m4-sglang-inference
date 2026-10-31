@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 11 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets run with the radix cache (greedy-determinism-validated prefix caching; trade-off: overlap schedule off for hybrids). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 11 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache (hits and cold runs each deterministic; trade-off: overlap schedule off for them). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
 
 **Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), (the `--kv-cache-dtype` flag is inert on this backend — the MLX pool stores KV in the attention compute dtype — so the earlier turboquant-vs-fp16 recall A/B compared identical bf16 arms). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
 
@@ -89,16 +89,26 @@ on all three quantizations.
 - **Tool calls:** `<tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call>`
   (GLM-4.7's format without line breaks); `--tool-call-parser flint` returns
   structured `tool_calls` (validator PASS). The constrained tool-call grammar
-  of Recursive's CUDA kit (`--grammar-backend flint`) is not ported.
+  of Recursive's CUDA kit (`--grammar-backend flint`) is not ported. Under
+  opencode, Flint omits the `bash` tool's required `description` argument on
+  nearly every call (0–3 of ~12 whichever way the rule is phrased in the
+  prompt; see Known Issues), so opencode rejects the call; the SWE-bench
+  proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`).
 - **Sampling:** the preset applies the checkpoint's `generation_config`
   (temperature 1.0 / top-p 0.95 / top-k 20) to requests that omit sampling
   fields; greedy requests stay greedy and pass every gate here, although
   Recursive validates only the sampled setting.
-- **Memory:** no prefix cache — sliding-window layers keep no pool KV
-  upstream, so each turn re-prefills (~45 s for a 27K turn at the measured
-  prefill rate). Per-request KV is 28 KB/token (14 full layers, bf16): 0.9 GB
-  at 32K, `MAX_RUNNING=4` by default; `--max-total-tokens` is derived from
-  `CTX * MAX_RUNNING` because the auto-sized budget has no pool to size.
+- **Prefix cache:** on (patch 021). The 14 full layers share the pool
+  (28 KB/token, 3.7 GB at the preset's 131,072 slots) and the 35 windowed
+  caches are snapshotted at the prefix boundaries the radix tree names and
+  restored on an exact hit, so an agent turn prefills only its new tokens:
+  turn 2 of a 13.4K-token conversation starts in 0.6 s instead of 19 s
+  (`benchmarks/flint/2026-10-31/prefix-cache/`). The pool costs ~2 GB of
+  headroom relative to the radix-off preset (cold 13K-token prefill:
+  16.0 vs 18.6 GB kernel-available minimum); `EXTRA_ARGS="--disable-radix-cache"`
+  restores the pool-free recompute path. Set `MAX_TOTAL_TOKENS=131072`
+  explicitly for CTX=131072 runs (`CTX * MAX_RUNNING` would be a 14.7 GB
+  pool). Per-request KV is 28 KB/token on top of the pool: 0.9 GB at 32K.
 - **Agentic cell:** the SWE-bench Lite run (opencode harness, `flint` entry
   in the opencode config) is queued as experiments row 5; `flint` is not
   ranked in the recommended-picks table until that cell exists.
@@ -185,7 +195,8 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 - **Long-context ceiling is 256K** (validated: in=251,659, ~23 min prefill; recipe: `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024`, radix off; the `--kv-cache turboquant` flag in the original recipe is inert, see below). Four load-bearing settings: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), patch-015 cache pre-sizing (the doubling ladder's power-of-two overshoot kills deep runs), EXACT pool sizing (overallocating CTX costs the last GBs — a 192K label at CTX=210K dies where CTX=196608 completes), and `CHUNKED=1024` (the 4096 default's transients kill deep prefills at ~100-113K; 1024 buys ~4.3 GB margin over 2048 at no speed cost). There is no decode wall: true streamed decode is 61.7 tok/s @32K → 36.0 @128K → 30.2 @151K (`benchmarks/longctx-bisect/decode-curve/DECISION.md`); the historical "13-19 s/token" figures were whole-request prefill amortization, since corrected in `bench_long_context.py`.
 - **`--kv-cache-dtype` is inert on the MLX backend.** The `fp8`/`mxfp8`/`turboquant`/`fp16` aliases (patch 002) exist so the launch presets pass argparse; the MLX attention pool and the per-request caches store KV in the attention compute dtype (bf16 for the mlx-community checkpoints) at every pin this stack has run on. Memory levers that do work: `--max-total-tokens`, `CHUNKED`, `MAX_RUNNING`, request `max_tokens`, `SGLANG_MLX_CACHE_LIMIT_GB`. 4-bit KV on Apple Silicon remains a prospect ([MLX discussion](https://github.com/ml-explore/mlx/discussions/3134)), not a shipped lever.
 - **64K dense-attention ceiling is structural.** The per-chunk attention-score tensor `mx.fast.scaled_dot_product_attention` materializes hits 30–90 GB at deep offsets. Without flash-attention-style block-streaming SDPA in MLX, decode at 32K is the practical ceiling for dense standard-attention models; DeltaNet hybrids (`qwen35`, `qwen36`, `qwen36-27b`) are the workaround.
-- **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
+- **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids and `flint` run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
+- **Flint omits opencode's required bash `description` argument.** opencode's `bash` tool schema requires `description` next to `command`; Flint (trained on single-argument shell tools) sends `command` alone on nearly every call under opencode's real prompt, opencode rejects the call with a `SchemaError`, and the agent retries the same call until its timeout. No prompt placement of a rule fixes it (0–3 of ~12 calls; a short prompt gives 10/10). The SWE-bench harness proxy backfills the argument from the command (`BACKFILL_BASH_DESCRIPTION=1`); interactive opencode use needs the same shim in front of the server or the bash tool disabled (`tools: {bash: false}`).
 - **Coder-Next-80B infeasible** — 42 GB weights alone exceed the safe budget; model load OOMs. No path on a single 64 GB Mac.
 - **macOS has no OOM killer** — a process touching a page past physical RAM stalls the whole system until reboot. **OOM guard mandatory for ≥32K work:** `bash scripts/common/oom_guard.sh &` pkills the server when the kernel-reported available memory (`kern.memorystatus_level`, the percentage jetsam decides on) drops below 8 GB. It used to read vm_stat free+inactive, which undercounts by the file pages a checkpoint load streams through the page cache: a 42 GB Flint load read 6.9 GB on that metric while the kernel reported more than 15 GB available, and the guard reaped a load that completes fine.
 - **macOS jetsam can silently reap the scheduler mid-eval** — no traceback, just `Connection refused` on subsequent requests. `needle_eval` tags `server_dead=True` on connection-class errors; `mmlu_eval`/`humaneval_eval`/`labbench_eval` don't yet. When an eval section drops to ~0%, suspect jetsam before model regression: relaunch fresh and re-run that section.
@@ -457,4 +468,4 @@ macOS 26.2 (Tahoe)
 
 **Automatic RoPE scaling** — models with native context < requested get linear interpolation (logged at boot as `RoPE scaling: ... applying linear scale`).
 
-**Radix prefix cache** — agentic workloads re-send the same system prompt + history every turn; the radix cache reuses shared-prefix KV so follow-up turns skip the prefill. Enabled on all presets, including hybrids (DeltaNet/Mamba2 recurrent state is snapshotted per prefix — greedy outputs are token-identical on cache hits). `EXTRA_ARGS="--disable-radix-cache"` restores the uncached behavior for A/B runs.
+**Radix prefix cache** — agentic workloads re-send the same system prompt + history every turn; the radix cache reuses shared-prefix KV so follow-up turns skip the prefill. Enabled on all presets, including hybrids (DeltaNet/Mamba2 recurrent state is snapshotted per prefix) and Flint (sliding-window KV snapshotted per prefix, patch 021). Greedy output is deterministic on both sides of the cache — repeated hits match, repeated cold runs match — but a hit is not bit-identical to a cold run of the same prompt: the new tokens prefill on a different chunk boundary, which moves bf16 logits at the noise level (top token unchanged; tail logprobs by up to ~1 nat) and can flip a near-tie in the text ([patches/README.md](patches/README.md)). `EXTRA_ARGS="--disable-radix-cache"` restores the uncached behavior for A/B runs.
