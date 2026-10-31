@@ -50,3 +50,36 @@ Turn-tax comparison for the R97-J fleet ask: M4/MLX 2.6× @8K, 5.4× @32K
 (append-1, cache-verified) vs R9700 85× @176K — the MLX radix extend path
 does not exhibit the CUDA extend-pass pathology at these depths. Delivered
 to sister READMEs with the MLX buffer-cache-cap note.
+
+## On patches 021–023 (serve-p023.log, turns-radixon-p023.jsonl, mem-radixon-p023.csv, extend-cost-p023*.json)
+
+Same serve configuration and driver. The radix-on arm, which the stack above
+lost at turn 111, runs out the full 150 turns with flat memory:
+
+| arm | turns survived | free+inactive start → trough → end | TTFT median | decode | cache hits |
+|---|---:|---|---:|---:|---|
+| radix-on, patches 021–023 | **150/150** (0 guard warnings) | 28.4 → 24.7 → 26.2 GB | 2.8 s | 56 tok/s | to the end (turn 150: 13,349 of 15,128 cached after the ninth roll) |
+
+Wired memory stays between 26.8 and 30.2 GB for the whole run. The erosion
+in the earlier arm (0.19 GB/turn) is gone; what the three patches changed on
+this path is the per-step evaluation of the pool scatters (021), the hit
+cache's append across the split final chunk (022) and the release of each
+finished request's caches at the scheduler hook (023). No flush cadence is
+needed for this load.
+
+Phase A on the same stack, fresh server (`extend-cost-p023-fresh.json`;
+the post-endurance run `extend-cost-p023.json` is within 5 ms of it):
+
+| cached prefix (server-verified) | append | TTFT median | decode ms/tok | tax ratio | time to 64 tokens |
+|---:|---:|---:|---:|---:|---:|
+| 8,648 | 1 tok | 80.0 ms | 16.0 | 5.0× | 1.10 s (earlier 1.14 s) |
+| 8,648 | 64 tok | 231.4 ms | 16.0 | 14.5× | — |
+| 34,535 | 1 tok | 259.6 ms | 18.8 | 13.8× | 1.46 s (earlier 1.51 s) |
+| 34,535 | 64 tok | 483.9 ms | 18.8 | 25.8× | — |
+
+The first-token cost is about twice the earlier receipt and decode is
+faster by the same amount: since patch 021 the pool scatter is evaluated
+with the step and reads the rebuilt contiguous cache, so the rebuild of the
+gathered prefix lands in the first token instead of the first decode step.
+Time to 64 tokens is unchanged. Profiling and the candidate fix are
+experiments row 4.
