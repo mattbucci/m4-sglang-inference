@@ -436,11 +436,13 @@ Twelve patches on top of `v0.5.23` — full rationale per patch in [patches/READ
 | 018 | mlx-aux-slot-admission-eviction | Admission-time auxiliary-slot eviction for the MLX pool (upstream's pre-pass is Hybrid-pool-only). |
 | 019 | mlx-flint-support | Recursive Flint on the MLX path: mlx-vlm checkpoint-layout adapter, per-layer window map from `ModelArgs`, sinks + NoPE in batched decode, `FlintConfig`, `flint` parsers, Torch-registry non-gate on MLX. |
 | 020 | mlx-prefill-last-token-logits | Final-chunk prefill computes logits for the last position only (drops the `[chunk, vocab]` transient: 1.2 GB at chunk 4096 on a 150K vocab). |
+| 021 | mlx-swa-prefix-snapshots | Exact prefix cache for sliding-window models: the windowed caches are snapshotted through the auxiliary-state pool at the boundaries the radix tree names and restored on a hit; full layers gather from the pool; pool scatters evaluated per step. |
+| 022 | mlx-pool-backed-cache-append | The pool-backed attention cache keeps the chunks already fetched in front of the next forward, so the trunk-then-last-token split of a prefix hit's final chunk sees every new token (the upstream cache re-gathered only the prefix: a blind first token and stale pool rows on every hit). |
 
 ## Repo layout
 
 ```
-patches/                    # 10 numbered patches — see patches/README.md
+patches/                    # 12 numbered patches — see patches/README.md
 experiments/                # Vetted execution queue (specs + statuses)
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts
