@@ -23,6 +23,10 @@ predictions.jsonl    ────────►   score_docker.py --predictions
 
 ## Files
 
+- `qwen36-p023-predictions.jsonl` — the same 26 instances rerun on
+  SGLang v0.5.23 + patches 002–023 (`runs/qwen36-26inst-p023-2026-10-31/`):
+  **26/26 non-empty patches**; awaiting Docker scoring on the 3090.
+
 - `qwen36-predictions.jsonl` — deduplicated qwen36 results across all
   archived runs in `evals/swebench/runs/`. **26 instances, 21 non-empty
   patches (80.8%)** (export at commit a5a52d8). The 5 empty:

@@ -1,0 +1,61 @@
+diff --git a/seaborn/_oldcore.py b/seaborn/_oldcore.py
+index c9218c1f..7a3e5d3e 100644
+--- a/seaborn/_oldcore.py
++++ b/seaborn/_oldcore.py
+@@ -1093,13 +1093,16 @@ class VectorPlotter:
+                 parts = []
+                 grouped = self.plot_data[var].groupby(self.converters[var], sort=False)
+                 for converter, orig in grouped:
+-                    with pd.option_context('mode.use_inf_as_null', True):
++                    try:
++                        with pd.option_context("mode.use_inf_as_null", True):
++                            orig = orig.dropna()
++                    except Exception:
+                         orig = orig.dropna()
+-                        if var in self.var_levels:
+-                            # TODO this should happen in some centralized location
+-                            # it is similar to GH2419, but more complicated because
+-                            # supporting `order` in categorical plots is tricky
+-                            orig = orig[orig.isin(self.var_levels[var])]
++                    if var in self.var_levels:
++                        # TODO this should happen in some centralized location
++                        # it is similar to GH2419, but more complicated because
++                        # supporting `order` in categorical plots is tricky
++                        orig = orig[orig.isin(self.var_levels[var])]
+                     comp = pd.to_numeric(converter.convert_units(orig))
+                     if converter.get_scale() == "log":
+                         comp = np.log10(comp)
+diff --git a/seaborn/axisgrid.py b/seaborn/axisgrid.py
+index 8526f44b..3c1b2b0e 100644
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1564,6 +1564,13 @@ class PairGrid(Grid):
+             hue = None
+         else:
+             hue = data.get(self._hue_var)
++            _mask = ~np.isin(hue, self._hue_order)
++            if hasattr(_mask, 'values'):
++                _mask = _mask.values
++            if _mask.any():
++                x = x[~_mask]
++                y = y[~_mask]
++                hue = hue[~_mask]
+ 
+         if "hue" not in kwargs:
+             kwargs.update({
+diff --git a/seaborn/categorical.py b/seaborn/categorical.py
+index 7df91b05..11041916 100644
+--- a/seaborn/categorical.py
++++ b/seaborn/categorical.py
+@@ -1842,7 +1842,10 @@ class _LVPlotter(_CategoricalPlotter):
+         vals = np.asarray(vals)
+         # Remove infinite values while handling a 'object' dtype
+         # that can come from pd.Float64Dtype() input
+-        with pd.option_context('mode.use_inf_as_null', True):
++        try:
++            with pd.option_context("mode.use_inf_as_null", True):
++                vals = vals[~pd.isnull(vals)]
++        except Exception:
+             vals = vals[~pd.isnull(vals)]
+         n = len(vals)
+         p = self.outlier_prop

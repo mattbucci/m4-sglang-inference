@@ -1,0 +1,23 @@
+diff --git a/astropy/wcs/wcs.py b/astropy/wcs/wcs.py
+index d3a06f2b31..2fb681eceb 100644
+--- a/astropy/wcs/wcs.py
++++ b/astropy/wcs/wcs.py
+@@ -1253,6 +1253,8 @@ reduce these to 2 dimensions using the naxis kwarg.
+                     "(coords[N][{0}], origin)".format(self.naxis))
+             if self.naxis == 1 and len(xy.shape) == 1:
+                 return _return_list_of_arrays([xy], origin)
++            if len(xy) == 0:
++                return np.zeros((0, self.naxis), dtype=np.float64)
+             return _return_single_array(xy, origin)
+ 
+         elif len(args) == self.naxis + 1:
+@@ -1266,6 +1268,9 @@ reduce these to 2 dimensions using the naxis kwarg.
+                     "When providing more than two arguments, they must be " +
+                     "a 1-D array for each axis, followed by an origin.")
+ 
++            if all(len(x) == 0 for x in axes):
++                return [np.array([], dtype=np.float64) for _ in range(self.naxis)]
++
+             return _return_list_of_arrays(axes, origin)
+ 
+         raise TypeError(

@@ -1,0 +1,22 @@
+diff --git a/sympy/simplify/trigsimp.py b/sympy/simplify/trigsimp.py
+index 34a3bab3fc..345817bac0 100644
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -1095,6 +1095,17 @@ def futrig(e, **kwargs):
+         return e
+ 
+     old = e
++    if e.has(exp) and not e.has(TrigonometricFunction):
++        new_as_sin = e.rewrite(sin)
++        if new_as_sin != e:
++            new_as_sin = factor(new_as_sin)
++            if count_ops(new_as_sin) < count_ops(e):
++                return new_as_sin
++        new_as_cos = e.rewrite(cos)
++        if new_as_cos != e:
++            new_as_cos = factor(new_as_cos)
++            if count_ops(new_as_cos) < count_ops(e):
++                return new_as_cos
+     e = bottom_up(e, lambda x: _futrig(x, **kwargs))
+ 
+     if kwargs.pop('hyper', True) and e.has(HyperbolicFunction):

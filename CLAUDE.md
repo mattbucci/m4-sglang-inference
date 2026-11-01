@@ -139,10 +139,11 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   batch benchmarks.
 - **Tertiary (currently the most productive workload):** single-user agentic
   coding at moderate context (8-32K typical per turn). qwen36 + opencode is
-  the validated primary recommendation; SWE-bench Lite official Docker
-  resolve rate = 9/26 = 34.6% (scored on the 3090's harness; measured on the
-  previous stack pin — re-run queued in
-  [experiments/](experiments/README.md)).
+  the validated primary recommendation; SWE-bench Lite patch
+  engagement 26/26 on the current stack (21/26 on the previous pin; official
+  Docker resolve rate 9/26 = 34.6% scored on the 3090's harness from the
+  previous pin's patches; the current-stack predictions are exported for
+  re-scoring).
 
 ## Quality Rules
 - **Every new MLX model must pass `validate_capabilities.py`** before its numbers

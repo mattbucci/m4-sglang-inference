@@ -1,0 +1,22 @@
+diff --git a/astropy/nddata/mixins/ndarithmetic.py b/astropy/nddata/mixins/ndarithmetic.py
+index 4153dfccb2..025e62558c 100644
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -262,7 +262,7 @@ class NDArithmeticMixin:
+         # collapse operations on masked quantities/arrays which are supported by
+         # the astropy.utils.masked or np.ma modules should use those modules to
+         # do the arithmetic on the data and propagate masks.
+-        use_masked_arith = operand is None and self.mask is not None
++        use_masked_arith = operand.mask is None and self.mask is not None
+         if use_masked_arith:
+             # if we're *including* masked values in the operation,
+             # use the astropy Masked module:
+@@ -520,7 +520,7 @@ class NDArithmeticMixin:
+         elif self.mask is None and operand is not None:
+             # Make a copy so there is no reference in the result.
+             return deepcopy(operand.mask)
+-        elif operand is None:
++        elif operand.mask is None:
+             return deepcopy(self.mask)
+         else:
+             # Now lets calculate the resulting mask (operation enforces copy)

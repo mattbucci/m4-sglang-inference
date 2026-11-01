@@ -66,6 +66,7 @@ CTX="${CTX:-131072}"
 PORT=23334
 PROXY_PORT="${PROXY_PORT:-23335}"
 OUT="${OUT:-/tmp/swebench-smoke}"
+case "$OUT" in /*) ;; *) OUT="$PWD/$OUT" ;; esac   # the rollout runs from evals/swebench
 PROMPT_EXTRA="${PROMPT_EXTRA:-}"
 EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size 2048 --mem-fraction-static 0.5}"
 # NO_THINKING_PROXY=1 (default): start no_thinking_proxy.py on $PROXY_PORT
