@@ -72,6 +72,24 @@ jobs:
           a = mx.ones((256, 256))
           print("matmul on default device:", float((a @ a).sum()))
           PY
+      - name: Single-process gloo group probe
+        # The scheduler builds a gloo group before loading the model; time it
+        # in isolation so a hang there is not mistaken for a model/serving bug.
+        timeout-minutes: 3
+        run: |
+          source scripts/common.sh
+          activate_venv
+          python - <<'PY'
+          import datetime, time
+          import torch.distributed as dist
+          t = time.time()
+          dist.init_process_group("gloo", init_method="tcp://127.0.0.1:29513",
+                                  rank=0, world_size=1,
+                                  timeout=datetime.timedelta(seconds=60))
+          dist.barrier()
+          print(f"gloo world=1 up in {time.time() - t:.1f}s")
+          dist.destroy_process_group()
+          PY
       - name: Boot launch.sh on a tiny model and answer one question
         run: |
           source scripts/common.sh
@@ -84,9 +102,11 @@ jobs:
           MODEL="$SMOKE_MODEL" SERVED_NAME=smoke CTX=2048 MAX_RUNNING=1 CHUNKED=1024 MEM_FRAC=0.3 \
             bash scripts/launch.sh qwen3-moe > server.log 2>&1 &
           echo $! > server.pid
-          for i in $(seq 1 600); do
+          healthy=0
+          for i in $(seq 1 420); do
             if curl -sf "http://localhost:${PORT}/health" >/dev/null; then
               echo "server healthy after ${i}s"
+              healthy=1
               break
             fi
             if ! kill -0 "$(cat server.pid)" 2>/dev/null; then
@@ -95,7 +115,15 @@ jobs:
             fi
             sleep 1
           done
-          curl -sf "http://localhost:${PORT}/health" >/dev/null
+          if [ "$healthy" != 1 ]; then
+            echo "server not healthy after 420s; dumping its Python stacks" >&2
+            pip install -q py-spy
+            for pid in $(pgrep -f 'sglang'); do
+              echo "=== $pid: $(ps -o command= -p "$pid" | cut -c1-120)"
+              sudo "$(command -v py-spy)" dump --pid "$pid" 2>&1 | head -60 || true
+            done
+            exit 1
+          fi
           python - <<'PY'
           import json, os, urllib.request
           body = {
