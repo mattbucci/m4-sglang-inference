@@ -1,0 +1,80 @@
+{
+  "tag": "Qwen38-27B-inhouse-2026-10-31",
+  "timestamp": "2026-10-31 23:24",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 86,
+    "total": 100,
+    "accuracy": 0.86
+  },
+  "humaneval": {
+    "passed": 18,
+    "total": 20,
+    "pass_rate": 0.9,
+    "mode": "completions"
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 19,
+      "total": 50,
+      "accuracy": 0.38
+    },
+    "DbQA": {
+      "correct": 20,
+      "total": 50,
+      "accuracy": 0.4
+    },
+    "SuppQA": {
+      "correct": 15,
+      "total": 50,
+      "accuracy": 0.3
+    },
+    "TableQA": {
+      "correct": 22,
+      "total": 50,
+      "accuracy": 0.44
+    },
+    "ProtocolQA": {
+      "correct": 19,
+      "total": 50,
+      "accuracy": 0.38
+    },
+    "SeqQA": {
+      "correct": 22,
+      "total": 50,
+      "accuracy": 0.44
+    },
+    "CloningScenarios": {
+      "correct": 8,
+      "total": 33,
+      "accuracy": 0.24242424242424243
+    },
+    "_overall": {
+      "correct": 125,
+      "total": 333,
+      "accuracy": 0.37537537537537535
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 4096,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      },
+      {
+        "context": 65536,
+        "found": true
+      }
+    ],
+    "score": 1.0,
+    "server_dead": false
+  }
+}
