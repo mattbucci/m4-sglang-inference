@@ -4,7 +4,7 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | done (A/B complete, all gates pass); promotion pending the HF upload decision |
+| **Status** | done; not promoted — all gates pass but a fidelity A/B against the 8-bit reference shows no measurable advantage (`benchmarks/quality/fidelity/`); opt-in local build |
 | **Execution host** | m4-box |
 | **Wall clock** | 2-3 days (67 GB BF16 download + hours-scale conversion + ~2h eval A/B per build + 3-instance agentic smoke) |
 | **GPU time** | none (Apple unified memory — no discrete GPU; box is exclusively occupied during conversion and evals, ~1-2 days cumulative) |
@@ -137,3 +137,14 @@ Receipts: `benchmarks/quality/Qwen36-incumbent-2026-10-31.json`, `Qwen36-inhouse
 everything else equal or better) with the fleet-banned classes removed; no DWQ-style lift, which the
 calibration-free recipe never promised. `probe_thinking` terminates on both arms, so the in_proj hypothesis
 is a documented null for thinking termination.
+
+### Fidelity A/B (upload decision)
+
+The upload rule was a measurable advantage over the community checkpoint on at
+least one of: KL to the 8-bit reference, teacher-forced perplexity, or
+long-generation degeneration (`benchmarks/quality/fidelity/README.md`). None
+separated the builds: paired NLL +0.0008 ± 0.0035 nats, paired KL −0.0019 ±
+0.0014 (the reference shares the incumbent's 8-bit router rounding, which
+biases that metric toward the incumbent), loops 2/40 degenerate on both. The
+hazard-class argument stays a prior, not a measurement, on this model at this
+sample size; the build is not uploaded.
