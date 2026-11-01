@@ -163,13 +163,7 @@ def main() -> int:
             prefix_tokens = usage.get("prompt_tokens", 0)
             print(f"   primed: {prefix_tokens} prompt tokens")
 
-        # decode comparator on the cached prefix
-        _, itls, usage = stream_request(base, prefix, 64)
-        dec_cached = cached_tokens(usage)
-        decode_ms = (sum(itls) / len(itls) * 1000) if itls else 0
-        print(f"   decode comparator: {decode_ms:.1f} ms/token "
-              f"(cached_tokens={dec_cached})")
-
+        depth_rows = []
         for k in [int(x) for x in args.suffix_tokens.split(",")]:
             ttfts, verified, recomputed = [], [], []
             for run in range(args.runs):
@@ -194,7 +188,7 @@ def main() -> int:
                       f"prompt_tokens={pt} cached_tokens={ct} recomputed={pt - ct if ct is not None else '?'}  verified={ok}")
             good = [t for t, v in zip(ttfts, verified) if v]
             med = sorted(good)[len(good) // 2] if good else None
-            results.append({
+            depth_rows.append({
                 "depth_label": depth, "prefix_tokens": prefix_tokens,
                 "suffix_tokens": k,
                 "ttft_ms_median": round(med * 1000, 1) if med else None,
@@ -202,10 +196,20 @@ def main() -> int:
                 "cache_hit_verified": all(verified) and bool(verified),
                 "recomputed_tokens": recomputed,
                 "shape": "multi-turn chat" if args.multi_turn else "completion append",
-                "decode_ms_per_token": round(decode_ms, 1),
-                "tax_ratio": (round(med * 1000 / decode_ms, 1)
-                              if med and decode_ms else None),
             })
+
+        # Decode comparator after the appends: the raw-completion request is a
+        # separate tree branch, and run before the first follow-up it would
+        # compete with the primed turn for auxiliary-state slots.
+        _, itls, usage = stream_request(base, prefix, 64)
+        decode_ms = (sum(itls) / len(itls) * 1000) if itls else 0
+        print(f"   decode comparator: {decode_ms:.1f} ms/token "
+              f"(cached_tokens={cached_tokens(usage)})")
+        for row in depth_rows:
+            med = row["ttft_ms_median"]
+            row["decode_ms_per_token"] = round(decode_ms, 1)
+            row["tax_ratio"] = round(med / decode_ms, 1) if med and decode_ms else None
+            results.append(row)
 
     with open(args.out, "w") as f:
         json.dump(results, f, indent=2)

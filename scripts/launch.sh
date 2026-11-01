@@ -47,6 +47,16 @@ MODEL="${MODEL:-}"
 TOKENIZER=""
 CTX="${CTX:-32768}"
 MAX_RUNNING="${MAX_RUNNING:-8}"
+# Auxiliary-state checkpoint budget for hybrid presets (DeltaNet/Mamba2
+# state, Flint's windowed KV): slots in the MLX auxiliary-state pool, shared
+# by live requests and every radix checkpoint (one per prefill chunk, the
+# prompt-side tracked state, the end state). Unset, SGLang sizes the pool at
+# 4 x MAX_RUNNING, so a single-user server keeps four checkpoints in the
+# whole tree and a 52K prompt evicts its own chunk states before the next
+# turn. A slot is ~79 MB on Qwen3.8-27B, ~33 MB on Qwen3.6-35B-A3B, filled
+# lazily. AUX_SLOTS= (empty) restores the upstream sizing.
+AUX_SLOTS="${AUX_SLOTS-64}"
+HYBRID_AUX=0
 CHUNKED="${CHUNKED:-4096}"
 CHAT_TEMPLATE=""
 REASONING=""
@@ -151,6 +161,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
+            HYBRID_AUX=1
             # Qwen3_5ForConditionalGeneration — DeltaNet hybrid + vision + VIDEO.
             # video_grid_thw / second_per_grid_ts already flow through tp_worker
             # mm_extra_kwargs path (see SGLang commit 2a327f0 for upstream fix).
@@ -171,6 +182,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"
             ;;
         qwen35-9b-8bit)
+            HYBRID_AUX=1
             # Smaller Qwen3.5 (9B) at higher precision (8-bit). Same DeltaNet
             # hybrid + vision architecture as qwen35; needs patch 013 for
             # correctness. Better quality/memory tradeoff than 27B-4bit for
@@ -222,6 +234,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"
             ;;
         qwen36)
+            HYBRID_AUX=1
             # Qwen3.6-35B-A3B MoE+DeltaNet+VL. Sister teams (3090/R9700) use
             # this as their flagship 256K agentic model. Vision + VIDEO capable
             # (qwen_vl.preprocess_video, video_grid_thw / second_per_grid_ts).
@@ -243,6 +256,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"
             ;;
         qwen36-27b)
+            HYBRID_AUX=1
             # Qwen3.6-27B (Dense, no MoE). Pure DeltaNet+VL variant of the
             # Qwen3.6 family — smaller weights than 35B-A3B, no MoE indirection
             # so decode is dense-bound. Same hybrid-cache + VLM-wrapper path
@@ -277,6 +291,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         nemotron-30b)
+            HYBRID_AUX=1
             # NVIDIA Nemotron-3-Nano-30B-A3B (NemotronH hybrid: Mamba2 +
             # Attention + MoE). 30B total, 3B active (128 experts top-6,
             # 1 shared), 52 layers, 262K native context. No RoPE — position
@@ -306,6 +321,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         flint)
+            HYBRID_AUX=1
             # Recursive Flint (FlintForCausalLM): 39.8B-total / ~2.5B-active
             # MoE for coding agents — 35 sliding-window (513-token) + 14
             # full-attention layers with learned attention sinks; the full
@@ -474,6 +490,7 @@ CMD=(python3 -m sglang.launch_server
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
+[[ -n "$AUX_SLOTS" && "$HYBRID_AUX" == 1 ]] && CMD+=(--max-mamba-cache-size "$AUX_SLOTS")
 [[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
 
 exec "${CMD[@]}"
