@@ -251,7 +251,10 @@ apply_preset() {
             # --enable-multimodal required for vision — see qwen36 preset
             # comment. probe_vision FAIL on 2026-05-16 without it.
             MODEL="${MODEL:-mlx-community/Qwen3.6-27B-4bit}"
-            CTX=32768; MAX_RUNNING=1; CHUNKED=8192
+            # 2048-token chunks: an 8192-token chunk into a 26K-token prefill on a
+            # 27B DeltaNet build panicked the GPU driver (IOGPUMemory
+            # "completeMemory() prepare count underflow", macOS 26.2).
+            CTX=32768; MAX_RUNNING=1; CHUNKED=2048
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --tool-call-parser qwen3_coder"
             WARMUP="--skip-server-warmup"
