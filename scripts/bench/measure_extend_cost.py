@@ -79,6 +79,42 @@ def stream_request(base_url: str, prompt: str, max_tokens: int, timeout: int = 3
     return ttft, itls, usage
 
 
+def chat_request(base_url: str, messages: list, max_tokens: int,
+                 template_kwargs: dict | None = None, timeout: int = 3600):
+    """POST a streaming chat completion; return (ttft, usage, content)."""
+    body = {
+        "model": "default", "messages": messages, "max_tokens": max_tokens,
+        "temperature": 0, "stream": True, "stream_options": {"include_usage": True},
+    }
+    if template_kwargs:
+        body["chat_template_kwargs"] = template_kwargs
+    req = urllib.request.Request(f"{base_url}/v1/chat/completions",
+                                 data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json"})
+    t0 = time.time()
+    ttft, usage, content = None, {}, []
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        for raw in r:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            payload = line[5:].strip()
+            if payload == "[DONE]":
+                break
+            chunk = json.loads(payload)
+            if chunk.get("usage"):
+                usage = chunk["usage"]
+            ch = chunk.get("choices") or []
+            if ch:
+                delta = ch[0].get("delta") or {}
+                if delta.get("content") or delta.get("reasoning_content"):
+                    if ttft is None:
+                        ttft = time.time() - t0
+                if delta.get("content"):
+                    content.append(delta["content"])
+    return ttft, usage, "".join(content)
+
+
 def cached_tokens(usage: dict):
     det = usage.get("prompt_tokens_details") or {}
     return det.get("cached_tokens")
@@ -92,7 +128,19 @@ def main() -> int:
     p.add_argument("--runs", type=int, default=3)
     p.add_argument("--seed", type=int, default=7)
     p.add_argument("--out", default="benchmarks/session-endurance/extend-cost.json")
+    p.add_argument("--multi-turn", action="store_true",
+                   help="agentic chat shape through /v1/chat/completions: prime a user turn, "
+                        "keep the visible reply as history, append a NEW user message; the "
+                        "follow-up diverges from the primed prompt inside the chat template's "
+                        "generation tail (Qwen3.x: 1-2 tokens before the primed end), which a "
+                        "hybrid cache that only holds Mamba states at chunk ends and the prompt end "
+                        "cannot serve")
+    p.add_argument("--prime-max-tokens", type=int, default=64,
+                   help="reply length generated while priming in --multi-turn")
+    p.add_argument("--chat-template-kwargs", default="",
+                   help='JSON forwarded as chat_template_kwargs in --multi-turn, e.g. {"enable_thinking": false}')
     args = p.parse_args()
+    template_kwargs = json.loads(args.chat_template_kwargs) if args.chat_template_kwargs else None
 
     import os
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
@@ -103,9 +151,17 @@ def main() -> int:
     for depth in [int(x) for x in args.depths.split(",")]:
         prefix = make_prefix(depth, args.seed + depth)
         print(f"== depth {depth}: priming prefix (cold, unmeasured) ==")
-        _, _, usage = stream_request(base, prefix, 1)
-        prefix_tokens = usage.get("prompt_tokens", 0)
-        print(f"   primed: {prefix_tokens} prompt tokens")
+        if args.multi_turn:
+            _, usage, reply = chat_request(base, [{"role": "user", "content": prefix}],
+                                           args.prime_max_tokens, template_kwargs)
+            prefix_tokens = usage.get("prompt_tokens", 0)
+            print(f"   primed (chat): {prefix_tokens} prompt tokens, reply {len(reply)} visible chars")
+            if not reply:
+                reply = "Noted."
+        else:
+            _, _, usage = stream_request(base, prefix, 1)
+            prefix_tokens = usage.get("prompt_tokens", 0)
+            print(f"   primed: {prefix_tokens} prompt tokens")
 
         # decode comparator on the cached prefix
         _, itls, usage = stream_request(base, prefix, 64)
@@ -115,19 +171,27 @@ def main() -> int:
               f"(cached_tokens={dec_cached})")
 
         for k in [int(x) for x in args.suffix_tokens.split(",")]:
-            ttfts, verified = [], []
+            ttfts, verified, recomputed = [], [], []
             for run in range(args.runs):
                 lead = UNIQUE_LEADS[lead_i % len(UNIQUE_LEADS)]
                 lead_i += 1
                 suffix = (" " + lead + " " +
                           " ".join("suffix" for _ in range(max(0, k - 1))))[:k * 7]
-                ttft, _, usage = stream_request(base, prefix + suffix, 1)
+                if args.multi_turn:
+                    history = [{"role": "user", "content": prefix},
+                               {"role": "assistant", "content": reply},
+                               {"role": "user", "content": suffix.strip()}]
+                    ttft, usage, _ = chat_request(base, history, 1, template_kwargs)
+                else:
+                    ttft, _, usage = stream_request(base, prefix + suffix, 1)
                 ct = cached_tokens(usage)
+                pt = usage.get("prompt_tokens", 0)
                 ok = ct is not None and ct >= 0.9 * prefix_tokens
                 ttfts.append(ttft)
                 verified.append(ok)
+                recomputed.append(pt - ct if ct is not None else None)
                 print(f"   append k={k:>3} run{run}: ttft={ttft * 1000:8.1f} ms  "
-                      f"cached_tokens={ct}  verified={ok}")
+                      f"prompt_tokens={pt} cached_tokens={ct} recomputed={pt - ct if ct is not None else '?'}  verified={ok}")
             good = [t for t, v in zip(ttfts, verified) if v]
             med = sorted(good)[len(good) // 2] if good else None
             results.append({
@@ -136,6 +200,8 @@ def main() -> int:
                 "ttft_ms_median": round(med * 1000, 1) if med else None,
                 "ttft_ms_all": [round(t * 1000, 1) for t in ttfts],
                 "cache_hit_verified": all(verified) and bool(verified),
+                "recomputed_tokens": recomputed,
+                "shape": "multi-turn chat" if args.multi_turn else "completion append",
                 "decode_ms_per_token": round(decode_ms, 1),
                 "tax_ratio": (round(med * 1000 / decode_ms, 1)
                               if med and decode_ms else None),

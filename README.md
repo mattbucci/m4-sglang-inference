@@ -250,7 +250,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 15 patches
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 16 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -450,7 +450,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 15 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 16 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev — carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -479,11 +479,12 @@ Fifteen patches on top of `v0.5.23` — full rationale per patch in [patches/REA
 | 023 | mlx-release-finished-request | The scheduler's KV-release hook runs for every finished request and the MLX worker drops the request's caches there, deferred while an overlap-schedule launch that includes the request is in flight (upstream sweeps them only at the next decode batch: a request that never decodes keeps its KV for the server's lifetime; the last turn's KV sits idle between agent turns). |
 | 024 | mlx-wired-limit-env | `SGLANG_MLX_WIRED_LIMIT_GB` (unset: upstream's max recommended working set; `0`: no wired limit, so no residency-set traffic; `common.sh` default `0`) — the IOGPUFamily panic mitigation in Known issues. |
 | 025 | dllm-structured-reads | Structured reads on DiffusionGemma: per-request seed canvas, pinned positions, step cap, read-only finish with per-position logprobs, and a constrained label set (`sampling_params.custom_params["diffusion"]`); CUDA/ROCm hosts only — see the DiffusionGemma section. |
+| 026 | mlx-prompt-side-mamba-checkpoint | The scheduler publishes the prompt-side DeltaNet/Mamba checkpoint the prefill tracked (64-token grid inside the last chunk) as its own tree node before a finished request's final insert, so an agentic follow-up turn — which the chat template makes diverge 1–2 tokens before the primed prompt end — restores a state within a grid of the prompt instead of recomputing the last prefill chunk. |
 
 ## Repo layout
 
 ```
-patches/                    # 15 numbered patches — see patches/README.md
+patches/                    # 16 numbered patches — see patches/README.md
 experiments/                # Vetted execution queue (specs + statuses)
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts

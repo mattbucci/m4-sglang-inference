@@ -87,7 +87,13 @@ ATTR_CHECKS = {
          lambda m: _src_has(m.MlxTpModelWorker.prepare_for_kv_cache_release,
                             "self._mlx_runner.remove_request(req.rid)")),
     ],
+    "sglang.srt.mem_cache.unified_radix_cache": [
+        ("UnifiedRadixCache.checkpoint_into_tree(as_running)",              # 026
+         lambda m: "as_running" in m.UnifiedRadixCache.checkpoint_into_tree.__code__.co_varnames),
+    ],
     "sglang.srt.managers.scheduler_components.batch_result_processor": [
+        ("SchedulerBatchResultProcessor._publish_prompt_side_mamba_checkpoint",  # 026
+         lambda m: m.SchedulerBatchResultProcessor._publish_prompt_side_mamba_checkpoint),
         ("KV-release hook for every finished request",                # 023
          lambda m: _src_has(m, "self._prepare_kv_cache_release(req)\n"
                                "                        release_kv_cache(")),
