@@ -1,0 +1,291 @@
+diff --git a/python/sglang/srt/dllm/algorithm/base.py b/python/sglang/srt/dllm/algorithm/base.py
+index cbafc7239d..042988c387 100644
+--- a/python/sglang/srt/dllm/algorithm/base.py
++++ b/python/sglang/srt/dllm/algorithm/base.py
+@@ -136,7 +136,19 @@ class DllmAlgorithm:
+         next_token_ids_list = [
+             next_token_ids[i, start_list[i] :] for i in range(batch_size)
+         ]
+-        return out.logits_output, next_token_ids_list, None, None, out.can_run_graph
++        # Structured reads carry their per-position logprobs in the state.
++        read_states = (
++            states
++            if any(isinstance(s, dict) and s.get("read_only") for s in states)
++            else None
++        )
++        return (
++            out.logits_output,
++            next_token_ids_list,
++            None,
++            read_states,
++            out.can_run_graph,
++        )
+ 
+     def _run_fdfo(
+         self,
+diff --git a/python/sglang/srt/dllm/algorithm/gemma4_renoise.py b/python/sglang/srt/dllm/algorithm/gemma4_renoise.py
+index 0ad0179ebe..5f1a7b01c4 100644
+--- a/python/sglang/srt/dllm/algorithm/gemma4_renoise.py
++++ b/python/sglang/srt/dllm/algorithm/gemma4_renoise.py
+@@ -58,6 +58,43 @@ def _denoiser_statistics_cuda(logits, temperatures, *, write_soft=False):
+     return *result, soft_probabilities
+ 
+ 
++def _diffusion_options(req) -> Optional[dict]:
++    custom = req.sampling_params.custom_params
++    opts = custom.get("diffusion") if isinstance(custom, dict) else None
++    return opts if isinstance(opts, dict) else None
++
++
++def _validate_diffusion_options(opts: dict, req) -> Optional[str]:
++    """Structured-read options: shapes against the served canvas."""
++    block_size = req.dllm_config.block_size
++    if req.dllm_config.first_done_first_out_mode:
++        return "diffusion options need the synchronous loop (no --dllm-fdfo)"
++    unknown = set(opts) - {"seed_canvas", "pinned", "max_steps", "read_only", "constrained"}
++    if unknown:
++        return f"unknown diffusion options {sorted(unknown)}"
++    canvas = opts.get("seed_canvas")
++    if canvas is not None and (
++        not isinstance(canvas, list)
++        or len(canvas) != block_size
++        or any(type(t) is not int or t < 0 for t in canvas)
++    ):
++        return f"diffusion.seed_canvas must be {block_size} non-negative token ids"
++    pinned = opts.get("pinned")
++    if pinned is not None and (
++        not isinstance(pinned, list)
++        or any(type(p) is not int or not 0 <= p < block_size for p in pinned)
++    ):
++        return f"diffusion.pinned must be canvas positions in [0, {block_size})"
++    if pinned and canvas is None:
++        return "diffusion.pinned needs diffusion.seed_canvas"
++    steps = opts.get("max_steps")
++    if steps is not None and (type(steps) is not int or steps < 1):
++        return "diffusion.max_steps must be a positive integer"
++    if opts.get("constrained") and not (req.return_logprob and req.logprob.token_ids_logprob):
++        return "diffusion.constrained needs return_logprob with token_ids_logprob"
++    return None
++
++
+ def _sample_denoiser(probabilities: torch.Tensor, generator: torch.Generator):
+     # The exponential-race formulation samples the same categorical distribution
+     # as multinomial. Probabilities come from softmax, so multinomial's repeated
+@@ -123,6 +160,13 @@ class Gemma4Renoise(DllmAlgorithm):
+     @classmethod
+     def validate_request(cls, req: Req) -> Optional[str]:
+         sp = req.sampling_params
++        opts = _diffusion_options(req)
++        if opts is not None:
++            error = _validate_diffusion_options(opts, req)
++            if error:
++                return error
++        # A read-only request reports the final canvas's logprobs.
++        read_only = bool(opts and opts.get("read_only"))
+         unsupported = [
+             name
+             for name, value, default in (
+@@ -145,9 +189,9 @@ class Gemma4Renoise(DllmAlgorithm):
+         unsupported.extend(
+             name
+             for name, value in (
+-                ("return_logprob", req.return_logprob),
++                ("return_logprob", req.return_logprob and not read_only),
+                 ("top_logprobs_num", req.logprob.top_logprobs_num),
+-                ("token_ids_logprob", req.logprob.token_ids_logprob),
++                ("token_ids_logprob", req.logprob.token_ids_logprob and not read_only),
+                 (
+                     "return_flat_raw_top_logprobs",
+                     req.return_flat_raw_top_logprobs,
+@@ -256,6 +300,7 @@ class Gemma4Renoise(DllmAlgorithm):
+ 
+     def init_step_state(self, forward_batch: ForwardBatch) -> List[Any]:
+         device = forward_batch.input_ids.device
++        options = forward_batch.dllm_options or [None] * forward_batch.batch_size
+         states = []
+         for index in range(forward_batch.batch_size):
+             generator = torch.Generator(device=device)
+@@ -277,8 +322,54 @@ class Gemma4Renoise(DllmAlgorithm):
+                     "finished": False,
+                 }
+             )
++            self._apply_read_options(states[-1], options[index], device)
+         return states
+ 
++    def _apply_read_options(self, state: dict, opts: Optional[dict], device) -> None:
++        """Structured reads: seed the canvas, pin template positions, cap
++        the steps, restrict the vocabulary, and mark the read-only finish."""
++        state.update(
++            seed=None, pinned=None, allowed=None, constrained=False,
++            read_only=False, token_ids=[], read_logprobs=None,
++        )
++        if not opts:
++            return
++        canvas = opts.get("seed_canvas")
++        if canvas is not None:
++            seed = torch.tensor(canvas, dtype=state["current"].dtype, device=device)
++            state["current"] = seed
++            state["argmax"] = seed
++            state["seed"] = seed
++            positions = opts.get("pinned") or []
++            if positions:
++                pinned = torch.zeros(self.block_size, dtype=torch.bool, device=device)
++                pinned[torch.tensor(positions, dtype=torch.int64, device=device)] = True
++                state["pinned"] = pinned
++        steps = opts.get("max_steps")
++        if steps:
++            state["step"] = min(int(steps), self.max_denoising_steps)
++        ids = list(opts.get("_token_ids") or [])
++        state["token_ids"] = ids
++        if ids:
++            state["allowed"] = torch.tensor(ids, dtype=torch.int64, device=device)
++        state["constrained"] = bool(opts.get("constrained")) and bool(ids)
++        state["read_only"] = bool(opts.get("read_only"))
++
++    def _pin(self, state: dict, tokens: torch.Tensor) -> torch.Tensor:
++        pinned = state.get("pinned")
++        if pinned is None:
++            return tokens
++        return torch.where(pinned, state["seed"], tokens)
++
++    def _read_logprobs(self, state: dict, logits: torch.Tensor) -> None:
++        """Temperature-1 logprobs of the final canvas for the requested ids
++        (renormalized over them when constrained: the mask already did)."""
++        log_probabilities = torch.log_softmax(logits.float(), dim=-1)
++        chosen = log_probabilities.gather(1, state["current"][:, None].long())[:, 0]
++        allowed = state.get("allowed")
++        selected = log_probabilities[:, allowed] if allowed is not None else chosen[:, None]
++        state["read_logprobs"] = (selected.cpu().tolist(), chosen.cpu().tolist())
++
+     @torch.no_grad()
+     def prepare_inputs(
+         self,
+@@ -385,6 +476,12 @@ class Gemma4Renoise(DllmAlgorithm):
+             self._write_input_ids(forward_batch, states)
+             return [True] * len(states)
+ 
++        for index, state in enumerate(states):
++            if state.get("constrained") and not state["finished"]:
++                keep = torch.zeros(self.vocab_size, dtype=torch.bool, device=logits.device)
++                keep[state["allowed"]] = True
++                logits[index].masked_fill_(~keep, float("-inf"))
++
+         temperatures = self._temperatures(logits, states)
+         soft_probabilities = None
+         if logits.is_cuda:
+@@ -423,8 +520,10 @@ class Gemma4Renoise(DllmAlgorithm):
+                 device=logits.device,
+                 generator=generator,
+             )
+-            state["current"] = torch.where(selected[index], denoiser, random_canvas)
+-            argmax = argmax_tokens[index]
++            state["current"] = self._pin(
++                state, torch.where(selected[index], denoiser, random_canvas)
++            )
++            argmax = self._pin(state, argmax_tokens[index])
+             history = state["history"]
+             if self.stability_threshold == 0:
+                 stable = torch.ones((), dtype=torch.bool, device=logits.device)
+@@ -461,6 +560,8 @@ class Gemma4Renoise(DllmAlgorithm):
+             if state["finished"]:
+                 state["current"] = state["argmax"]
+                 state["self_conditioning"] = None
++                if state.get("read_only"):
++                    self._read_logprobs(state, logits[index])
+             else:
+                 state["self_conditioning"] = soft_embeds[index]
+         self._write_input_ids(forward_batch, states)
+diff --git a/python/sglang/srt/dllm/mixin/scheduler.py b/python/sglang/srt/dllm/mixin/scheduler.py
+index fe2fbb81ca..9730e15055 100644
+--- a/python/sglang/srt/dllm/mixin/scheduler.py
++++ b/python/sglang/srt/dllm/mixin/scheduler.py
+@@ -119,6 +119,7 @@ class SchedulerDllmMixin:
+                     req.output_ids.extend(next_token_ids)
+                     req.update_finish_state(new_accepted_len=new_tokens)
+                     self._finish_dllm_request_if_needed(req)
++                    self._finish_dllm_read(req, algo_states, idx, new_tokens)
+                     continue
+ 
+                 next_token_ids = result.next_token_ids[idx]
+@@ -168,6 +169,34 @@ class SchedulerDllmMixin:
+             dp_cooperation_info=batch.dp_cooperation_info,
+         )
+ 
++    def _finish_dllm_read(
++        self: Scheduler, req: Req, algo_states, idx: int, new_tokens: int
++    ) -> None:
++        """Structured read: attach the final canvas's per-position logprobs
++        and finish after this one block."""
++        state = (
++            algo_states[idx]
++            if isinstance(algo_states, list) and idx < len(algo_states)
++            else None
++        )
++        if not isinstance(state, dict) or not state.get("read_only"):
++            return
++        read = state.get("read_logprobs")
++        if (
++            read is not None
++            and req.return_logprob
++            and req.logprob.output_token_ids_logprobs_val is not None
++        ):
++            selected, chosen = read
++            ids = list(state.get("token_ids") or [])
++            emitted = req.output_ids[-new_tokens:]
++            for pos in range(new_tokens):
++                req.logprob.output_token_logprobs_val.append(chosen[pos])
++                req.logprob.output_token_logprobs_idx.append(emitted[pos])
++                req.logprob.output_token_ids_logprobs_val.append(selected[pos])
++                req.logprob.output_token_ids_logprobs_idx.append(ids)
++        req.finished_reason = FINISH_LENGTH(length=len(req.output_ids))
++
+     def _finish_dllm_request_if_needed(self: Scheduler, req: Req) -> None:
+         if (
+             not req.finished()
+diff --git a/python/sglang/srt/model_executor/forward_batch_info.py b/python/sglang/srt/model_executor/forward_batch_info.py
+index a8280c285e..4d7159e51d 100644
+--- a/python/sglang/srt/model_executor/forward_batch_info.py
++++ b/python/sglang/srt/model_executor/forward_batch_info.py
+@@ -489,6 +489,22 @@ class NgramEmbeddingInfo:
+         )
+ 
+ 
++
++def _dllm_request_options(reqs) -> Optional[List[Optional[dict]]]:
++    """Structured-read options per request, or None when no request sets them."""
++    options: List[Optional[dict]] = []
++    for req in reqs:
++        custom = req.sampling_params.custom_params
++        opts = custom.get("diffusion") if isinstance(custom, dict) else None
++        if isinstance(opts, dict):
++            opts = dict(opts)
++            ids = req.logprob.token_ids_logprob if req.return_logprob else None
++            opts["_token_ids"] = list(ids or [])
++            options.append(opts)
++        else:
++            options.append(None)
++    return options if any(o is not None for o in options) else None
++
+ @dataclass
+ class ForwardBatch(ForwardBatchDeepSeekMHAMixin):
+     """Store all inputs of a forward pass."""
+@@ -660,6 +676,11 @@ class ForwardBatch(ForwardBatchDeepSeekMHAMixin):
+     # dLLM committed positions are immutable, including literal mask-token IDs.
+     # None when no request in the batch has a literal mask ID.
+     dllm_prompt_mask: Optional[torch.Tensor] = None
++    # Per-request structured-read options (sampling_params.custom_params
++    # ["diffusion"]: seed_canvas, pinned, max_steps, read_only, constrained)
++    # with the request's token_ids_logprob under "_token_ids"; None when no
++    # request in the batch sets them.
++    dllm_options: Optional[List[Optional[dict]]] = None
+ 
+     # For extend
+     extend_num_tokens: Optional[int] = None
+@@ -1186,6 +1207,7 @@ class ForwardBatch(ForwardBatchDeepSeekMHAMixin):
+         # encoding uses the ordinary EXTEND position path below.
+         if batch.dllm_config is not None and ret.forward_mode.is_dllm_extend():
+             block_size = batch.dllm_config.block_size
++            ret.dllm_options = _dllm_request_options(batch.reqs)
+             positions_dtype = torch.int64 if is_hip() or _is_npu else torch.int32
+             positions = [
+                 i

@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 14 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache (hits and cold runs each deterministic; trade-off: overlap schedule off for them). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 15 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache (hits and cold runs each deterministic; trade-off: overlap schedule off for them). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
 
 **Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), (the `--kv-cache-dtype` flag is inert on this backend — the MLX pool stores KV in the attention compute dtype — so the earlier turboquant-vs-fp16 recall A/B compared identical bf16 arms). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
 
@@ -125,6 +125,25 @@ on all three quantizations.
   of the recommended-picks ranking: three instances are a smoke, not the
   26-instance cell qwen36 is scored on.
 
+### DiffusionGemma structured reads (CUDA/ROCm hosts)
+
+SGLang serves `google/diffusiongemma-26B-A4B-it` with `--dllm-algorithm
+Gemma4Renoise` (a 256-token bidirectional canvas denoised in up to 48
+steps), but upstream rejects logprobs and every structured-output option on
+it. Patch 025 adds the vLLM-style *structured read*: the answer template is
+written into the canvas as `seed_canvas`, every template position is
+`pinned`, the answer slots stay noise, `max_steps` denoising steps run, and
+a `read_only` request returns the final canvas with temperature-1 logprobs
+at each position for the request's `token_ids_logprob`; `constrained`
+limits the slot to those labels and renormalizes. `scripts/eval/structured_reads.py`
+builds the read from a question and its labels (yes/no, choices, ordered
+scores) and prints each slot's distribution; every label must be one token.
+The model is CUDA/ROCm-only in SGLang (device check, Triton attention, no
+quantized loading) and Gemma 4 is blocked on the MLX path, so this box only
+carries the patch and its CPU test; the end-to-end run is queued on the
+R9700 (64 GB across two GPUs holds the 51.6 GB BF16 checkpoint with TP=2),
+where the 3090 pair's 48 GB cannot.
+
 ### Probe matrix (current stack, radix on)
 
 | Preset | codegen | vision | video | thinking |
@@ -221,7 +240,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 14 patches
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 15 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -420,7 +439,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 14 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 15 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev — carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -430,7 +449,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Fourteen patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
+Fifteen patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -448,11 +467,12 @@ Fourteen patches on top of `v0.5.23` — full rationale per patch in [patches/RE
 | 022 | mlx-pool-backed-cache-append | The pool-backed attention cache keeps the chunks already fetched in front of the next forward, so the trunk-then-last-token split of a prefix hit's final chunk sees every new token (the upstream cache re-gathered only the prefix: a blind first token and stale pool rows on every hit). |
 | 023 | mlx-release-finished-request | The scheduler's KV-release hook runs for every finished request and the MLX worker drops the request's caches there, deferred while an overlap-schedule launch that includes the request is in flight (upstream sweeps them only at the next decode batch: a request that never decodes keeps its KV for the server's lifetime; the last turn's KV sits idle between agent turns). |
 | 024 | mlx-wired-limit-env | `SGLANG_MLX_WIRED_LIMIT_GB` (unset: upstream's max recommended working set; `0`: no wired limit, so no residency-set traffic; `common.sh` default `0`) — the IOGPUFamily panic mitigation in Known issues. |
+| 025 | dllm-structured-reads | Structured reads on DiffusionGemma: per-request seed canvas, pinned positions, step cap, read-only finish with per-position logprobs, and a constrained label set (`sampling_params.custom_params["diffusion"]`); CUDA/ROCm hosts only — see the DiffusionGemma section. |
 
 ## Repo layout
 
 ```
-patches/                    # 14 numbered patches — see patches/README.md
+patches/                    # 15 numbered patches — see patches/README.md
 experiments/                # Vetted execution queue (specs + statuses)
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts
