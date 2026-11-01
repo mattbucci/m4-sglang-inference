@@ -4,8 +4,9 @@ name: smoke-macos
 # scripts/setup.sh (pinned SGLang clone, strict patch apply, env install, patch
 # gates, import smoke), the CPU unit tests, then boots launch.sh on a tiny MLX
 # model and checks one answer. It does NOT measure quality or speed: the runner
-# is a 3-core / 7 GB VM, and Apple's Virtualization Framework gives it no
-# Metal/MPS GPU, so any MLX compute here runs on the CPU device.
+# is a 3-core / 7 GB VM whose GPU is the Virtualization Framework's paravirtual
+# Metal device (MLX and torch report it available; GitHub documents MPS as
+# unsupported), so a failure in the last two steps can be the VM, not the code.
 
 on:
   workflow_dispatch:
