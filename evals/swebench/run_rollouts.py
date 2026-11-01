@@ -154,10 +154,30 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
         # Belt and suspenders: if rename failed and the dir still exists, abort.
         if inst_dir.exists():
             raise RuntimeError(f"could not clear {inst_dir}; tmpfs corruption?")
-    subprocess.run(["git", "clone", str(mirror), str(inst_dir)], check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["git", "checkout", base_commit], cwd=inst_dir, check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Ancestor-only checkout: fetch exactly base_commit from the mirror into
+    # a fresh repository, so the object store holds the commit and its
+    # history and nothing after it — no branches, tags or remotes that lead
+    # to the upstream fix (`git log --all`, `git branch -a`, `git show <sha>`
+    # of a later commit all come back empty). A plain clone of the mirror
+    # carried the whole history: 50,492 commits reachable on astropy where
+    # the base commit reaches 32,966, the fix merge among them.
+    subprocess.run(["git", "-C", str(mirror), "config", "uploadpack.allowAnySHA1InWant", "true"],
+                   check=True)
+    inst_dir.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q"], cwd=inst_dir, check=True)
+    fetch = ["git", "fetch", "-q", f"file://{mirror}", base_commit]
+    r = subprocess.run(fetch, cwd=inst_dir, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if r.returncode != 0:
+        # The mirror predates this base commit: refresh it once and retry.
+        subprocess.run(["git", "-C", str(mirror), "fetch", "-q", "origin"], check=True)
+        subprocess.run(fetch, cwd=inst_dir, check=True)
+    subprocess.run(["git", "checkout", "-q", "-b", "base", "FETCH_HEAD"], cwd=inst_dir, check=True)
+    reachable = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=inst_dir,
+                               capture_output=True, text=True, check=True).stdout.strip()
+    everything = subprocess.run(["git", "rev-list", "--count", "--all"], cwd=inst_dir,
+                                capture_output=True, text=True, check=True).stdout.strip()
+    if reachable != everything:
+        raise RuntimeError(f"{instance_id}: checkout holds commits past the base ({everything} vs {reachable})")
     subprocess.run(["git", "config", "user.email", "eval@local"], cwd=inst_dir, check=True)
     subprocess.run(["git", "config", "user.name", "eval"], cwd=inst_dir, check=True)
     return inst_dir
@@ -250,6 +270,13 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
         "--dangerously-skip-permissions",
         prompt,
     ]
+    # Network seal: on macOS the whole opencode process tree (its bash tool
+    # included) runs under a seatbelt profile that allows connections to
+    # this host only, so curl/pip/git/webfetch cannot reach GitHub or PyPI
+    # for a later version of the code. SWEBENCH_SANDBOX=0 lifts it.
+    if sys.platform == "darwin" and os.environ.get("SWEBENCH_SANDBOX", "1") != "0":
+        profile = Path(__file__).resolve().parent / "localhost-only.sb"
+        cmd = ["sandbox-exec", "-f", str(profile)] + cmd
     env = os.environ.copy()
     env["PATH"] = f"{Path.home()}/.npm-global/bin:{env.get('PATH','')}"
     if extra_env:

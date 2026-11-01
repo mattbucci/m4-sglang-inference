@@ -13,8 +13,9 @@ README's quality table don't predict agentic capability on this hardware
 
 ```
 SWE-bench Lite (princeton-nlp/SWE-bench_Lite)
-  └── run_rollouts.py (HF dataset loader + git clone + opencode driver)
-      └── opencode 1.15.4
+  └── run_rollouts.py (HF dataset loader + ancestor-only checkout + opencode driver)
+      └── sandbox-exec localhost-only.sb (no network past this host)
+          └── opencode 1.15.4 (task/webfetch/websearch off)
           └── HTTP → no_thinking_proxy.py :23335
               └── HTTP → SGLang :23334
                   └── MLX backend, native Apple Silicon
@@ -33,6 +34,50 @@ Verified 2026-05-18: without the proxy, qwen36 makes 9 tool calls but
 produces a 0-byte diff (reasoning is invisible). With the proxy, qwen36
 makes 6 tool calls including 1 `edit` and produces a 506-byte patch
 that targets the canonical bug location.
+
+## Sealed harness: the answer cannot be downloaded
+
+Three channels would let a session obtain the upstream fix instead of
+writing one, and the archive shows two of them being used (neither session
+produced a patch):
+
+- **Web tools.** opencode's `webfetch` pulled the post-fix
+  `astropy/modeling/separable.py` from three later release tags during a
+  Qwen3.8 session on `astropy-12907`. `smoke.sh` now switches `webfetch` and
+  `websearch` off in the injected tools block alongside `task`.
+- **Package index / git over the network.** A Flint session on
+  `astropy-14182` ran `pip download astropy==6.0`, unpacked the wheel and
+  read the fixed `rst.py` and its tests. `run_rollouts.py` runs opencode under
+  a seatbelt profile (`localhost-only.sb`: `deny network-outbound` except
+  `localhost`), inherited by every process its bash tool spawns, so curl,
+  pip, git and DNS fail; the model's server and the proxy are on 127.0.0.1.
+  `SWEBENCH_SANDBOX=0` lifts it (Linux hosts: no seal, use a network
+  namespace).
+- **Future history in the checkout.** A plain clone of the mirror carried
+  every branch and tag: 50,492 commits reachable on astropy where the base
+  commit reaches 32,966, the fix merge among them (`git log --all`,
+  `git branch -a`, `git show <later sha>` all worked; sessions ran the first
+  two). `ensure_repo` now fetches exactly `base_commit` from the mirror into
+  a fresh repository (`uploadpack.allowAnySHA1InWant`), so the object store
+  holds the base commit and its ancestors only; the harness asserts
+  `rev-list --all == rev-list HEAD` before the rollout (3.5 s per instance,
+  106 MB for astropy).
+
+`audit_rollouts.py` scans every archived session for the three channels and
+prints the patch size the session produced:
+
+```
+python3 evals/swebench/audit_rollouts.py            # all runs/*
+python3 evals/swebench/audit_rollouts.py --verbose  # with the matching commands
+```
+
+Archive audit (147 sessions): 8 sessions with a hit. Two reached the
+internet (the Qwen3.8 `webfetch` session and the Flint `pip download`
+session), both 0-byte patches. Six ran a history-reading git command
+(`git log --all --grep`, `git branch -a`, `git show <sha>`): in every case
+the output shown to the model was pre-base history or unrelated later
+commit subjects, never the fix's diff (`--verbose` lists them). No scored
+prediction in `exports/` came out of a session that saw the fix.
 
 ## Current leaderboard (auto-generated)
 

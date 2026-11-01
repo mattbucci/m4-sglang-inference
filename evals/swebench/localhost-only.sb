@@ -1,0 +1,9 @@
+;; Seatbelt profile for SWE-bench rollouts: the agent (opencode and every
+;; process its bash tool spawns) may only open connections to this host.
+;; The model's server and the harness proxy are on 127.0.0.1; everything
+;; else (GitHub, PyPI, DNS) is unreachable, so a session cannot fetch a
+;; later version of the repo, a release wheel, or the upstream fix.
+(version 1)
+(allow default)
+(deny network-outbound)
+(allow network-outbound (remote ip "localhost:*"))

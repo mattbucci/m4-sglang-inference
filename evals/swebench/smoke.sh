@@ -41,6 +41,9 @@
 #                    to make the agent bash-only like Flint's native harnesses
 #   PROMPT_STYLE     task prompt variant passed to run_rollouts.py --prompt-style
 #                    (default | bash); use bash with a bash-only DISABLE_TOOLS set
+#   SWEBENCH_SANDBOX=0
+#                    lift the localhost-only network seal around opencode
+#                    (run_rollouts.py wraps it in sandbox-exec by default)
 
 set -euo pipefail
 # Save our own dir before sourcing common.sh — it redefines SCRIPT_DIR.
@@ -159,7 +162,10 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
         if curl -sf "http://127.0.0.1:$PROXY_PORT/health" > /dev/null 2>&1; then break; fi
         sleep 0.5
     done
-    # Repoint opencode at the proxy + disable the `task` sub-agent tool.
+    # Repoint opencode at the proxy + disable the `task` sub-agent tool and
+    # the web tools (`webfetch`/`websearch`): a session on astropy-12907
+    # fetched the post-fix separable.py from GitHub through webfetch. The
+    # process-level seal is run_rollouts.py's sandbox (SWEBENCH_SANDBOX).
     # 2026-05-21 finding: qwen36 on django-11001 invokes the `task` tool to
     # spawn a sub-agent that runs many chat completions but never produces
     # an edit within reasonable TIMEOUT. Disabling `task` for SWE-bench
@@ -174,9 +180,12 @@ import json, os, re, sys
 src = open('$OPENCODE_CFG').read()
 src = src.replace('http://127.0.0.1:$PORT/v1', 'http://127.0.0.1:$PROXY_PORT/v1')
 # Inject a \"tools\" block (task off, plus DISABLE_TOOLS) after the \$schema line if not already present.
-off = ['task'] + [t.strip() for t in os.environ.get('DISABLE_TOOLS', '').split(',') if t.strip()]
+off = ['task', 'webfetch', 'websearch'] + [t.strip() for t in os.environ.get('DISABLE_TOOLS', '').split(',') if t.strip()]
 block = '\n  \"tools\": {\n' + ',\n'.join('    \"%s\": false' % t for t in off) + '\n  },'
-if '\"task\": false' not in src:
+if '\"webfetch\": false' not in src and '\"task\": false' in src:
+    # A tools block from an earlier run survived (restore did not happen): extend it.
+    src = src.replace('\"task\": false', '\"task\": false,\n    \"webfetch\": false,\n    \"websearch\": false', 1)
+if '\"webfetch\": false' not in src:
     src = re.sub(
         r'(\"\\\$schema\":\\s*\"[^\"]+\",)',
         lambda m: m.group(1) + block,
