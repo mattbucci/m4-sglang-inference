@@ -11,3 +11,7 @@ sglang_*.jsonl
 
 # Tmp eval/server logs
 *.log
+
+# Raw harness captures and guard side-logs next to dated receipts
+evals/swebench/runs/*/capture/
+*.log.guard

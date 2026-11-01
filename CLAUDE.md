@@ -38,6 +38,7 @@ scripts/launch.sh nemotron-30b                    # [OK]  NemotronH Mamba2+Attn+
 scripts/launch.sh flint                           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for oQ6e/oQ4e)
 scripts/launch.sh qwen35-9b-8bit                  # [unswept] Qwen3.5-9B 8-bit (same path as qwen35)
 scripts/launch.sh qwen36-27b                      # [unswept] Qwen3.6-27B Dense+DeltaNet+VL (same path as qwen36)
+MODEL=mlx-community/Qwen3.8-27B-4bit scripts/launch.sh qwen36-27b   # [OK]  Qwen3.8-27B Dense+DeltaNet+VL (validator 4/4, thinking/vision/codegen gates pass; thinking always on)
 scripts/launch.sh gemma4                          # [WIP] Gemma 4 26B MoE (boot: mlx-vlm attention not recognised)
 scripts/launch.sh gemma4-31b                      # [WIP] Gemma 4 31B Dense (same model class as gemma4)
 # coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
@@ -58,6 +59,7 @@ python scripts/eval/test_swa_snapshot_unit.py                 # patch 021: windo
 python scripts/eval/test_pool_backed_cache_unit.py            # patch 022: pool-backed cache across the split final chunk (CPU, no server)
 python scripts/eval/test_release_finished_request_unit.py     # patch 023: finished requests release their MLX caches at the scheduler hook (CPU, no server)
 python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
+python scripts/eval/quant_fidelity.py --port 23334 --tokenizer <path> --tag <arm> [--ref-dump <8bit-dump.json>] --out <json>   # teacher-forced NLL/PPL, KL to a reference dump
 python scripts/eval/test_dllm_structured_reads_unit.py        # patch 025: structured reads on the Gemma4 renoise loop (CPU, no server)
 python scripts/eval/structured_reads.py --server http://<cuda-host>:30000 --tokenizer google/diffusiongemma-26B-A4B-it --question ... --kind noul   # DiffusionGemma reads (CUDA/ROCm host)
 
