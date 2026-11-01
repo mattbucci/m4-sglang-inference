@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.23 + 13 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.23 + 14 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint`
@@ -22,11 +22,11 @@ the overlap schedule. `gemma4*` is blocked at boot
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (13 patches on top of SGLang v0.5.23) |
+| [patches/README.md](patches/README.md) | Per-patch notes (14 patches on top of SGLang v0.5.23) |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 13 patches
+scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 14 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE

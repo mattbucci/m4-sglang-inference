@@ -1,6 +1,6 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 13 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache (hits and cold runs each deterministic; trade-off: overlap schedule off for them). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
+Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 14 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache (hits and cold runs each deterministic; trade-off: overlap schedule off for them). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
 
 **Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), (the `--kv-cache-dtype` flag is inert on this backend — the MLX pool stores KV in the attention compute dtype — so the earlier turboquant-vs-fp16 recall A/B compared identical bf16 arms). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
 
@@ -211,7 +211,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 - **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids and `flint` run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
 - **Flint omits opencode's required bash `description` argument.** opencode's `bash` tool schema requires `description` next to `command`; Flint (trained on single-argument shell tools) sends `command` alone on nearly every call under opencode's real prompt, opencode rejects the call with a `SchemaError`, and the agent retries the same call until its timeout. No prompt placement of a rule fixes it (0–3 of ~12 calls; a short prompt gives 10/10). The SWE-bench harness proxy backfills the argument from the command (`BACKFILL_BASH_DESCRIPTION=1`); interactive opencode use needs the same shim in front of the server or the bash tool disabled (`tools: {bash: false}`).
 - **Coder-Next-80B infeasible** — 42 GB weights alone exceed the safe budget; model load OOMs. No path on a single 64 GB Mac.
-- **Kernel panic in the GPU driver during a large prefill chunk** (`panic(cpu 6): "completeMemory() prepare count underflow" @IOGPUMemory.cpp:550`, macOS 26.2, watchdog reset). The box went down with the `qwen36-27b` preset serving a 27B DeltaNet 4-bit build while it prefilled an 8,192-token chunk into a 26K-token request (the quality eval's needle rung); no memory pressure preceded it (36 GB of GPU headroom at load, kernel memory-pressure log empty), so this is not the OOM stall above but a GPU-memory reference-count underflow in IOGPUFamily. The same signature is reported by other MLX users on large prefills and long KV-cache growth, still on macOS 26.5 ([mlx#3186](https://github.com/ml-explore/mlx/issues/3186), [mlx#3346](https://github.com/ml-explore/mlx/issues/3346), [mlx-lm#883](https://github.com/ml-explore/mlx-lm/issues/883)), with no Apple fix. Mitigation here: the `qwen36-27b` preset prefills in 2,048-token chunks (it was the only preset at 8,192 besides `qwen35`, the other 27B DeltaNet preset, which keeps 8,192 until its own runs justify the change); prefer `CHUNKED=2048` or lower on any 27B DeltaNet build, and treat a reboot with `Boot faults: wdog` plus this panic string as this issue. A third-party report avoids the panic by stopping MLX from calling `mx.set_wired_limit`; unverified here.
+- **Kernel panic in the GPU driver during a large prefill chunk** (`panic(cpu 6): "completeMemory() prepare count underflow" @IOGPUMemory.cpp:550`, macOS 26.2, watchdog reset). The box went down with the `qwen36-27b` preset serving a 27B DeltaNet 4-bit build while it prefilled an 8,192-token chunk into a 26K-token request (the quality eval's needle rung); no memory pressure preceded it (36 GB of GPU headroom at load, kernel memory-pressure log empty), so this is not the OOM stall above but a GPU-memory reference-count underflow in IOGPUFamily. The same signature is reported by other MLX users on large prefills and long KV-cache growth, still on macOS 26.5 ([mlx#3186](https://github.com/ml-explore/mlx/issues/3186), [mlx#3346](https://github.com/ml-explore/mlx/issues/3346), [mlx-lm#883](https://github.com/ml-explore/mlx-lm/issues/883)), with no Apple fix. Mitigation here: the `qwen36-27b` preset prefills in 2,048-token chunks (it was the only preset at 8,192 besides `qwen35`, the other 27B DeltaNet preset, which keeps 8,192 until its own runs justify the change); prefer `CHUNKED=2048` or lower on any 27B DeltaNet build, and treat a reboot with `Boot faults: wdog` plus this panic string as this issue. The upstream MLX runner wires the max recommended working set after load, and with a nonzero wired limit MLX adds every newly created Metal buffer to a residency set and commits it on each add and release; a third-party single-variable test on an M4 isolated that traffic as the trigger (panic 3/3 stock, 0 in 10 runs over 4.2 h without the call, ≤3 % throughput). `scripts/common.sh` therefore sets `SGLANG_MLX_WIRED_LIMIT_GB=0` (patch 024), which skips the call; the 4 GB buffer-cache cap turns large per-chunk transients into real buffer releases, a likely reason large chunks hit it first (inferred, not measured). Not yet A/B-measured on this box.
 - **macOS has no OOM killer** — a process touching a page past physical RAM stalls the whole system until reboot. **OOM guard mandatory for ≥32K work:** `bash scripts/common/oom_guard.sh &` pkills the server when the kernel-reported available memory (`kern.memorystatus_level`, the percentage jetsam decides on) drops below 8 GB. It used to read vm_stat free+inactive, which undercounts by the file pages a checkpoint load streams through the page cache: a 42 GB Flint load read 6.9 GB on that metric while the kernel reported more than 15 GB available, and the guard reaped a load that completes fine.
 - **macOS jetsam can silently reap the scheduler mid-eval** — no traceback, just `Connection refused` on subsequent requests. `needle_eval` tags `server_dead=True` on connection-class errors; `mmlu_eval`/`humaneval_eval`/`labbench_eval` don't yet. When an eval section drops to ~0%, suspect jetsam before model regression: relaunch fresh and re-run that section.
 - **`--mem-fraction-static` is a fraction of TOTAL system RAM on unified memory**, not "GPU memory". 0.85 has hard-locked the box (compressor + swap ~150 GB effective). The 0.7 default ceiling is load-bearing; long-context presets go *down* to 0.4.
@@ -221,7 +221,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 13 patches
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 14 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -420,7 +420,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 13 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 14 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev — carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -430,7 +430,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Thirteen patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
+Fourteen patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -447,11 +447,12 @@ Thirteen patches on top of `v0.5.23` — full rationale per patch in [patches/RE
 | 021 | mlx-swa-prefix-snapshots | Exact prefix cache for sliding-window models: the windowed caches are snapshotted through the auxiliary-state pool at the boundaries the radix tree names and restored on a hit; full layers gather from the pool; pool scatters evaluated per step. |
 | 022 | mlx-pool-backed-cache-append | The pool-backed attention cache keeps the chunks already fetched in front of the next forward, so the trunk-then-last-token split of a prefix hit's final chunk sees every new token (the upstream cache re-gathered only the prefix: a blind first token and stale pool rows on every hit). |
 | 023 | mlx-release-finished-request | The scheduler's KV-release hook runs for every finished request and the MLX worker drops the request's caches there, deferred while an overlap-schedule launch that includes the request is in flight (upstream sweeps them only at the next decode batch: a request that never decodes keeps its KV for the server's lifetime; the last turn's KV sits idle between agent turns). |
+| 024 | mlx-wired-limit-env | `SGLANG_MLX_WIRED_LIMIT_GB` (unset: upstream's max recommended working set; `0`: no wired limit, so no residency-set traffic; `common.sh` default `0`) — the IOGPUFamily panic mitigation in Known issues. |
 
 ## Repo layout
 
 ```
-patches/                    # 13 numbered patches — see patches/README.md
+patches/                    # 14 numbered patches — see patches/README.md
 experiments/                # Vetted execution queue (specs + statuses)
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts
