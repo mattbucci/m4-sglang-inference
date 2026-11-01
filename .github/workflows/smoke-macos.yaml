@@ -35,6 +35,11 @@ jobs:
       # template and reasoning parser, small enough for the runner.
       SMOKE_MODEL: mlx-community/Qwen3-0.6B-4bit
       PORT: "23334"
+      # Without an interface, gloo resolves the machine hostname to pick one.
+      # On the hosted runner that lookup is slow: a world=1 group took 105 s,
+      # and the scheduler builds several, so boot never finished in 7 min.
+      # Pinning loopback skips the lookup; one host needs nothing else.
+      GLOO_SOCKET_IFNAME: lo0
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
