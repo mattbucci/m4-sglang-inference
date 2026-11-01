@@ -210,12 +210,12 @@ print(f'MPS available: {mps}')
 import sglang
 print(f'SGLang {sglang.__version__}')
 
-from sglang.srt.utils.tensor_bridge import use_mlx
-print(f'MLX bridge available: {use_mlx()}')
-
+# use_mlx() lives in hardware_backend/mlx/runtime.py from v0.5.23 on; with
+# SGLANG_USE_MLX=1 it also validates Torch 2.13.x, MLX >= 0.32, MPS and Metal.
 import os
 os.environ['SGLANG_USE_MLX'] = '1'
-print(f'SGLANG_USE_MLX: {os.environ.get(\"SGLANG_USE_MLX\")}')
+from sglang.srt.hardware_backend.mlx.runtime import use_mlx
+print(f'MLX backend validated: {use_mlx()}')
 
 print()
 print('All components verified!')

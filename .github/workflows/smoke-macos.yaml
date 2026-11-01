@@ -1,0 +1,156 @@
+name: smoke-macos
+
+# Setup smoke test on a GitHub-hosted Apple Silicon runner. It runs the real
+# scripts/setup.sh (pinned SGLang clone, strict patch apply, env install, patch
+# gates, import smoke), the CPU unit tests, then boots launch.sh on a tiny MLX
+# model and checks one answer. It does NOT measure quality or speed: the runner
+# is a 3-core / 7 GB VM whose GPU is the Virtualization Framework's paravirtual
+# Metal device (MLX and torch report it available; GitHub documents MPS as
+# unsupported), so a failure in the last two steps can be the VM, not the code.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/**
+      - patches/**
+      - .github/workflows/smoke-macos.yaml
+  push:
+    branches: [main]
+
+concurrency:
+  group: smoke-macos-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      PYTHON_CMD: python3.12
+      # Tiny checkpoint in the same family as the qwen3-moe preset's chat
+      # template and reasoning parser, small enough for the runner.
+      SMOKE_MODEL: mlx-community/Qwen3-0.6B-4bit
+      PORT: "23334"
+      # Without an interface, gloo resolves the machine hostname to pick one.
+      # On the hosted runner that lookup is slow: a world=1 group took 105 s,
+      # and the scheduler builds several, so boot never finished in 7 min.
+      # Pinning loopback skips the lookup; one host needs nothing else.
+      GLOO_SOCKET_IFNAME: lo0
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Runner facts
+        run: |
+          uname -m
+          sw_vers
+          sysctl -n machdep.cpu.brand_string hw.ncpu hw.memsize
+          df -h "$GITHUB_WORKSPACE"
+          command -v conda || echo "conda: not on PATH (setup.sh takes the venv path)"
+          rustc --version || true
+      - name: scripts/setup.sh
+        run: bash scripts/setup.sh
+      - name: CPU unit tests
+        run: |
+          source scripts/common.sh
+          activate_venv
+          setup_mlx_env
+          python scripts/eval/test_swa_snapshot_unit.py
+          python scripts/eval/test_pool_backed_cache_unit.py
+          python scripts/eval/test_release_finished_request_unit.py
+      - name: MLX device probe
+        run: |
+          source scripts/common.sh
+          activate_venv
+          python - <<'PY'
+          import mlx.core as mx
+          print("mlx", mx.__version__)
+          print("metal available:", mx.metal.is_available())
+          print("default device:", mx.default_device())
+          a = mx.ones((256, 256))
+          print("matmul on default device:", float((a @ a).sum()))
+          PY
+      - name: Single-process gloo group probe
+        # The scheduler builds a gloo group before loading the model; time it
+        # in isolation so a hang there is not mistaken for a model/serving bug.
+        timeout-minutes: 3
+        run: |
+          source scripts/common.sh
+          activate_venv
+          python - <<'PY'
+          import datetime, time
+          import torch.distributed as dist
+          t = time.time()
+          dist.init_process_group("gloo", init_method="tcp://127.0.0.1:29513",
+                                  rank=0, world_size=1,
+                                  timeout=datetime.timedelta(seconds=60))
+          dist.barrier()
+          print(f"gloo world=1 up in {time.time() - t:.1f}s")
+          dist.destroy_process_group()
+          PY
+      - name: Boot launch.sh on a tiny model and answer one question
+        run: |
+          source scripts/common.sh
+          activate_venv
+          python - <<'PY'
+          from huggingface_hub import snapshot_download
+          import os
+          snapshot_download(os.environ["SMOKE_MODEL"])
+          PY
+          MODEL="$SMOKE_MODEL" SERVED_NAME=smoke CTX=2048 MAX_RUNNING=1 CHUNKED=1024 MEM_FRAC=0.3 \
+            bash scripts/launch.sh qwen3-moe > server.log 2>&1 &
+          echo $! > server.pid
+          healthy=0
+          for i in $(seq 1 420); do
+            if curl -sf "http://localhost:${PORT}/health" >/dev/null; then
+              echo "server healthy after ${i}s"
+              healthy=1
+              break
+            fi
+            if ! kill -0 "$(cat server.pid)" 2>/dev/null; then
+              echo "server exited before becoming healthy" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$healthy" != 1 ]; then
+            echo "server not healthy after 420s; dumping its Python stacks" >&2
+            pip install -q py-spy
+            for pid in $(pgrep -f 'sglang'); do
+              echo "=== $pid: $(ps -o command= -p "$pid" | cut -c1-120)"
+              sudo "$(command -v py-spy)" dump --pid "$pid" 2>&1 | head -60 || true
+            done
+            exit 1
+          fi
+          python - <<'PY'
+          import json, os, urllib.request
+          body = {
+              "model": "smoke",
+              "messages": [{"role": "user", "content": "What is the capital of France? Answer in one word."}],
+              "max_tokens": 32,
+              "temperature": 0,
+              "chat_template_kwargs": {"enable_thinking": False},
+          }
+          req = urllib.request.Request(
+              f"http://localhost:{os.environ['PORT']}/v1/chat/completions",
+              data=json.dumps(body).encode(),
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(req, timeout=600) as r:
+              out = json.load(r)
+          text = out["choices"][0]["message"]["content"] or ""
+          print("answer:", repr(text))
+          assert "paris" in text.lower(), f"expected Paris, got {text!r}"
+          PY
+      - name: Server log
+        if: always()
+        run: |
+          if [ -f server.pid ]; then kill "$(cat server.pid)" 2>/dev/null || true; fi
+          tail -n 200 server.log 2>/dev/null || echo "no server log"
