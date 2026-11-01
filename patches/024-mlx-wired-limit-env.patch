@@ -1,0 +1,76 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 10eee80..3ba24f0 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1106,20 +1106,23 @@ class Envs:
+     # Apple Silicon and MLX
+     # ===================================================================
+     SGLANG_USE_MLX = EnvBool(False)
+     SGLANG_MLX_USE_CUSTOM_ROPE = EnvBool(False)
+     SGLANG_MLX_FUSE_SWIGLU = EnvBool(False)
+     # Number of decode steps between periodic mx.clear_cache() calls.
+     # Set to 0 to disable cache clearing entirely.
+     SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
+     # MLX buffer-cache cap in GB.
+     SGLANG_MLX_CACHE_LIMIT_GB = EnvFloat(None)
++    # MLX wired-memory limit in GB. Unset: the max recommended working set.
++    # 0: no wired limit (no residency-set traffic).
++    SGLANG_MLX_WIRED_LIMIT_GB = EnvFloat(None)
+ 
+     # ===================================================================
+     # Ascend NPU
+     # ===================================================================
+     SGLANG_NPU_DISABLE_ACL_FORMAT_WEIGHT = EnvBool(False)
+     # Requantize plain block-FP8 (fp32-scale) checkpoints to MXFP8 at load
+     # time so arch35 (Atlas A5) dense linears run on the native quantized
+     # GEMM instead of the Triton emulation path. Lossy (128x128 fp32 block
+     # scales -> 1x32 UE8M0): off by default; enable explicitly for
+     # performance after validating accuracy for the workload.
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 8e9f1b6..4ad6f1f 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -258,26 +258,42 @@ class MlxModelRunner:
+         if cache_limit_gb is not None:
+             if cache_limit_gb < 0:
+                 raise ValueError(
+                     f"SGLANG_MLX_CACHE_LIMIT_GB must be >= 0, got {cache_limit_gb}"
+                 )
+             mx.set_cache_limit(int(cache_limit_gb * (1024**3)))
+             logger.info(f"MLX buffer cache limit set to {cache_limit_gb:.1f} GB")
+ 
+         self._load_model()
+ 
+-        # Pin MLX allocations to prevent OS paging
++        # Pin MLX allocations to prevent OS paging. A nonzero wired limit puts
++        # every newly created Metal buffer into a residency set and commits the
++        # set on each add and each release. On macOS 26.x that add/remove and
++        # commit traffic can panic the kernel in IOGPUFamily ("completeMemory()
++        # prepare count underflow", ml-explore/mlx#3186); with no wired limit
++        # MLX never touches the residency set. SGLANG_MLX_WIRED_LIMIT_GB unset
++        # keeps the upstream limit (max recommended working set), 0 skips the
++        # call, and a positive value wires at most that many GB.
+         device_info = mx.device_info()
+         max_wired = int(device_info.get("max_recommended_working_set_size", 0))
++        wired_limit_gb = envs.SGLANG_MLX_WIRED_LIMIT_GB.get()
++        if wired_limit_gb is not None:
++            if wired_limit_gb < 0:
++                raise ValueError(
++                    f"SGLANG_MLX_WIRED_LIMIT_GB must be >= 0, got {wired_limit_gb}"
++                )
++            max_wired = min(int(wired_limit_gb * (1024**3)), max_wired)
+         if max_wired > 0:
+             mx.set_wired_limit(max_wired)
+             logger.info(f"Wired memory limit set to {max_wired / (1024**3):.1f} GB")
++        else:
++            logger.info("Wired memory limit not set; MLX buffers stay pageable")
+ 
+         patch_model_attention(self.model)
+ 
+         layer_list, attn_attrs = find_attention_layers(self.model)
+         self._cache_layout = MlxModelCacheLayout.from_attention_discovery(
+             layer_list,
+             attn_attrs,
+             # Per-layer sliding windows (container convention, e.g. gpt-oss).
+             layer_window_sizes=get_layer_window_sizes(self.model),
+         )

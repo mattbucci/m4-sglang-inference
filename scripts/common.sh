@@ -65,6 +65,15 @@ setup_mlx_env() {
     # (benchmarks/longctx-bisect/ATTRIBUTION.md).
     export SGLANG_MLX_CACHE_LIMIT_GB=${SGLANG_MLX_CACHE_LIMIT_GB:-4}
 
+    # No MLX wired limit (patch 024). Upstream wires the max recommended
+    # working set, and a nonzero wired limit puts every new Metal buffer into
+    # a residency set committed on each add and release; that traffic panics
+    # the kernel in IOGPUFamily on macOS 26.x ("completeMemory() prepare
+    # count underflow", ml-explore/mlx#3186). 0 skips the call; a size in GB
+    # wires up to that size, capped at the max recommended working set (so a
+    # large value such as 64 restores the upstream behaviour).
+    export SGLANG_MLX_WIRED_LIMIT_GB=${SGLANG_MLX_WIRED_LIMIT_GB:-0}
+
     # Allow context length override beyond model's default max.
     # Required for 256K context on models with shorter native limits.
     export SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1
