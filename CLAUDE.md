@@ -36,8 +36,8 @@ scripts/launch.sh qwen35                          # [OK]  Qwen3.5-27B DeltaNet h
 scripts/launch.sh devstral                        # [OK]  Devstral 24B + image VLM
 scripts/launch.sh nemotron-30b                    # [OK]  NemotronH Mamba2+Attn+MoE
 scripts/launch.sh flint                           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for oQ6e/oQ4e)
-scripts/launch.sh qwen35-9b-8bit                  # [unswept] Qwen3.5-9B 8-bit (same path as qwen35)
-scripts/launch.sh qwen36-27b                      # [unswept] Qwen3.6-27B Dense+DeltaNet+VL (same path as qwen36)
+scripts/launch.sh qwen35-9b-8bit                  # [OK]  Qwen3.5-9B 8-bit (codegen/vision/video STRONG, validator 3/3; thinking always on)
+scripts/launch.sh qwen36-27b                      # [OK]  Qwen3.6-27B Dense+DeltaNet+VL (codegen/vision/video STRONG, thinking VERIFIED; thinking always on)
 MODEL=mlx-community/Qwen3.8-27B-4bit scripts/launch.sh qwen36-27b   # [OK]  Qwen3.8-27B Dense+DeltaNet+VL (validator 4/4, thinking/vision/codegen gates pass; thinking always on)
 scripts/launch.sh gemma4                          # [WIP] Gemma 4 26B MoE (boot: mlx-vlm attention not recognised)
 scripts/launch.sh gemma4-31b                      # [WIP] Gemma 4 31B Dense (same model class as gemma4)

@@ -157,7 +157,8 @@ where the 3090 pair's 48 GB cannot.
 | `flint` (oQ8e / oQ6e / oQ4e) | **STRONG**† | n/a | n/a | **VERIFIED** |
 | `coder-30b` / `qwen3-moe` / `qwen3-32b` | **STRONG** | n/a | n/a | pass validate gate |
 | `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` (Qwen3.8-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen35-9b-8bit` / `qwen36-27b` (Qwen3.6-27B) | unswept (same code path as siblings) | | | |
+| `qwen36-27b` (Qwen3.6-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | pass validate gate |
 | `gemma4` / `gemma4-31b` | blocked at boot (mlx-vlm Gemma 4 attention not recognised by the MLX attention contract) | | | |
 
 Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
@@ -262,9 +263,8 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ./scripts/launch.sh nemotron-30b            # NemotronH (Mamba2+Attn+MoE)
 ./scripts/launch.sh flint                   # Recursive Flint 40B-A2.5B coding-agent MoE (oQ8e; see Flint section)
 
-# Same code path as validated siblings, not yet swept:
-./scripts/launch.sh qwen35-9b-8bit          # 10 GB resident tight-memory variant
-./scripts/launch.sh qwen36-27b              # Dense DeltaNet+VL
+./scripts/launch.sh qwen35-9b-8bit          # Qwen3.5-9B 8-bit, 10 GB resident tight-memory variant
+./scripts/launch.sh qwen36-27b              # Qwen3.6-27B Dense DeltaNet+VL (MODEL= for Qwen3.8-27B)
 
 # Blocked / not in rotation:
 # gemma4, gemma4-31b — boot failure: mlx-vlm Gemma 4 attention not recognised by the MLX attention contract
@@ -316,8 +316,8 @@ bash   scripts/bench/bench_256k_all.sh                      # long-context sweep
 | `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 68.4 | 256K (3.2) | router INT4 |
 | `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 69.0 | 64K (6.3) | router INT4 |
 | `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.3 (34 MR=2) | 256K label | DeltaNet `in_proj_a/b` INT4 |
-| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | — | 32K | DeltaNet INT4 (8-bit) |
-| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | — (34 MR=2) | 256K label | DeltaNet INT4 |
+| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | — | 32K | DeltaNet INT4 (8-bit); chat template ignores `enable_thinking` (thinking always on) |
+| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | — (34 MR=2) | 256K label | DeltaNet INT4; chat template ignores `enable_thinking` (thinking always on) |
 | `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` | `Qwen3.8-27B-4bit` | DeltaNet hybrid+VL (`qwen3_5` class) | 15 GB | 14.1 | 256K label | DeltaNet INT4; chat template ignores `enable_thinking` (thinking always on) |
 | `flint` | `flint-oQ8e` (oMLX; `MODEL=` for `flint-oQ6e` / `flint-oQ4e`) | MoE 40B-A2.5B, sliding-window + sinks | 42 GB | 61.9 (49.3 @27K) | 32K preset (262K label) | **clean** — router, sinks and norms unquantized; mixed-precision shared-expert projections (group 128) |
 | `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 17.0 (40 MR=4) | 256K (1.8) | **clean** |
