@@ -1,0 +1,9 @@
+=== quant scale scan
+Scanning: /Users/letsrtfm/AI/models/Qwopus3.8-27B-Coder-Flash-4bit-inhouse
+  3 safetensor file(s)
+  max-mag threshold: 1000.0
+
+
+======================================================================
+OK: all 402 quantized layers (weight+scales+biases) healthy
+CONVERT_CHAIN_DONE
