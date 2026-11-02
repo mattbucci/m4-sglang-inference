@@ -1,0 +1,20 @@
+name: docs-check
+description: >
+  Shared README / CLAUDE.md / results-file alignment check for the three SGLang
+  rig repos (m4, R9700, 3090). Rules live in rules.json next to this file; every
+  repo calls this action pinned to the same ref, so one change here applies to all.
+inputs:
+  strict:
+    description: "Fail the step on any violation (default: report only)"
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        DOCS_CHECK_STRICT: ${{ inputs.strict }}
+      run: |
+        args=(--root "$GITHUB_WORKSPACE" --github)
+        if [ "$DOCS_CHECK_STRICT" = "true" ]; then args+=(--strict); fi
+        python3 -I "$GITHUB_ACTION_PATH/docs_check.py" "${args[@]}"

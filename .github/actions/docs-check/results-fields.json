@@ -1,0 +1,6 @@
+{
+  "file": "benchmarks/<preset>/results.json",
+  "required": ["model", "engine", "hardware", "timestamp", "output_tokens", "context_sweep"],
+  "rows_key": "context_sweep",
+  "row_required": ["context", "actual_input_tokens", "tok_per_sec", "tpot_ms", "ttft_ms"]
+}

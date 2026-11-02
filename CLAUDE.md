@@ -73,6 +73,7 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 ```
 
 ## Documentation Style
+- **CI `docs-check` enforces these rules** (`.github/actions/docs-check/`, shared by all three rig repos): README skeleton and size, CLAUDE.md size, no dates or status markers. Open work and known issues are GitHub issues, not README sections. Run `python3 .github/actions/docs-check/docs_check.py --root .` before committing docs.
 - **All .md docs describe CURRENT state only.** No datestamps in prose, no
   audit/verification markers (🅷, ⓡ), no "DONE"/strikethrough/"NEW" status
   markers, no "original"/"previous"/"post-rebase" framing, no was-vs-now

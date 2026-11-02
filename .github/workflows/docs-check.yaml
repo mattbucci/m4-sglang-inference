@@ -1,0 +1,25 @@
+name: docs-check
+
+# Shared docs alignment check (README skeleton, size budgets, no dates or status
+# markers, live links, generated blocks, results-file fields). The action and its
+# rules live in .github/actions/docs-check/ in this repo; the R9700 and 3090 repos
+# call the same action. Report-only until `strict: "true"`.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/docs-check
+        with:
+          strict: "false"

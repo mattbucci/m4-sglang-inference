@@ -1,0 +1,28 @@
+{
+  "readme_h2": ["Results", "Presets", "Quick start", "Stack", "Repo map"],
+  "readme_must_link": ["/issues"],
+  "prose_files": ["README.md", "CLAUDE.md", "rules-for-agents.md"],
+  "budgets": {
+    "README.md": {"bytes": 20480, "lines": 300},
+    "CLAUDE.md": {"bytes": 12288, "lines": 200},
+    "rules-for-agents.md": {"bytes": 10240, "lines": 200}
+  },
+  "readme_max_prose_line": 400,
+  "banned": [
+    {"re": "\\b20\\d\\d-\\d\\d-\\d\\d\\b",
+     "why": "dates belong in git history or a dated receipt under benchmarks/ or evals/*/runs/"},
+    {"re": "\\b(DONE|CONCLUDED|SHIPPED|RESOLVED|FIXED|NEW)\\b",
+     "why": "status markers; describe current state, history goes in git"},
+    {"re": "~~",
+     "why": "strikethrough keeps dead text; delete it"},
+    {"re": "(?i)\\b(up from|down from|previously|formerly|retracted|used to)\\b",
+     "why": "was-vs-now framing; state the current number only"},
+    {"re": "(?i)^#{1,6}\\s.*\\b(known issues|known limitations|next steps|status|todo|roadmap|changelog|history)\\b",
+     "why": "open work and known issues live in GitHub issues; history lives in git"},
+    {"re": "(/tmp/|/data/logs)", "files": ["README.md"],
+     "why": "host paths and agent scratch do not belong in the public README"},
+    {"re": "(?i)\\b(in flight|this session|running now|queued for)\\b", "files": ["README.md"],
+     "why": "live-run status belongs in GitHub issues, not the README"}
+  ],
+  "results_fields": "results-fields.json"
+}
