@@ -23,6 +23,7 @@ the overlap schedule. `gemma4*` is blocked at boot
 | [README.md](README.md) | Setup, benchmarks, model support, known issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
 | [patches/README.md](patches/README.md) | Per-patch notes (17 patches on top of SGLang v0.5.23) |
+| `docs/` | flint.md, quality.md (evals + checkpoint audits), long-context.md |
 
 ## Key Commands
 ```bash
@@ -55,15 +56,10 @@ PRESETS="nemotron-30b" bash scripts/eval/probe_all.sh         # single-preset sw
 python scripts/eval/check_mlx_quant_scales.py    <repo>       # per-layer scale corruption scan
 python scripts/eval/audit_mlx_quant_metadata.py               # recipe-level hazards across M4 set
 python scripts/eval/validate_chat_template.py    --model <path>
-python scripts/eval/test_swa_snapshot_unit.py                 # patch 021: windowed-KV snapshot round-trip (CPU, no server)
-python scripts/eval/test_pool_backed_cache_unit.py            # patch 022: pool-backed cache across the split final chunk (CPU, no server)
-python scripts/eval/test_release_finished_request_unit.py     # patch 023: finished requests release their MLX caches at the scheduler hook (CPU, no server)
+for t in scripts/eval/test_*_unit.py scripts/eval/test_incremental_tokenizer.py; do python $t; done   # per-patch CPU tests (021-027), no server
 python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
 python scripts/eval/quant_fidelity.py --port 23334 --tokenizer <path> --tag <arm> [--ref-dump <8bit-dump.json>] --out <json>   # teacher-forced NLL/PPL, KL to a reference dump
 python3 evals/swebench/audit_rollouts.py                       # answer-leak audit of archived SWE-bench sessions (web/network/git-history); the harness itself is sealed
-python scripts/eval/test_extend_chunk_track_unit.py           # patch 026: continuation prefill chunks track the grid Mamba checkpoint (CPU, no server)
-python scripts/eval/test_incremental_tokenizer.py            # patch 027: incremental chat-prompt tokenization exact on every preset tokenizer (CPU, no server)
-python scripts/eval/test_dllm_structured_reads_unit.py        # patch 025: structured reads on the Gemma4 renoise loop (CPU, no server)
 python scripts/eval/structured_reads.py --server http://<cuda-host>:30000 --tokenizer google/diffusiongemma-26B-A4B-it --question ... --kind noul   # DiffusionGemma reads (CUDA/ROCm host)
 
 # Quality + benchmarks
@@ -114,45 +110,21 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   effective; jetsam reaped the server; required reboot). The lever moves DOWN
   for long-context: **use mem-fraction 0.4 for 32K+ work**. Right levers for
   memory pressure: `--max-total-tokens`, `MAX_RUNNING`, request `max_tokens`,
-  `chat_template_kwargs={"enable_thinking": false}`, and `CHUNKED=2048`
-  (`--kv-cache-dtype` is accepted but inert on the MLX backend: the KV pool
-  stays in the attention compute dtype) — chunk size sets the
-  per-chunk transient floor: at the preset-default 4096 the transients swing
-  free memory 1–11 GB per chunk and kill deep prefills at ~100-113K that
-  complete at 2048 (`benchmarks/longctx-bisect/ATTRIBUTION.md`). Chunk size
-  does NOT change steady per-token growth (that was the buffer-cache story,
-  fixed by the patch-008 cap) — it changes the transient peak.
-- **Long-context: 256K validated** for qwen36 (35B-MoE-4bit) with
-  `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache"
-  launch.sh qwen36 --kv-cache turboquant` — in=251,659 prefills in ~23 min
-  (receipts: `benchmarks/longctx-bisect/`). Four stacked pieces hold the
-  ceiling: patch 008 caps the MLX buffer cache (`SGLANG_MLX_CACHE_LIMIT_GB`,
-  default 4 — uncapped, chunked prefill retained ~0.6 MB/token and died
-  ~30K), patch 015 pre-sizes the per-request attention cache (kills the
-  doubling ladder), the pool is sized to EXACTLY the request (`CTX =
-  label + 64` — overallocating the pool to CTX=210K for a 192K label cost
-  ~2-3 GB and the run), and `CHUNKED=1024` (sub-2048 chunks cost nothing at
-  depth and buy ~4.3 GB transient margin). There is no decode wall: true
-  streamed decode is 61.7 tok/s @32K → 36.0 @128K → 30.2 @151K
-  (`benchmarks/longctx-bisect/decode-curve/DECISION.md`; the historical
-  "13-19 s/token" figures were whole-request prefill amortization). Bench
-  tooling needs a long urllib timeout for deep runs.
+  `chat_template_kwargs={"enable_thinking": false}`, and `CHUNKED` (`--kv-cache-dtype`
+  is inert on the MLX backend). Chunk size sets the per-chunk transient peak: 4096 kills deep
+  prefills at ~100-113K that complete at 2048 or 1024.
+- **Long-context: 256K validated** for qwen36 with `CTX=<label+64> MEM_FRAC=0.5
+  CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache"` (radix off, exact pool, buffer-cache cap,
+  pre-sized cache, 1024-token chunks). Recipe, levers and the decode curve: `docs/long-context.md`.
+  Bench tooling needs a long urllib timeout for deep runs.
 
 ## Optimization Target
-- **Aspirational primary:** single-user **256K context** performance (decode tok/s, TPOT).
-  Measure at long context first — that is the workload Apple Silicon is uniquely good at.
-  - Current: **256K validated, usable (6/6 recall at 245K), and
-    interactive at depth** (36 tok/s true decode at 128K) — the capacity
-    and decode targets are both met; see "Long-context" above.
-- **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win
-  batch benchmarks.
-- **Tertiary (currently the most productive workload):** single-user agentic
-  coding at moderate context (8-32K typical per turn). qwen36 + opencode is
-  the validated primary recommendation; SWE-bench Lite patch
-  engagement 26/26 on the current stack (21/26 on the previous pin; official
-  Docker resolve rate 9/26 = 34.6% scored on the 3090's harness from the
-  previous pin's patches; the current-stack predictions are exported for
-  re-scoring).
+- **Primary:** single-user **256K context** (decode tok/s, TPOT). Measure at long context
+  first. Met: 256K validated, 6/6 recall at 245K, 36 tok/s true decode at 128K.
+- **Secondary:** multi-user throughput; never sacrifice single-user latency for batch wins.
+- **Tertiary (most productive workload):** single-user agentic coding at 8-32K per turn.
+  qwen36 + opencode is the validated recommendation (SWE-bench Lite engagement 26/26;
+  official Docker resolve 9/26 = 34.6%, scored on the 3090's harness).
 
 ## Quality Rules
 - **Every new MLX model must pass `validate_capabilities.py`** before its numbers

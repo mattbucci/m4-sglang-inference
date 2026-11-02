@@ -158,6 +158,6 @@ Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error
 - Watch `memory_pressure` to detect when models are too large for available memory
 - Single-device means no TP overhead, but also no parallelism benefit
 
-## Model Status
+## Model support
 
 See [README.md](README.md) for current model status, benchmarks, and known issues.
