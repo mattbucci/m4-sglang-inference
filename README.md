@@ -4,8 +4,9 @@ Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) wi
 native MLX backend: **SGLang v0.5.23** (`297e54f`) + 17 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
-than peak batch throughput. Known issues and open work live in the
-[issue tracker](https://github.com/mattbucci/m4-sglang-inference/issues); experiment specs in
+than peak batch throughput. Known issues are
+[GitHub issues](https://github.com/mattbucci/m4-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue)
+with the `known-issue` label; experiment specs and open work live in
 [experiments/README.md](experiments/README.md).
 
 ## Results
