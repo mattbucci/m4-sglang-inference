@@ -26,7 +26,7 @@
         },
         "qwen36-27b": {
           "name": "Qwen3.6-27B-4bit (Dense+DeltaNet)",
-          "limit": { "context": 32768, "output": 4096 },
+          "limit": { "context": 131072, "output": 8192 },
           "tool_call": true
         },
         "qwen35": {

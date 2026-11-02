@@ -260,8 +260,30 @@ final state will be captured as a `git diff`.
 """
 
 
+def abort_all_requests(server_url: str | None) -> None:
+    """Drop every in-flight request on the model server.
+
+    A rollout killed at its timeout leaves its last turn running on the
+    server; on the MLX backend that orphan keeps the scheduler busy for
+    the rest of its prefill and the next instance's health check reads it
+    as a dead server.
+    """
+    if not server_url:
+        return
+    import urllib.request
+    body = json.dumps({"abort_all": True}).encode()
+    req = urllib.request.Request(f"{server_url}/abort_request", data=body,
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10):
+            pass
+    except Exception:
+        pass
+
+
 def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
-                 extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
+                 extra_env: dict[str, str] | None = None,
+                 server_url: str | None = None) -> tuple[int, str, str]:
     cmd = [
         "opencode", "run",
         "--dir", str(repo_dir),
@@ -315,6 +337,7 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except (ProcessLookupError, PermissionError):
             pass
+        abort_all_requests(server_url)
         try:
             stdout, stderr = proc.communicate(timeout=10)
         except subprocess.TimeoutExpired:
@@ -401,14 +424,30 @@ def main():
             # tool-call-canary so the check is liveness-only and decoupled
             # from chat-template validation (Mistral-arch templates reject
             # the canary even when the server is healthy).
+            # /health generates one token through the scheduler, so a server
+            # that is still prefilling (an orphaned turn, a chunk of a dense
+            # model at ~20 s) times out exactly like a reaped one. A refused
+            # connection is a dead server; a timeout is retried for
+            # SWEBENCH_HEALTH_WAIT seconds (default 120) before the verdict.
             import urllib.request
-            try:
-                with urllib.request.urlopen(f"{args.server_url}/health", timeout=10) as r:
-                    ok = (r.status == 200)
-                    hinfo = f"/health HTTP/{r.status}"
-            except Exception as e:
-                ok = False
-                hinfo = f"{type(e).__name__}: {e}"
+            health_budget = float(os.environ.get("SWEBENCH_HEALTH_WAIT", "120"))
+            h0 = time.time()
+            while True:
+                try:
+                    with urllib.request.urlopen(f"{args.server_url}/health", timeout=10) as r:
+                        ok = (r.status == 200)
+                        hinfo = f"/health HTTP/{r.status}"
+                except Exception as e:
+                    ok = False
+                    hinfo = f"{type(e).__name__}: {e}"
+                    refused = isinstance(getattr(e, "reason", None), ConnectionRefusedError) \
+                        or isinstance(e, ConnectionRefusedError)
+                    if not refused and time.time() - h0 < health_budget:
+                        print(f"  health: {hinfo} — server busy? retrying "
+                              f"({time.time() - h0:.0f}/{health_budget:.0f} s)", flush=True)
+                        time.sleep(5)
+                        continue
+                break
             if not ok:
                 print(f"  SERVER_DEAD: {hinfo} — aborting sweep", flush=True)
                 fp.write(json.dumps({
@@ -474,7 +513,8 @@ def main():
                         "PATH": f"{venv}/bin",
                     }
                 rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
-                                                    log_path, extra_env=extra_env)
+                                                    log_path, extra_env=extra_env,
+                                                    server_url=args.server_url)
                 diff = capture_diff(inst_dir)
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
 

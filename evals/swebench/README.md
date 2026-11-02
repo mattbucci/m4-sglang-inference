@@ -303,6 +303,22 @@ python evals/swebench/score_local.py \
 5. `smoke.sh` tears down proxy + restores opencode config + kills
    server.
 
+Two harness behaviours that matter on the MLX backend:
+
+- A rollout killed at its timeout has its in-flight turn aborted on the
+  server (`/abort_request`, all requests) before the next instance starts.
+  The per-instance `/health` probe generates a token through the
+  scheduler, so a scheduler still prefilling an orphaned turn (one
+  2048-token chunk of the dense 27B takes ~20 s) looks exactly like a
+  reaped one; the probe retries for `SWEBENCH_HEALTH_WAIT` seconds
+  (default 120) and only a refused connection or an exhausted budget
+  counts as a dead server.
+- `opencode.json`'s `limit.context` per model key must match the `CTX`
+  the server is launched with. opencode compacts the session (a summary
+  turn, then re-exploration) as the input nears the limit; a 32K limit
+  against a 131K server cost the Qwen3.8 sessions one to four
+  compactions each, at 1-2K summary tokens a time on a 13 tok/s model.
+
 ## Layout
 
 ```
