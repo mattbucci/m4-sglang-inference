@@ -95,5 +95,6 @@
       "ttft_ms": 120368.8,
       "actual_input_tokens": 4096
     }
-  ]
+  ],
+  "output_tokens": 64
 }

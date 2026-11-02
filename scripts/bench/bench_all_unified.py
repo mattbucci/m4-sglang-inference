@@ -287,6 +287,7 @@ def main():
         "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
         "sglang_version": sglang_commit,
         "kv_cache_mode": args.kv_cache,
+        "output_tokens": 64,
         "context_max": args.context_max,
         "context_sweep": context_results if context_results else existing.get("context_sweep", []),
         "throughput_sweep": throughput_results if throughput_results else existing.get("throughput_sweep", []),
