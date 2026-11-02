@@ -65,6 +65,7 @@ Levers that actually optimize memory on M4 (not `MEM_FRAC`):
 - `--max-running-requests` / `MAX_RUNNING` — bounds concurrent decode state
 - Request-side `max_tokens` — caps per-request decode activation
 - `chat_template_kwargs={"enable_thinking": false}` — skips the `<think>` channel for non-reasoning workloads, frees the budget for the actual response
+- `--max-mamba-cache-size` / `AUX_SLOTS` (hybrid presets, default 64) — the auxiliary-state pool: one slot per live request plus one per radix checkpoint (every prefill chunk end, the prompt-side tracked state, the end state). Unset, SGLang sizes it at 4 × `MAX_RUNNING`, so a single-user server keeps four DeltaNet/Mamba checkpoints in the whole tree and a long prompt evicts its own before the next turn. A slot is ~79 MB on Qwen3.8-27B and ~33 MB on Qwen3.6-35B-A3B, filled lazily; raise it for long agentic sessions, set `AUX_SLOTS=` for the upstream sizing.
 - `--kv-cache-dtype` — accepted for CLI compatibility only; the MLX pool stores KV in the attention compute dtype (bf16/fp16), so `turboquant`/`fp8` change nothing on this backend
 
 ### Memory Bandwidth
@@ -102,6 +103,7 @@ Always source `common.sh` and call `setup_mlx_env` before launching.
 - No `--quantization` flag needed (MLX handles quantization internally)
 - No `--attention-backend` flag (MLX handles attention)
 - `--kv-cache-dtype` is inert (MLX stores KV in the attention compute dtype; the aliases only exist so the presets pass argparse)
+- `--max-mamba-cache-size` — the hybrid presets pass `AUX_SLOTS` (default 64) here; it bounds how many prefix-cache checkpoints a hybrid model can keep (see Memory above)
 
 ## Quantization
 

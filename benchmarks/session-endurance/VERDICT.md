@@ -31,6 +31,61 @@ contiguous-cache rebuild) at LOW priority given the absolute number.
 | radix-off control | 150/150 | 29.3 → 14.2 → 17.9 | survives — the erosion is radix-attributed; but every turn pays full re-prefill: **~30 s TTFT/turn vs radix-on's ~3 s** |
 | radix-on + `/flush_cache` every 25 turns | **150/150** | 28.8 → 10.8 → 19.9 | memory sawtooths back up at each flush; cache hits stay strong between flushes; per-flush cost ≈ one cold re-prefill (~30 s) per 25 turns |
 
+## Phase C — the agentic follow-up (chat shape), `turn-tax-chat-*.json`, `turn-hit-determinism-*.json`
+
+Phase A appended to the primed token sequence through `/v1/completions`, which
+never crosses the chat template's generation tail. An agentic client replays
+the history through `/v1/chat/completions`: the template renders the previous
+assistant turn without its reasoning, so the follow-up prompt diverges from the
+primed prompt 1 token (Qwen3.8: `<think>\n` vs `\n\n`) or 2 tokens (Qwen3.6)
+before the primed end. The end-of-generation DeltaNet state therefore never
+serves a follow-up; only checkpoints inside the prompt do. Driver:
+`scripts/bench/measure_extend_cost.py --multi-turn --prime-max-tokens 64`
+(thinking on, `--enable-cache-report`, CTX=65536, preset chunk sizes:
+`qwen36` 4096, `qwen36-27b` 2048). "First follow-up" is the turn right after
+the primed reply; later turns hit the checkpoint the first one tracked.
+
+Before patch 026 the MLX runner tracked a 64-token-grid checkpoint only in the
+first prefill chunk, so a prompt longer than one chunk kept states only at
+chunk ends and the first follow-up recomputed the whole tail of the last chunk.
+Continuation chunks now track too (`extend_start`), and the first follow-up
+lands within a grid of the prompt end:
+
+| model | primed prompt | first follow-up recompute, before → after | TTFT before → after | later turns (k=1) |
+|---|---:|---:|---:|---:|
+| Qwen3.8-27B-4bit (`qwen36-27b`) | 8,699 | 525 → 77 tok | 5.2 s → 1.0 s | 0.4 s |
+| | 25,905 | 1,347 → 67 tok | 13.8 s → 0.9 s | 0.9 s |
+| | 52,068 | 887 → 55 tok | 10.9 s → 1.1 s | 1.1 s |
+| Qwen3.6-35B-A3B-4bit (`qwen36`) | 8,657 | 479 → 31 tok | 0.80 s → 0.19 s | 0.14 s |
+| | 25,863 | 1,301 → 21 tok | 2.6 s → 0.20 s | 0.18 s |
+| | 52,026 | 2,889 → 73 tok | 8.2 s → 0.53 s | 0.25 s |
+
+Receipts: `turn-tax-chat-qwen38-base-*.json` / `turn-tax-chat-qwen36-base-*.json`
+(upstream auxiliary-pool sizing, before 026), `turn-tax-chat-qwen38-base-64slots-*.json`
+(before 026 with `AUX_SLOTS=64`: identical to base — the pool size does not
+change a serial session), `*-p026fix-*.json` (after). Decode is unchanged
+(Qwen3.8 79–99 ms/token, Qwen3.6 17–23 ms/token); the residual ~1 s on
+Qwen3.8 is its 100–125 tok/s prefill over the ~60–75 recomputed tokens plus
+the fixed per-turn cost.
+
+**Auxiliary-state pool (`AUX_SLOTS`).** Each checkpoint in the tree holds one
+DeltaNet/Mamba slot; upstream sizes the pool at 4 × `MAX_RUNNING`. In the first
+baseline run a raw-completion decode comparator issued between the prime and
+the follow-up (a second tree branch) evicted the primed turn's chunk
+checkpoints and the follow-up recomputed the whole prompt (80 s at 8.7K, 245 s
+at 25.9K, 545 s at 52K). The hybrid presets now launch with
+`--max-mamba-cache-size 64` (`AUX_SLOTS`, ~79 MB per slot on Qwen3.8-27B,
+~33 MB on Qwen3.6-35B-A3B, filled lazily) so a long session with tool-call
+branches keeps its checkpoints.
+
+**Determinism** (`probe_multiturn_hit_determinism.py`, 96 greedy tokens, two
+hits from different checkpoints, then a cold run): every arm's hits are
+reproducible, and a hit from a checkpoint inside a chunk differs from the cold
+run the way two cold runs on different chunk sizes do (Qwen3.8 at 8.3K:
+first divergent token 50 of 96; the pre-026 hit from a chunk-end state was
+identical to cold at that depth, so this is the price of the mid-chunk split).
+Validator 3/3, thinking gate VERIFIED on both models after the patch.
+
 ## Guidance (the daily qwen36 + opencode workload)
 
 - **Radix-on is the right default** (10× per-turn latency win) **with a

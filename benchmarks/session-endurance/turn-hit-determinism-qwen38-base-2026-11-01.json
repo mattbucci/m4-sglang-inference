@@ -1,0 +1,24 @@
+[
+  {
+    "depth": 8192,
+    "primed_prompt_tokens": 8285,
+    "followup_prompt_tokens": 8318,
+    "cached_hit1": 8192,
+    "cached_hit2": 8256,
+    "cached_cold": 0,
+    "tokens": 96,
+    "hit_vs_hit_first_diff": 31,
+    "hit_vs_cold_first_diff": null
+  },
+  {
+    "depth": 24576,
+    "primed_prompt_tokens": 24695,
+    "followup_prompt_tokens": 24728,
+    "cached_hit1": 24576,
+    "cached_hit2": 24640,
+    "cached_cold": 0,
+    "tokens": 96,
+    "hit_vs_hit_first_diff": 11,
+    "hit_vs_cold_first_diff": null
+  }
+]

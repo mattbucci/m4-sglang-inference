@@ -61,7 +61,7 @@ python scripts/eval/test_release_finished_request_unit.py     # patch 023: finis
 python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
 python scripts/eval/quant_fidelity.py --port 23334 --tokenizer <path> --tag <arm> [--ref-dump <8bit-dump.json>] --out <json>   # teacher-forced NLL/PPL, KL to a reference dump
 python3 evals/swebench/audit_rollouts.py                       # answer-leak audit of archived SWE-bench sessions (web/network/git-history); the harness itself is sealed
-python scripts/eval/test_prompt_side_checkpoint_unit.py       # patch 026: the prompt-side Mamba checkpoint is published before a finished request's final insert (CPU, no server)
+python scripts/eval/test_extend_chunk_track_unit.py           # patch 026: continuation prefill chunks track the grid Mamba checkpoint (CPU, no server)
 python scripts/eval/test_dllm_structured_reads_unit.py        # patch 025: structured reads on the Gemma4 renoise loop (CPU, no server)
 python scripts/eval/structured_reads.py --server http://<cuda-host>:30000 --tokenizer google/diffusiongemma-26B-A4B-it --question ... --kind noul   # DiffusionGemma reads (CUDA/ROCm host)
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """CPU unit test for patch 023: the MLX worker's KV-release hook drops the
 runner's per-request state for every finished request, and runs the decode
-sync (leaf re-snapshot, row release) only for a request that decoded; the
-tracked prompt-side checkpoint marker survives for the scheduler to publish
-(patch 026).
+sync (leaf re-snapshot, tracked-slot clear, row release) only for a request
+that decoded.
 
     python scripts/eval/test_release_finished_request_unit.py
 """
@@ -81,11 +80,11 @@ check(r.calls == [("remove", "a")], f"prefill-finished request: remove only ({r.
 check(not r.has_request("a") and pruned(w, "a"), "prefill-finished request: runner and worker bookkeeping dropped")
 check(q.kv.mamba_last_track_seqlen == 4096, "prefill-finished request: tracked-slot marker untouched")
 
-# A request that decoded: snapshot the leaf, sync the row, then drop; the tracked marker stays.
+# A request that decoded: snapshot the leaf, clear the tracked marker, sync the row, then drop.
 r = Runner(["b"]); w = worker(r, ["b"]); q = req("b", 3); hook(w, q)
 check(r.calls == [("store", "b"), ("release", "b", 1234), ("remove", "b")],
       f"decode-finished request: store, release, remove in order ({r.calls})")
-check(q.kv.mamba_last_track_seqlen == 4096, "decode-finished request: tracked-slot marker kept for the scheduler")
+check(q.kv.mamba_last_track_seqlen is None, "decode-finished request: tracked-slot marker cleared")
 check(not r.has_request("b") and pruned(w, "b"), "decode-finished request: bookkeeping dropped")
 
 # A request the runner never saw (retracted, or swept already): prune the worker sets only.

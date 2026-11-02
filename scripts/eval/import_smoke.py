@@ -71,6 +71,9 @@ ATTR_CHECKS = {
         ("MlxModelRunner._materialize_pool_backed_attention(required_len)",  # 022
          lambda m: "required_len"
          in m.MlxModelRunner._materialize_pool_backed_attention.__code__.co_varnames),
+        ("MlxModelRunner.extend_start tracks the grid checkpoint",      # 026
+         lambda m: "req" in m.MlxModelRunner.extend_start.__code__.co_varnames
+                   and _src_has(m.MlxModelRunner.extend_start, "_store_tracked_auxiliary_state")),
     ],
     "sglang.srt.hardware_backend.mlx.swa_prefix": [
         ("mlx_snapshots_sliding_window_prefix",                        # 021
@@ -86,14 +89,17 @@ ATTR_CHECKS = {
         ("MlxTpModelWorker.prepare_for_kv_cache_release drops the request",  # 023
          lambda m: _src_has(m.MlxTpModelWorker.prepare_for_kv_cache_release,
                             "self._mlx_runner.remove_request(req.rid)")),
-    ],
-    "sglang.srt.mem_cache.unified_radix_cache": [
-        ("UnifiedRadixCache.checkpoint_into_tree(as_running)",              # 026
-         lambda m: "as_running" in m.UnifiedRadixCache.checkpoint_into_tree.__code__.co_varnames),
+        ("MlxTpModelWorker hands the request to extend_start",          # 026
+         lambda m: _src_has(m, "self._mlx_runner.extend_start(\n"
+                               "                        req_id=req.rid,\n"
+                               "                        new_token_ids=req_token_ids,\n"
+                               "                        new_slot_ids=req_new_slots,\n"
+                               "                        needs_logits=self._chunk_needs_logits(req),\n"
+                               "                        logit_edit_row=edit_rows[req.rid] if edit_rows else None,\n"
+                               "                        logprob_spec=self._logprob_spec_for(logprob_rows, [req.rid]),\n"
+                               "                        req=req,")),
     ],
     "sglang.srt.managers.scheduler_components.batch_result_processor": [
-        ("SchedulerBatchResultProcessor._publish_prompt_side_mamba_checkpoint",  # 026
-         lambda m: m.SchedulerBatchResultProcessor._publish_prompt_side_mamba_checkpoint),
         ("KV-release hook for every finished request",                # 023
          lambda m: _src_has(m, "self._prepare_kv_cache_release(req)\n"
                                "                        release_kv_cache(")),

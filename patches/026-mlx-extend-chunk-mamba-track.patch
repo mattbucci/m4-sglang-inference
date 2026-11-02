@@ -1,0 +1,70 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 4ad6f1fa2d..e972369872 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1444,23 +1444,52 @@ class MlxModelRunner:
+         needs_logits: bool = True,
+         logit_edit_row: mx.array | None = None,
+         logprob_spec: MlxLogprobSpec | None = None,
++        req: Any | None = None,
+     ) -> MlxPendingExtend:
+         """Queue chunked-prefill continuation without evaluating.
+ 
+         ``needs_logits=False`` marks a non-final chunk whose next-token
+         output the scheduler discards; the logit head is skipped when the
+         model exposes a headless trunk.
++
++        A continuation chunk tracks the auxiliary state at the last grid
++        boundary it crosses, exactly as the first chunk does: the scheduler's
++        end-of-prefill checkpoint then publishes a state within one grid of
++        the prompt end. Without it a prompt longer than one chunk keeps
++        states only at chunk ends, and a follow-up turn that diverges inside
++        the chat template's generation tail recomputes the whole last chunk.
+         """
+         assert req_id in self._req_caches, (
+             f"extend_start called for unknown request {req_id}"
+         )
+ 
+         cache = self._req_caches[req_id]
++        new_token_count = len(new_token_ids)
++        prefix_len = int(self._first_attention_cache(cache).offset)
++        track_len = None
++        if req is not None and getattr(req, "multimodal_inputs", None) is None:
++            track_len = self._select_auxiliary_state_track_len(
++                prefix_len=prefix_len,
++                new_token_count=new_token_count,
++                full_len=prefix_len + new_token_count,
++                req=req,
++            )
++        track_new_count = track_len - prefix_len if track_len is not None else None
++        if track_new_count is not None and 0 < track_new_count < new_token_count:
++            head = mx.array([new_token_ids[:track_new_count]], dtype=mx.int32)
++            if self._trunk_forward(head, cache) is None:
++                self.model(head, cache=cache)
++            self._store_tracked_auxiliary_state(req, cache, track_len)
++            run_token_ids = new_token_ids[track_new_count:]
++        else:
++            run_token_ids = new_token_ids
+ 
+-        input_ids = mx.array([new_token_ids], dtype=mx.int32)
++        input_ids = mx.array([run_token_ids], dtype=mx.int32)
+         lazy_token, lazy_logprobs = self._forward_lazy_token(
+             input_ids, cache, needs_logits, req_id, logit_edit_row, logprob_spec
+         )
++        if track_len is not None and track_len == prefix_len + new_token_count:
++            self._store_tracked_auxiliary_state(req, cache, track_len)
+ 
+         if not self.disable_radix_cache and new_slot_ids:
+             synced = self._req_synced_offset[req_id]
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index e69b197a82..a723326512 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -612,6 +612,7 @@ class MlxTpModelWorker(TpModelWorker):
+                         needs_logits=self._chunk_needs_logits(req),
+                         logit_edit_row=edit_rows[req.rid] if edit_rows else None,
+                         logprob_spec=self._logprob_spec_for(logprob_rows, [req.rid]),
++                        req=req,
+                     )
+                 )
+             elif route == "decode":
