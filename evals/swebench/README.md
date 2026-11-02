@@ -71,13 +71,20 @@ python3 evals/swebench/audit_rollouts.py            # all runs/*
 python3 evals/swebench/audit_rollouts.py --verbose  # with the matching commands
 ```
 
-Archive audit (147 sessions): 8 sessions with a hit. Two reached the
+Archive audit (165 sessions): 8 sessions with a hit, all from before the seal. Two reached the
 internet (the Qwen3.8 `webfetch` session and the Flint `pip download`
 session), both 0-byte patches. Six ran a history-reading git command
 (`git log --all --grep`, `git branch -a`, `git show <sha>`): in every case
 the output shown to the model was pre-base history or unrelated later
 commit subjects, never the fix's diff (`--verbose` lists them). No scored
 prediction in `exports/` came out of a session that saw the fix.
+
+The two smokes whose sessions had reached the internet were repeated under
+the seal: Qwen3.8-27B community 3/3, each patch the upstream change
+(`runs/qwen38-27b-community-sealed-131k-2026-11-01/`; the 12907 session
+that had fetched the post-fix file now writes that fix from source), and
+Flint oQ8e bash-only 64K 1/3 with zero runaway turns in 265 responses
+(`runs/flint-oQ8e-bashonly-64k-sealed-2026-11-01/`).
 
 ## Current leaderboard (auto-generated)
 
