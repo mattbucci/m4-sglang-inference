@@ -136,5 +136,36 @@ The first-token cost is about twice the earlier receipt and decode is
 faster by the same amount: since patch 021 the pool scatter is evaluated
 with the step and reads the rebuilt contiguous cache, so the rebuild of the
 gathered prefix lands in the first token instead of the first decode step.
-Time to 64 tokens is unchanged. Profiling and the candidate fix are
-experiments row 4.
+Time to 64 tokens is unchanged.
+
+### Where the append turn's time goes (extend-profile-2026-11-01.json)
+
+A timing hook in the runner's prefix-hit path (`extend-profile-hook.diff`,
+applied for the run only) evaluates the first token, then the contiguous
+rebuild of the gathered prefix, then the pool scatter, and logs each; a
+scan of first-token latency against the number of recomputed tokens runs
+the same suffixes cold (no cached prefix) and appended to a cached 8,654-token
+prefix.
+
+| recomputed tokens | cold prompt TTFT | append on the 8.6K prefix | hit-path parts at 8.6K (token / rebuild / scatter) |
+|---:|---:|---:|---|
+| 4–5 | 37–59 ms | 53 ms | 28 / 5.7 / 0.8 ms |
+| 11 | 55 ms | 88 ms | 63 / 4.5 / 0.9 ms |
+| 46–49 | 129 ms | 167 ms | 142 / 4.5 / 1.0 ms |
+| 78–80 | 202 ms | 250 ms | 75 / 0.4 / 0.7 ms (split: the head ran in the tracked-state store) |
+| 306–311 | 430 ms | 526 ms | — |
+| 1,173–1,201 | 1,346 ms | 1,558 ms | — |
+
+The append turn costs the model's own short-prefill rate on the tokens it
+recomputes: about 35 ms fixed plus 1.1–1.3 ms per token, the same curve
+cold and on a hit, and the recomputed count is the suffix plus the
+remainder past the last 64-token grid checkpoint (up to 63 tokens, 41 of
+the 42 at the 34.5K rung). The hit path itself adds the pool gather
+(4 ms at 8.6K, 13 ms at 34.5K in isolation on the 10-layer pool), the
+contiguous rebuild (3.5–5.7 ms at 8.6K, 19–22 ms at 34.5K) and the
+scatter (~1 ms); depth adds the attention of the recomputed queries over
+the prefix (41 tokens: 130 ms at 8.6K, 196 ms at 34.5K). Deferring the
+rebuild would move at most 20 ms off the first token at 34.5K and
+nothing off the turn, so it is not pursued; a hit at the exact prefix end
+instead of the grid boundary would save the remainder's prefill (up to
+~75 ms) at the price of a tracked state per request end.

@@ -1,0 +1,673 @@
+{
+ "serve": "qwen36 radix-on, CTX=42000 MEM_FRAC=0.45 CHUNKED=2048 SGLANG_MLX_CACHE_LIMIT_GB=2 --enable-cache-report, SGLANG_MLX_EXTEND_PROFILE=1 (extend-profile-hook.diff)",
+ "runner_profile_ms": [
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 10,
+   "token_eval": 57.0,
+   "rebuild": 4.9,
+   "scatter": 0.8
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 10,
+   "token_eval": 56.8,
+   "rebuild": 3.5,
+   "scatter": 0.5
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 10,
+   "token_eval": 56.9,
+   "rebuild": 3.4,
+   "scatter": 0.5
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 72,
+   "token_eval": 52.0,
+   "rebuild": 0.4,
+   "scatter": 0.6
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 72,
+   "token_eval": 52.0,
+   "rebuild": 0.3,
+   "scatter": 0.6
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 73,
+   "token_eval": 56.9,
+   "rebuild": 0.4,
+   "scatter": 0.6
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 8640,
+   "new": 8,
+   "token_eval": 50.7,
+   "rebuild": 3.8,
+   "scatter": 0.6
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 41,
+   "token_eval": 196.4,
+   "rebuild": 20.0,
+   "scatter": 1.3
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 42,
+   "token_eval": 198.4,
+   "rebuild": 18.6,
+   "scatter": 1.2
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 42,
+   "token_eval": 198.9,
+   "rebuild": 19.9,
+   "scatter": 1.2
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 103,
+   "token_eval": 191.5,
+   "rebuild": 1.0,
+   "scatter": 1.2
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 105,
+   "token_eval": 196.2,
+   "rebuild": 0.9,
+   "scatter": 1.1
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 104,
+   "token_eval": 193.6,
+   "rebuild": 1.0,
+   "scatter": 1.2
+  },
+  {
+   "source": "extend_profile_launch.log",
+   "prefix": 34496,
+   "new": 39,
+   "token_eval": 192.8,
+   "rebuild": 22.1,
+   "scatter": 1.3
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8640,
+   "new": 14,
+   "token_eval": 73.1,
+   "rebuild": 4.7,
+   "scatter": 1.0
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 4,
+   "token_eval": 28.3,
+   "rebuild": 5.7,
+   "scatter": 0.8
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 5,
+   "token_eval": 42.5,
+   "rebuild": 5.7,
+   "scatter": 0.8
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 7,
+   "token_eval": 50.4,
+   "rebuild": 4.5,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 11,
+   "token_eval": 63.0,
+   "rebuild": 4.5,
+   "scatter": 0.9
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 23,
+   "token_eval": 84.5,
+   "rebuild": 4.9,
+   "scatter": 2.6
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 36,
+   "token_eval": 123.6,
+   "rebuild": 6.4,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 41,
+   "token_eval": 129.8,
+   "rebuild": 2.9,
+   "scatter": 0.8
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 49,
+   "token_eval": 142.0,
+   "rebuild": 4.5,
+   "scatter": 1.0
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 59,
+   "token_eval": 157.4,
+   "rebuild": 7.5,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 67,
+   "token_eval": 25.4,
+   "rebuild": 0.3,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 80,
+   "token_eval": 75.1,
+   "rebuild": 0.4,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 79,
+   "token_eval": 75.6,
+   "rebuild": 0.3,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 88,
+   "token_eval": 88.1,
+   "rebuild": 0.8,
+   "scatter": 0.6
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 113,
+   "token_eval": 144.1,
+   "rebuild": 1.1,
+   "scatter": 0.7
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 148,
+   "token_eval": 82.3,
+   "rebuild": 0.3,
+   "scatter": 0.8
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 224,
+   "token_eval": 101.6,
+   "rebuild": 0.7,
+   "scatter": 0.9
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 311,
+   "token_eval": 157.3,
+   "rebuild": 0.9,
+   "scatter": 1.0
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 422,
+   "token_eval": 134.1,
+   "rebuild": 0.6,
+   "scatter": 1.0
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 583,
+   "token_eval": 64.2,
+   "rebuild": 0.3,
+   "scatter": 1.3
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 886,
+   "token_eval": 169.5,
+   "rebuild": 1.0,
+   "scatter": 1.3
+  },
+  {
+   "source": "nscan_launch.log",
+   "prefix": 8654,
+   "new": 1173,
+   "token_eval": 123.3,
+   "rebuild": 0.7,
+   "scatter": 15.5
+  }
+ ],
+ "cold_prompts": [
+  {
+   "prompt_tokens": 4,
+   "ttft_ms": 59.3
+  },
+  {
+   "prompt_tokens": 5,
+   "ttft_ms": 36.8
+  },
+  {
+   "prompt_tokens": 5,
+   "ttft_ms": 35.8
+  },
+  {
+   "prompt_tokens": 6,
+   "ttft_ms": 40.0
+  },
+  {
+   "prompt_tokens": 7,
+   "ttft_ms": 99.4
+  },
+  {
+   "prompt_tokens": 8,
+   "ttft_ms": 45.5
+  },
+  {
+   "prompt_tokens": 11,
+   "ttft_ms": 54.8
+  },
+  {
+   "prompt_tokens": 12,
+   "ttft_ms": 56.0
+  },
+  {
+   "prompt_tokens": 19,
+   "ttft_ms": 72.3
+  },
+  {
+   "prompt_tokens": 20,
+   "ttft_ms": 73.0
+  },
+  {
+   "prompt_tokens": 32,
+   "ttft_ms": 89.7
+  },
+  {
+   "prompt_tokens": 33,
+   "ttft_ms": 110.3
+  },
+  {
+   "prompt_tokens": 38,
+   "ttft_ms": 117.3
+  },
+  {
+   "prompt_tokens": 38,
+   "ttft_ms": 117.5
+  },
+  {
+   "prompt_tokens": 46,
+   "ttft_ms": 128.5
+  },
+  {
+   "prompt_tokens": 50,
+   "ttft_ms": 134.3
+  },
+  {
+   "prompt_tokens": 54,
+   "ttft_ms": 141.1
+  },
+  {
+   "prompt_tokens": 69,
+   "ttft_ms": 175.6
+  },
+  {
+   "prompt_tokens": 74,
+   "ttft_ms": 189.1
+  },
+  {
+   "prompt_tokens": 67,
+   "ttft_ms": 168.5
+  },
+  {
+   "prompt_tokens": 78,
+   "ttft_ms": 202.2
+  },
+  {
+   "prompt_tokens": 74,
+   "ttft_ms": 188.2
+  },
+  {
+   "prompt_tokens": 77,
+   "ttft_ms": 201.8
+  },
+  {
+   "prompt_tokens": 70,
+   "ttft_ms": 179.2
+  },
+  {
+   "prompt_tokens": 85,
+   "ttft_ms": 213.8
+  },
+  {
+   "prompt_tokens": 87,
+   "ttft_ms": 216.2
+  },
+  {
+   "prompt_tokens": 107,
+   "ttft_ms": 263.3
+  },
+  {
+   "prompt_tokens": 112,
+   "ttft_ms": 271.2
+  },
+  {
+   "prompt_tokens": 151,
+   "ttft_ms": 258.8
+  },
+  {
+   "prompt_tokens": 145,
+   "ttft_ms": 247.0
+  },
+  {
+   "prompt_tokens": 229,
+   "ttft_ms": 352.6
+  },
+  {
+   "prompt_tokens": 230,
+   "ttft_ms": 353.7
+  },
+  {
+   "prompt_tokens": 306,
+   "ttft_ms": 430.3
+  },
+  {
+   "prompt_tokens": 296,
+   "ttft_ms": 415.5
+  },
+  {
+   "prompt_tokens": 444,
+   "ttft_ms": 564.9
+  },
+  {
+   "prompt_tokens": 462,
+   "ttft_ms": 540.7
+  },
+  {
+   "prompt_tokens": 575,
+   "ttft_ms": 690.7
+  },
+  {
+   "prompt_tokens": 575,
+   "ttft_ms": 690.6
+  },
+  {
+   "prompt_tokens": 864,
+   "ttft_ms": 931.3
+  },
+  {
+   "prompt_tokens": 874,
+   "ttft_ms": 960.7
+  },
+  {
+   "prompt_tokens": 1201,
+   "ttft_ms": 1346.0
+  },
+  {
+   "prompt_tokens": 1178,
+   "ttft_ms": 1247.5
+  }
+ ],
+ "appends_on_8654_prefix": [
+  {
+   "prompt_tokens": 8658,
+   "cached": 8654,
+   "recomputed": 4,
+   "ttft_ms": 53.3
+  },
+  {
+   "prompt_tokens": 8659,
+   "cached": 8654,
+   "recomputed": 5,
+   "ttft_ms": 67.0
+  },
+  {
+   "prompt_tokens": 8661,
+   "cached": 8654,
+   "recomputed": 7,
+   "ttft_ms": 75.2
+  },
+  {
+   "prompt_tokens": 8665,
+   "cached": 8654,
+   "recomputed": 11,
+   "ttft_ms": 88.2
+  },
+  {
+   "prompt_tokens": 8677,
+   "cached": 8654,
+   "recomputed": 23,
+   "ttft_ms": 110.1
+  },
+  {
+   "prompt_tokens": 8690,
+   "cached": 8654,
+   "recomputed": 36,
+   "ttft_ms": 149.8
+  },
+  {
+   "prompt_tokens": 8695,
+   "cached": 8654,
+   "recomputed": 41,
+   "ttft_ms": 153.3
+  },
+  {
+   "prompt_tokens": 8703,
+   "cached": 8654,
+   "recomputed": 49,
+   "ttft_ms": 167.4
+  },
+  {
+   "prompt_tokens": 8713,
+   "cached": 8654,
+   "recomputed": 59,
+   "ttft_ms": 185.3
+  },
+  {
+   "prompt_tokens": 8721,
+   "cached": 8654,
+   "recomputed": 67,
+   "ttft_ms": 200.5
+  },
+  {
+   "prompt_tokens": 8734,
+   "cached": 8654,
+   "recomputed": 80,
+   "ttft_ms": 250.3
+  },
+  {
+   "prompt_tokens": 8733,
+   "cached": 8654,
+   "recomputed": 79,
+   "ttft_ms": 252.2
+  },
+  {
+   "prompt_tokens": 8742,
+   "cached": 8654,
+   "recomputed": 88,
+   "ttft_ms": 263.3
+  },
+  {
+   "prompt_tokens": 8767,
+   "cached": 8654,
+   "recomputed": 113,
+   "ttft_ms": 320.8
+  },
+  {
+   "prompt_tokens": 8802,
+   "cached": 8654,
+   "recomputed": 148,
+   "ttft_ms": 306.3
+  },
+  {
+   "prompt_tokens": 8878,
+   "cached": 8654,
+   "recomputed": 224,
+   "ttft_ms": 398.0
+  },
+  {
+   "prompt_tokens": 8965,
+   "cached": 8654,
+   "recomputed": 311,
+   "ttft_ms": 525.7
+  },
+  {
+   "prompt_tokens": 9076,
+   "cached": 8654,
+   "recomputed": 422,
+   "ttft_ms": 644.3
+  },
+  {
+   "prompt_tokens": 9237,
+   "cached": 8654,
+   "recomputed": 583,
+   "ttft_ms": 796.6
+  },
+  {
+   "prompt_tokens": 9540,
+   "cached": 8654,
+   "recomputed": 886,
+   "ttft_ms": 1194.9
+  },
+  {
+   "prompt_tokens": 9827,
+   "cached": 8654,
+   "recomputed": 1173,
+   "ttft_ms": 1557.9
+  }
+ ],
+ "extend_cost": [
+  {
+   "depth_label": 8192,
+   "prefix_tokens": 8648,
+   "suffix_tokens": 1,
+   "ttft_ms_median": 81.7,
+   "ttft_ms_all": [
+    89.1,
+    81.7,
+    80.2
+   ],
+   "cache_hit_verified": true,
+   "recomputed_tokens": [
+    10,
+    10,
+    10
+   ],
+   "shape": "completion append",
+   "decode_ms_per_token": 15.9,
+   "tax_ratio": 5.1
+  },
+  {
+   "depth_label": 8192,
+   "prefix_tokens": 8648,
+   "suffix_tokens": 64,
+   "ttft_ms_median": 232.6,
+   "ttft_ms_all": [
+    228.1,
+    233.0,
+    232.6
+   ],
+   "cache_hit_verified": true,
+   "recomputed_tokens": [
+    72,
+    72,
+    73
+   ],
+   "shape": "completion append",
+   "decode_ms_per_token": 15.9,
+   "tax_ratio": 14.6
+  },
+  {
+   "depth_label": 32768,
+   "prefix_tokens": 34535,
+   "suffix_tokens": 1,
+   "ttft_ms_median": 264.7,
+   "ttft_ms_all": [
+    264.2,
+    264.7,
+    267.4
+   ],
+   "cache_hit_verified": true,
+   "recomputed_tokens": [
+    41,
+    42,
+    42
+   ],
+   "shape": "completion append",
+   "decode_ms_per_token": 19.6,
+   "tax_ratio": 13.5
+  },
+  {
+   "depth_label": 32768,
+   "prefix_tokens": 34535,
+   "suffix_tokens": 64,
+   "ttft_ms_median": 480.6,
+   "ttft_ms_all": [
+    472.2,
+    485.9,
+    480.6
+   ],
+   "cache_hit_verified": true,
+   "recomputed_tokens": [
+    103,
+    105,
+    104
+   ],
+   "shape": "completion append",
+   "decode_ms_per_token": 19.6,
+   "tax_ratio": 24.5
+  }
+ ]
+}

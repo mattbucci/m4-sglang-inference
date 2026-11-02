@@ -1,0 +1,35 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index e972369872..5ae963f9f4 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -61,6 +61,9 @@ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     set_context,
+     uses_sliding_window_attention,
+ )
++
++import logging as _logging_mod
++_EXTEND_PROFILE = os.environ.get("SGLANG_MLX_EXTEND_PROFILE") == "1"
+ from sglang.srt.hardware_backend.mlx.remote_code_gate import (
+     ensure_remote_code_allowed,
+     resolve_model_directory,
+@@ -1409,6 +1412,20 @@ class MlxModelRunner:
+         if new_slot_ids:
+             self._sync_new_kv_to_pool(cache, prefix_len, new_slot_ids)
+ 
++        if _EXTEND_PROFILE and trusted_prefix_len > 0:
++            import time as _time
++            _t0 = _time.perf_counter()
++            mx.eval(lazy_token)
++            _t1 = _time.perf_counter()
++            mx.eval(*self.cache_state_arrays([cache]))
++            _t2 = _time.perf_counter()
++            mx.eval(*self.pending_pool_arrays())
++            _t3 = _time.perf_counter()
++            _logging_mod.getLogger(__name__).info(
++                "extend-profile prefix=%d new=%d token=%.1fms rebuild=%.1fms scatter=%.1fms",
++                prefix_len, new_token_count, (_t1 - _t0) * 1e3, (_t2 - _t1) * 1e3, (_t3 - _t2) * 1e3,
++            )
++
+         return MlxPendingPrefill(
+             lazy_token=lazy_token,
+             cache=cache,
