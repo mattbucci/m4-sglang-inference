@@ -1,0 +1,122 @@
+[
+  {
+    "depth_label": 8192,
+    "prefix_tokens": 8657,
+    "suffix_tokens": 1,
+    "ttft_ms_median": 123.6,
+    "ttft_ms_all": [
+      142.7,
+      123.6,
+      122.2
+    ],
+    "cache_hit_verified": true,
+    "recomputed_tokens": [
+      31,
+      32,
+      32
+    ],
+    "shape": "multi-turn chat",
+    "decode_ms_per_token": 16.3,
+    "tax_ratio": 7.6
+  },
+  {
+    "depth_label": 8192,
+    "prefix_tokens": 8657,
+    "suffix_tokens": 64,
+    "ttft_ms_median": 283.3,
+    "ttft_ms_all": [
+      283.3,
+      289.2,
+      280.9
+    ],
+    "cache_hit_verified": true,
+    "recomputed_tokens": [
+      94,
+      94,
+      95
+    ],
+    "shape": "multi-turn chat",
+    "decode_ms_per_token": 16.3,
+    "tax_ratio": 17.4
+  },
+  {
+    "depth_label": 24576,
+    "prefix_tokens": 25863,
+    "suffix_tokens": 1,
+    "ttft_ms_median": 147.0,
+    "ttft_ms_all": [
+      190.0,
+      147.0,
+      145.3
+    ],
+    "cache_hit_verified": true,
+    "recomputed_tokens": [
+      21,
+      22,
+      21
+    ],
+    "shape": "multi-turn chat",
+    "decode_ms_per_token": 19.1,
+    "tax_ratio": 7.7
+  },
+  {
+    "depth_label": 24576,
+    "prefix_tokens": 25863,
+    "suffix_tokens": 64,
+    "ttft_ms_median": 349.7,
+    "ttft_ms_all": [
+      349.7,
+      366.9,
+      343.6
+    ],
+    "cache_hit_verified": true,
+    "recomputed_tokens": [
+      84,
+      86,
+      85
+    ],
+    "shape": "multi-turn chat",
+    "decode_ms_per_token": 19.1,
+    "tax_ratio": 18.4
+  },
+  {
+    "depth_label": 49152,
+    "prefix_tokens": 52026,
+    "suffix_tokens": 1,
+    "ttft_ms_median": 189.4,
+    "ttft_ms_all": [
+      493.0,
+      188.4,
+      189.4
+    ],
+    "cache_hit_verified": true,
+    "recomputed_tokens": [
+      73,
+      8,
+      9
+    ],
+    "shape": "multi-turn chat",
+    "decode_ms_per_token": 21.8,
+    "tax_ratio": 8.7
+  },
+  {
+    "depth_label": 49152,
+    "prefix_tokens": 52026,
+    "suffix_tokens": 64,
+    "ttft_ms_median": 428.3,
+    "ttft_ms_all": [
+      428.3,
+      425.8,
+      433.1
+    ],
+    "cache_hit_verified": true,
+    "recomputed_tokens": [
+      72,
+      71,
+      72
+    ],
+    "shape": "multi-turn chat",
+    "decode_ms_per_token": 21.8,
+    "tax_ratio": 19.7
+  }
+]

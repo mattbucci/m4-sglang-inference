@@ -1,0 +1,35 @@
+{
+  "model": "qwen35-9b-8bit",
+  "model_id": "qwen35-9b-8bit",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-11-01 23:11:07",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.23-17-gbd6c417cd5",
+  "kv_cache_mode": "auto",
+  "context_max": 32768,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "tpot_ms": 37.3,
+      "tok_per_sec": 26.8,
+      "ttft_ms": 2560.7,
+      "actual_input_tokens": 1024
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 38.6,
+      "tok_per_sec": 25.9,
+      "ttft_ms": 21801.3,
+      "actual_input_tokens": 8192
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 42.7,
+      "tok_per_sec": 23.4,
+      "ttft_ms": 99737.6,
+      "actual_input_tokens": 32768
+    }
+  ],
+  "throughput_sweep": []
+}

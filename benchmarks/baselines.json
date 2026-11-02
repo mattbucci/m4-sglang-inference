@@ -3,51 +3,57 @@
     "hardware": "Apple M4 Pro 64GB",
     "instrument": "scripts/bench/bench_all_unified.py --context-list",
     "output_tokens": 64,
-    "saved": "2026-07-20",
+    "saved": "2026-11-01",
     "schema": 2,
     "serving_recipe": "CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant",
-    "stack": "v0.5.15.post1"
+    "stack": "v0.5.23-17-gbd6c417cd5"
   },
   "coder-30b": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 80.1,
-      "tpot_ms": 12.5,
-      "ttft_ms": 1241.8
+      "tok_per_sec": 81.9,
+      "tpot_ms": 12.2,
+      "ttft_ms": 1074.4
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 28.7,
-      "tpot_ms": 34.8,
-      "ttft_ms": 99579.1
+      "tok_per_sec": 32.0,
+      "tpot_ms": 31.2,
+      "ttft_ms": 96544.5
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 55.8,
-      "tpot_ms": 17.9,
-      "ttft_ms": 14029.5
+      "tok_per_sec": 55.2,
+      "tpot_ms": 18.1,
+      "ttft_ms": 12093.1
     }
   },
   "devstral": {
     "1024": {
       "actual_input_tokens": 1023,
-      "tok_per_sec": 16.5,
-      "tpot_ms": 60.5,
-      "ttft_ms": 7655.0
+      "tok_per_sec": 16.1,
+      "tpot_ms": 62.1,
+      "ttft_ms": 7674.2
+    },
+    "32768": {
+      "actual_input_tokens": 32767,
+      "tok_per_sec": 11.9,
+      "tpot_ms": 84.1,
+      "ttft_ms": 281663.0
     },
     "8192": {
       "actual_input_tokens": 8191,
-      "tok_per_sec": 14.8,
-      "tpot_ms": 67.6,
-      "ttft_ms": 66241.4
+      "tok_per_sec": 15.1,
+      "tpot_ms": 66.4,
+      "ttft_ms": 66673.4
     }
   },
   "qwen3-32b": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 12.3,
-      "tpot_ms": 81.1,
-      "ttft_ms": 10912.9
+      "tok_per_sec": 12.0,
+      "tpot_ms": 83.3,
+      "ttft_ms": 9816.2
     },
     "32768": {
       "actual_input_tokens": 32768,
@@ -57,89 +63,89 @@
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 10.7,
-      "tpot_ms": 93.1,
-      "ttft_ms": 91115.0
+      "tok_per_sec": 10.5,
+      "tpot_ms": 94.8,
+      "ttft_ms": 92020.3
     }
   },
   "qwen3-moe": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 78.0,
-      "tpot_ms": 12.8,
-      "ttft_ms": 1251.9
+      "tok_per_sec": 81.9,
+      "tpot_ms": 12.2,
+      "ttft_ms": 1075.2
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 28.8,
-      "tpot_ms": 34.8,
-      "ttft_ms": 98912.2
+      "tok_per_sec": 31.8,
+      "tpot_ms": 31.4,
+      "ttft_ms": 100252.9
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 55.7,
-      "tpot_ms": 18.0,
-      "ttft_ms": 14357.8
+      "tok_per_sec": 55.1,
+      "tpot_ms": 18.1,
+      "ttft_ms": 11519.0
     }
   },
   "qwen35": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 15.0,
-      "tpot_ms": 66.8,
-      "ttft_ms": 9081.9
+      "tok_per_sec": 14.5,
+      "tpot_ms": 68.7,
+      "ttft_ms": 8600.9
     },
     "32768": {
       "actual_input_tokens": 32768,
       "tok_per_sec": 12.8,
-      "tpot_ms": 78.4,
-      "ttft_ms": 306694.6
+      "tpot_ms": 78.0,
+      "ttft_ms": 310204.8
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 14.6,
-      "tpot_ms": 68.7,
-      "ttft_ms": 69434.7
+      "tok_per_sec": 14.1,
+      "tpot_ms": 70.7,
+      "ttft_ms": 75172.1
     }
   },
   "qwen35-9b-8bit": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 26.9,
-      "tpot_ms": 37.1,
-      "ttft_ms": 2812.0
+      "tok_per_sec": 26.8,
+      "tpot_ms": 37.3,
+      "ttft_ms": 2560.7
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 23.6,
-      "tpot_ms": 42.4,
-      "ttft_ms": 95545.2
+      "tok_per_sec": 23.4,
+      "tpot_ms": 42.7,
+      "ttft_ms": 99737.6
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 26.3,
-      "tpot_ms": 38.0,
-      "ttft_ms": 23901.7
+      "tok_per_sec": 25.9,
+      "tpot_ms": 38.6,
+      "ttft_ms": 21801.3
     }
   },
   "qwen36": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 82.4,
-      "tpot_ms": 12.1,
-      "ttft_ms": 1291.2
+      "tok_per_sec": 79.4,
+      "tpot_ms": 12.6,
+      "ttft_ms": 1249.5
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 57.8,
-      "tpot_ms": 17.3,
-      "ttft_ms": 57436.9
+      "tok_per_sec": 56.9,
+      "tpot_ms": 17.6,
+      "ttft_ms": 58740.2
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 72.8,
-      "tpot_ms": 13.7,
-      "ttft_ms": 10658.7
+      "tok_per_sec": 68.0,
+      "tpot_ms": 14.7,
+      "ttft_ms": 10398.5
     },
     "recall_32k": {
       "label": 28000,
@@ -151,21 +157,21 @@
   "qwen36-27b": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 15.0,
-      "tpot_ms": 66.5,
-      "ttft_ms": 9056.0
+      "tok_per_sec": 14.5,
+      "tpot_ms": 68.8,
+      "ttft_ms": 8374.6
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 12.8,
-      "tpot_ms": 78.0,
-      "ttft_ms": 304507.5
+      "tok_per_sec": 12.9,
+      "tpot_ms": 77.7,
+      "ttft_ms": 301077.4
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 14.4,
-      "tpot_ms": 69.4,
-      "ttft_ms": 69400.1
+      "tok_per_sec": 14.1,
+      "tpot_ms": 71.0,
+      "ttft_ms": 74014.1
     }
   }
 }

@@ -1,0 +1,35 @@
+{
+  "model": "devstral",
+  "model_id": "devstral",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-11-01 22:42:30",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.23-17-gbd6c417cd5",
+  "kv_cache_mode": "auto",
+  "context_max": 32768,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "tpot_ms": 62.1,
+      "tok_per_sec": 16.1,
+      "ttft_ms": 7674.2,
+      "actual_input_tokens": 1023
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 66.4,
+      "tok_per_sec": 15.1,
+      "ttft_ms": 66673.4,
+      "actual_input_tokens": 8191
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 84.1,
+      "tok_per_sec": 11.9,
+      "ttft_ms": 281663.0,
+      "actual_input_tokens": 32767
+    }
+  ],
+  "throughput_sweep": []
+}

@@ -1,422 +1,220 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
-Long-context LLM inference on Apple M4 Pro (Mac mini, 64 GB unified memory) using SGLang with a native MLX backend. Stack: **SGLang v0.5.23** (commit `297e54f`) + 15 patches ([patches/README.md](patches/README.md)). Text and VLM/hybrid paths are validated: `qwen36` is the primary agentic model (codegen STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b`/`qwen3-moe`/`qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint` (Recursive's coding-agent MoE, oQ8e) all pass their gates. Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache (hits and cold runs each deterministic; trade-off: overlap schedule off for them). `gemma4*` is blocked at boot (mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head`).
+Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's native MLX backend. Stack: **SGLang v0.5.23** (`297e54f`) + 17 patches ([patches/README.md](patches/README.md)).
 
-**Long-context: 256K single-user context validated on qwen36 — and usable**: the multi-needle recall ladder scores 6/6 at every rung from 9.6K to 245,656 realized tokens (`benchmarks/quality/depth-recall/`), (the `--kv-cache-dtype` flag is inert on this backend — the MLX pool stores KV in the attention compute dtype — so the earlier turboquant-vs-fp16 recall A/B compared identical bf16 arms). Recipe: exact pool sizing (`CTX = label + 64`), `MEM_FRAC=0.5`, `CHUNKED=1024`, radix off, turboquant, on patch 008 (buffer-cache cap) + patch 015 (cache pre-sizing). in=251,659 server-verified tokens, ~23 min prefill — receipts in `benchmarks/longctx-bisect/`. The open deep-context constraint is decode TPOT at depth (decode-tpot-truth queue item).
+- **`qwen36`** (Qwen3.6-35B-A3B MoE+DeltaNet+VL) is the primary agentic model: codegen, vision and video STRONG, thinking VERIFIED, 256K single-user context validated with 6/6 multi-needle recall at every rung to 245K realized tokens.
+- `coder-30b`, `qwen3-moe`, `qwen3-32b`, `qwen35`, `qwen35-9b-8bit`, `qwen36-27b` (Qwen3.6-27B or Qwen3.8-27B), `devstral`, `nemotron-30b` and `flint` (Recursive's coding-agent MoE) pass their gates.
+- Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache; the trade-off is that radix-on-hybrid turns the overlap schedule off.
+- `gemma4` / `gemma4-31b` are blocked at boot (see Known Issues).
 
-## Action queue
-
-Full specs and statuses live in [experiments/README.md](experiments/README.md); one-line summary, in execution order:
-
-- [x] **Disk triage** — 213 GiB free of 926 GiB after the HF cache was thinned (hub 120 GB + 39 GB content store incl. the three Flint checkpoints); the in-house quant and bisect arms are no longer disk-gated.
-- [x] **SWE-bench re-run** — the 3-instance smoke on the current stack reproduces the qwen36 cell (3/3 patches, same files, 56–78 s per instance with the prefix cache: `evals/swebench/runs/qwen36-v0523-2026-10-31/`); the full scorecard stays the earlier stack pin's. Depth/concurrency re-measure is complete: eight presets at genuine depth, all armed as schema-v2 baselines (see Performance).
-- [x] **In-house qwen36 MLX 4-bit** with the hazard classes kept BF16 — quality-equivalent to the incumbent on the same stack (MMLU 83/100 vs 85, HumanEval 17/20 both, needle 4/4 both, LabBench 0.37 vs 0.35, SWE-bench smoke 3/3 with byte-identical patches, decode 60.6 vs 62.1 tok/s), scan clean; not promoted: a fidelity A/B against the 8-bit reference shows no measurable advantage (`benchmarks/quality/fidelity/`), so it stays an opt-in local build (`MODEL=~/AI/models/Qwen3.6-35B-A3B-4bit-inhouse`; spec: [experiments/07](experiments/07-qwen36-inhouse-mlx4bit-exclusions.md)).
-- [x] **In-house Qwen3.8-27B MLX 4-bit** (same recipe, `scripts/quantize/convert_qwen36_inhouse.py --hf-path Qwen/Qwen3.8-27B`) — indistinguishable from `mlx-community/Qwen3.8-27B-4bit` on the same stack: paired KL to the 8-bit reference +0.0004 ± 0.0006, paired NLL +0.0006 ± 0.0014, same greedy token at 1,506/1,524 positions, MMLU 86 vs 84, HumanEval 18/20 both, needle 4/4 both, smoke 2/3 both; not uploaded, opt-in via `MODEL=~/AI/models/Qwen3.8-27B-4bit-inhouse scripts/launch.sh qwen36-27b` (`benchmarks/quality/fidelity/`). The community 3.8 build passes every gate on the `qwen36-27b` preset and is the recommended 3.8 checkpoint.
-- [x] **192K knob probes + GB-shortfall ledger** — each knob alone carries a 192K prefill (188,745 tokens in 806–834 s: exact `CTX=label+64` pool, `CHUNKED=1024`, `MEM_FRAC=0.45`; `benchmarks/longctx-bisect/ledger-arm{1,2,3}-*`), the pre-sized 192K arm at chunk 2048 dies on the chunk transient, and the combined recipe reaches 210K and 256K (`ledger-210k-ch1024.*`, `ledger-256k-ch1024.*`).
-- [x] **Depth-recall probe** — 6/6 multi-needle recall at every rung from 8K to 215K-labelled (245,656 realized) tokens, with the 32K tripwire and its anchor; the fp16/turboquant A/B is identical because `--kv-cache-dtype` is inert on this backend (`benchmarks/quality/depth-recall/`).
-- [x] **Session endurance + extend turn tax** — radix-on holds flat memory for 150 turns under the 32K-rolling load (free+inactive 28.4 → 26.2 GB, no guard warning, cache hits throughout); the append-1 turn tax is 80 ms at 8.6K and 260 ms at 34.5K of cached prefix with time-to-64-tokens unchanged; the agentic chat-shape follow-up, which the template makes diverge before the primed end, costs ~1 s on Qwen3.8-27B and 0.2–0.5 s on qwen36 at 8.7K–52K with patch 026 (`benchmarks/session-endurance/VERDICT.md`); the profile of the remaining append cost is experiments row 4.
+Experiment specs and the open queue live in [experiments/README.md](experiments/README.md).
 
 ## Primary target: long-context agentic coding
 
-Single-user agentic coding at long context (tool-call-heavy multi-turn sessions, 10K–100K-token codebase prefixes) is what this stack is tuned for. Decode TPOT at long context matters more than peak batch throughput; the right model is one whose decode stays flat as context grows.
+Single-user agentic coding at long context (tool-call-heavy multi-turn sessions, 10K–100K-token codebase prefixes) is what this stack is tuned for. Decode TPOT at depth matters more than peak batch throughput; the right model keeps decode flat as context grows.
 
-### Recommended picks (ranked by SWE-bench Lite agentic-coding ability)
+### Recommended picks (SWE-bench Lite agentic coding)
 
-**`qwen36` is the only configuration verified to produce real SWE-bench Lite patches on M4, reproducibly, at scale, across all 12 ecosystems in our test set.** Scorecard measured on the previous stack pin; the current stack reproduces its 3-instance smoke (3/3, same target files, `evals/swebench/runs/qwen36-v0523-2026-10-31/`):
+**`qwen36` is the only configuration that completes the agentic loop on M4 reproducibly across all 12 ecosystems in the 26-instance test set.**
 
-- **Patch-engagement: 26/26 on the current stack** (`evals/swebench/runs/qwen36-26inst-p023-2026-10-31/`; 21/26 = 80.8% on the previous pin, where the five empty instances were timeouts after a handful of tool calls) — model produces a non-empty patch targeting the canonical issue file. The current-stack predictions (`evals/swebench/exports/qwen36-p023-predictions.jsonl`) await Docker scoring on the 3090; the resolve rate below is the previous pin's.
-- **Sealed harness:** every rollout runs with web tools off, opencode and its bash children under a localhost-only network sandbox, and an ancestor-only checkout (no branch, tag or commit past the base commit), so the fix cannot be fetched from GitHub, PyPI or the repo's own future history; `evals/swebench/audit_rollouts.py` scans the archive for those channels, and no scored prediction came from a session that saw the fix (`evals/swebench/README.md`, "Sealed harness"). Under the seal, Qwen3.8-27B writes the upstream change on all three smoke instances in 4–8 min each (`evals/swebench/runs/qwen38-27b-community-sealed-131k-2026-11-01/`; the earlier unsealed session had fetched that file and produced nothing) and Flint bash-only at 64K reproduces its 1/3 with no runaway turns (`evals/swebench/runs/flint-oQ8e-bashonly-64k-sealed-2026-11-01/`).
-- **Resolved (official Docker harness, scored on the 3090 rig): 9/26 = 34.6%** (9/21 = 42.9% of non-empty; 0 errors — all 21 non-empty ran, incl. the 8 old-Python instances M4 can't build). All 5 M4-local resolves re-resolved (no flips); 4 additional resolves came from the M4-untestable class. Receipt: [`exports/qwen36-docker-summary.json`](evals/swebench/exports/qwen36-docker-summary.json) + [exports/README.md](evals/swebench/exports/README.md) Results.
-
-**Session endurance (radix-on agentic serving):** radix-on sessions hold flat memory for 150 turns under a 32K-rolling agentic load (free+inactive 28.4 → 26.2 GB with a 24.7 GB trough, no guard warning, 2.8 s median TTFT with cache hits to the end, 56 tok/s decode: `benchmarks/session-endurance/VERDICT.md`); `/flush_cache` remains a reset, not a cadence; appending a tool result to a cached prefix costs 80 ms at 8.6K / 260 ms at 34.5K to the first token, which is the model's own short-prefill rate (~35 ms + ~1.2 ms per recomputed token, the suffix plus the remainder past the last 64-token checkpoint) with 5 ms / 35 ms of hit-path overhead on top (`benchmarks/session-endurance/VERDICT.md`). Deep one-shot prefills (32K+ with a big pool) use the radix-off long-context recipe.
-
-**The 80.8% → 34.6% gap is the real model characterization**: qwen36 makes patches that LOOK right (correct file, syntactically valid, often no regressions) but miss the semantic intent in most cases. Trust the model for first-pass exploration; verify with tests before merging. 34.6% sits above the typical 14–30% resolved-rate band for ~30B-class models on SWE-bench Lite, but below the pre-registered >50% bar that would have "confirmed" the recommendation — qwen36 stays recommended as the only model that completes the agentic loop on M4, with calibrated expectations.
-
-The empty-patch instances (`django-11019`, `flask-4045`, `sphinx-10451`, `requests-2148`, `sympy-11870`) are "model gave up" cases — typically TIMEOUT after a handful of tool calls without a diff; the characterized ones share an **"add behavior" vs "fix visible behavior"** signature.
-
-**Method note for multi-instance sweeps:** at CTX=131K, multi-instance single-server sweeps hit recurring macOS jetsam (the scheduler is reaped silently). `evals/swebench/run_rollouts.py` does a per-instance preflight and aborts cleanly on dead upstream; for sweeps beyond 1-2 instances use **per-instance server restart** (one `bash evals/swebench/smoke.sh` per instance, ~30s overhead each). Static HE/MMLU scores do not predict agentic-coding capability on this stack. Receipts: [`4pick-scorecard-2026-05-18/`](evals/swebench/runs/4pick-scorecard-2026-05-18/) (bake-off), [`qwen36-3instance-2026-05-18/`](evals/swebench/runs/qwen36-3instance-2026-05-18/) (reproducibility), [`qwen36-crossrepo-2026-05-18/`](evals/swebench/runs/qwen36-crossrepo-2026-05-18/) (generalization).
+- **Patch engagement 26/26** (`evals/swebench/runs/qwen36-26inst-p023-2026-10-31/`): a non-empty patch targeting the canonical issue file on every instance.
+- **Resolved 9/26 = 34.6%** on the official Docker harness (scored on the 3090 rig; the current-stack predictions in `evals/swebench/exports/` await re-scoring). Receipt: [`exports/qwen36-docker-summary.json`](evals/swebench/exports/qwen36-docker-summary.json).
+- **Sealed harness:** web tools off, opencode and its bash children under a localhost-only network sandbox, ancestor-only checkout (no branch, tag or commit past the base commit). `evals/swebench/audit_rollouts.py` scans the archive for leak channels; no scored prediction came from a session that saw the fix. Under the seal Qwen3.8-27B writes the upstream change on all three smoke instances in 4–8 min each (`evals/swebench/runs/qwen38-27b-community-sealed-131k-2026-11-01/`) and Flint bash-only at 64K scores 1/3 with no runaway turns.
+- **Calibration:** the engagement-to-resolve gap is the model characterization. qwen36 patches look right (correct file, valid syntax, usually no regressions) but miss the semantic intent in most cases. Trust it for first-pass exploration; verify with tests before merging. 34.6% sits above the 14–30% band typical of ~30B models on SWE-bench Lite.
+- **Multi-instance sweeps** at CTX=131K hit macOS jetsam on a single server; use per-instance server restart (`bash evals/swebench/smoke.sh` per instance). Static HumanEval/MMLU does not predict agentic ability on this stack.
 
 | Rank | Preset | Why | Agentic verdict |
 |:----:|--------|-----|-----------------|
-| **1** | **`qwen36` (Qwen3.6-35B-A3B-4bit MoE+DeltaNet)** | Only model to complete the agentic loop on M4, verified against a full bakeoff of 9 alternatives (decode-rate misses, parser mismatches, template failures — receipts in the bake-off run dir). MoE+3B-active decode speed appears load-bearing — Dense at 27B can't keep the agent loop alive within timeouts. Vision-capable. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py); per-instance server restart for multi-instance sweeps. | Patch-engagement 21/26 (80.8%); **official Docker 9/26 = 34.6%** (scored on the 3090; no local-vs-Docker flips). |
-| 2 | `qwen35` (Qwen3.5-27B-4bit DeltaNet) | **Capability-equivalent to qwen36, not higher.** Succeeds where qwen36 succeeds (same patch at ~15× the wall time) and fails where it fails, including the algorithmic-rewrite miss at TIMEOUT=1800. Static MMLU 90 does not convert to a higher agentic ceiling. No agentic value over qwen36. | SWE-bench Lite 1/3 |
-| 3 | `coder-30b` (Qwen3-Coder-30B-A3B-4bit-DWQ) | Best static HumanEval (95) and decode speed — use for **direct chat-completion codegen**, not agentic flows: under greedy MLX + opencode the agent loop gives up after one `glob`. | 1 glob then asks user, 0 edits |
-| 4 | `gemma4-31b` (gemma-4-31b-it-mxfp4) | Top MMLU (92) + Needle 100. **Currently blocked at boot** (upstream sliding-window gap — see Known Issues). Historically unusable through opencode anyway (zero tokens under tool-call prompts). | 0 tool calls under opencode |
+| **1** | **`qwen36`** (Qwen3.6-35B-A3B-4bit) | Only model to complete the agentic loop on M4 in a 9-model bake-off; MoE 3B-active decode speed appears load-bearing. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | engagement 26/26; **Docker 9/26 = 34.6%** |
+| 2 | `qwen35` (Qwen3.5-27B-4bit) | Capability-equivalent to qwen36 at ~15× the wall time: same patches where qwen36 succeeds, same misses where it fails. | SWE-bench Lite 1/3 |
+| 3 | `coder-30b` (Qwen3-Coder-30B-A3B-DWQ) | Best static HumanEval (95) and decode speed; use for direct chat-completion codegen. Under opencode the loop gives up after one `glob`. | 0 edits |
+| 4 | `gemma4-31b` | Top MMLU (92). Blocked at boot; zero tokens under opencode tool-call prompts when it did run. | 0 tool calls |
 
-`gemma4` (26B MoE) is not in the recommendation set: its single prior RESOLVED did not reproduce across stack pins (single-trajectory coincidence, not capability).
+**Session endurance (radix-on agentic serving):** memory stays flat for 150 turns under a 32K-rolling load (free+inactive 28.4 → 26.2 GB, no guard warning, cache hits throughout, 56 tok/s decode). Appending a tool result to a cached prefix costs the model's own short-prefill rate on the recomputed tokens (~35 ms + ~1.2 ms per token: the suffix plus the remainder past the last 64-token checkpoint), 80 ms at 8.6K and 260 ms at 34.5K to the first token, with 5 ms / 35 ms of hit-path overhead on top. The chat-shape follow-up, which the template makes diverge before the primed end, costs 0.2–0.5 s on qwen36 and ~1 s on Qwen3.8-27B at 8.7K–52K ([benchmarks/session-endurance/VERDICT.md](benchmarks/session-endurance/VERDICT.md)). Deep one-shot prefills (32K+ with a big pool) use the radix-off long-context recipe.
 
-### Flint (`flint`) — Recursive's coding-agent MoE
+### Flint (`flint`)
 
-[RecursiveSI/flint](https://huggingface.co/RecursiveSI/flint) is a 39.8B-total / ~2.5B-active
-decoder-only MoE trained for coding agents (its card reports Terminal-Bench 2.1
-54.9% and SWE-bench Verified 74.2% at bf16): 49 layers (2 dense + 47 MoE with
-256 routed experts, top-6, plus a shared expert), 35 sliding-window layers
-(513 tokens) + 14 full-attention layers, learned per-head attention sinks, no
-RoPE on the full layers, 262K context, Apache-2.0. It runs through mlx-lm's
-`flint` model (git pin in `setup.sh`) plus patch 019; the oMLX `oQ*e`
-checkpoints (mixed precision, imatrix-calibrated clipping) are converted
-through mlx-vlm's model class, which is why the patch carries a
-checkpoint-layout adapter.
+[RecursiveSI/flint](https://huggingface.co/RecursiveSI/flint) is a 39.8B-total / ~2.5B-active MoE for coding agents: 49 layers (2 dense + 47 MoE, 256 routed experts top-6 + shared), 35 sliding-window (513) + 14 full-attention layers, learned attention sinks, NoPE on the full layers, 262K context, Apache-2.0. It runs through mlx-lm's `flint` model plus patch 019; the oMLX `oQ*e` checkpoints are converted through mlx-vlm's model class, hence the patch's checkpoint-layout adapter.
 
-| Variant | bpw | Resident | Decode tok/s @83 / @3.5K / @13.9K / @27K | Prefill tok/s @3.5K / @13.9K / @27K | Validator / codegen / thinking | Greedy vs mlx-lm (96 tok) |
-|---------|:---:|:--------:|:----------------------------------------:|:-----------------------------------:|:------------------------------:|:-------------------------:|
+| Variant | bpw | Resident | Decode tok/s @83 / @3.5K / @13.9K / @27K | Prefill tok/s @3.5K / @13.9K / @27K | Validator / codegen / thinking | Greedy vs mlx-lm |
+|---------|:---:|:--------:|:----------------------------------------:|:-----------------------------------:|:------------------------------:|:----------------:|
 | **`flint-oQ8e`** (default) | 8.5 | 42.3 GB | 61.9 / 59.1 / 54.4 / 49.3 | 926 / 809 / 634 | 3/3 · STRONG · VERIFIED | identical |
 | `flint-oQ6e` | 6.6 | 32.9 GB | 64.8 / 61.2 / 56.0 / — | 760 / 638 / — | 3/3 · STRONG · VERIFIED | identical |
 | `flint-oQ4e` | 4.7 | 23.5 GB | 70.5 / 67.5 / 61.5 / — | 708 / 595 / — | 3/3 · STRONG · VERIFIED | identical |
 
-The table is measured with the radix cache off; the oQ8e row uses the
-preset's `CHUNKED=1024`, 2 GB MLX buffer cache and `MAX_RUNNING=4`, the
-oQ6e/oQ4e rows `CHUNKED=4096` with the 4 GB cache. The preset as shipped
-runs the radix cache (patch 021), which keeps prefill where it is (924 /
-794 / 645 tok/s at 3.5K / 13.9K / 27K) and costs ~12% of decode because
-the hybrid `no_buffer` bookkeeping turns the overlap schedule off
-(50.3 / 47.0 / 43.1 tok/s at the same depths); the 27K prefill then leaves
-12.8 GB kernel-available instead of 17 GB
-(`benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md`). The 42.3 GB of oQ8e weights sit under the 51.8 GB Metal
-working set, and the serving envelope is set by prefill transients rather
-than weights: a 27K-token prefill at chunk 1024 leaves the kernel reporting
-17 GB available (`kern.memorystatus_level`, the figure jetsam acts on) and
-never leaves pressure level "normal"; the preset-style chunk 2048 with a 4 GB
-cache leaves 15 GB and is slower at depth (585 vs 634 tok/s). vm_stat's
-"free" reads 0.0 throughout, which is why the OOM guard now reads the kernel
-level instead of free+inactive (see Known Issues). Four concurrent requests
-decode at 123 tok/s aggregate; batched output is not bit-identical to
-single-request output (the usual non-batch-invariance of batched kernels),
-while single-request greedy output is token-identical to standalone mlx-lm
-on all three quantizations.
+Measured radix-off (oQ8e at the preset's `CHUNKED=1024`, 2 GB MLX buffer cache, `MAX_RUNNING=4`). The shipped preset runs the radix cache, which keeps prefill where it is and costs ~12% of decode (50.3 / 47.0 / 43.1 tok/s at 3.5K / 13.9K / 27K) because the hybrid `no_buffer` bookkeeping turns the overlap schedule off; turn 2 of a 13.4K-token conversation then starts in 0.6 s instead of 19 s (`benchmarks/flint/2026-10-31/prefix-cache/`). A 27K prefill at chunk 1024 leaves 17 GB kernel-available and never leaves pressure level "normal"; four concurrent requests decode at 123 tok/s aggregate.
 
-- **Reasoning:** Flint decides per turn whether to write `<think>…</think>`;
-  there is no template toggle (`enable_thinking` has no effect).
-  `--reasoning-parser flint` returns the block as `reasoning_content` and
-  never assumes a turn starts in reasoning; keep `reasoning_content` on
-  assistant messages when sending the conversation back. Reasoning counts
-  against `max_tokens`: give coding requests ≥ 4,096 (Recursive recommends
-  ≥ 32,768 for hard problems). The 400-token default of `probe_codegen.py`
-  truncates its second task mid-code (`finish=length`), so the probe sweep
-  runs Flint with a 4,096-token budget.
-- **Tool calls:** `<tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call>`
-  (GLM-4.7's format without line breaks); `--tool-call-parser flint` returns
-  structured `tool_calls` (validator PASS). The constrained tool-call grammar
-  of Recursive's CUDA kit (`--grammar-backend flint`) is not ported. Under
-  opencode, Flint omits the `bash` tool's required `description` argument on
-  nearly every call (0–3 of ~12 whichever way the rule is phrased in the
-  prompt; see Known Issues), so opencode rejects the call; the SWE-bench
-  proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`).
-- **Sampling:** the preset applies the checkpoint's `generation_config`
-  (temperature 1.0 / top-p 0.95 / top-k 20) to requests that omit sampling
-  fields; greedy requests stay greedy and pass every gate here, although
-  Recursive validates only the sampled setting.
-- **Prefix cache:** on (patch 021). The 14 full layers share the pool
-  (28 KB/token, 3.7 GB at the preset's 131,072 slots) and the 35 windowed
-  caches are snapshotted at the prefix boundaries the radix tree names and
-  restored on an exact hit, so an agent turn prefills only its new tokens:
-  turn 2 of a 13.4K-token conversation starts in 0.6 s instead of 19 s
-  (`benchmarks/flint/2026-10-31/prefix-cache/`). The pool costs ~2 GB of
-  headroom relative to the radix-off preset (cold 13K-token prefill:
-  16.0 vs 18.6 GB kernel-available minimum); `EXTRA_ARGS="--disable-radix-cache"`
-  restores the pool-free recompute path. Set `MAX_TOTAL_TOKENS=131072`
-  explicitly for CTX=131072 runs (`CTX * MAX_RUNNING` would be a 14.7 GB
-  pool). Per-request KV is 28 KB/token on top of the pool: 0.9 GB at 32K.
-- **Agentic cell:** SWE-bench Lite 3-instance smoke (opencode harness,
-  `flint` entry in the opencode config, model sampling, 64K context
-  bound): 1/3 with the default tool set and 1/3 bash-only, the `(?i)` fix
-  on `astropy-14365` both times; 0 runaway turns in 521 radix-on turns,
-  1.7–2.7 s median per turn; the other two instances explore with bash to
-  the 64K cap without an edit, where qwen36 patches all three in 51–70 s
-  (`evals/swebench/runs/flint-oQ8e-*-p023-2026-10-31/`). `flint` stays out
-  of the recommended-picks ranking: three instances are a smoke, not the
-  26-instance cell qwen36 is scored on.
+- **Reasoning:** Flint decides per turn whether to emit `<think>…</think>`; there is no template toggle. `--reasoning-parser flint` returns it as `reasoning_content`; keep that field on assistant messages when sending the conversation back. Reasoning counts against `max_tokens`: give coding requests ≥ 4,096 (Recursive recommends ≥ 32,768 for hard problems).
+- **Tool calls:** `<tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call>`; `--tool-call-parser flint` returns structured `tool_calls`. Recursive's constrained grammar backend is not ported. Under opencode Flint omits the `bash` tool's required `description` argument (see Known Issues); the SWE-bench proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`).
+- **Sampling:** the preset applies the checkpoint's `generation_config` (temperature 1.0 / top-p 0.95 / top-k 20) to requests that omit sampling fields; greedy requests stay greedy and pass every gate.
+- **Prefix cache:** the 14 full layers share the pool (28 KB/token, 3.7 GB at 131,072 slots) and the 35 windowed caches are snapshotted at the radix boundaries (patch 021). Set `MAX_TOTAL_TOKENS=131072` explicitly for CTX=131072 runs; `EXTRA_ARGS="--disable-radix-cache"` restores the pool-free path.
+- **Agentic cell:** SWE-bench Lite 3-instance smoke, 1/3 with the default tool set and 1/3 bash-only (the `(?i)` fix on `astropy-14365`), 0 runaway turns in 521 radix-on turns; the other two instances explore to the 64K cap without an edit, where qwen36 patches all three. Three instances are a smoke, so `flint` stays out of the ranking.
 
 ### DiffusionGemma structured reads (CUDA/ROCm hosts)
 
-SGLang serves `google/diffusiongemma-26B-A4B-it` with `--dllm-algorithm
-Gemma4Renoise` (a 256-token bidirectional canvas denoised in up to 48
-steps), but upstream rejects logprobs and every structured-output option on
-it. Patch 025 adds the vLLM-style *structured read*: the answer template is
-written into the canvas as `seed_canvas`, every template position is
-`pinned`, the answer slots stay noise, `max_steps` denoising steps run, and
-a `read_only` request returns the final canvas with temperature-1 logprobs
-at each position for the request's `token_ids_logprob`; `constrained`
-limits the slot to those labels and renormalizes. `scripts/eval/structured_reads.py`
-builds the read from a question and its labels (yes/no, choices, ordered
-scores) and prints each slot's distribution; every label must be one token.
-The model is CUDA/ROCm-only in SGLang (device check, Triton attention, no
-quantized loading) and Gemma 4 is blocked on the MLX path, so this box only
-carries the patch and its CPU test; the end-to-end run is queued on the
-R9700 (64 GB across two GPUs holds the 51.6 GB BF16 checkpoint with TP=2),
-where the 3090 pair's 48 GB cannot.
+SGLang serves `google/diffusiongemma-26B-A4B-it` with `--dllm-algorithm Gemma4Renoise` but rejects logprobs and structured output on it. Patch 025 adds the vLLM-style *structured read*: the answer template is written into the canvas (`seed_canvas`), template positions are `pinned`, `max_steps` denoising steps run, and a `read_only` request returns per-position logprobs for `token_ids_logprob`; `constrained` limits a slot to its labels. `scripts/eval/structured_reads.py` builds the read from a question and one-token labels. The model is CUDA/ROCm-only in SGLang and Gemma 4 is blocked on MLX, so this box carries the patch and its CPU test; the end-to-end run belongs to the R9700 (TP=2 holds the 51.6 GB BF16 checkpoint).
 
-### Probe matrix (current stack, radix on)
+### Probe matrix (radix on)
 
 | Preset | codegen | vision | video | thinking |
 |--------|:-------:|:------:|:-----:|:--------:|
 | `qwen36` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen36-27b` (Qwen3.6-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
 | `qwen35` | **STRONG** | **STRONG** | PARTIAL | **VERIFIED** |
+| `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | pass validate gate |
 | `devstral` | **STRONG** | **STRONG** | PARTIAL | n/a |
 | `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
 | `flint` (oQ8e / oQ6e / oQ4e) | **STRONG**† | n/a | n/a | **VERIFIED** |
 | `coder-30b` / `qwen3-moe` / `qwen3-32b` | **STRONG** | n/a | n/a | pass validate gate |
-| `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` (Qwen3.8-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen36-27b` (Qwen3.6-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | pass validate gate |
-| `gemma4` / `gemma4-31b` | blocked at boot (mlx-vlm Gemma 4 attention not recognised by the MLX attention contract) | | | |
+| `gemma4` / `gemma4-31b` | blocked at boot | | | |
 
-Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/).
-† Flint's codegen probe runs with a 4,096-token budget (`probe_all.sh` sets it): the model reasons before answering, and the 400-token default truncates its second task mid-code.
+Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). † Flint's codegen probe runs with a 4,096-token budget (`probe_all.sh` sets it) because the model reasons before answering. Qwen3.8-27B, Qwen3.6-27B and Qwen3.5-9B-8bit chat templates ignore `enable_thinking` (thinking always on).
 
 ### Choosing a model
 
-**MoE wins at long context.** Each decode token must (1) read model weights and (2) read the entire KV cache. At short context, weight loading dominates → MoE reads 1.5 GB vs Dense 14 GB (4× faster). At 256K with fp8, the KV read climbs to ~5–10 GB — comparable to dense weights — so MoE keeps the weight component small and the KV penalty proportionally less painful.
+**MoE wins at long context.** Each decode token reads the model weights and the whole KV cache. At short context weight reads dominate (MoE 1.5 GB vs dense 14 GB). At 256K the KV read grows to several GB, so keeping the weight term small matters more, not less. **DeltaNet hybrids** (Qwen3.5/3.6/3.8) alternate full attention with linear attention whose cost does not grow with context, which is why they hold decode flat at depth; the full-attention layers still pay O(n).
 
-**DeltaNet hybrids** (Qwen3.5/3.6) alternate standard attention (O(n)) with linear attention (O(1)). Linear layers don't slow with context — architecturally suited for very long context — but the standard layers in the hybrid still pay full O(n).
+## Quality table (100-sample MMLU + 20 HE + LAB-Bench + Needle@{1K,4K,16K})
 
-## Quality table (100-sample MMLU + 20 HE + 25×7 LAB-Bench + Needle@{1K,4K,16K})
-
-Measured on the previous stack pin with the jetsam-detect-hardened harness (re-run on the current stack queued). Qwen3 family uses `--no-thinking`; Gemma 4 family uses `--humaneval-mode chat` (IT-tuned Gemma 4 doesn't respond to bare base completions).
+Qwen3 family runs `--no-thinking`; Gemma 4 runs `--humaneval-mode chat`. The Qwen3.8-27B row is from the current stack (`benchmarks/quality/Qwen38-27B-community-2026-10-31.json`); the other rows predate it, and the re-run is queued in experiments.
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
-| Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | partial⁂ | **100%** |
-| Qwen3.5-27B-4bit | **90%** | **100%** | 53/125‡‡ (clean cats) | **100%** |
+| Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | partial | **100%** |
+| Qwen3.5-27B-4bit | **90%** | **100%** | 53/125 (clean cats) | **100%** |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
-| Qwen3.6-27B-4bit | 86% | **100%** | 42/125‡‡ | **100%** |
-| Qwen3.8-27B-4bit§ | 84% | 90% | 38.7% | **100%** |
+| Qwen3.6-27B-4bit | 86% | **100%** | 42/125 | **100%** |
+| Qwen3.8-27B-4bit | 84% | 90% | 38.7% | **100%** |
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
-| Gemma 4 26B-A4B-it-4bit | 85% | 60%‡ | partial⁂ | 100% |
+| Gemma 4 26B-A4B-it-4bit | 85% | 60%‡ | partial | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
-| Qwen3.5-9B-MLX-8bit | 81% | 80% | 52/150‡‡ (clean cats) | **100%** |
+| Qwen3.5-9B-MLX-8bit | 81% | 80% | 52/150 (clean cats) | **100%** |
 | Qwen3.6-35B-A3B-4bit | 80% | 85% | 60/175 | 100% |
-| Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit | 82% | 65%❋ | 8.6%❋ | 100% |
+| Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit | 82% | 65% | 8.6% | 100% |
 | NVIDIA Nemotron-3-Nano-30B-A3B-4bit | 77% | 10%¶ | 19.4%¶ | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
-§ Measured on the current stack (`benchmarks/quality/Qwen38-27B-community-2026-10-31.json`; full 333-sample LAB-Bench), served by the `qwen36-27b` preset with `MODEL=mlx-community/Qwen3.8-27B-4bit`.
+‡ Chat-mode HumanEval, not comparable to base-completion HE. "N/M (clean cats)" and "partial" are LAB-Bench subsets where the server died mid-run (full LAB-Bench needs a restart between categories). ¶ Pre-reasoning-parser numbers; the `nemotron_3` parser is wired into the preset.
 
-‡ Gemma 4 HumanEval runs in `--humaneval-mode chat` — not comparable to base-completions HE.
-
-‡‡ LAB-Bench partial-data score: the full 175-sample run hit jetsam mid-eval, so the score covers only cleanly-completed categories (N/M shows the subset).
-
-⁂ LAB-Bench partial: server died early in the run; only LitQA2 + partial DbQA ran clean. Full LAB-Bench needs a server restart between categories (follow-up on `run_all_evals.sh`).
-
-❋ Nemotron-Omni's reasoning-mode wrapper consumes a chunk of the LAB-Bench answer budget on multi-letter QA; HE/MMLU gain comes from the same reasoning capability.
-
-¶ Nemotron-3-Nano emits verbose reasoning traces; the `nemotron_3` reasoning parser is wired into the preset — these pre-parser numbers should rise on re-run.
+In-house 4-bit builds of Qwen3.6-35B-A3B and Qwen3.8-27B (`scripts/quantize/convert_qwen36_inhouse.py`, hazard classes kept BF16) are quality-equivalent to the community checkpoints on paired fidelity A/Bs against the 8-bit references (`benchmarks/quality/fidelity/`), so they stay opt-in local builds (`MODEL=~/AI/models/<name>-inhouse`).
 
 ## Checkpoint audits
 
-Two complementary pre-launch gates — run both on every new checkpoint before adding numbers here:
+Run both gates on every new checkpoint before adding numbers here:
 
 ```bash
-python scripts/eval/check_mlx_quant_scales.py <repo>    # per-layer corruption (weights/scales/biases dequant to dead output)
-python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong module classes quantized) — header-only, no download
+python scripts/eval/check_mlx_quant_scales.py <repo>    # per-layer corruption (dead dequant output)
+python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong module classes quantized), header-only
 ```
-
-**Per-layer scan:** `mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit` (non-DWQ) has **10 dead layers** (`model.layers.{36,46}.*` attention + gate all-zero) — the reason the preset points at the DWQ variant. The other shipped checkpoints scan clean. Raw output: [`benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt`](benchmarks/quality/v0.5.11-quant-scan-2026-05-11.txt).
-
-**Recipe-metadata audit across the shipped set** (raw: [`benchmarks/quality/mlx-metadata-audit-2026-05-13.txt`](benchmarks/quality/mlx-metadata-audit-2026-05-13.txt)):
 
 | Checkpoint | Recipe-level hazard |
 |------------|---------------------|
-| `gemma-4-26b-a4b-it-4bit` / `gemma-4-31b-it-mxfp4` | `embed_vision.embedding_projection` quantized — the exact layer class sister teams' calibration disaster zero-scaled. |
-| `Qwen3.5-27B-4bit` / `Qwen3.5-9B-MLX-8bit` / `Qwen3.6-27B-4bit` | DeltaNet `linear_attn.in_proj_a/b` quantized across all layers — recurrent-state gate scalars that sister-team rules say must stay BF16. Candidate contributor to the Qwen3.5 infinite-`<think>` loop. |
-| `Qwen3.6-35B-A3B-4bit` | DeltaNet `in_proj_a/b` INT4 (60 layers); MoE `mlp.gate` router and shared-expert gate 8-bit (40 layers each, per-path entries in its config). |
-| `Qwen3.6-35B-A3B-4bit-inhouse` (local build, `scripts/quantize/convert_qwen36_inhouse.py`) | **clean** — router (`mlp.gate`), shared-expert gate, DeltaNet `in_proj_a/b` and the vision tower stay bf16, 371 quantized layers healthy; A/B on the same stack: MMLU 83/100 vs 85, HumanEval 17/20 both, needle 4/4 both, SWE-bench smoke 3/3 byte-identical, decode −2.4% (`benchmarks/quality/Qwen36-inhouse-2026-10-31.json` vs `Qwen36-incumbent-2026-10-31.json`). Serve with `MODEL=~/AI/models/Qwen3.6-35B-A3B-4bit-inhouse scripts/launch.sh qwen36`. |
-| `Qwen3.8-27B-4bit` | Uniform 4-bit (group 64): DeltaNet `linear_attn.in_proj_a/b` INT4 across all 48 linear-attention layers, vision tower INT4; passes every gate regardless (validator 4/4, thinking VERIFIED, vision/codegen STRONG). |
-| `Qwen3.8-27B-4bit-inhouse` (local build, same converter with `--hf-path Qwen/Qwen3.8-27B`) | **clean** — DeltaNet `in_proj_a/b` and the vision tower stay bf16 (402 of 922 linear layers quantized, 4.7 bpw), scan clean; fidelity A/B against the 8-bit reference is a tie with the community build (`benchmarks/quality/fidelity/`), so it is not uploaded. Serve with `MODEL=~/AI/models/Qwen3.8-27B-4bit-inhouse scripts/launch.sh qwen36-27b`. |
-| `Qwen3.8-27B-8bit` | Ships a `processor_config.json` naming `Qwen3VLImageProcessor`, which `AutoProcessor` cannot resolve — boot fails before the model loads. Serve from a mirror of the snapshot without that file (the `preprocessor_config.json` resolves to the Qwen2VL image processor like every other Qwen3.x checkpoint). Used only as the fidelity reference. |
-| `Qwen3-Coder-30B-A3B-4bit-DWQ` / `Qwen3-30B-A3B-4bit-DWQ` / `Qwen3-Coder-Next-4bit` | MoE router `mlp.gate` INT4 — bounded impact in practice. |
-| `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B` | **clean** |
-| `flint-oQ8e` / `flint-oQ6e` / `flint-oQ4e` | **clean** — router (`mlp.gate`), attention sinks and norms stay bf16; the per-layer scan reports all 486 quantized layers healthy on oQ8e and oQ6e. The only recipe quirk is mixed precision: 180 shared-expert projections use group size 128 (the rest 64), which the loader honours per tensor. |
+| `Qwen3-Coder-30B-A3B-Instruct-4bit` (non-DWQ) | **10 dead layers** (`layers.{36,46}` attention + gate all-zero); the preset uses the DWQ variant. |
+| `gemma-4-26b-a4b-it-4bit` / `gemma-4-31b-it-mxfp4` | `embed_vision.embedding_projection` quantized. |
+| `Qwen3.5-27B-4bit` / `Qwen3.5-9B-MLX-8bit` / `Qwen3.6-27B-4bit` / `Qwen3.8-27B-4bit` | DeltaNet `linear_attn.in_proj_a/b` quantized on every layer; all pass their gates regardless. |
+| `Qwen3.6-35B-A3B-4bit` | DeltaNet `in_proj_a/b` INT4; MoE router and shared-expert gate 8-bit. |
+| `Qwen3-Coder-30B-A3B-4bit-DWQ` / `Qwen3-30B-A3B-4bit-DWQ` | MoE router `mlp.gate` INT4, bounded impact in practice. |
+| `Qwen3.8-27B-8bit` | Ships a `processor_config.json` naming `Qwen3VLImageProcessor`, which `AutoProcessor` cannot load; serve from a mirror without that file (fidelity reference only). |
+| `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B`, `flint-oQ*e`, in-house builds | **clean** |
 
-**DWQ variants are used where they measured better** — `coder-30b` (+2.8 MMLU / +20 HE over the broken 4bit), `qwen3-moe` (+7.9 MMLU / −5 HE), `qwen3-32b` (+2.8 / +7.5). `qwen36` stays on standard 4bit (its DWQ trades −5.5 MMLU for +15 HE; `MODEL="mlx-community/Qwen3.6-35B-A3B-4bit-DWQ" launch.sh qwen36` overrides when code-specialist behavior is wanted). **Never blind-swap DWQ — recipes vary per upload; measure MMLU + HumanEval per model.**
+DWQ variants are used where they measured better (`coder-30b`, `qwen3-moe`, `qwen3-32b`); `qwen36` stays on standard 4-bit (its DWQ trades −5.5 MMLU for +15 HE). **Never blind-swap DWQ: recipes vary per upload; measure MMLU + HumanEval per model.**
 
 ## Known Issues
 
-- **Sampling caveats.** Real per-request sampling (temperature/top-p/top-k/min-p, logit_bias, grammar masks, logprobs) is upstream on the MLX path behind `--mlx-enable-sampling` (every preset sets it); greedy stays bit-stable argmax and `--sampling-defaults model` applies checkpoint generation configs. Caveats: `top_k==1` is served greedy, and repetition/frequency/presence penalties are not applied. Earlier gate receipts: [benchmarks/sampling-ab.md](benchmarks/sampling-ab.md).
-- **`gemma4` / `gemma4-31b` blocked at boot** — the per-layer sliding-window map now resolves on this pin, but mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and the runner's hybrid component extraction fails on `lm_head` (`AttributeError: 'LanguageModel' object has no attribute 'lm_head'`). Needs the attention contract to recognise mlx-vlm's Gemma 4 attention module (or a Gemma 4 entry like the NemotronH adapter); receipt in `benchmarks/quality/probe-trio/gemma4.json`.
-- **Long-context ceiling is 256K** (validated: in=251,659, ~23 min prefill; recipe: `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024`, radix off; the `--kv-cache turboquant` flag in the original recipe is inert, see below). Four load-bearing settings: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4 GB — uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), patch-015 cache pre-sizing (the doubling ladder's power-of-two overshoot kills deep runs), EXACT pool sizing (overallocating CTX costs the last GBs — a 192K label at CTX=210K dies where CTX=196608 completes), and `CHUNKED=1024` (the 4096 default's transients kill deep prefills at ~100-113K; 1024 buys ~4.3 GB margin over 2048 at no speed cost). There is no decode wall: true streamed decode is 61.7 tok/s @32K → 36.0 @128K → 30.2 @151K (`benchmarks/longctx-bisect/decode-curve/DECISION.md`); the historical "13-19 s/token" figures were whole-request prefill amortization, since corrected in `bench_long_context.py`.
-- **`--kv-cache-dtype` is inert on the MLX backend.** The `fp8`/`mxfp8`/`turboquant`/`fp16` aliases (patch 002) exist so the launch presets pass argparse; the MLX attention pool and the per-request caches store KV in the attention compute dtype (bf16 for the mlx-community checkpoints) at every pin this stack has run on. Memory levers that do work: `--max-total-tokens`, `CHUNKED`, `MAX_RUNNING`, request `max_tokens`, `SGLANG_MLX_CACHE_LIMIT_GB`. 4-bit KV on Apple Silicon remains a prospect ([MLX discussion](https://github.com/ml-explore/mlx/discussions/3134)), not a shipped lever.
-- **64K dense-attention ceiling is structural.** The per-chunk attention-score tensor `mx.fast.scaled_dot_product_attention` materializes hits 30–90 GB at deep offsets. Without flash-attention-style block-streaming SDPA in MLX, decode at 32K is the practical ceiling for dense standard-attention models; DeltaNet hybrids (`qwen35`, `qwen36`, `qwen36-27b`) are the workaround.
-- **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint) — hybrids and `flint` run the normal event loop. Prefix-cache wins dominate for agentic multi-turn work; decode A/B is queued.
-- **Flint omits opencode's required bash `description` argument.** opencode's `bash` tool schema requires `description` next to `command`; Flint (trained on single-argument shell tools) sends `command` alone on nearly every call under opencode's real prompt, opencode rejects the call with a `SchemaError`, and the agent retries the same call until its timeout. No prompt placement of a rule fixes it (0–3 of ~12 calls; a short prompt gives 10/10). The SWE-bench harness proxy backfills the argument from the command (`BACKFILL_BASH_DESCRIPTION=1`); interactive opencode use needs the same shim in front of the server or the bash tool disabled (`tools: {bash: false}`).
-- **Coder-Next-80B infeasible** — 42 GB weights alone exceed the safe budget; model load OOMs. No path on a single 64 GB Mac.
-- **Kernel panic in the GPU driver during a large prefill chunk** (`panic(cpu 6): "completeMemory() prepare count underflow" @IOGPUMemory.cpp:550`, macOS 26.2, watchdog reset). The box went down with the `qwen36-27b` preset serving a 27B DeltaNet 4-bit build while it prefilled an 8,192-token chunk into a 26K-token request (the quality eval's needle rung); no memory pressure preceded it (36 GB of GPU headroom at load, kernel memory-pressure log empty). The same signature is reported by other MLX users on large prefills and long KV-cache growth, still on macOS 26.5 ([mlx#3186](https://github.com/ml-explore/mlx/issues/3186), [mlx#3346](https://github.com/ml-explore/mlx/issues/3346), [mlx-lm#883](https://github.com/ml-explore/mlx-lm/issues/883)), with no Apple fix. Mechanism: a nonzero MLX wired limit puts every new Metal buffer into a residency set committed on each add and release, and that traffic trips the IOGPUFamily reference count. Mitigation, two layers: patch 024 skips the wired limit (`SGLANG_MLX_WIRED_LIMIT_GB`, `common.sh` default `0`) — measured on this box, the identical workload (same build, preset, `CHUNKED=8192`, the full quality eval with its 16K and 64K needle rungs, 341 chunks) completes with the limit off, decode on qwen36 within 1% either way (63.2 vs 63.8 tok/s), validator 4/4 (`benchmarks/patch-gates/024-wired-limit-test-2026-10-31.log`); and the `qwen36-27b` preset prefills in 2,048-token chunks. With no wired limit the weights and KV are pageable, so the OOM guard stays mandatory and throughput can dip under external memory pressure; `SGLANG_MLX_WIRED_LIMIT_GB=64` restores the upstream behaviour for an A/B. A reboot with `Boot faults: wdog` and this panic string is this issue.
-- **`mlx-community/Qwen3.8-27B-8bit` does not boot as shipped** — its `processor_config.json` names `Qwen3VLImageProcessor`, a class `AutoProcessor` cannot load (`Unrecognized image processor`). The 4-bit sibling ships the Qwen2VL name and boots. Point `MODEL=` at a mirror of the snapshot with every file except `processor_config.json` (symlinks are fine); `preprocessor_config.json` then resolves the image processor. The in-house converter strips the same file for its own output.
-- **macOS has no OOM killer** — a process touching a page past physical RAM stalls the whole system until reboot. **OOM guard mandatory for ≥32K work:** `bash scripts/common/oom_guard.sh &` pkills the server when the kernel-reported available memory (`kern.memorystatus_level`, the percentage jetsam decides on) drops below 8 GB. It used to read vm_stat free+inactive, which undercounts by the file pages a checkpoint load streams through the page cache: a 42 GB Flint load read 6.9 GB on that metric while the kernel reported more than 15 GB available, and the guard reaped a load that completes fine.
-- **macOS jetsam can silently reap the scheduler mid-eval** — no traceback, just `Connection refused` on subsequent requests. `needle_eval` tags `server_dead=True` on connection-class errors; `mmlu_eval`/`humaneval_eval`/`labbench_eval` don't yet. When an eval section drops to ~0%, suspect jetsam before model regression: relaunch fresh and re-run that section.
-- **`--mem-fraction-static` is a fraction of TOTAL system RAM on unified memory**, not "GPU memory". 0.85 has hard-locked the box (compressor + swap ~150 GB effective). The 0.7 default ceiling is load-bearing; long-context presets go *down* to 0.4.
-- **HDMI display blackout** — brief screen blank when heavy Metal compute starts. M4 Pro quirk, not an SGLang bug.
-- **`/v1/responses` is disabled at boot** — SGLang v0.5.23 pins `openai==2.6.1` but its Responses serving module imports a type that only newer `openai` releases ship (`ResponseFunctionShellToolCall`); the server logs the ImportError and serves chat completions normally. `pip install -U openai` restores the endpoint at the cost of the pin.
+- **Sampling.** Per-request temperature/top-p/top-k/min-p, logit_bias, grammar masks and logprobs are upstream behind `--mlx-enable-sampling` (every preset sets it); greedy stays bit-stable argmax; `--sampling-defaults model` applies checkpoint generation configs. `top_k==1` is served greedy; repetition/frequency/presence penalties are not applied.
+- **`gemma4` / `gemma4-31b` blocked at boot.** mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and hybrid component extraction fails on `lm_head`. Needs a contract entry for that module (receipt: `benchmarks/quality/probe-trio/gemma4.json`).
+- **Long-context ceiling is 256K** (in=251,659 tokens, ~23 min prefill, `benchmarks/longctx-bisect/`). Recipe: `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache"`. Four settings carry it: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4; uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), patch-015 cache pre-sizing (no power-of-two overshoot), exact pool sizing (a 192K label at CTX=210K dies where CTX=196608 completes), and 1024-token chunks (4096 kills deep prefills at ~100–113K; 1024 buys ~4.3 GB transient margin over 2048 at no speed cost). There is no decode wall: streamed decode is 61.7 tok/s @32K, 36.0 @128K, 30.2 @151K (`benchmarks/longctx-bisect/decode-curve/DECISION.md`).
+- **`--kv-cache-dtype` is inert on the MLX backend.** The `fp8`/`turboquant`/`fp16` aliases (patch 002) let presets pass argparse; the pool and per-request caches store KV in the attention compute dtype (bf16). Working memory levers: `--max-total-tokens`, `CHUNKED`, `MAX_RUNNING`, request `max_tokens`, `SGLANG_MLX_CACHE_LIMIT_GB`. 4-bit KV ([MLX discussion](https://github.com/ml-explore/mlx/discussions/3134)) is a prospect, not a shipped lever.
+- **Dense-attention ceiling is structural.** `mx.fast.scaled_dot_product_attention` materializes the per-chunk score tensor, which reaches 30–90 GB at deep offsets; 32K is the practical decode ceiling for dense full-attention models. DeltaNet hybrids are the workaround.
+- **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint); hybrids and `flint` run the normal event loop.
+- **Flint omits opencode's required bash `description` argument** on nearly every call under opencode's real prompt, so opencode rejects the call and the agent retries until timeout; no prompt wording fixes it. Use the harness proxy's backfill (`BACKFILL_BASH_DESCRIPTION=1`) or disable the bash tool.
+- **Coder-Next-80B infeasible**: 42 GB of weights alone exceed the safe budget.
+- **GPU driver kernel panic on large prefill chunks** (`completeMemory() prepare count underflow` in IOGPUMemory, watchdog reset; also reported in [mlx#3186](https://github.com/ml-explore/mlx/issues/3186), [mlx#3346](https://github.com/ml-explore/mlx/issues/3346), [mlx-lm#883](https://github.com/ml-explore/mlx-lm/issues/883)). Mechanism: a nonzero MLX wired limit puts every new Metal buffer into a residency set committed on each add and release. Mitigation: patch 024 skips the wired limit (`SGLANG_MLX_WIRED_LIMIT_GB`, `common.sh` default `0`; the identical workload then completes, decode within 1%), and `qwen36-27b` prefills in 2,048-token chunks. With no wired limit weights and KV are pageable, so the OOM guard stays mandatory; `SGLANG_MLX_WIRED_LIMIT_GB=64` restores upstream behaviour for an A/B. A reboot with `Boot faults: wdog` and this panic string is this issue.
+- **`mlx-community/Qwen3.8-27B-8bit` does not boot as shipped** (`Unrecognized image processor` from its `processor_config.json`). Point `MODEL=` at a mirror of the snapshot without that file.
+- **macOS has no OOM killer**: a process touching a page past physical RAM stalls the box until reboot. **OOM guard mandatory for ≥32K work:** `bash scripts/common/oom_guard.sh &` pkills the server when kernel-reported available memory (`kern.memorystatus_level`) drops below 8 GB. vm_stat free+inactive undercounts by the file pages a checkpoint load streams through the page cache, which is why the guard reads the kernel level.
+- **Jetsam can silently reap the scheduler mid-eval** (`Connection refused`, no traceback). When an eval section drops to ~0%, suspect jetsam before model regression; relaunch and re-run the section.
+- **`--mem-fraction-static` is a fraction of TOTAL system RAM** on unified memory. 0.85 has hard-locked the box (compressor + swap ~150 GB effective). The 0.7 default is the ceiling; long-context presets go down to 0.4–0.5.
+- **HDMI display blackout** when heavy Metal compute starts: M4 Pro quirk, not an SGLang bug.
+- **`/v1/responses` is disabled at boot**: the pinned `openai==2.6.1` lacks a type the Responses module imports; chat completions serve normally. `pip install -U openai` restores the endpoint at the cost of the pin.
+- **Health check timeout**: `common.sh` sets `SGLANG_HEALTH_CHECK_TIMEOUT=120` because a 4K prefill chunk at depth takes 50–80 s on Apple Silicon.
 
 ## Quick Start
 
 ```bash
 ./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 17 patches
 
-# Validated presets
-./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
-./scripts/launch.sh coder-30b               # MoE — fastest decode, direct chat-completion codegen
-./scripts/launch.sh qwen3-moe               # Qwen3-30B MoE (DWQ, MMLU 91)
-./scripts/launch.sh qwen3-32b               # Dense (DWQ, clean audit)
-./scripts/launch.sh qwen35                  # DeltaNet hybrid+VL
+./scripts/launch.sh qwen36                  # PRIMARY: MoE+DeltaNet+VL
+./scripts/launch.sh coder-30b               # MoE, fastest decode, direct chat-completion codegen
+./scripts/launch.sh qwen3-moe               # Qwen3-30B MoE (DWQ)
+./scripts/launch.sh qwen3-32b               # Dense (DWQ)
+./scripts/launch.sh qwen35                  # Qwen3.5-27B DeltaNet hybrid+VL
+./scripts/launch.sh qwen35-9b-8bit          # Qwen3.5-9B 8-bit, 10 GB resident
+./scripts/launch.sh qwen36-27b              # Qwen3.6-27B (MODEL=mlx-community/Qwen3.8-27B-4bit for Qwen3.8-27B)
 ./scripts/launch.sh devstral                # Dense+VLM (Mistral3)
 ./scripts/launch.sh nemotron-30b            # NemotronH (Mamba2+Attn+MoE)
-./scripts/launch.sh flint                   # Recursive Flint 40B-A2.5B coding-agent MoE (oQ8e; see Flint section)
+./scripts/launch.sh flint                   # Recursive Flint 40B-A2.5B (oQ8e; MODEL= for oQ6e/oQ4e)
+# Blocked: gemma4, gemma4-31b (boot), coder-next (64 GB); smol-docling is a VLM smoke test only.
 
-./scripts/launch.sh qwen35-9b-8bit          # Qwen3.5-9B 8-bit, 10 GB resident tight-memory variant
-./scripts/launch.sh qwen36-27b              # Qwen3.6-27B Dense DeltaNet+VL (MODEL= for Qwen3.8-27B)
-
-# Blocked / not in rotation:
-# gemma4, gemma4-31b — boot failure: mlx-vlm Gemma 4 attention not recognised by the MLX attention contract
-# coder-next          — infeasible on 64 GB
-# smol-docling        — 256M VLM smoke test only
-
-# Long-context (128K validated; OOM guard mandatory for ≥32K)
+# Long-context (OOM guard mandatory for ≥32K)
 bash scripts/common/oom_guard.sh &
-CTX=140000 MEM_FRAC=0.5 CHUNKED=2048 EXTRA_ARGS="--disable-radix-cache" \
-    bash scripts/launch.sh qwen36
+CTX=140000 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache" bash scripts/launch.sh qwen36
 
-# Agentic coding (qwen36 + opencode). The Qwen3 <think> template blocks break
-# the opencode loop (reasoning_content invisible to opencode / stray </think>
-# confuses the tool-call parser), so requests go through a proxy that injects
-# chat_template_kwargs={"enable_thinking": false}:
-bash evals/swebench/smoke.sh                # orchestrates server + proxy; defaults qwen36, 1 instance
-# or manually:
-bash scripts/launch.sh qwen36 &
-python evals/swebench/no_thinking_proxy.py &   # opencode → 23335 → SGLang :23334
-# (point ~/.config/opencode/opencode.jsonc baseURL at :23335)
+# Agentic coding (qwen36 + opencode): the Qwen3 <think> blocks break the opencode
+# loop, so requests go through a proxy that injects enable_thinking=false
+bash evals/swebench/smoke.sh                # server + proxy; defaults qwen36, 1 instance
+python evals/swebench/no_thinking_proxy.py &   # manual: opencode → :23335 → SGLang :23334
 
-# Capability gates (run AFTER server is up on PORT 23334)
-python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate (loose keyword grep)
+# Capability gates (server up on PORT 23334)
+python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate
 python scripts/eval/probe_thinking.py        --port 23334   # content-aware reasoning probe
-python scripts/eval/probe_vision.py          --port 23334   # content-aware image probe (STRONG/DEGRADED/FAIL)
-python scripts/eval/probe_codegen.py         --port 23334   # 2-task / 8-test code-synthesis probe
-bash   scripts/eval/probe_all.sh                            # sweep the probe trio across presets
+python scripts/eval/probe_vision.py          --port 23334   # content-aware image probe
+python scripts/eval/probe_codegen.py         --port 23334   # 2-task / 8-test codegen probe
+bash   scripts/eval/probe_all.sh                            # probe trio across presets
 
-# Pre-launch checkpoint audits (no server needed)
+# Pre-launch checkpoint audits (no server)
 python scripts/eval/check_mlx_quant_scales.py   <repo-or-path>
 python scripts/eval/audit_mlx_quant_metadata.py
 python scripts/eval/validate_chat_template.py --model <path>
 
-bash   scripts/bench/bench_256k_all.sh                      # long-context sweep (guard first!)
+bash   scripts/bench/bench_256k_all.sh                      # long-context sweep (guard first)
+scripts/bench/bench_regression.sh qwen36                    # decode tripwire vs benchmarks/baselines.json
 ```
 
 ## Prerequisites
 
 - Apple Silicon Mac with **≥ 64 GB unified memory** (M4 Pro Mac mini is the reference rig)
-- macOS 26+ (Tahoe), Xcode CLT
-- Python 3.12, `uv` or `venv`
+- macOS 26+ (Tahoe), Xcode CLT; Python 3.12
 - ~200 GB disk for models
 
 ## Model Support
 
-| Preset | Checkpoint (mlx-community) | Type | Wts | 1-user tok/s* | Max ctx* | Audit hazards |
-|--------|---------------------------|------|:---:|:------------:|:-------:|:-------------|
-| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 51.8 (148 MR=2) | **128K measured** (262K label) | DeltaNet INT4 (router 8-bit) |
-| `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 68.4 | 256K (3.2) | router INT4 |
-| `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 69.0 | 64K (6.3) | router INT4 |
-| `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.3 (34 MR=2) | 256K label | DeltaNet `in_proj_a/b` INT4 |
-| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | — | 32K | DeltaNet INT4 (8-bit); chat template ignores `enable_thinking` (thinking always on) |
-| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | — (34 MR=2) | 256K label | DeltaNet INT4; chat template ignores `enable_thinking` (thinking always on) |
-| `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` | `Qwen3.8-27B-4bit` | DeltaNet hybrid+VL (`qwen3_5` class) | 15 GB | 14.1 | 256K label | DeltaNet INT4; chat template ignores `enable_thinking` (thinking always on) |
-| `flint` | `flint-oQ8e` (oMLX; `MODEL=` for `flint-oQ6e` / `flint-oQ4e`) | MoE 40B-A2.5B, sliding-window + sinks | 42 GB | 61.9 (49.3 @27K) | 32K preset (262K label) | **clean** — router, sinks and norms unquantized; mixed-precision shared-expert projections (group 128) |
-| `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 17.0 (40 MR=4) | 256K (1.8) | **clean** |
-| `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.1 | 16K | **clean** |
-| `gemma4` | `gemma-4-26b-a4b-it-4bit` | MoE (4B active) | 15 GB | 58.8 | blocked | `embed_vision.embedding_projection` INT4 |
-| `gemma4-31b` | `gemma-4-31b-it-mxfp4` | Dense (sliding+full) | 17 GB | 11.7 | blocked | `embed_vision.embedding_projection` INT4 |
+| Preset | Checkpoint (mlx-community) | Type | Wts | Decode tok/s @1K / 8K / 32K | Context | Audit |
+|--------|---------------------------|------|:---:|:---------------------------:|:-------:|:------|
+| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 79.4 / 68.0 / 56.9 | **256K validated** | DeltaNet INT4, router 8-bit |
+| `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 81.9 / 55.2 / 32.0 | 32K measured, 256K label | router INT4 |
+| `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 81.9 / 55.1 / 31.8 | 32K measured, 256K label | router INT4 |
+| `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.5 / 14.1 / 12.8 | 32K measured, 256K label | DeltaNet INT4 |
+| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | 26.8 / 25.9 / 23.4 | 32K measured | DeltaNet 8-bit |
+| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | 14.5 / 14.1 / 12.9 | 32K measured, 256K label | DeltaNet INT4 |
+| `qwen36-27b` + `MODEL=…/Qwen3.8-27B-4bit` | `Qwen3.8-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.1 @1K | 131K served (SWE-bench), 256K label | DeltaNet INT4 |
+| `flint` | `flint-oQ8e` (`MODEL=` for oQ6e / oQ4e) | MoE 40B-A2.5B, SWA + sinks | 42 GB | 61.9 / 54.4 @13.9K / 49.3 @27K | 32K preset, 262K label | **clean** |
+| `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 16.1 / 15.1 / 11.9 | 32K measured | **clean** |
+| `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.0 / 10.5 / 7.5† | 32K at `MEM_FRAC=0.5` | **clean** |
 | `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | 32K probe | **clean** |
+| `gemma4` / `gemma4-31b` | `gemma-4-26b-a4b-it-4bit` / `gemma-4-31b-it-mxfp4` | MoE / Dense | 15–17 GB | blocked | blocked | vision projection INT4 |
 
-\* tok/s and Max-ctx cells were measured on earlier stack pins (re-measure queued) and pre-date the bench depth pin — depth-labeled cells are suspect ([inventory](benchmarks/LEGACY-DEPTH-SUSPECT.md)). The validated long-context ceiling is 128K (see Known Issues). MR=N numbers are batched-decode peaks. Audit hazards from the [checkpoint audits](#checkpoint-audits).
+Decode columns are the regression baselines (`benchmarks/baselines.json`, schema v2): single user, 64 output tokens, server-verified depth (`actual_input_tokens` == label), served with `CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache`. † The 0.45 pool caps `qwen3-32b` requests at 25,241 tokens, so its 32K point is served at `MEM_FRAC=0.5`. **DeltaNet holds decode flat at depth** (the hybrids retain 85–88% of short-context speed at 32K) while full-attention models halve or worse. TTFT at 32K: qwen36 59 s, coder-30b 97 s, qwen3-moe 100 s, qwen35-9b-8bit 100 s, devstral 282 s, qwen35 310 s, qwen36-27b 301 s, qwen3-32b 494 s. Full curves (128→32K, 9 points) and concurrency rows: `benchmarks/<slug>/results.json`; regression run receipts: `benchmarks/regression/`.
 
-## Performance
+### Memory budget at 256K
 
-> Mac mini M4 Pro (64 GB), SGLang + MLX, `sglang.benchmark.serving`.
-
-### Genuine-depth context sweep (current stack, `--random-range-ratio 1`)
-
-Decode tok/s with the server-verified depth instrument (every point's
-`actual_input_tokens` == label). Tripwire recipe: `CTX=36000 MEM_FRAC=0.45
-SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache` (bf16 KV; the `--kv-cache turboquant` the rows were run with is inert).
-These rows are the regression baselines (`benchmarks/baselines.json`, schema v2).
-
-| Preset | @1K | @8K | @32K | TTFT @32K |
-|--------|:---:|:---:|:----:|:---------:|
-| qwen36 | 82.4 | 72.8 | **57.8** | 57 s |
-| coder-30b | 80.1 | 55.8 | 28.7 | 100 s |
-| qwen3-moe | 78.0 | 55.7 | 28.8 | 99 s |
-| qwen35-9b-8bit | 26.9 | 26.3 | 23.6 | 128 s |
-| devstral | 16.5 | 14.8 | OOM | — |
-| qwen35 | 15.0 | 14.6 | 12.8 | 307 s |
-| qwen36-27b | 15.0 | 14.4 | 12.8 | 262 s |
-| qwen3-32b | 12.3 | 10.7 | 7.5† | 494 s |
-
-† qwen3-32b's 32K row needs `MEM_FRAC=0.5` (the 0.45 pool caps requests at
-25,241 tokens). All eight rows above are armed as schema-v2 regression
-baselines. **DeltaNet holds decode flat at genuine depth** across every
-hybrid (qwen35/qwen36-27b retain 85% of short-context speed at true 32K;
-qwen35-9b-8bit retains 88%) while full-attention models halve or worse.
-
-Full curves (128→32K, 9 points) + concurrency rows live in each preset's
-`benchmarks/<slug>/results.json`; serving-envelope receipts (radix-on 32K
-prefill OOM, radix-off conc-8 OOM, dense 32K walls) are the same files'
-error rows.
-
-### Legacy tables (earlier stack pins)
-
-> **Everything below was measured on earlier stack pins** and pre-dates the
-> `--random-range-ratio 1` pin — labeled depths drew uniform [1,N] and are
-> flagged suspect ([benchmarks/LEGACY-DEPTH-SUSPECT.md](benchmarks/LEGACY-DEPTH-SUSPECT.md)).
-> Re-measure for the remaining presets is in the action queue.
-
-### Short-sweep decode tok/s (fp16 KV, single user, 64 output tokens)
-
-| Preset | tok/s @128 | @4K | @16K |
-|--------|:----------:|:---:|:----:|
-| qwen3-moe | **59.2** | 10.5 | 1.7 |
-| coder-30b | **57.9** | 10.3 | 1.7 |
-| qwen36 | **52.5** | 11.0 | 2.6 |
-| gemma4 | **47.5** | 8.7 | n/a |
-| qwen35-9b-8bit | 23.7 | 5.0 | 1.3 |
-| devstral | 14.2 | 2.0 | 0.5 |
-| qwen35 | 11.8 | 1.7 | 0.4 |
-| qwen36-27b | 11.7 | 1.6 | 0.4 |
-| gemma4-31b | 10.4 | 1.3 | n/a |
-| qwen3-32b | 10.0 | 1.3 | 0.3 |
-
-### Long-context turboquant sweep (`--chunked-prefill-size 1024 --mem-fraction-static 0.4`)
-
-| Preset | KV | @128 | @4K | @8K | @16K | @32K |
-|--------|----|:----:|:---:|:---:|:----:|:----:|
-| coder-30b | turboquant | **73.8** | 66.6 | 55.2 | 43.0 | — |
-| gemma4 | turboquant | 58.9 | 55.2 | 52.8 | 49.8 | **44.7** |
-| devstral | turboquant | 17.4 | 17.1 | 16.2 | — | — |
-| qwen35 | fp8 | 14.7 | 14.3 | 14.0 | 13.5 | **12.6** |
-| gemma4-31b | turboquant | 13.5 | 12.7 | 12.4 | 11.7 | — |
-
-`—` = OOM-guard tripped at that context. Two patterns: **MoE shapes the short-context win** (small active-weight reads); **DeltaNet keeps decode flat** (qwen35: 14.7→12.6 across the whole sweep — the O(1) linear-attention signature, and the load-bearing reason DeltaNet hybrids stay viable at long context on Apple Silicon).
-
-The KV column records the flag each row was launched with; `--kv-cache-dtype` is inert on the MLX backend (bf16 KV in every row), so the "turboquant" and "fp8" rows differ only by model.
-
-### Batched-decode peaks (single-server multi-prompt)
-
-| Preset | Single user | Peak @ MR |
-|--------|:-----------:|:---------:|
-| `qwen3-moe` | 69 | **160 @ MR=8** |
-| `qwen36` | 52 | **148 @ MR=2** |
-| `devstral` | 17 | **40 @ MR=4** |
-| `qwen35` / `qwen36-27b` | 12–14 | **34 @ MR=2** |
-
-### Memory budget at 256K (64 GB Mac)
-
-| Model class | Weights | KV @256K (bf16, what the MLX pool stores) | Fits? |
-|-------|:-------:|:-----------------------------------------:|:------|
+| Model class | Weights | KV @256K (bf16) | Fits? |
+|-------|:-------:|:---------------:|:------|
 | MoE 3B-active (Coder-30B, Qwen3-30B-DWQ) | 16 GB | 24 GB | yes, with the long-context recipe |
-| MoE+DeltaNet (Qwen3.6-35B-A3B) | 17 GB | varies† | yes (256K validated) |
-| Flint 40B-A2.5B (oQ8e) | 42 GB | 7.5 GB (14 full layers, 4 KV heads) | 32K preset validated; deeper runs need the headroom measured per depth |
-| Dense+VL (Devstral, Qwen3.5-27B) | 14–15 GB | 42 GB | no — and the dense 32K attention ceiling applies first |
+| MoE+DeltaNet (Qwen3.6-35B-A3B) | 17 GB | full-attention layers only | yes (256K validated) |
+| Flint 40B-A2.5B (oQ8e) | 42 GB | 7.5 GB (14 full layers, 4 KV heads) | 32K preset validated; deeper runs need headroom measured per depth |
+| Dense+VL (Devstral, Qwen3.5-27B) | 14–15 GB | 42 GB | no; the dense attention ceiling applies first |
 | Dense (Qwen3-32B) | 18 GB | 66 GB | no |
-
-† DeltaNet layers hold recurrent state instead of KV; only full-attention layers store KV.
 
 ## Setup
 
@@ -433,26 +231,17 @@ cd components/sglang
 for p in ../../patches/0[012][0-9]-*.patch; do git apply "$p"; done
 cd python && cp pyproject_other.toml pyproject.toml
 pip install -e ".[srt_mps]"
-pip install "mlx-lm @ git+https://github.com/ml-explore/mlx-lm.git@736ab0d8c1d0edc79c3d798044fe6904e2fa23be"   # Flint model (post-0.32.2)
-pip install "mlx-vlm==0.6.5" --no-deps    # VLM loader; --no-deps keeps SGLang's transformers / mlx-lm pins
+pip install "mlx-lm @ git+https://github.com/ml-explore/mlx-lm.git@736ab0d8c1d0edc79c3d798044fe6904e2fa23be"   # Flint model
+pip install "mlx-vlm==0.6.5" --no-deps    # --no-deps keeps SGLang's transformers / mlx-lm pins
 ```
 
-**Gate protocol (publish precondition):** every setup run — and any stack
-change before its numbers are published — must pass
-`scripts/test_patch_gates.sh` (pristine replay + byte-identity + double-apply
-rejection; `setup.sh` runs it automatically and FATAL-aborts on any patch
-failure), `scripts/eval/import_smoke.py` (eager import of every patch-touched
-module + load-bearing symbols), and the behavioral probe gate
-(`PRESETS="devstral qwen36" scripts/eval/probe_all.sh` — verdicts must match
-`benchmarks/quality/probe-trio/`; a STRONG→FAIL flip is a stop-and-investigate
-finding, the class that caught a month of fabricated VLM output). Receipts:
-`benchmarks/patch-gates/`.
+**Gate protocol (publish precondition):** every setup run, and any stack change before its numbers are published, must pass `scripts/test_patch_gates.sh` (pristine replay + byte-identity + double-apply rejection; `setup.sh` runs it and aborts on failure), `scripts/eval/import_smoke.py` (eager import of every patch-touched module + load-bearing symbols), and the behavioral probe gate (`PRESETS="devstral qwen36" scripts/eval/probe_all.sh`; verdicts must match `benchmarks/quality/probe-trio/`, and a STRONG→FAIL flip is a stop-and-investigate finding). Receipts: `benchmarks/patch-gates/`.
 
 | Component | Version |
 |-----------|---------|
 | SGLang | **v0.5.23** (`297e54f`) + 17 patches |
 | MLX | 0.32.4 |
-| mlx-lm | git `736ab0d` (0.32.3.dev — carries the Flint model) |
+| mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
 | PyTorch | 2.13.0 (MPS) |
 | transformers | 5.19.0 |
@@ -460,7 +249,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 ## Patches
 
-Fifteen patches on top of `v0.5.23` — full rationale per patch in [patches/README.md](patches/README.md). Per-request sampling is upstream at this pin (`--mlx-enable-sampling`, set by every preset).
+Seventeen patches on top of `v0.5.23`; rationale per patch in [patches/README.md](patches/README.md).
 
 | # | Patch | What |
 |:-:|-------|------|
@@ -468,37 +257,40 @@ Fifteen patches on top of `v0.5.23` — full rationale per patch in [patches/REA
 | 003 | mlx-skip-quantization-check | Accept MLX checkpoints' `quantization_config` shape. |
 | 005 | mlx-attn-wrapper-varargs | Attention-wrapper vararg + attribute delegation to the wrapped module. |
 | 007 | mlx-multimodal-and-mps-shim | cuda→cpu redirect in the MPS tensor shim; shm page-rounding for multimodal data. |
-| 008 | mlx-vlm-hybrid-integration | The VLM/hybrid path: mlx_vlm loader, attention detection, radix-for-hybrids (`no_buffer`), vision plumbing, NemotronH. |
+| 008 | mlx-vlm-hybrid-integration | The VLM/hybrid path: mlx_vlm loader, attention detection, radix-for-hybrids (`no_buffer`), vision plumbing, NemotronH, MLX buffer-cache cap. |
 | 014 | mlx-hf-processor-fixes | Gemma 4 image-only processor; Mistral3/Devstral processor + tokenizer resolution. |
 | 015 | mlx-presize-attention-cache | Exact per-request attention-cache pre-sizing (replaces the doubling ladder for known-length requests). |
-| 018 | mlx-aux-slot-admission-eviction | Admission-time auxiliary-slot eviction for the MLX pool (upstream's pre-pass is Hybrid-pool-only). |
-| 019 | mlx-flint-support | Recursive Flint on the MLX path: mlx-vlm checkpoint-layout adapter, per-layer window map from `ModelArgs`, sinks + NoPE in batched decode, `FlintConfig`, `flint` parsers, Torch-registry non-gate on MLX. |
-| 020 | mlx-prefill-last-token-logits | Final-chunk prefill computes logits for the last position only (drops the `[chunk, vocab]` transient: 1.2 GB at chunk 4096 on a 150K vocab). |
-| 021 | mlx-swa-prefix-snapshots | Exact prefix cache for sliding-window models: the windowed caches are snapshotted through the auxiliary-state pool at the boundaries the radix tree names and restored on a hit; full layers gather from the pool; pool scatters evaluated per step. |
-| 022 | mlx-pool-backed-cache-append | The pool-backed attention cache keeps the chunks already fetched in front of the next forward, so the trunk-then-last-token split of a prefix hit's final chunk sees every new token (the upstream cache re-gathered only the prefix: a blind first token and stale pool rows on every hit). |
-| 023 | mlx-release-finished-request | The scheduler's KV-release hook runs for every finished request and the MLX worker drops the request's caches there, deferred while an overlap-schedule launch that includes the request is in flight (upstream sweeps them only at the next decode batch: a request that never decodes keeps its KV for the server's lifetime; the last turn's KV sits idle between agent turns). |
-| 024 | mlx-wired-limit-env | `SGLANG_MLX_WIRED_LIMIT_GB` (unset: upstream's max recommended working set; `0`: no wired limit, so no residency-set traffic; `common.sh` default `0`) — the IOGPUFamily panic mitigation in Known issues. |
-| 025 | dllm-structured-reads | Structured reads on DiffusionGemma: per-request seed canvas, pinned positions, step cap, read-only finish with per-position logprobs, and a constrained label set (`sampling_params.custom_params["diffusion"]`); CUDA/ROCm hosts only — see the DiffusionGemma section. |
-| 026 | mlx-extend-chunk-mamba-track | Chunked-prefill continuation chunks on the MLX runner track the DeltaNet/Mamba state at their last 64-token grid boundary, as the first chunk already did, so a prompt longer than `CHUNKED` leaves a state within a grid of its end instead of only at chunk ends. An agentic follow-up turn — which the chat template makes diverge 1–2 tokens before the primed prompt end — then restores that state instead of recomputing the last prefill chunk. |
-| 027 | incremental-tokenizer | A chat request re-encodes only the tail after the last special token it shares with a recent prompt (exact: HF tokenizers split on added tokens first), 4–9 ms instead of 165–250 ms at 250K tokens, and a multimodal-flagged model decodes the prompt back to text only when an image or video is attached. From the 3090's patch 072. |
+| 018 | mlx-aux-slot-admission-eviction | Admission-time auxiliary-slot eviction for the MLX pool. |
+| 019 | mlx-flint-support | Recursive Flint on the MLX path: checkpoint-layout adapter, per-layer window map, sinks + NoPE in batched decode, `flint` parsers. |
+| 020 | mlx-prefill-last-token-logits | Final-chunk prefill computes logits for the last position only (drops a 1.2 GB `[chunk, vocab]` transient at chunk 4096). |
+| 021 | mlx-swa-prefix-snapshots | Exact prefix cache for sliding-window models: windowed caches snapshotted through the auxiliary-state pool at radix boundaries and restored on a hit. |
+| 022 | mlx-pool-backed-cache-append | The pool-backed attention cache keeps already-fetched chunks in front of the next forward, so a prefix hit's split final chunk sees every new token. |
+| 023 | mlx-release-finished-request | Finished requests release their MLX caches at the scheduler's KV-release hook instead of at the next decode batch. |
+| 024 | mlx-wired-limit-env | `SGLANG_MLX_WIRED_LIMIT_GB` (`0`: no wired limit, no residency-set traffic; `common.sh` default): the IOGPUFamily panic mitigation. |
+| 025 | dllm-structured-reads | Structured reads on DiffusionGemma (seed canvas, pinned positions, step cap, read-only finish with logprobs, constrained labels); CUDA/ROCm hosts only. |
+| 026 | mlx-extend-chunk-mamba-track | Continuation prefill chunks track the DeltaNet/Mamba state at their last 64-token grid boundary, so an agentic follow-up that diverges 1–2 tokens before the primed end restores that state instead of recomputing the last chunk. Radix off: no tracking. |
+| 027 | incremental-tokenizer | A chat request re-encodes only the tail after the last special token it shares with a recent prompt (4–9 ms instead of 165–250 ms at 250K tokens), and a multimodal-flagged model decodes the prompt back to text only when an image or video is attached. Ported from the 3090's patch 072; `SGLANG_INCREMENTAL_TOKENIZE=0` disables. |
+
+## Radix prefix cache
+
+Agentic workloads re-send the same system prompt + history every turn; the radix cache reuses the shared-prefix KV so follow-up turns prefill only their new tokens. It is on for every preset, including hybrids (DeltaNet/Mamba2 state snapshotted per prefix) and Flint (patch 021). Greedy output is deterministic on both sides of the cache, and a hit differs from a cold run only as much as two cold runs on different chunk sizes do: over 24 positions of a 16.6K-token agent request the top token matches at 20–21 of 24 with a median top-1 shift of 0.02–0.05 nats ([benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md](benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md)). A follow-up turn re-rendered through the Qwen3.x template diverges 1–2 tokens before the primed prompt end, so it is served from the 64-token-grid DeltaNet checkpoint (patch 026) with `AUX_SLOTS=64` checkpoint slots per hybrid preset. `EXTRA_ARGS="--disable-radix-cache"` restores the uncached path for A/B runs. Models with native context below the requested `CTX` get linear RoPE interpolation (logged at boot).
 
 ## Repo layout
 
 ```
-patches/                    # 17 numbered patches — see patches/README.md
-experiments/                # Vetted execution queue (specs + statuses)
-benchmarks/                 # Per-model JSON + charts
-  quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts
+patches/                    # 17 numbered patches; see patches/README.md
+experiments/                # Experiment specs and the open queue
+benchmarks/                 # Per-model JSON, regression baselines, dated receipts
+  quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts / fidelity
   <slug>/                   #   throughput + long-context sweeps
-evals/swebench/             # Agentic-coding harness + dated run receipts
+evals/swebench/             # Sealed agentic-coding harness + dated run receipts
 scripts/
-  launch.sh                 # Unified launcher — launch.sh <preset>
+  launch.sh                 # Unified launcher: launch.sh <preset>
   common.sh                 # Shared MLX env setup
-  setup.sh                  # Full setup (venv, SGLang clone, patches)
-  common/oom_guard.sh       # MANDATORY for ≥32K work — pkills server below 8 GB free
-  common/mem_profile.sh     # CSV memory profile companion
-  bench/                    # bench_long_context.py, bench_256k_all.sh, charts
-  eval/                     # validate_capabilities, probes, eval_and_chart, audits
+  setup.sh                  # Full setup (env, SGLang clone, patches, gates)
+  common/oom_guard.sh       # MANDATORY for ≥32K work
+  bench/                    # bench_long_context.py, bench_256k_all.sh, bench_regression.sh
+  eval/                     # validate_capabilities, probes, eval_and_chart, audits, patch unit tests
 components/sglang/          # SGLang checkout + applied patches (cloned by setup.sh)
 ```
 
@@ -506,17 +298,7 @@ components/sglang/          # SGLang checkout + applied patches (cloned by setup
 
 ```
 Mac mini (Mac16,11)
-Apple M4 Pro — 14-core CPU, 20-core GPU
+Apple M4 Pro, 14-core CPU, 20-core GPU
 64 GB unified memory (LPDDR5, ~273 GB/s)
 macOS 26.2 (Tahoe)
 ```
-
-## Long context: how it works
-
-`launch.sh --kv-cache {fp8,turboquant,fp16}` is accepted for CLI compatibility but inert on this backend: the MLX attention pool and the per-request caches hold KV in the attention compute dtype (bf16). Capacity comes from exact pool sizing (`CTX = label + 64`), the MLX buffer-cache cap, patch-015 pre-sizing and small prefill chunks (see Known Issues). [Research](https://github.com/ml-explore/mlx/discussions/3134) suggests 4-bit KV could be *faster* than unquantized on M4 Pro (less memory traffic outweighs the dequant cost); it is a candidate for the backend, not a shipped lever.
-
-**Health check timeout** — SGLang's 20 s default is too short for chunked prefill at depth on Apple Silicon (each 4 K chunk takes 50–80 s); `common.sh` sets `SGLANG_HEALTH_CHECK_TIMEOUT=120`.
-
-**Automatic RoPE scaling** — models with native context < requested get linear interpolation (logged at boot as `RoPE scaling: ... applying linear scale`).
-
-**Radix prefix cache** — agentic workloads re-send the same system prompt + history every turn; the radix cache reuses shared-prefix KV so follow-up turns skip the prefill. Enabled on all presets, including hybrids (DeltaNet/Mamba2 recurrent state is snapshotted per prefix) and Flint (sliding-window KV snapshotted per prefix, patch 021). Greedy output is deterministic on both sides of the cache — repeated hits match, repeated cold runs match — and a hit differs from a cold run of the same prompt only as much as two cold runs on different chunk sizes differ: over 24 positions of a 16.6K-token agent request the top token matches at 20–21 of 24 with a median top-1 shift of 0.02–0.05 nats, every mismatch at a position where the cold top token sits below 0.75 probability ([benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md](benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md)). An agentic follow-up turn re-renders the history through the chat template and diverges 1–2 tokens before the primed prompt end on Qwen3.x, so it is served by the DeltaNet checkpoint the prefill tracked on a 64-token grid (patch 026) rather than by the end-of-generation state: the first follow-up on Qwen3.8-27B recomputes 55–77 tokens (0.9–1.1 s TTFT at 8.7K–52K) and on qwen36 21–73 tokens (0.2–0.5 s), with `AUX_SLOTS=64` checkpoint slots per hybrid preset so tool-call branches do not evict them ([benchmarks/session-endurance/VERDICT.md](benchmarks/session-endurance/VERDICT.md), Phase C). `EXTRA_ARGS="--disable-radix-cache"` restores the uncached behavior for A/B runs.
