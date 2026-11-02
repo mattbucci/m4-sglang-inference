@@ -1,0 +1,24 @@
+{
+  "preset": "qwen36-27b",
+  "model": "~/AI/models/Qwopus3.8-27B-Coder-Flash-4bit-inhouse (Jackrong/Qwopus3.8-27B-Coder-Flash, in-house MLX 4-bit)",
+  "timestamp": "2026-11-02T01:06:00",
+  "validator": "3/3",
+  "probes": {
+    "codegen": {
+      "verdict": "STRONG",
+      "log": "benchmarks/quality/probe-trio/qwopus38-coder-flash-2026-11-02.codegen.log"
+    },
+    "vision": {
+      "verdict": "STRONG",
+      "log": "benchmarks/quality/probe-trio/qwopus38-coder-flash-2026-11-02.vision.log"
+    },
+    "video": {
+      "verdict": "STRONG",
+      "log": "benchmarks/quality/probe-trio/qwopus38-coder-flash-2026-11-02.video.log"
+    },
+    "thinking": {
+      "verdict": "THINKING VERIFIED",
+      "log": "benchmarks/quality/probe-trio/qwopus38-coder-flash-2026-11-02.thinking.log"
+    }
+  }
+}

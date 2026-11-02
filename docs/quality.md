@@ -3,8 +3,9 @@
 ## Quality table (100-sample MMLU + 20 HE + LAB-Bench + Needle@{1K,4K,16K})
 
 Qwen3 family runs `--no-thinking`; Gemma 4 runs `--humaneval-mode chat`. The Qwen3.8-27B row
-is from the current stack (`benchmarks/quality/Qwen38-27B-community-2026-10-31.json`, full
-333-sample LAB-Bench); the other rows predate it (re-run tracked in the issue tracker).
+and the Qwopus3.8-27B-Coder-Flash row are from the current stack
+(`benchmarks/quality/Qwen38-27B-community-2026-10-31.json`, full 333-sample LAB-Bench;
+`Qwopus38-27B-Coder-Flash-2026-11-02.json`, 50 per LAB-Bench category); the other rows predate it (re-run tracked in the issue tracker).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
@@ -13,6 +14,7 @@ is from the current stack (`benchmarks/quality/Qwen38-27B-community-2026-10-31.j
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
 | Qwen3.6-27B-4bit | 86% | **100%** | 42/125 | **100%** |
 | Qwen3.8-27B-4bit | 84% | 90% | 38.7% | **100%** |
+| Qwopus3.8-27B-Coder-Flash MLX-4bit (in-house, published) | 83% | 90% | 37.5% | **100%** |
 | Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
 | Gemma 4 26B-A4B-it-4bit | 85% | 60%‡ | partial | 100% |
 | Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
@@ -35,7 +37,10 @@ gate, DeltaNet `in_proj_a/b` and the vision tower. Both are quality-equivalent t
 community checkpoints: paired KL to the 8-bit reference +0.0004 ± 0.0006 and the same greedy
 token at 1,506/1,524 positions on the 3.8 build; MMLU 83 vs 85, HumanEval 17/20 both,
 SWE-bench smoke 3/3 byte-identical, decode within 2.4% on the 3.6 build
-(`benchmarks/quality/fidelity/`). They stay opt-in local builds:
+(`benchmarks/quality/fidelity/`). The same converter builds `Jackrong/Qwopus3.8-27B-Coder-Flash` (a Qwen3.8-27B coding fine-tune
+with no other MLX release), published as `mattbucci/Qwopus3.8-27B-Coder-Flash-MLX-4bit`
+(recipe `benchmarks/quality/qwopus38-coder-flash-quant-recipe-2026-11-02.json`, scan clean,
+validator 3/3, probe trio STRONG, sealed SWE-bench smoke 3/3). The two Qwen builds stay opt-in local builds:
 `MODEL=~/AI/models/Qwen3.6-35B-A3B-4bit-inhouse scripts/launch.sh qwen36` and
 `MODEL=~/AI/models/Qwen3.8-27B-4bit-inhouse scripts/launch.sh qwen36-27b`.
 
@@ -57,7 +62,7 @@ python scripts/eval/validate_chat_template.py --model <path>
 | `Qwen3.6-35B-A3B-4bit` | DeltaNet `in_proj_a/b` INT4 (60 layers); MoE router and shared-expert gate 8-bit. |
 | `Qwen3-Coder-30B-A3B-4bit-DWQ` / `Qwen3-30B-A3B-4bit-DWQ` | MoE router `mlp.gate` INT4, bounded impact in practice. |
 | `Qwen3.8-27B-8bit` | Ships a `processor_config.json` naming `Qwen3VLImageProcessor`, which `AutoProcessor` cannot load; serve from a mirror without that file (fidelity reference only). |
-| `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B`, `flint-oQ*e`, in-house builds | **clean** (Flint: router, sinks and norms bf16; 180 shared-expert projections use group size 128, honoured per tensor). |
+| `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B`, `flint-oQ*e`, in-house builds (incl. `Qwopus3.8-27B-Coder-Flash-MLX-4bit`) | **clean** (Flint: router, sinks and norms bf16; 180 shared-expert projections use group size 128, honoured per tensor). |
 
 DWQ variants are used where they measured better (`coder-30b` +2.8 MMLU / +20 HE over the
 broken 4-bit, `qwen3-moe` +7.9 MMLU / −5 HE, `qwen3-32b` +2.8 / +7.5); `qwen36` stays on
