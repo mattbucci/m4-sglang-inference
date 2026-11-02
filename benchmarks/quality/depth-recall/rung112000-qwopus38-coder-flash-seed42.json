@@ -1,0 +1,36 @@
+{
+  "label": 112000,
+  "seed": 42,
+  "tag": "qwopus38-coder-flash",
+  "prompt_tokens": 128105,
+  "depth_verified": true,
+  "verdict": "6/6",
+  "score": 6,
+  "found": {
+    "Kestrel": true,
+    "Meridian": true,
+    "Obsidian": true,
+    "Cinnabar": true,
+    "Halcyon": true,
+    "Zephyr": true
+  },
+  "codes": {
+    "Kestrel": "770487",
+    "Meridian": "216739",
+    "Obsidian": "126225",
+    "Cinnabar": "877572",
+    "Halcyon": "388389",
+    "Zephyr": "356787"
+  },
+  "positions_char_frac": {
+    "Zephyr": 0.98,
+    "Halcyon": 0.85,
+    "Cinnabar": 0.65,
+    "Obsidian": 0.45,
+    "Meridian": 0.25,
+    "Kestrel": 0.05
+  },
+  "elapsed_s": 1656.8,
+  "completion": "1. 770487\n2. 216739\n3. 126225\n4. 877572\n5. 388389\n6. 356787",
+  "finish_reason": "stop"
+}
