@@ -84,6 +84,7 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 ## Critical Rules
 - **SGLang + MLX only** — all models must run on SGLang with `SGLANG_USE_MLX=1`
 - **No tensor parallelism** — MLX runs on a single unified memory device
+- **Never open pull requests against upstream packages** (SGLang, MLX, mlx-lm, mlx-vlm, or any dependency). Patches live in `patches/` and the local component tree only; no upstream PRs, no "upstream candidate" queue.
 - **Real sampling supported** (upstream `--mlx-enable-sampling`, set by every
   preset) — per-request temperature/top-p/top-k/min-p; greedy (the default)
   stays bit-stable argmax, `--sampling-defaults model` applies checkpoint
