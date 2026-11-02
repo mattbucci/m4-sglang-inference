@@ -86,6 +86,26 @@ first divergent token 50 of 96; the pre-026 hit from a chunk-end state was
 identical to cold at that depth, so this is the price of the mid-chunk split).
 Validator 3/3, thinking gate VERIFIED on both models after the patch.
 
+### Patch 027 on the served path (`turn-tax-chat-*-p027-inc{0,1}-2026-11-01.json`)
+
+Same driver, later turns (the checkpoint hit path), `SGLANG_INCREMENTAL_TOKENIZE=0`
+against `1`; median TTFT in ms at suffix 1 / suffix 64:
+
+| model | depth | inc off | inc on |
+|---|---:|---:|---:|
+| Qwen3.6-35B-A3B-4bit (`qwen36`) | 8,657 | 130 / 285 | 124 / 283 |
+| | 25,863 | 165 / 370 | 147 / 350 |
+| | 52,026 | 235 / 477 | 189 / 428 |
+| Qwen3.8-27B-4bit (`qwen36-27b`) | 8,699 | 386 / 903 | 376 / 887 |
+| | 25,905 | 854 / 1,510 | 831 / 1,504 |
+| | 52,068 | 1,017 / 1,933 | 947 / 1,829 |
+
+The saving grows with depth (the from-scratch re-tokenization is linear in the
+conversation) and is the same ~45–70 ms on both models at 52K, which is the
+tokenizer's share; the rest of the Qwen3.8 turn is its dense prefill rate.
+Decode is unchanged. qwen36 vision and video probes stay STRONG and the
+validator passes 3/3 with the patch on.
+
 ## Guidance (the daily qwen36 + opencode workload)
 
 - **Radix-on is the right default** (10× per-turn latency win) **with a
