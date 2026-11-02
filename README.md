@@ -2,10 +2,12 @@
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's native MLX backend. Stack: **SGLang v0.5.23** (`297e54f`) + 17 patches ([patches/README.md](patches/README.md)).
 
+Known issues and open work are tracked as [GitHub issues](https://github.com/mattbucci/m4-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue).
+
 - **`qwen36`** (Qwen3.6-35B-A3B MoE+DeltaNet+VL) is the primary agentic model: codegen, vision and video STRONG, thinking VERIFIED, 256K single-user context validated with 6/6 multi-needle recall at every rung to 245K realized tokens.
 - `coder-30b`, `qwen3-moe`, `qwen3-32b`, `qwen35`, `qwen35-9b-8bit`, `qwen36-27b` (Qwen3.6-27B or Qwen3.8-27B), `devstral`, `nemotron-30b` and `flint` (Recursive's coding-agent MoE) pass their gates.
 - Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache; the trade-off is that radix-on-hybrid turns the overlap schedule off.
-- `gemma4` / `gemma4-31b` are blocked at boot (see Known Issues).
+- `gemma4` / `gemma4-31b` are blocked at boot ([known issue](https://github.com/mattbucci/m4-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue)).
 
 Experiment specs and the open queue live in [experiments/README.md](experiments/README.md).
 
@@ -119,25 +121,6 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 | `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B`, `flint-oQ*e`, in-house builds | **clean** |
 
 DWQ variants are used where they measured better (`coder-30b`, `qwen3-moe`, `qwen3-32b`); `qwen36` stays on standard 4-bit (its DWQ trades −5.5 MMLU for +15 HE). **Never blind-swap DWQ: recipes vary per upload; measure MMLU + HumanEval per model.**
-
-## Known Issues
-
-- **Sampling.** Per-request temperature/top-p/top-k/min-p, logit_bias, grammar masks and logprobs are upstream behind `--mlx-enable-sampling` (every preset sets it); greedy stays bit-stable argmax; `--sampling-defaults model` applies checkpoint generation configs. `top_k==1` is served greedy; repetition/frequency/presence penalties are not applied.
-- **`gemma4` / `gemma4-31b` blocked at boot.** mlx-vlm 0.6.5's Gemma 4 attention is not recognized by the MLX attention contract, so its layers are classed as auxiliary state and hybrid component extraction fails on `lm_head`. Needs a contract entry for that module (receipt: `benchmarks/quality/probe-trio/gemma4.json`).
-- **Long-context ceiling is 256K** (in=251,659 tokens, ~23 min prefill, `benchmarks/longctx-bisect/`). Recipe: `CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache"`. Four settings carry it: the patch-008 MLX buffer-cache cap (`SGLANG_MLX_CACHE_LIMIT_GB`, default 4; uncapped, chunked prefill retains ~0.6 MB/token and jetsams ~30K), patch-015 cache pre-sizing (no power-of-two overshoot), exact pool sizing (a 192K label at CTX=210K dies where CTX=196608 completes), and 1024-token chunks (4096 kills deep prefills at ~100–113K; 1024 buys ~4.3 GB transient margin over 2048 at no speed cost). There is no decode wall: streamed decode is 61.7 tok/s @32K, 36.0 @128K, 30.2 @151K (`benchmarks/longctx-bisect/decode-curve/DECISION.md`).
-- **`--kv-cache-dtype` is inert on the MLX backend.** The `fp8`/`turboquant`/`fp16` aliases (patch 002) let presets pass argparse; the pool and per-request caches store KV in the attention compute dtype (bf16). Working memory levers: `--max-total-tokens`, `CHUNKED`, `MAX_RUNNING`, request `max_tokens`, `SGLANG_MLX_CACHE_LIMIT_GB`. 4-bit KV ([MLX discussion](https://github.com/ml-explore/mlx/discussions/3134)) is a prospect, not a shipped lever.
-- **Dense-attention ceiling is structural.** `mx.fast.scaled_dot_product_attention` materializes the per-chunk score tensor, which reaches 30–90 GB at deep offsets; 32K is the practical decode ceiling for dense full-attention models. DeltaNet hybrids are the workaround.
-- **Radix-on-hybrid disables the overlap schedule** (upstream `no_buffer` constraint); hybrids and `flint` run the normal event loop.
-- **Flint omits opencode's required bash `description` argument** on nearly every call under opencode's real prompt, so opencode rejects the call and the agent retries until timeout; no prompt wording fixes it. Use the harness proxy's backfill (`BACKFILL_BASH_DESCRIPTION=1`) or disable the bash tool.
-- **Coder-Next-80B infeasible**: 42 GB of weights alone exceed the safe budget.
-- **GPU driver kernel panic on large prefill chunks** (`completeMemory() prepare count underflow` in IOGPUMemory, watchdog reset; also reported in [mlx#3186](https://github.com/ml-explore/mlx/issues/3186), [mlx#3346](https://github.com/ml-explore/mlx/issues/3346), [mlx-lm#883](https://github.com/ml-explore/mlx-lm/issues/883)). Mechanism: a nonzero MLX wired limit puts every new Metal buffer into a residency set committed on each add and release. Mitigation: patch 024 skips the wired limit (`SGLANG_MLX_WIRED_LIMIT_GB`, `common.sh` default `0`; the identical workload then completes, decode within 1%), and `qwen36-27b` prefills in 2,048-token chunks. With no wired limit weights and KV are pageable, so the OOM guard stays mandatory; `SGLANG_MLX_WIRED_LIMIT_GB=64` restores upstream behaviour for an A/B. A reboot with `Boot faults: wdog` and this panic string is this issue.
-- **`mlx-community/Qwen3.8-27B-8bit` does not boot as shipped** (`Unrecognized image processor` from its `processor_config.json`). Point `MODEL=` at a mirror of the snapshot without that file.
-- **macOS has no OOM killer**: a process touching a page past physical RAM stalls the box until reboot. **OOM guard mandatory for ≥32K work:** `bash scripts/common/oom_guard.sh &` pkills the server when kernel-reported available memory (`kern.memorystatus_level`) drops below 8 GB. vm_stat free+inactive undercounts by the file pages a checkpoint load streams through the page cache, which is why the guard reads the kernel level.
-- **Jetsam can silently reap the scheduler mid-eval** (`Connection refused`, no traceback). When an eval section drops to ~0%, suspect jetsam before model regression; relaunch and re-run the section.
-- **`--mem-fraction-static` is a fraction of TOTAL system RAM** on unified memory. 0.85 has hard-locked the box (compressor + swap ~150 GB effective). The 0.7 default is the ceiling; long-context presets go down to 0.4–0.5.
-- **HDMI display blackout** when heavy Metal compute starts: M4 Pro quirk, not an SGLang bug.
-- **`/v1/responses` is disabled at boot**: the pinned `openai==2.6.1` lacks a type the Responses module imports; chat completions serve normally. `pip install -U openai` restores the endpoint at the cost of the pin.
-- **Health check timeout**: `common.sh` sets `SGLANG_HEALTH_CHECK_TIMEOUT=120` because a 4K prefill chunk at depth takes 50–80 s on Apple Silicon.
 
 ## Quick Start
 

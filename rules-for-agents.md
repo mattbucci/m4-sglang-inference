@@ -160,4 +160,4 @@ Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error
 
 ## Model Status
 
-See [README.md](README.md) for current model status, benchmarks, and known issues.
+See [README.md](README.md) for current model status and benchmarks; known issues are GitHub issues with the `known-issue` label.

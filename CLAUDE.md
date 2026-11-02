@@ -20,7 +20,7 @@ the overlap schedule. `gemma4*` is blocked at boot
 
 | File | Purpose |
 |------|---------|
-| [README.md](README.md) | Setup, benchmarks, model support, known issues |
+| [README.md](README.md) | Setup, benchmarks, model support; known issues are GitHub issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
 | [patches/README.md](patches/README.md) | Per-patch notes (17 patches on top of SGLang v0.5.23) |
 
