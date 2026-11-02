@@ -156,7 +156,7 @@ where the 3090 pair's 48 GB cannot.
 | `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
 | `flint` (oQ8e / oQ6e / oQ4e) | **STRONG**† | n/a | n/a | **VERIFIED** |
 | `coder-30b` / `qwen3-moe` / `qwen3-32b` | **STRONG** | n/a | n/a | pass validate gate |
-| `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` (Qwen3.8-27B) | **STRONG** | **STRONG** | unswept | **VERIFIED** |
+| `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` (Qwen3.8-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
 | `qwen35-9b-8bit` / `qwen36-27b` (Qwen3.6-27B) | unswept (same code path as siblings) | | | |
 | `gemma4` / `gemma4-31b` | blocked at boot (mlx-vlm Gemma 4 attention not recognised by the MLX attention contract) | | | |
 
