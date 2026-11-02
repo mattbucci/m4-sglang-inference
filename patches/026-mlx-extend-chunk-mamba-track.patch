@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 4ad6f1fa2d..e972369872 100644
+index 4ad6f1fa2d..ed91905a22 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -1444,23 +1444,52 @@ class MlxModelRunner:
+@@ -1444,23 +1444,58 @@ class MlxModelRunner:
          needs_logits: bool = True,
          logit_edit_row: mx.array | None = None,
          logprob_spec: MlxLogprobSpec | None = None,
@@ -29,7 +29,13 @@ index 4ad6f1fa2d..e972369872 100644
 +        new_token_count = len(new_token_ids)
 +        prefix_len = int(self._first_attention_cache(cache).offset)
 +        track_len = None
-+        if req is not None and getattr(req, "multimodal_inputs", None) is None:
++        # Radix off: nothing publishes a tracked state (the scheduler's
++        # finish-time Mamba update is radix-only), so no split, no store.
++        if (
++            req is not None
++            and not self.disable_radix_cache
++            and getattr(req, "multimodal_inputs", None) is None
++        ):
 +            track_len = self._select_auxiliary_state_track_len(
 +                prefix_len=prefix_len,
 +                new_token_count=new_token_count,

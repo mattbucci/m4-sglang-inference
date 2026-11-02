@@ -40,6 +40,10 @@ activate_venv() {
 setup_mlx_env() {
     # Activate MLX backend
     export SGLANG_USE_MLX=1
+    # Exact incremental tokenization of append-only chat prompts (patch 027,
+    # from the 3090's patch 072): 0 disables, SGLANG_INCREMENTAL_TOKENIZE_VERIFY=1
+    # cross-checks every call against a full encode.
+    export SGLANG_INCREMENTAL_TOKENIZE="${SGLANG_INCREMENTAL_TOKENIZE:-1}"
 
     # HuggingFace token (for model downloads)
     if [ -f "$HOME/.secrets/hf-token" ]; then

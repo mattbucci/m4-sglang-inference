@@ -32,13 +32,13 @@ class Cache:
         self.offset = offset
 
 
-def make_runner(offset, snapshot=True):
+def make_runner(offset, snapshot=True, radix=True):
     r = mr.MlxModelRunner.__new__(mr.MlxModelRunner)
     r._has_snapshot_state = snapshot
     r._cache_layout = SimpleNamespace(first_attention_layer_index=0)
     r._req_caches = {"r": [Cache(offset)]}
     r._req_synced_offset = {"r": offset}
-    r.disable_radix_cache = True
+    r.disable_radix_cache = not radix
     r.model = mock.Mock(name="model")
     r._trunk_forward = mock.Mock(return_value=None)
     r._forward_lazy_token = mock.Mock(return_value=("tok", None))
@@ -46,8 +46,8 @@ def make_runner(offset, snapshot=True):
     return r
 
 
-def run(offset, n_new, req, snapshot=True):
-    r = make_runner(offset, snapshot)
+def run(offset, n_new, req, snapshot=True, radix=True):
+    r = make_runner(offset, snapshot, radix)
     with mock.patch.object(mr, "mamba_cache_chunk_size", return_value=64):
         pending = r.extend_start(
             req_id="r", new_token_ids=list(range(1000, 1000 + n_new)),
@@ -88,6 +88,12 @@ _, fwd, run_len, stores = run(8192, 465, mm_req)
 check(fwd == [] and run_len == 465 and stores == [], "multimodal request is not split")
 _, fwd, run_len, stores = run(8192, 465, None)
 check(fwd == [] and run_len == 465 and stores == [], "no request: no tracking")
+
+# Radix cache off: nothing publishes a tracked state, so no split, no store
+# (the scheduler's finish-time Mamba update is radix-only and crashed on the
+# marker the store leaves behind).
+_, fwd, run_len, stores = run(8192, 465, text_req, radix=False)
+check(fwd == [] and run_len == 465 and stores == [], "radix off: chunk runs whole, nothing tracked")
 
 # No snapshot state (attention-only model): untouched.
 _, fwd, run_len, stores = run(8192, 465, text_req, snapshot=False)

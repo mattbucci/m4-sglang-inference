@@ -251,7 +251,7 @@ python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong 
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 16 patches
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 17 patches
 
 # Validated presets
 ./scripts/launch.sh qwen36                  # PRIMARY — MoE+DeltaNet+VL, full probe matrix green
@@ -450,7 +450,7 @@ finding, the class that caught a month of fabricated VLM output). Receipts:
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 16 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 17 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev — carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -480,11 +480,12 @@ Fifteen patches on top of `v0.5.23` — full rationale per patch in [patches/REA
 | 024 | mlx-wired-limit-env | `SGLANG_MLX_WIRED_LIMIT_GB` (unset: upstream's max recommended working set; `0`: no wired limit, so no residency-set traffic; `common.sh` default `0`) — the IOGPUFamily panic mitigation in Known issues. |
 | 025 | dllm-structured-reads | Structured reads on DiffusionGemma: per-request seed canvas, pinned positions, step cap, read-only finish with per-position logprobs, and a constrained label set (`sampling_params.custom_params["diffusion"]`); CUDA/ROCm hosts only — see the DiffusionGemma section. |
 | 026 | mlx-extend-chunk-mamba-track | Chunked-prefill continuation chunks on the MLX runner track the DeltaNet/Mamba state at their last 64-token grid boundary, as the first chunk already did, so a prompt longer than `CHUNKED` leaves a state within a grid of its end instead of only at chunk ends. An agentic follow-up turn — which the chat template makes diverge 1–2 tokens before the primed prompt end — then restores that state instead of recomputing the last prefill chunk. |
+| 027 | incremental-tokenizer | A chat request re-encodes only the tail after the last special token it shares with a recent prompt (exact: HF tokenizers split on added tokens first), 4–9 ms instead of 165–250 ms at 250K tokens, and a multimodal-flagged model decodes the prompt back to text only when an image or video is attached. From the 3090's patch 072. |
 
 ## Repo layout
 
 ```
-patches/                    # 16 numbered patches — see patches/README.md
+patches/                    # 17 numbered patches — see patches/README.md
 experiments/                # Vetted execution queue (specs + statuses)
 benchmarks/                 # Per-model JSON + charts
   quality/                  #   MMLU / HumanEval / Needle / probe-trio verdicts

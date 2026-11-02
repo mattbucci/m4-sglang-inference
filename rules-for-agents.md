@@ -97,6 +97,7 @@ Always source `common.sh` and call `setup_mlx_env` before launching.
 
 ### Launch flags
 - `SGLANG_USE_MLX=1` — required, activates MLX backend
+- `SGLANG_INCREMENTAL_TOKENIZE` (default 1, set by `common.sh`) — patch 027: a chat request re-encodes only the tail after the last special token shared with a recent prompt; `0` disables, `SGLANG_INCREMENTAL_TOKENIZE_VERIFY=1` cross-checks every call against a full encode
 - `--context-length` — max context; limited by available memory
 - `--max-running-requests` — concurrent request limit; keep low for large models
 - No `--tensor-parallel-size` (always 1)

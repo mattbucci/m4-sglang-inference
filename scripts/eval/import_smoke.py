@@ -75,6 +75,22 @@ ATTR_CHECKS = {
          lambda m: "req" in m.MlxModelRunner.extend_start.__code__.co_varnames
                    and _src_has(m.MlxModelRunner.extend_start, "_store_tracked_auxiliary_state")),
     ],
+    "sglang.srt.managers.incremental_tokenizer": [
+        ("IncrementalTokenizer", lambda m: m.IncrementalTokenizer),     # 027
+        ("IncrementalTokenizer.encode", lambda m: m.IncrementalTokenizer.encode),  # 027
+    ],
+    "sglang.srt.managers.tokenizer_manager": [
+        ("TokenizerManager builds the incremental tokenizer",          # 027
+         lambda m: _src_has(m.TokenizerManager, "IncrementalTokenizer(self.tokenizer)")),
+        ("TokenizerManager._tokenize_texts encodes incrementally",     # 027
+         lambda m: _src_has(m.TokenizerManager, "inc.encode(tokenizer_input[0], add_special_tokens=True)")),
+    ],
+    "sglang.srt.entrypoints.openai.serving_chat": [
+        ("OpenAIServingChat._render_and_encode_chat_template encodes incrementally",  # 027
+         lambda m: _src_has(m.OpenAIServingChat._render_and_encode_chat_template, "inc.encode(")),
+        ("OpenAIServingChat._engine_prompt decodes the prompt lazily",  # 027
+         lambda m: _src_has(m.OpenAIServingChat._engine_prompt, "tokenizer.decode(processed_messages.prompt_ids)")),
+    ],
     "sglang.srt.hardware_backend.mlx.swa_prefix": [
         ("mlx_snapshots_sliding_window_prefix",                        # 021
          lambda m: m.mlx_snapshots_sliding_window_prefix),
