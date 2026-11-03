@@ -1,0 +1,29 @@
+diff --git a/pylint/checkers/misc.py b/pylint/checkers/misc.py
+index 69149e61..c8703b83 100644
+--- a/pylint/checkers/misc.py
++++ b/pylint/checkers/misc.py
+@@ -119,11 +119,21 @@ class EncodingChecker(BaseChecker):
+     def open(self):
+         super().open()
+ 
+-        notes = "|".join(re.escape(note) for note in self.config.notes)
++        note_patterns = []
++        for note in self.config.notes:
++            pattern = re.escape(note)
++            # Only add the word boundary that prevents a tag from matching
++            # inside a longer word when the tag ends in a word character.
++            # Punctuation-only tags (e.g. "???") cannot be followed by a
++            # word boundary, so omit it to keep such tags reported.
++            if note and re.search(r"\w$", note):
++                pattern += r"\b"
++            note_patterns.append(pattern)
++        notes = "|".join(note_patterns)
+         if self.config.notes_rgx:
+-            regex_string = rf"#\s*({notes}|{self.config.notes_rgx})\b"
++            regex_string = rf"#\s*({notes}|{self.config.notes_rgx})"
+         else:
+-            regex_string = rf"#\s*({notes})\b"
++            regex_string = rf"#\s*({notes})"
+ 
+         self._fixme_pattern = re.compile(regex_string, re.I)
+ 

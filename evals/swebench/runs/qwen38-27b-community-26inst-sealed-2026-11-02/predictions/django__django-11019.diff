@@ -1,0 +1,84 @@
+diff --git a/django/forms/forms.py b/django/forms/forms.py
+index dd562099ab..178b5c8ebb 100644
+--- a/django/forms/forms.py
++++ b/django/forms/forms.py
+@@ -454,10 +454,20 @@ class BaseForm:
+     @property
+     def media(self):
+         """Return all media required to render the widgets on this form."""
+-        media = Media()
++        css_lists = []
++        js_lists = []
+         for field in self.fields.values():
+-            media = media + field.widget.media
+-        return media
++            # Each widget's media is already a Media object. We don't want to
++            # merge the media of each widget in turn (as that would introduce
++            # spurious dependencies between unrelated files), so we collect
++            # all the sub-lists and merge them together in one go.
++            widget_media = field.widget.media
++            css_lists.extend(widget_media._css_lists)
++            js_lists.extend(widget_media._js_lists)
++        return Media(
++            css=Media._merge_css_lists(*css_lists),
++            js=Media._merge_js_lists(*js_lists),
++        )
+ 
+     def is_multipart(self):
+         """
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..53a1820a92 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -6,6 +6,7 @@ import copy
+ import datetime
+ import re
+ import warnings
++from collections import OrderedDict
+ from itertools import chain
+ 
+ from django.conf import settings
+@@ -49,6 +50,12 @@ class Media:
+             if js is None:
+                 js = []
+         self._css_lists = [css]
++        # De-duplicate the JS files (while preserving their relative order)
++        # without altering the type of the input.
++        if isinstance(js, tuple):
++            js = tuple(OrderedDict.fromkeys(js))
++        else:
++            js = list(OrderedDict.fromkeys(js))
+         self._js_lists = [js]
+ 
+     def __repr__(self):
+@@ -114,6 +121,30 @@ class Media:
+             return Media(**{str(name): getattr(self, '_' + name)})
+         raise KeyError('Unknown media type "%s"' % name)
+ 
++    @staticmethod
++    def _merge_css_lists(*lists):
++        """Merge a number of CSS dicts, keeping the relative order of the CSS
++        files in each list and removing any duplicates."""
++        merged_css = {}
++        for medium_css in filter(None, lists):
++            for medium, paths in medium_css.items():
++                # De-duplicate the paths (but preserve their order) using an
++                # OrderedDict rather than a set to keep the insertion order.
++                merged_paths = merged_css.get(medium)
++                if merged_paths is None:
++                    merged_css[medium] = list(OrderedDict.fromkeys(paths))
++                else:
++                    for path in paths:
++                        if path not in merged_paths:
++                            merged_paths.append(path)
++        return merged_css
++
++    @staticmethod
++    def _merge_js_lists(*lists):
++        """Merge a number of JS lists, keeping the relative order of each list
++        and removing any duplicates."""
++        return list(OrderedDict.fromkeys(chain.from_iterable(lists)))
++
+     @staticmethod
+     def merge(list_1, list_2):
+         """

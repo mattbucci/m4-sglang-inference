@@ -31,6 +31,10 @@ predictions.jsonl    ────────►   score_docker.py --predictions
   the Qwopus3.8-27B-Coder-Flash MLX 4-bit build through the sealed harness
   (`runs/qwopus38-27b-coder-flash-26inst-sealed-2026-11-02/`, 23/26 non-empty,
   model name `sglang/qwopus38-27b-coder-flash`); awaiting Docker scoring.
+- `qwen38-27b-community-26inst-predictions.jsonl` — the same 26 instances on
+  stock `mlx-community/Qwen3.8-27B-4bit` through the sealed harness
+  (`runs/qwen38-27b-community-26inst-sealed-2026-11-02/`, 22/26 non-empty,
+  model name `sglang/qwen38-27b-community`); awaiting Docker scoring.
 - `qwen36-predictions.jsonl` — deduplicated qwen36 results across all
   archived runs in `evals/swebench/runs/`. **26 instances, 21 non-empty
   patches (80.8%)** (export at commit a5a52d8). The 5 empty:

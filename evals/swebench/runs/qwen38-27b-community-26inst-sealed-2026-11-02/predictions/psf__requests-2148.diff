@@ -1,0 +1,59 @@
+diff --git a/requests/compat.py b/requests/compat.py
+index 84d703b..47f319f 100644
+--- a/requests/compat.py
++++ b/requests/compat.py
+@@ -93,6 +93,8 @@ if is_py2:
+     from StringIO import StringIO
+     from .packages.urllib3.packages.ordered_dict import OrderedDict
+     from httplib import IncompleteRead
++    import socket
++    SocketError = socket.error
+ 
+     builtin_str = str
+     bytes = str
+@@ -109,6 +111,8 @@ elif is_py3:
+     from io import StringIO
+     from collections import OrderedDict
+     from http.client import IncompleteRead
++    import socket
++    SocketError = socket.error
+ 
+     builtin_str = str
+     str = str
+diff --git a/requests/models.py b/requests/models.py
+index 0dc5556..96f2cca 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -19,17 +19,18 @@ from .cookies import cookiejar_from_dict, get_cookie_header
+ from .packages.urllib3.fields import RequestField
+ from .packages.urllib3.filepost import encode_multipart_formdata
+ from .packages.urllib3.util import parse_url
+-from .packages.urllib3.exceptions import DecodeError
++from .packages.urllib3.exceptions import DecodeError, ProtocolError
+ from .exceptions import (
+     HTTPError, RequestException, MissingSchema, InvalidURL,
+-    ChunkedEncodingError, ContentDecodingError)
++    ChunkedEncodingError, ContentDecodingError, ConnectionError)
+ from .utils import (
+     guess_filename, get_auth_from_url, requote_uri,
+     stream_decode_response_unicode, to_key_val_list, parse_header_links,
+     iter_slices, guess_json_utf, super_len, to_native_string)
+ from .compat import (
+     cookielib, urlunparse, urlsplit, urlencode, str, bytes, StringIO,
+-    is_py2, chardet, json, builtin_str, basestring, IncompleteRead)
++    is_py2, chardet, json, builtin_str, basestring, IncompleteRead,
++    SocketError)
+ from .status_codes import codes
+ 
+ #: The set of HTTP status codes that indicate an automatically
+@@ -636,6 +637,10 @@ class Response(object):
+                 try:
+                     for chunk in self.raw.stream(chunk_size, decode_content=True):
+                         yield chunk
++                except (ProtocolError, ConnectionError) as e:
++                    raise ChunkedEncodingError(e)
++                except (HTTPError, SocketError, OSError) as e:
++                    raise ConnectionError(e)
+                 except IncompleteRead as e:
+                     raise ChunkedEncodingError(e)
+                 except DecodeError as e:

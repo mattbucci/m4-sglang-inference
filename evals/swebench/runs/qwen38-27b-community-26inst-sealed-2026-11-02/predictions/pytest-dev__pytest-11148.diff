@@ -1,0 +1,22 @@
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..b5840ba75 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -523,13 +523,10 @@ def import_path(
+ 
+     if mode is ImportMode.importlib:
+         module_name = module_name_from_path(path, root)
+-
+-        for meta_importer in sys.meta_path:
+-            spec = meta_importer.find_spec(module_name, [str(path.parent)])
+-            if spec is not None:
+-                break
+-        else:
+-            spec = importlib.util.spec_from_file_location(module_name, str(path))
++        # In this case we want to avoid the meta path finders from being triggered, as they
++        # could lead to a different module being imported by the assertion rewriting hook (#11148),
++        # or a namespace package being imported instead of the actual module (#7280).
++        spec = importlib.util.spec_from_file_location(module_name, str(path))
+ 
+         if spec is None:
+             raise ImportError(f"Can't find module {module_name} at location {path}")

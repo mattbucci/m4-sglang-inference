@@ -1,0 +1,24 @@
+diff --git a/sympy/functions/elementary/exponential.py b/sympy/functions/elementary/exponential.py
+index fbd80fc02..81e25bb92 100644
+--- a/sympy/functions/elementary/exponential.py
++++ b/sympy/functions/elementary/exponential.py
+@@ -452,7 +452,6 @@ def _eval_rewrite_as_tanh(self, arg):
+         from sympy import tanh
+         return (1 + tanh(arg/2))/(1 - tanh(arg/2))
+ 
+-
+ class log(Function):
+     r"""
+     The natural logarithm function `\ln(x)` or `\log(x)`.
+diff --git a/sympy/functions/elementary/trigonometric.py b/sympy/functions/elementary/trigonometric.py
+index b2a3f3d6a..8e5fbc83d 100644
+--- a/sympy/functions/elementary/trigonometric.py
++++ b/sympy/functions/elementary/trigonometric.py
+@@ -1819,7 +1819,6 @@ def _eval_rewrite_as_jn(self, arg):
+     def _eval_rewrite_as_sin(self, arg):
+         return sin(arg) / arg
+ 
+-
+ ###############################################################################
+ ########################### TRIGONOMETRIC INVERSES ############################
+ ###############################################################################

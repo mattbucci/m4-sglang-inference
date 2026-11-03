@@ -1,0 +1,28 @@
+diff --git a/astropy/nddata/mixins/ndarithmetic.py b/astropy/nddata/mixins/ndarithmetic.py
+index 4153dfccb..adb75c62d 100644
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -509,8 +509,9 @@ class NDArithmeticMixin:
+         -------
+         result_mask : any type
+             If only one mask was present this mask is returned.
+-            If neither had a mask ``None`` is returned. Otherwise
+-            ``handle_mask`` must create (and copy) the returned mask.
++            If neither had a mask ``None`` is returned. Only if both
++            masks are present will ``handle_mask`` be called to create
++            (and copy) the returned mask.
+         """
+         # If only one mask is present we need not bother about any type checks
+         if (
+@@ -520,7 +521,11 @@ class NDArithmeticMixin:
+         elif self.mask is None and operand is not None:
+             # Make a copy so there is no reference in the result.
+             return deepcopy(operand.mask)
++        elif operand is not None and operand.mask is None:
++            # Make a copy so there is no reference in the result.
++            return deepcopy(self.mask)
+         elif operand is None:
++            # A collapse operation, where there is no second operand.
+             return deepcopy(self.mask)
+         else:
+             # Now lets calculate the resulting mask (operation enforces copy)

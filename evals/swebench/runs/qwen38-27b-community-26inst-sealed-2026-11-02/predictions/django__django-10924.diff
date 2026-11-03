@@ -1,0 +1,58 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..b59c685e85 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -3,6 +3,7 @@ import copy
+ import datetime
+ import decimal
+ import operator
++import pathlib
+ import uuid
+ import warnings
+ from base64 import b64decode, b64encode
+@@ -1672,8 +1673,23 @@ class FilePathField(Field):
+         return [
+             *super().check(**kwargs),
+             *self._check_allowing_files_or_folders(**kwargs),
++            *self._check_path(),
+         ]
+ 
++    def _check_path(self):
++        if self.path and not (isinstance(self.path, str) or
++                (isinstance(self.path, pathlib.PurePath) and self.path.is_absolute())):
++            return [
++                checks.Error(
++                    "%s's 'path' argument must be a path or an absolute path, not %r." % (
++                        self.__class__.__name__, self.path,
++                    ),
++                    obj=self,
++                    id='fields.E150',
++                )
++            ]
++        return []
++
+     def _check_allowing_files_or_folders(self, **kwargs):
+         if not self.allow_files and not self.allow_folders:
+             return [
+diff --git a/django/forms/fields.py b/django/forms/fields.py
+index a977256525..22ceb62423 100644
+--- a/django/forms/fields.py
++++ b/django/forms/fields.py
+@@ -7,6 +7,7 @@ import datetime
+ import math
+ import operator
+ import os
++import pathlib
+ import re
+ import uuid
+ from decimal import Decimal, DecimalException
+@@ -1078,7 +1079,8 @@ class MultiValueField(Field):
+ class FilePathField(ChoiceField):
+     def __init__(self, path, *, match=None, recursive=False, allow_files=True,
+                  allow_folders=False, **kwargs):
+-        self.path, self.match, self.recursive = path, match, recursive
++        self.path = (path() if callable(path) else path)
++        self.match, self.recursive = match, recursive
+         self.allow_files, self.allow_folders = allow_files, allow_folders
+         super().__init__(choices=(), **kwargs)
+ 
