@@ -1,0 +1,61 @@
+diff --git a/astropy/io/ascii/docs.py b/astropy/io/ascii/docs.py
+index 24235f82e..07c0d4927 100644
+--- a/astropy/io/ascii/docs.py
++++ b/astropy/io/ascii/docs.py
+@@ -156,6 +156,10 @@ WRITE_DOCSTRING = """
+         List of names to include in output.
+     exclude_names : list
+         List of names to exclude from output (applied after ``include_names``)
++    header_rows : tuple, optional
++        Column attributes to write to the table header. Order controls the order
++        (top-to-bottom) of header rows. Only supported by writers which
++        support it, e.g., ``fixed_width``, ``fixed_width_two_line``, ``rst``.
+     fast_writer : bool, str
+         Whether to use the fast Cython writer.  Can be `True` (use fast writer
+         if available), `False` (do not use fast writer), or ``'force'`` (use
+@@ -184,6 +188,7 @@ WRITE_KWARG_TYPES = {
+     "names": "list-like",
+     "include_names": "list-like",
+     "exclude_names": "list-like",
++    "header_rows": "list-like",
+     "fast_writer": (bool, str),
+     "overwrite": (bool),
+ }
+diff --git a/astropy/io/ascii/rst.py b/astropy/io/ascii/rst.py
+index abdeba8ef..33c2211d6 100644
+--- a/astropy/io/ascii/rst.py
++++ b/astropy/io/ascii/rst.py
+@@ -50,6 +50,12 @@ class RST(FixedWidth):
+     or for ones which define column spans through the use of an additional
+     line of dashes in the header.
+ 
++    Parameters
++    ----------
++    header_rows : tuple, optional
++        Column attributes to write to the table header. Defaults to ``("name",)``.
++        The order controls the order (top-to-bottom) of the header rows.
++
+     """
+ 
+     _format_name = "rst"
+@@ -57,10 +63,16 @@ class RST(FixedWidth):
+     data_class = SimpleRSTData
+     header_class = SimpleRSTHeader
+ 
+-    def __init__(self):
+-        super().__init__(delimiter_pad=None, bookend=False)
++    def __init__(self, header_rows=None):
++        if header_rows is None:
++            header_rows = ["name"]
++        super().__init__(
++            delimiter_pad=None,
++            bookend=False,
++            header_rows=header_rows,
++        )
+ 
+     def write(self, lines):
++        line_to_duplicate = 1 if self.data.header_rows else 0
+         lines = super().write(lines)
+-        lines = [lines[1]] + lines + [lines[1]]
+-        return lines
++        return [lines[line_to_duplicate]] + lines + [lines[line_to_duplicate]]

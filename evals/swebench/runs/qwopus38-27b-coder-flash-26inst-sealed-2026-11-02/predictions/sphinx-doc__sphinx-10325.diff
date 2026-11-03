@@ -1,0 +1,212 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 62631f7ff..abd7274da 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -110,11 +110,17 @@ def exclude_members_option(arg: Any) -> Union[object, Set[str]]:
+ 
+ 
+ def inherited_members_option(arg: Any) -> Union[object, Set[str]]:
+-    """Used to convert the :members: option to auto directives."""
++    """Used to convert the :members: option to auto directives.
++
++    ``None`` or ``True`` means document all members, including the inherited
++    ones.  A comma-separated string of base class names means document only
++    members inherited from those base classes (plus the class itself), and
++    *no* members inherited from other base classes.
++    """
+     if arg in (None, True):
+-        return 'object'
++        return ALL
+     else:
+-        return arg
++        return {x.strip() for x in arg.split(',') if x.strip()}
+ 
+ 
+ def member_order_option(arg: Any) -> Optional[str]:
+@@ -682,7 +688,7 @@ class Documenter:
+         def is_filtered_inherited_member(name: str, obj: Any) -> bool:
+             if inspect.isclass(self.object):
+                 for cls in self.object.__mro__:
+-                    if cls.__name__ == self.options.inherited_members and cls != self.object:
++                    if cls.__name__ in self.options.inherited_members and cls is not self.object:
+                         # given member is a member of specified *super class*
+                         return True
+                     elif name in cls.__dict__:
+@@ -692,6 +698,18 @@ class Documenter:
+                     elif isinstance(obj, ObjectMember) and obj.class_ is cls:
+                         return False
+ 
++            return False
++                    elif name in self.get_attr(cls, '__annotations__', {}):
++                        return False
++                    elif isinstance(obj, ObjectMember) and obj.class_ is cls:
++                        return False
++
++            return False
++                    elif name in self.get_attr(cls, '__annotations__', {}):
++                        return False
++                    elif isinstance(obj, ObjectMember) and obj.class_ is cls:
++                        return False
++
+             return False
+ 
+         ret = []
+@@ -828,9 +846,9 @@ class Documenter:
+         if self.objpath:
+             self.env.temp_data['autodoc:class'] = self.objpath[0]
+ 
+-        want_all = (all_members or
+-                    self.options.inherited_members or
+-                    self.options.members is ALL)
++        want_all = (all_members or self.options.inherited_members is ALL or
++                     self.options.inherited_members is not None or
++                     self.options.members is ALL)
+         # find out which members are documentable
+         members_check_module, members = self.get_object_members(want_all)
+ 
+@@ -1438,6 +1456,11 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     """
+     Specialized Documenter subclass for classes.
+     """
++
++
++
++    def __init__(self, *args: Any) -> None:
++        super().__init__(*args)
+     objtype = 'class'
+     member_order = 20
+     option_spec: OptionSpec = {
+@@ -1696,7 +1719,20 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+             self.add_line('   ' + _('Bases: %s') % ', '.join(base_classes), sourcename)
+ 
+     def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:
+-        members = get_class_members(self.object, self.objpath, self.get_attr)
++        inherited_members = self.options.inherited_members
++        if inherited_members is ALL or not isinstance(inherited_members, set):
++            # ALL / no value / the special member "None" (document object
++            # members): behave like the original implementation, document all
++            # inherited members (i.e. the normal logic above applies).
++            inherited_members = None
++        else:
++            # a list of base class names: document only the members of the
++            # class itself and the listed base classes.
++            inherited_members = inherited_members | {self.object.__name__}
++
++        members = get_class_members(self.object, self.objpath, self.get_attr,
++                                    inherited_members)
++
+         if not want_all:
+             if not self.options.members:
+                 return False, []  # type: ignore
+@@ -1707,7 +1743,7 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                     selected.append(members[name])
+                 else:
+                     logger.warning(__('missing attribute %s in object %s') %
+-                                   (name, self.fullname), type='autodoc')
++                                    (name, self.fullname), type='autodoc')
+             return False, selected
+         elif self.options.inherited_members:
+             return False, list(members.values())
+diff --git a/sphinx/ext/autodoc/importer.py b/sphinx/ext/autodoc/importer.py
+index 9d5902d2f..ed2e74706 100644
+--- a/sphinx/ext/autodoc/importer.py
++++ b/sphinx/ext/autodoc/importer.py
+@@ -9,8 +9,8 @@ from sphinx.deprecation import RemovedInSphinx50Warning
+ from sphinx.ext.autodoc.mock import ismock, undecorate
+ from sphinx.pycode import ModuleAnalyzer, PycodeError
+ from sphinx.util import logging
+-from sphinx.util.inspect import (getannotations, getmro, getslots, isclass, isenumclass,
+-                                 safe_getattr)
++from sphinx.util.inspect import (class_members_for, getannotations, getmro, getslots,
++                                 isclass, isenumclass, safe_getattr)
+ 
+ if False:
+     # For type annotation
+@@ -229,7 +229,8 @@ def get_object_members(subject: Any, objpath: List[str], attrgetter: Callable,
+     return members
+ 
+ 
+-def get_class_members(subject: Any, objpath: List[str], attrgetter: Callable
++def get_class_members(subject: Any, objpath: List[str], attrgetter: Callable,
++                      inherited_members: Optional[Set[str]] = None
+                       ) -> Dict[str, "ObjectMember"]:
+     """Get members and attributes of target class."""
+     from sphinx.ext.autodoc import INSTANCEATTR, ObjectMember
+@@ -281,6 +282,9 @@ def get_class_members(subject: Any, objpath: List[str], attrgetter: Callable
+ 
+     try:
+         for cls in getmro(subject):
++            if inherited_members is not None and cls.__name__ not in inherited_members:
++                continue
++
+             try:
+                 modname = safe_getattr(cls, '__module__')
+                 qualname = safe_getattr(cls, '__qualname__')
+diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py
+index cdcf76965..b2eebc642 100644
+--- a/sphinx/util/inspect.py
++++ b/sphinx/util/inspect.py
+@@ -13,7 +13,8 @@ from importlib import import_module
+ from inspect import Parameter, isclass, ismethod, ismethoddescriptor, ismodule  # NOQA
+ from io import StringIO
+ from types import MethodType, ModuleType
+-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type, cast
++from typing import (Any, Callable, Dict, Mapping, Optional, Sequence, Set, Tuple,
++                    Type, cast)
+ 
+ from sphinx.pycode.ast import ast  # for py36-37
+ from sphinx.pycode.ast import unparse as ast_unparse
+@@ -164,6 +165,53 @@ def isNewType(obj: Any) -> bool:
+             return False
+ 
+ 
++def class_members_for(obj: Any, inherited_members: Set[str] = None
++                      ) -> Dict[str, Any]:
++    """Return members of the given *obj* (which is a class) excluding the members
++    of the built-in ``object`` class and, when *inherited_members* is given, the
++    members of base classes not listed in *inherited_members*.
++
++    It is used by autodoc to implement :inherited-members: with a list of base
++    class names.
++    """
++    result: Dict[str, Any] = {}
++    mro = getmro(obj)
++    for cls in mro[1:]:  # skip obj itself, start from its ancestors
++        if cls is object:
++            continue
++        if inherited_members and cls.__name__ not in inherited_members:
++            continue
++        dict_cls = getattr(cls, '__dict__', {})
++        for name in dict_cls.keys():
++            result[name] = dict_cls[name]
++
++    return result
++
++
++def class_members_for(obj: Any, inherited_members: Optional[Set[str]] = None
++                      ) -> Dict[str, Any]:
++    """Return all members inherited from the base classes of *obj* (except the
++    members of the built-in ``object`` class).
++
++    If *inherited_members* is not ``None``, only members inherited from the
++    base classes listed in *inherited_members* are returned (by name).  This is
++    used by :mod:`sphinx.ext.autodoc` to implement the ``:inherited-members:``
++    option with a comma separated list of base classes.
++    """
++    result: Dict[str, Any] = {}
++    mro = getmro(obj)
++    for cls in mro[1:]:  # skip obj itself
++        if cls is object:
++            continue
++        if inherited_members is not None and cls.__name__ not in inherited_members:
++            continue
++        dict_cls = getattr(cls, '__dict__', {})
++        for name in dict_cls.keys():
++            result[name] = dict_cls[name]
++
++    return result
++
++
+ def isenumclass(x: Any) -> bool:
+     """Check if the object is subclass of enum."""
+     return inspect.isclass(x) and issubclass(x, enum.Enum)

@@ -1,0 +1,52 @@
+diff --git a/CHANGES.rst b/CHANGES.rst
+index d546dcab..73791fdd 100644
+--- a/CHANGES.rst
++++ b/CHANGES.rst
+@@ -15,6 +15,10 @@ Unreleased
+ -   Fix some types that weren't available in Python 3.6.0. :issue:`4040`
+ -   Improve typing for ``send_file``, ``send_from_directory``, and
+     ``get_send_file_max_age``. :issue:`4044`, :pr:`4026`
++-   Raise an error when a blueprint name contains a dot. Since nested
++    blueprints can be registered on each other, dots are used to separate
++    blueprint names and can no longer be used in the blueprint name.
++    :issue:`4045`
+ 
+ 
+ Version 2.0.0
+diff --git a/docs/blueprints.rst b/docs/blueprints.rst
+index af368bac..15eeb9aa 100644
+--- a/docs/blueprints.rst
++++ b/docs/blueprints.rst
+@@ -135,6 +135,9 @@ It is possible to register a blueprint on another blueprint.
+ The child blueprint will gain the parent's name as a prefix to its
+ name, and child URLs will be prefixed with the parent's URL prefix.
+ 
++Blueprint names may not contain dots, since a dot is used to separate
++nested blueprint names.
++
+ .. code-block:: python
+ 
+     url_for('parent.child.create')
+diff --git a/src/flask/blueprints.py b/src/flask/blueprints.py
+index 5fb84d86..d6f90c71 100644
+--- a/src/flask/blueprints.py
++++ b/src/flask/blueprints.py
+@@ -122,7 +122,9 @@ class Blueprint(Scaffold):
+     See :doc:`/blueprints` for more information.
+ 
+     :param name: The name of the blueprint. Will be prepended to each
+-        endpoint name.
++        endpoint name, separated with a dot. Should be unique and not
++        contain a dot. Dots are used to separate nested blueprint names,
++        so including a dot could break endpoint generation.
+     :param import_name: The name of the blueprint package, usually
+         ``__name__``. This helps locate the ``root_path`` for the
+         blueprint.
+@@ -188,6 +190,7 @@ class Blueprint(Scaffold):
+             template_folder=template_folder,
+             root_path=root_path,
+         )
++        assert "." not in name, "Blueprint names should not contain dots"
+         self.name = name
+         self.url_prefix = url_prefix
+         self.subdomain = subdomain

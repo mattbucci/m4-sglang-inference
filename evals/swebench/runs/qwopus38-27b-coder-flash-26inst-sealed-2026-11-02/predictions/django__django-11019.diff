@@ -1,0 +1,90 @@
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..99a855c961 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -8,6 +8,10 @@ import re
+ import warnings
+ from itertools import chain
+ 
++from django.conf import settings
++from django.forms.utils import to_current_timezone
++from django.templatetags.static import static
++
+ from django.conf import settings
+ from django.forms.utils import to_current_timezone
+ from django.templatetags.static import static
+@@ -48,6 +52,7 @@ class Media:
+                 css = {}
+             if js is None:
+                 js = []
++
+         self._css_lists = [css]
+         self._js_lists = [js]
+ 
+@@ -59,22 +64,55 @@ class Media:
+ 
+     @property
+     def _css(self):
+-        css = self._css_lists[0]
+-        # filter(None, ...) avoids calling merge with empty dicts.
+-        for obj in filter(None, self._css_lists[1:]):
+-            css = {
+-                medium: self.merge(css.get(medium, []), obj.get(medium, []))
+-                for medium in css.keys() | obj.keys()
++        css = {}
++        for obj in self._css_lists:
++            css_merged_per_medium = {
++                medium: self.merge(css.get(medium, []), obj.get(medium, [])) \
++                    for medium in obj.keys() | css.keys()
+             }
++            css = {**css, **css_merged_per_medium}
+         return css
+ 
++    def _topological_sort(self, js_lists):
++        # Build a dependency graph from all the lists at once. An item depends
++        # on every item that precedes it in any given list.
++        dependencies = {}
++        order = []
++        for lst in js_lists:
++            for i, path in enumerate(lst):
++                if path not in dependencies:
++                    dependencies[path] = set()
++                    order.append(path)
++                if i:
++                    dependencies[path].update(lst[:i])
++
++        # Sort the items in a way that satisfies all dependencies, preserving
++        # the original order as much as possible. Items that share the same set
++        # of dependencies keep their initial order.
++        topologically_sorted = []
++        while order:
++            progressed = False
++            # Find the first item whose dependencies have all been emitted.
++            for i, path in enumerate(order):
++                if dependencies[path].issubset(topologically_sorted):
++                    topologically_sorted.append(order.pop(i))
++                    progressed = True
++                    break
++            if not progressed:
++                # A cyclic dependency that can't be resolved. Emit the remaining
++                # items in their initial order.
++                warnings.warn(
++                    'Detected a cyclic Media order dependency:\n'
++                    '%s' % '\n'.join(map(str, order)),
++                    MediaOrderConflictWarning,
++                )
++                topologically_sorted.extend(order)
++                break
++        return topologically_sorted
++
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        return self._topological_sort(self._js_lists)
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))

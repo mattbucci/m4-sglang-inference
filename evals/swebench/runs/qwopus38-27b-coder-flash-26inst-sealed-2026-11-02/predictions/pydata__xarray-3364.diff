@@ -1,0 +1,54 @@
+diff --git a/xarray/core/concat.py b/xarray/core/concat.py
+index ecae2566..567e586e 100644
+--- a/xarray/core/concat.py
++++ b/xarray/core/concat.py
+@@ -16,6 +16,7 @@ def concat(
+     positions=None,
+     fill_value=dtypes.NA,
+     join="outer",
++    ignore_missing=False,
+ ):
+     """Concatenate xarray objects along a new or existing dimension.
+ 
+@@ -87,9 +88,13 @@ def concat(
+         - 'right': use indexes from the last object with each dimension
+         - 'exact': instead of aligning, raise `ValueError` when indexes to be
+           aligned are not equal
+-        - 'override': if indexes are of same size, rewrite indexes to be
++         - 'override': if indexes are of same size, rewrite indexes to be
+           those of the first object with that dimension. Indexes for the same
+           dimension must have the same size in all objects.
++    ignore_missing : bool, optional
++        Whether to ignore errors on variables that are present in some objects but
++        not others. If False, an exception is raised when such variables
++        are encountered; if True, they are simply dropped from the result.
+ 
+     indexers, mode, concat_over : deprecated
+ 
+@@ -128,7 +133,17 @@ def concat(
+             "can only concatenate xarray Dataset and DataArray "
+             "objects, got %s" % type(first_obj)
+         )
+-    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join)
++    return f(
++        objs,
++        dim,
++        data_vars,
++        coords,
++        compat,
++        positions,
++        fill_value=fill_value,
++        join=join,
++        ignore_missing=ignore_missing,
++    )
+ 
+ 
+ def _calc_concat_dim_coord(dim):
+@@ -269,6 +284,7 @@ def _dataset_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    ignore_missing=False,
+ ):
+     """
+     Concatenate a sequence of datasets along a new or existing dimension

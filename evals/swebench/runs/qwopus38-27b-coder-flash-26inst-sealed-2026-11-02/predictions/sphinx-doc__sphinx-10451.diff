@@ -1,0 +1,74 @@
+diff --git a/sphinx/ext/autodoc/typehints.py b/sphinx/ext/autodoc/typehints.py
+index d912cd7d5..014997c37 100644
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -27,9 +27,27 @@ def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,
+             sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)
+             for param in sig.parameters.values():
+                 if param.annotation is not param.empty:
+-                    annotation[param.name] = typing.stringify(param.annotation, mode)
++                    annotation[param.name.strip('*')] = \
++                        typing.stringify(param.annotation, mode)
+             if sig.return_annotation is not sig.empty:
+                 annotation['return'] = typing.stringify(sig.return_annotation, mode)
++
++            # For a ``__init__`` method, the ``autoclass`` directive generates the
++            # signature of the class itself (e.g. ``Foo(x, *args, **kwargs)``).
++            # ``merge_typehints()`` looks up the annotations using the ``desc`` node
++            # fullname, which for ``autoclass`` output is the class name (e.g.
++            # ``Foo``), not ``Foo.__init__``.  Therefore we also record the
++            # annotations of ``__init__`` under the class name so that a class
++            # documented via ``:param *args:``-style docstrings does not end up
++            # with duplicated ``*args``/``**kwargs`` fields.
++            if name.rsplit('.', 1)[-1] == '__init__':
++                annotation = annotations.setdefault(name.rsplit('.', 1)[0], OrderedDict())
++                for param in sig.parameters.values():
++                    if param.annotation is not param.empty:
++                        annotation[param.name.strip('*')] = \
++                            typing.stringify(param.annotation, mode)
++                if sig.return_annotation is not sig.empty:
++                    annotation['return'] = typing.stringify(sig.return_annotation, mode)
+     except (TypeError, ValueError):
+         pass
+ 
+@@ -96,17 +114,17 @@ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str],
+         if parts[0] == 'param':
+             if len(parts) == 2:
+                 # :param xxx:
+-                arg = arguments.setdefault(parts[1], {})
++                arg = arguments.setdefault(parts[1].strip('*'), {})
+                 arg['param'] = True
+             elif len(parts) > 2:
+                 # :param xxx yyy:
+                 name = ' '.join(parts[2:])
+-                arg = arguments.setdefault(name, {})
++                arg = arguments.setdefault(name.strip('*'), {})
+                 arg['param'] = True
+                 arg['type'] = True
+         elif parts[0] == 'type':
+             name = ' '.join(parts[1:])
+-            arg = arguments.setdefault(name, {})
++            arg = arguments.setdefault(name.strip('*'), {})
+             arg['type'] = True
+         elif parts[0] == 'rtype':
+             arguments['return'] = {'type': True}
+@@ -152,15 +170,15 @@ def augment_descriptions_with_types(
+         if parts[0] == 'param':
+             if len(parts) == 2:
+                 # :param xxx:
+-                has_description.add(parts[1])
++                has_description.add(parts[1].strip('*'))
+             elif len(parts) > 2:
+                 # :param xxx yyy:
+                 name = ' '.join(parts[2:])
+-                has_description.add(name)
+-                has_type.add(name)
++                has_description.add(name.strip('*'))
++                has_type.add(name.strip('*'))
+         elif parts[0] == 'type':
+             name = ' '.join(parts[1:])
+-            has_type.add(name)
++            has_type.add(name.strip('*'))
+         elif parts[0] in ('return', 'returns'):
+             has_description.add('return')
+         elif parts[0] == 'rtype':

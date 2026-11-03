@@ -1,0 +1,27 @@
+diff --git a/pylint/checkers/misc.py b/pylint/checkers/misc.py
+index 69149e61..51fbd5ae 100644
+--- a/pylint/checkers/misc.py
++++ b/pylint/checkers/misc.py
+@@ -119,11 +119,20 @@ class EncodingChecker(BaseChecker):
+     def open(self):
+         super().open()
+ 
+-        notes = "|".join(re.escape(note) for note in self.config.notes)
++        notes = []
++        for note in self.config.notes:
++            note = re.escape(note)
++            # A note made up entirely of punctuation (e.g. "???") never matches
++            # because of the trailing word boundary, so only add lookarounds that
++            # match a whole word for notes that end with a word character.
++            if note and note[-1].isalnum():
++                note = f"(?<!\\w){note}(?=\\W|$)"
++            notes.append(note)
++        notes = "|".join(notes)
+         if self.config.notes_rgx:
+             regex_string = rf"#\s*({notes}|{self.config.notes_rgx})\b"
+         else:
+-            regex_string = rf"#\s*({notes})\b"
++            regex_string = rf"#\s*({notes})"
+ 
+         self._fixme_pattern = re.compile(regex_string, re.I)
+ 

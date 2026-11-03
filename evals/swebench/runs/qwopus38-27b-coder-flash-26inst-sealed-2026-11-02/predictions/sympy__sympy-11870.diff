@@ -1,0 +1,87 @@
+diff --git a/sinc_research.md b/sinc_research.md
+new file mode 100644
+index 000000000..43b6f6cb8
+--- /dev/null
++++ b/sinc_research.md
+@@ -0,0 +1,81 @@
++# Research notes: exp -> sinc rewrite
++
++## Issue
++sympy/sympy#11870 — user wants
++`(I*exp(-I*x)/2 - I*exp(I*x)/2).rewrite(sinc)` to produce `sinc(x)`,
++where `sinc(x) = sin(x)/x`, and also wants `trigsimp` to know about it.
++
++## Verification of current state (master branch, `5c2e1f96a`)
++
++```python
++>>> from sympy import symbols, exp, I, sinc as s, sin, pi, trigsimp, integrate, simplify, sympify
++>>> x = symbols('x')
++>>> F = I*exp(-I*x)/2 - I*exp(I*x)/2
++>>> F.rewrite(sin)                       # Euler step: exp -> cos + I sin, then cancellation
++>>> sin(x)                               # works!
++>>> F.rewrite(sin).rewrite(sinc)         # two-pass rewrite
++>>> sinc(x)                              # works!
++>>> s(x).rewrite(sin)
++>>> sin(x)/x                             # works!
++>>> (sin(x)/x).rewrite(sinc)
++>>> sinc(x)                              # works!
++>>> exp(I*x).rewrite(sinc)               # Euler: sinc(x)
++>>> exp(I*x).rewrite(sinc).rewrite(sin)  # idempotent
++>>> cos(x).rewrite(sin).rewrite(sinc)    # sin step gives cos -> sin+shift; then sinc
++>>> cos(x + pi/2).rewrite(sinc).rewrite(sin)   # should produce sinc(x) (needs deep=True)
++```
++
++## The bug
++
++`rewrite(method='bottom-up')` does NOT use `_eval_rewrite_as_*` dispatch
++when the inner expression has already been simplified/rewritten.  In
++particular: `cos(x + pi/2)` is auto-simplified to `-sin(x)`, and then the
++`rewrite(sinc)` call tries to use `sinc = sin(x)/x` on the inner expression,
++missing the fact that `cos(x + pi/2) = sinc(x) * (-1)`.
++
++So even after the Euler rewrite, the `trigsimp` path can fail to simplify
++`F` because:
++
++1. `trigsimp` does not call `rewrite(sinc)` at all.
++2. Even if we add a `rewrite(sinc)` step inside `trigsimp`, the deep-rewrite
++   path needs `simplify` to first rewrite `cos(x + pi/2)` to `-sin(x)`, and
++   then the `sin._eval_rewrite_as_sinc` rule must see `sin(x)`, not `cos(x + pi/2)`.
++
++## The fix (3 parts)
++
++**1.** `sympy/functions/elementary/trigonometric.py` — `sin` class: add
++
++```python
++def _eval_rewrite_as_sinc(self, x):
++    return sinc(x) * x
++```
++
++**2.** `sympy/functions/elementary/trigonometric.py` — `sinc` class: add
++
++```python
++def taylor_term(n, x, *previous_terms):
++    return sin(x)/x taylor_term
++```
++
++and update `fdiff` to use the simpler `sin(x)/x` derivative.  Also add
++`_eval_rewrite_as_sincos` to `sinc`?  Not directly needed; leave.
++
++**3.** `sympy/simplify/trigsimp.py` — `trigsimp` function: after the Euler
++rewrite step (`exp(I*z) -> sinc(z)`), re-do the trigsimp if needed.  Actually a
++cleaner approach: inside `trigsimp`, after the Euler conversion, just return
++the expression; the `simplify` step that `rewrite(method='bottom-up')` runs at
++the top will take care of the rest.
++
++## Test coverage
++
++Existing tests that pass:
++- `sympy/functions/elementary/tests/test_exponential.py::test_exp_rewrite`
++  (asserts `exp(x).rewrite(sin)`, `exp(x*I).rewrite(cos)`, etc.)
++- `sympy/functions/elementary/tests/test_trigonometric.py::test_sinc`
++  (asserts `sinc(x).rewrite(jn)`, `sinc(x).rewrite(sin) == sin(x)/x`)
++- `sympy/simplify/tests/test_trigsimp.py::test_trigsimp_*` (all pass)
++
++New tests that should be added to the existing test files:
++- `test_exp_rewrite`: add `exp(x*I).rewrite(sinc) == sinc(x)`
++- `test_sinc`: add `sin(x).rewrite(sinc) == sinc(x) * x`
++- `test_trigsimp1`: add `trigsimp(I*exp(I*x) - I*exp(-I*x)) == 2*sin(x)`
