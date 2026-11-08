@@ -73,7 +73,11 @@ across all 12 ecosystems in the 26-instance test set.**
 - **Resolved 9/26 = 34.6%** on the official Docker harness, scored on the 3090 rig
   ([`exports/qwen36-docker-summary.json`](evals/swebench/exports/qwen36-docker-summary.json));
   above the 14–30% band typical of ~30B models on SWE-bench Lite.
-- **Sealed harness:** web tools off, opencode and its bash children under a localhost-only
+- **Harness:** one scaffold lane, omp (oh-my-pi) 18.12.2, the 3090's pin; the 3090's
+  scaffold bake-off puts every opencode / pi-family pair within noise (McNemar ties on 300
+  isolated instances), so harness variants are not a lever. opencode stays selectable
+  (`SCAFFOLD=opencode`) to reproduce the archived cells, which ran on it.
+- **Sealed harness:** web tools off, the scaffold and its bash children under a localhost-only
   network sandbox, ancestor-only checkout (no branch, tag or commit past the base commit);
   `evals/swebench/audit_rollouts.py` scans the archive for leak channels, and no scored
   prediction came from a session that saw the fix. Under the seal Qwen3.8-27B writes the
@@ -144,10 +148,10 @@ source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; 
 bash scripts/common/oom_guard.sh &
 CTX=140000 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS="--disable-radix-cache" bash scripts/launch.sh qwen36
 
-# Agentic coding (qwen36 + opencode): the Qwen3 <think> blocks break the opencode
-# loop, so requests go through a proxy that injects enable_thinking=false
-bash evals/swebench/smoke.sh                # server + proxy; defaults qwen36, 1 instance
-python evals/swebench/no_thinking_proxy.py &   # manual: opencode → :23335 → SGLang :23334
+# Agentic coding (qwen36 on the omp scaffold, thinking off via the proxy)
+bash evals/swebench/vendor_omp.sh           # sha-pinned omp 18.12.2 into evals/swebench/bin/
+PRESET=qwen36 INSTANCES=3 bash evals/swebench/smoke.sh   # server + proxy + sealed rollout
+python evals/swebench/no_thinking_proxy.py &   # manual: scaffold → :23335 → SGLang :23334
 
 # Capability gates (server up on PORT 23334)
 python scripts/eval/validate_capabilities.py --port 23334   # basic + thinking gate

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Audit archived SWE-bench rollouts for answer-leak channels.
 
-Scans every `runs/<run>/logs/<instance>.log` (opencode JSON event stream)
-for the three ways a session could obtain the upstream fix instead of
-writing one:
+Scans every archived session — `runs/<run>/logs/<instance>.log` (the
+opencode JSON event stream or omp's `--mode json` stream) and
+`runs/<run>/sessions/<instance>/*.jsonl` (omp's pi-row session store) — for
+the three ways a session could obtain the upstream fix instead of writing
+one:
 
-  web      — opencode `webfetch` / `websearch` tool calls
+  web      — opencode `webfetch` / `websearch`, omp `web_search` and
+             `github` tool calls, an omp `read` whose path is a URL
   network  — bash commands that reach the internet (curl, wget, pip
              download / non-editable install, git fetch/pull/ls-remote/clone,
-             package managers, HTTP client one-liners)
+             package managers, HTTP client one-liners); omp `eval` code that
+             calls fetch / requests / urllib
   history  — git commands that read refs past the base commit (`--all`,
              `branch -a`, `--remotes`, `origin/…`, `tags`, `show <sha>`)
 
@@ -47,9 +51,21 @@ HISTORY = re.compile(
 )
 
 
+JS_FETCH = re.compile(r"\b(?:fetch|https?\.(?:get|request)|axios(?:\.(?:get|post))?|got|undici\.request)\(")
+PY_FETCH = re.compile(r"\b(?:requests\.(?:get|post|request|Session)|urlopen|httpx\.|http\.client\.|urllib3)")
+
+
 def events(path: Path):
+    """Yield (tool, input) pairs from an archived session file.
+
+    Two shapes: opencode's event stream (`part.type == "tool"`, input under
+    `part.state.input`) and the pi row format omp writes (an assistant
+    `message.content` list with `toolCall` blocks, arguments under
+    `arguments`), the latter both in omp's `--mode json` stdout log and in
+    its session jsonl.
+    """
     for line in path.open(errors="replace"):
-        if '"tool"' not in line:
+        if '"tool"' not in line and '"toolCall"' not in line:
             continue
         try:
             e = json.loads(line)
@@ -57,7 +73,33 @@ def events(path: Path):
             continue
         p = e.get("part")
         if isinstance(p, dict) and p.get("type") == "tool":
-            yield p
+            yield p.get("tool"), (p.get("state", {}).get("input", {}) or {})
+            continue
+        m = e.get("message")
+        if isinstance(m, dict) and m.get("role") == "assistant":
+            for c in m.get("content") or []:
+                if isinstance(c, dict) and c.get("type") == "toolCall":
+                    yield c.get("name"), (c.get("arguments") or {})
+
+
+def session_files(run: Path, inst: str) -> list[Path]:
+    files = []
+    log = run / "logs" / f"{inst}.log"
+    if log.exists():
+        files.append(log)
+    sess = run / "sessions" / inst
+    if sess.is_dir():
+        files.extend(sorted(sess.glob("*.jsonl")))
+    return files
+
+
+def instances(run: Path) -> list[str]:
+    names = set()
+    if (run / "logs").is_dir():
+        names.update(p.stem for p in (run / "logs").glob("*.log") if not p.name.endswith(".env.log"))
+    if (run / "sessions").is_dir():
+        names.update(p.name for p in (run / "sessions").iterdir() if p.is_dir())
+    return sorted(names)
 
 
 def patch_size(run: Path, inst: str) -> int:
@@ -73,22 +115,38 @@ def patch_size(run: Path, inst: str) -> int:
     return -1
 
 
+def classify(tool, inp, web, net, hist):
+    if tool in ("webfetch", "websearch", "web_search", "github"):
+        web.append(inp.get("url") or inp.get("query") or inp.get("op") or "?")
+    elif tool == "read" and re.match(r"https?://", str(inp.get("path") or ""), re.I):
+        web.append(str(inp.get("path")))
+    elif tool == "bash":
+        cmd = inp.get("command", "") or ""
+        if NETWORK.search(cmd):
+            net.append(cmd.strip().replace("\n", " ")[:100])
+        if HISTORY.search(cmd):
+            hist.append(cmd.strip().replace("\n", " ")[:100])
+    elif tool == "eval":
+        code = str(inp.get("code") or "")
+        lang = str(inp.get("language") or "js").lower()
+        pat = PY_FETCH if lang in ("py", "python") else JS_FETCH
+        if pat.search(code) or NETWORK.search(code):
+            net.append(f"eval[{lang}]: " + code.strip().replace("\n", " ")[:90])
+
+
 def audit(run: Path):
     rows = []
-    for log in sorted((run / "logs").glob("*.log")) if (run / "logs").is_dir() else []:
-        inst = log.stem
+    for inst in instances(run):
         web, net, hist = [], [], []
-        for p in events(log):
-            tool = p.get("tool")
-            inp = p.get("state", {}).get("input", {}) or {}
-            if tool in ("webfetch", "websearch"):
-                web.append(inp.get("url") or inp.get("query") or "?")
-            elif tool == "bash":
-                cmd = inp.get("command", "") or ""
-                if NETWORK.search(cmd):
-                    net.append(cmd.strip().replace("\n", " ")[:100])
-                if HISTORY.search(cmd):
-                    hist.append(cmd.strip().replace("\n", " ")[:100])
+        seen = set()
+        for f in session_files(run, inst):
+            for tool, inp in events(f):
+                # the stdout log and the session store carry the same calls
+                key = (tool, json.dumps(inp, sort_keys=True, default=str))
+                if key in seen:
+                    continue
+                seen.add(key)
+                classify(tool, inp, web, net, hist)
         if web or net or hist:
             rows.append((inst, web, net, hist, patch_size(run, inst)))
     return rows
@@ -105,8 +163,7 @@ def main():
     print("| Run | Instance | web | network | history | patch bytes |")
     print("|---|---|:-:|:-:|:-:|--:|")
     for run in runs:
-        logs = list((run / "logs").glob("*.log")) if (run / "logs").is_dir() else []
-        total += len(logs)
+        total += len(instances(run))
         for inst, web, net, hist, size in audit(run):
             hits += 1
             print(f"| `{run.name}` | `{inst}` | {len(web)} | {len(net)} | {len(hist)} | {size} |")

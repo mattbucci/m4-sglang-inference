@@ -1,9 +1,9 @@
 #!/bin/bash
-# Single-instance SWE-bench Lite smoke against coder-30b on M4 SGLang+MLX.
+# SWE-bench Lite rollout orchestrator on M4 SGLang+MLX: boots the preset,
+# runs the scaffold (omp by default) over N instances, tears down.
 #
 # Mirrors the 3090 sister repo's evals/swebench/bake_off.sh pattern but
-# scoped to one model (coder-30b — our recommended primary for agentic
-# coding) and one instance (the first in SWE-bench Lite, deterministic).
+# scoped to one preset per invocation.
 #
 # Phase 1 only (rollout). Phase 2 (Docker scoring) is mirrored from the
 # 3090 score_local.py / score_docker.py; we don't run it here because
@@ -18,7 +18,14 @@
 #
 # Env overrides:
 #   PRESET           launch.sh preset name (default: coder-30b)
-#   MODEL_KEY        opencode model key in opencode.json (default: $PRESET)
+#   SCAFFOLD         coding-agent scaffold: omp (default; evals/swebench/bin/omp,
+#                    installed by vendor_omp.sh) or opencode (the archived cells)
+#   MODEL_KEY        model id recorded in predictions (sglang/$MODEL_KEY); for
+#                    opencode it must be a key in opencode.json (default: $PRESET)
+#   OUTPUT_BUDGET    per-completion output cap handed to omp (default: 8192,
+#                    the opencode.json limit.output the archived cells ran with)
+#   OMP_THINKING     omp --thinking level (default: off; the proxy forces
+#                    enable_thinking=false anyway when NO_THINKING_PROXY=1)
 #   INSTANCES        how many SWE-bench Lite instances to run (default: 1)
 #   TIMEOUT          per-instance opencode timeout in seconds (default: 900;
 #                    bumped from 600 on 2026-05-21 — today's qwen36 sessions
@@ -36,9 +43,10 @@
 #                    proxy's docstring)
 #   PROXY_UPSTREAM   where the harness proxy forwards (default: the server);
 #                    point it at a recording proxy to capture every request
-#   DISABLE_TOOLS    comma-separated opencode tools to switch off for the run
-#                    (in addition to `task`), e.g. "edit,write,read,grep,glob"
-#                    to make the agent bash-only like Flint's native harnesses
+#   DISABLE_TOOLS    comma-separated scaffold tools to switch off for the run
+#                    (task and the web tools are always off), e.g.
+#                    "edit,write,read,grep,glob,eval" to make the agent
+#                    bash-only like Flint's native harnesses
 #   PROMPT_STYLE     task prompt variant passed to run_rollouts.py --prompt-style
 #                    (default | bash); use bash with a bash-only DISABLE_TOOLS set
 #   SWEBENCH_SANDBOX=0
@@ -60,7 +68,10 @@ source "$REPO_DIR/scripts/common.sh"
 activate_venv
 
 PRESET="${PRESET:-coder-30b}"
+SCAFFOLD="${SCAFFOLD:-omp}"
 MODEL_KEY="${MODEL_KEY:-$PRESET}"
+OUTPUT_BUDGET="${OUTPUT_BUDGET:-8192}"
+OMP_THINKING="${OMP_THINKING:-off}"
 INSTANCES="${INSTANCES:-1}"
 # Optional space-separated list of specific instance IDs (overrides INSTANCES).
 INSTANCE_IDS="${INSTANCE_IDS:-}"
@@ -90,13 +101,18 @@ mkdir -p "$OUT"
 LOG="$OUT/launch.log"
 
 echo "============================================================"
-echo "SWE-bench Lite smoke: $PRESET → opencode model sglang/$MODEL_KEY"
+echo "SWE-bench Lite smoke: $PRESET → $SCAFFOLD model sglang/$MODEL_KEY"
 echo "  instances:   $INSTANCES"
 echo "  timeout:     ${TIMEOUT}s/instance"
 echo "  context:     $CTX"
 echo "  extra args:  $EXTRA_LAUNCH"
 echo "  out:         $OUT"
 echo "============================================================"
+
+if [ "$SCAFFOLD" = "omp" ] && [ ! -x "$SWE_SCRIPT_DIR/bin/omp" ]; then
+    echo "[$(date +%H:%M:%S)] Installing the pinned omp binary..."
+    bash "$SWE_SCRIPT_DIR/vendor_omp.sh"
+fi
 
 # --- Stop any prior server cleanly ---
 pkill -KILL -f "sglang.launch_server" 2>/dev/null || true
@@ -139,7 +155,7 @@ fi
 # --- Verify served-model-name matches what opencode expects ---
 SERVED=$(curl -sf "http://127.0.0.1:$PORT/v1/models" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['id'])")
 echo "[$(date +%H:%M:%S)] Server reports served-model-name='$SERVED'"
-if [ "$SERVED" != "$PRESET" ]; then
+if [ "$SERVED" != "$PRESET" ] && [ "$SCAFFOLD" = "opencode" ]; then
     echo "WARN: opencode key '$MODEL_KEY' will not match served name '$SERVED' — set SERVED_NAME=$MODEL_KEY when launching."
 fi
 
@@ -162,6 +178,9 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
         if curl -sf "http://127.0.0.1:$PROXY_PORT/health" > /dev/null 2>&1; then break; fi
         sleep 0.5
     done
+    MODEL_URL="http://127.0.0.1:$PROXY_PORT"
+fi
+if [ "$NO_THINKING_PROXY" = "1" ] && [ "$SCAFFOLD" = "opencode" ]; then
     # Repoint opencode at the proxy + disable the `task` sub-agent tool and
     # the web tools (`webfetch`/`websearch`): a session on astropy-12907
     # fetched the post-fix separable.py from GitHub through webfetch. The
@@ -196,9 +215,10 @@ open('$OPENCODE_CFG', 'w').write(src)
 "
     echo "[$(date +%H:%M:%S)] Proxy ready (PID=$PROXY_PID), opencode config repointed to :$PROXY_PORT"
 fi
+MODEL_URL="${MODEL_URL:-http://127.0.0.1:$PORT}"
 
-# --- Run opencode rollout (1 instance by default) ---
-echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout..."
+# --- Run the scaffold rollout (1 instance by default) ---
+echo "[$(date +%H:%M:%S)] Running SWE-bench Lite rollout ($SCAFFOLD → $MODEL_URL)..."
 
 # opencode resolves its project config from --dir (the task worktree), not
 # from the cwd, so the rollout uses the global ~/.config/opencode/opencode.jsonc
@@ -216,7 +236,16 @@ if [ "${SKIP_PREFLIGHT:-0}" = "1" ]; then
 fi
 # ${arr[@]+"${arr[@]}"}: bash 3.2 (macOS /bin/bash) treats an empty array as
 # unbound under set -u.
-extra_args=()
+extra_args=(--scaffold "$SCAFFOLD")
+if [ "$SCAFFOLD" = "omp" ]; then
+    # omp reads its provider from the per-run agent dir run_rollouts.py writes
+    # (the proxy URL when the proxy is on); contextWindow must match CTX.
+    extra_args+=(--model-url "$MODEL_URL" --context-window "$CTX"
+                 --output-budget "$OUTPUT_BUDGET" --thinking-level "$OMP_THINKING")
+    if [ -n "$DISABLE_TOOLS" ]; then
+        extra_args+=(--disable-tools "$DISABLE_TOOLS")
+    fi
+fi
 if [ -n "$PROMPT_EXTRA" ]; then
     extra_args+=(--prompt-extra "$PROMPT_EXTRA")
 fi
@@ -251,7 +280,7 @@ if [ -n "$PROXY_PID" ]; then
     echo "[$(date +%H:%M:%S)] Tearing down proxy..."
     kill "$PROXY_PID" 2>/dev/null || true
     pkill -KILL -f "no_thinking_proxy" 2>/dev/null || true
-    if [ -f "$OPENCODE_CFG_BACKUP" ]; then
+    if [ "$SCAFFOLD" = "opencode" ] && [ -f "$OPENCODE_CFG_BACKUP" ]; then
         mv "$OPENCODE_CFG_BACKUP" "$OPENCODE_CFG"
     fi
 fi
@@ -267,5 +296,8 @@ echo "[$(date +%H:%M:%S)] Smoke done (rc=$RC). Output: $OUT"
 echo "  Predictions:  $OUT/predictions.jsonl"
 echo "  Per-instance: $OUT/predictions/<instance_id>.diff"
 echo "  Logs:         $OUT/logs/<instance_id>.log"
+if [ "$SCAFFOLD" = "omp" ]; then
+    echo "  Sessions:     $OUT/sessions/<instance_id>/*.jsonl"
+fi
 
 exit "$RC"

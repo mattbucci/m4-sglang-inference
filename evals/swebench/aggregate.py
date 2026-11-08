@@ -47,14 +47,20 @@ def _count_tool_calls(log_path: Path) -> dict[str, int]:
     if not log_path.exists():
         return {}
     counts: dict[str, int] = defaultdict(int)
+    # opencode event stream: {"type":"tool_use", ..., "tool":"<name>"}
     pat = re.compile(r'"tool":"([a-z_]+)"')
+    # omp --mode json stream: assistant message_end rows carry toolCall blocks
+    # {"type":"toolCall","id":...,"name":"<name>",...}
+    pat_omp = re.compile(r'"type":"toolCall","id":"[^"]*","name":"([a-z_]+)"')
     try:
         for line in log_path.read_text().splitlines():
-            if '"type":"tool_use"' not in line:
-                continue
-            m = pat.search(line)
-            if m:
-                counts[m.group(1)] += 1
+            if '"type":"tool_use"' in line:
+                m = pat.search(line)
+                if m:
+                    counts[m.group(1)] += 1
+            elif '"type":"message_end"' in line and '"toolCall"' in line:
+                for m in pat_omp.finditer(line):
+                    counts[m.group(1)] += 1
     except Exception:
         pass
     return dict(counts)

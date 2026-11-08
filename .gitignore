@@ -15,3 +15,8 @@ sglang_*.jsonl
 # Raw harness captures and guard side-logs next to dated receipts
 evals/swebench/runs/*/capture/
 *.log.guard
+
+# Vendored scaffold binary (evals/swebench/vendor_omp.sh)
+evals/swebench/bin/
+evals/swebench/runs/*/omp-agent/
+*.lock.os

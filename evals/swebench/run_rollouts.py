@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
-"""SWE-bench Lite rollout driver — opencode agent against local SGLang.
+"""SWE-bench Lite rollout driver — a coding-agent scaffold against local SGLang.
 
 Phase 1: agent rollout only. For each instance:
-  1. clone <repo> at <base_commit> into a temp worktree
-  2. invoke `opencode run --dir <worktree> --model sglang/<name> ...` with the
-     problem statement
+  1. clone <repo> at <base_commit> into a temp worktree (ancestor-only)
+  2. run the scaffold in the worktree with the problem statement:
+       omp      (default) `omp --model sglang/<served> --yolo --no-title -p`,
+                the task on stdin, provider + settings written per run to
+                <out>/omp-agent/ (PI_CODING_AGENT_DIR), session jsonl under
+                <out>/sessions/<instance>/
+       opencode `opencode run --dir <worktree> --model sglang/<key> ...`
   3. capture `git diff` as the prediction patch
   4. write predictions/<instance_id>.diff and append to predictions.jsonl
+
+The scaffold choice rests on the 3090 rig's scaffold bake-off: every
+opencode / pi-family pair (omp included) is a McNemar tie on the same 300
+isolated instances, so one lane is enough and omp is it. opencode stays
+selectable (`--scaffold opencode`) to reproduce the archived cells.
 
 Phase 2 (separate, when Docker is available): score predictions.jsonl via the
 official SWE-bench harness.
@@ -34,7 +43,27 @@ from pathlib import Path
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--model", required=True, help="opencode model id, e.g. sglang/coder-reap-25b")
+    p.add_argument("--model", required=True,
+                   help="model id recorded in predictions.jsonl, e.g. sglang/qwen36 "
+                        "(opencode: the opencode.json key; omp: any sglang/<name>)")
+    p.add_argument("--scaffold", choices=["omp", "opencode"], default="omp",
+                   help="coding-agent scaffold that drives the rollout (default omp)")
+    p.add_argument("--model-url", default=None,
+                   help="OpenAI-compatible base URL the scaffold talks to (default: --server-url; "
+                        "point it at no_thinking_proxy.py to force enable_thinking=false). omp only — "
+                        "opencode reads ~/.config/opencode/opencode.jsonc")
+    p.add_argument("--context-window", type=int, default=131072,
+                   help="served context window handed to the scaffold (omp models.yml contextWindow; "
+                        "must match the server's CTX, it drives compaction)")
+    p.add_argument("--output-budget", type=int, default=8192,
+                   help="per-completion output cap handed to the scaffold (omp maxTokens + compaction reserve)")
+    p.add_argument("--thinking-level", default="off",
+                   help="omp --thinking level (off|minimal|low|medium|high|xhigh|max|auto); off puts "
+                        "enable_thinking=false on the wire, which Qwen3.6 honours and the Qwen3.8 "
+                        "templates ignore")
+    p.add_argument("--disable-tools", default="",
+                   help="comma-separated scaffold tools to switch off (omp: subtracted from "
+                        f"{OMP_DEFAULT_TOOLS}; task and web_search are always off)")
     p.add_argument("--dataset", default="princeton-nlp/SWE-bench_Lite",
                    help="HF dataset id (Lite=300, Verified=500)")
     p.add_argument("--split", default="test")
@@ -71,6 +100,127 @@ def parse_args():
                         "templates that don't accept the canary's user→assistant"
                         "(tool_calls)→tool→user message sequence (e.g. Mistral).")
     return p.parse_args()
+
+
+OMP_BIN = Path(__file__).resolve().parent / "bin" / "omp"
+# omp's full tool set is read bash edit eval glob grep task wait todo web_search
+# write. `task` (sub-agents: many completions, no edit inside the window on a
+# 13-80 tok/s server) and `web_search` (the answer channel) are off, as they
+# are for opencode; the rest is the opencode-equivalent read/edit/search set
+# plus omp's REPL (`eval`) and `wait`.
+OMP_DEFAULT_TOOLS = "read,bash,edit,eval,glob,grep,wait,todo,write"
+
+
+def omp_version() -> str:
+    try:
+        return subprocess.run([str(OMP_BIN), "--version"], capture_output=True, text=True,
+                              timeout=30).stdout.strip() or "omp/?"
+    except Exception as e:  # noqa: BLE001
+        return f"omp/? ({type(e).__name__})"
+
+
+def write_omp_agent_dir(out: Path, model_url: str, served: str, context_window: int,
+                        output_budget: int) -> Path:
+    """Per-run omp agent dir (PI_CODING_AGENT_DIR): the provider entry for the
+    served model and the harness settings. Written here, so the user's own
+    ~/.omp/agent is never touched and a new preset needs no static entry.
+
+    reasoning: true keeps omp's reasoning-model handling (reasoning_content,
+    thinking-aware turn shaping); compat.supportsReasoningEffort: false keeps
+    reasoning_effort off the wire (the template decides). --no-title (on the
+    command line) is load-bearing: omp's title generator forks a side turn
+    that replays the whole prefix on the served model whenever the todo tool
+    initialises a plan, headless too — a second full prefill per step.
+    """
+    agent = out / "omp-agent"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "models.yml").write_text(
+        "providers:\n"
+        "  sglang:\n"
+        "    name: SGLang local\n"
+        "    api: openai-completions\n"
+        f"    baseUrl: {model_url.rstrip('/')}/v1\n"
+        '    apiKey: "not-needed"\n'
+        "    models:\n"
+        f"      - id: {json.dumps(served)}\n"
+        f"        name: {json.dumps(served + ' (SGLang local)')}\n"
+        "        api: openai-completions\n"
+        "        reasoning: true\n"
+        "        compat:\n"
+        "          supportsReasoningEffort: false\n"
+        "        input: [text]\n"
+        "        cost: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0}\n"
+        f"        contextWindow: {int(context_window)}\n"
+        f"        maxTokens: {int(output_budget)}\n"
+    )
+    (agent / "config.yml").write_text(
+        "compaction:\n"
+        f"  reserveTokens: {int(output_budget)}\n"
+        "startup:\n"
+        "  checkUpdate: false\n"
+        "title:\n"
+        "  refreshOnReplan: false\n"
+    )
+    return agent
+
+
+def run_omp(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
+            agent_dir: Path, session_dir: Path, tools: str, thinking: str,
+            extra_env: dict[str, str] | None = None,
+            server_url: str | None = None) -> tuple[int, str, str]:
+    """One omp session in the worktree: task on stdin, JSON event stream on
+    stdout (logged), session jsonl under session_dir (pi row format, read by
+    audit_rollouts.py)."""
+    session_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        str(OMP_BIN),
+        "--model", f"sglang/{served}",
+        "--yolo", "--no-title", "-p", "--mode", "json",
+        "--cwd", str(repo_dir),
+        "--session-dir", str(session_dir),
+        "--tools", tools,
+        "--thinking", thinking,
+    ]
+    if sys.platform == "darwin" and os.environ.get("SWEBENCH_SANDBOX", "1") != "0":
+        profile = Path(__file__).resolve().parent / "localhost-only.sb"
+        cmd = ["sandbox-exec", "-f", str(profile)] + cmd
+    env = os.environ.copy()
+    env["PI_CODING_AGENT_DIR"] = str(agent_dir)
+    env["DO_NOT_TRACK"] = "1"
+    env["OTEL_SDK_DISABLED"] = "true"
+    if extra_env:
+        venv_path = extra_env.get("PATH")
+        if venv_path:
+            env["PATH"] = venv_path + ":" + env.get("PATH", "")
+        for k, v in extra_env.items():
+            if k != "PATH":
+                env[k] = v
+    t0 = time.time()
+    proc = subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, env=env, cwd=repo_dir, start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
+        rc = proc.returncode
+        elapsed = time.time() - t0
+        log_path.write_text(
+            f"# command\n{' '.join(cmd)} < PROMPT\n# elapsed {elapsed:.1f}s\n"
+            f"# returncode {rc}\n# stdout\n{stdout}\n# stderr\n{stderr}\n"
+        )
+        return rc, stdout, stderr
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        abort_all_requests(server_url)
+        try:
+            stdout, stderr = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            stdout, stderr = "", ""
+        log_path.write_text(f"# TIMEOUT after {timeout}s (process group SIGKILLed)\n# stdout\n{stdout}\n# stderr\n{stderr}\n")
+        return 124, stdout or "", stderr or ""
 
 
 def preflight_canary(server_url: str, served_name: str) -> tuple[bool, str]:
@@ -129,6 +279,15 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
     mirror = work_root / ".mirrors" / repo.replace("/", "__")
     inst_dir = work_root / instance_id
 
+    if mirror.exists():
+        # A mirror under /tmp can lose its files to the periodic tmp cleanup
+        # while the directory skeleton stays (hooks/ info/ objects/ and no
+        # HEAD): treat anything git does not recognise as absent.
+        ok = subprocess.run(["git", "-C", str(mirror), "rev-parse", "--git-dir"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        if not ok:
+            print(f"  mirror {mirror} is not a git repository — re-cloning", flush=True)
+            shutil.rmtree(mirror, ignore_errors=True)
     if not mirror.exists():
         mirror.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
@@ -360,6 +519,19 @@ def main():
     args = parse_args()
 
     served = args.served_name or args.model.split("/", 1)[-1]
+    if args.scaffold == "omp":
+        if not OMP_BIN.exists():
+            print(f"omp binary missing at {OMP_BIN} — run: bash evals/swebench/vendor_omp.sh", flush=True)
+            sys.exit(2)
+        disabled = {t.strip() for t in args.disable_tools.split(",") if t.strip()}
+        omp_tools = ",".join(t for t in OMP_DEFAULT_TOOLS.split(",") if t not in disabled)
+        scaffold_pin = omp_version()
+        print(f"Scaffold: {scaffold_pin}  tools={omp_tools}  thinking={args.thinking_level}  "
+              f"context_window={args.context_window}  output_budget={args.output_budget}  "
+              f"model_url={args.model_url or args.server_url}", flush=True)
+    else:
+        scaffold_pin = "opencode"
+        omp_tools = ""
     if args.skip_preflight:
         print(f"Preflight: SKIPPED (--skip-preflight). Server health unchecked.", flush=True)
     else:
@@ -375,6 +547,10 @@ def main():
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
     (out / "logs").mkdir(parents=True, exist_ok=True)
+    omp_agent_dir = None
+    if args.scaffold == "omp":
+        omp_agent_dir = write_omp_agent_dir(out, args.model_url or args.server_url, served,
+                                            args.context_window, args.output_budget)
     workdir = Path(args.workdir)
     workdir.mkdir(parents=True, exist_ok=True)
 
@@ -512,9 +688,15 @@ def main():
                         "VIRTUAL_ENV": str(venv),
                         "PATH": f"{venv}/bin",
                     }
-                rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
-                                                    log_path, extra_env=extra_env,
-                                                    server_url=args.server_url)
+                if args.scaffold == "omp":
+                    rc, _stdout, _stderr = run_omp(served, inst_dir, prompt, args.timeout, log_path,
+                                                   omp_agent_dir, out / "sessions" / iid, omp_tools,
+                                                   args.thinking_level, extra_env=extra_env,
+                                                   server_url=args.server_url)
+                else:
+                    rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
+                                                        log_path, extra_env=extra_env,
+                                                        server_url=args.server_url)
                 diff = capture_diff(inst_dir)
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
 
@@ -524,6 +706,7 @@ def main():
                     "model_patch": diff,
                     "rollout_returncode": rc,
                     "rollout_seconds": round(time.time() - t0, 1),
+                    "scaffold": scaffold_pin,
                 }
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()

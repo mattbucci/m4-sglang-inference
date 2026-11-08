@@ -1,0 +1,42 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e2729..b21edc4f4 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -233,12 +233,16 @@ def _cstack(left, right):
+     """
+     noutp = _compute_n_outputs(left, right)
+ 
+-    if isinstance(left, Model):
++    if isinstance(left, CompoundModel):
++        cleft = _separable(left)
++    elif isinstance(left, Model):
+         cleft = _coord_matrix(left, 'left', noutp)
+     else:
+         cleft = np.zeros((noutp, left.shape[1]))
+         cleft[: left.shape[0], : left.shape[1]] = left
+-    if isinstance(right, Model):
++    if isinstance(right, CompoundModel):
++        cright = _separable(right)
++    elif isinstance(right, Model):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+         cright = np.zeros((noutp, right.shape[1]))
+@@ -268,15 +272,14 @@ def _cdot(left, right):
+         """
+         Return ``n_inputs``, ``n_outputs`` for a model or coord_matrix.
+         """
+-        if isinstance(input, Model):
++        if isinstance(input, CompoundModel):
++            coords = _separable(input)
++        elif isinstance(input, Model):
+             coords = _coord_matrix(input, position, input.n_outputs)
+         else:
+             coords = input
+         return coords
+ 
+-    cleft = _n_inputs_outputs(left, 'left')
+-    cright = _n_inputs_outputs(right, 'right')
+-
+     try:
+         result = np.dot(cleft, cright)
+     except ValueError:

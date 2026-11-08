@@ -60,6 +60,7 @@ for t in scripts/eval/test_*_unit.py scripts/eval/test_incremental_tokenizer.py;
 python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
 python scripts/eval/quant_fidelity.py --port 23334 --tokenizer <path> --tag <arm> [--ref-dump <8bit-dump.json>] --out <json>   # teacher-forced NLL/PPL, KL to a reference dump
 python3 evals/swebench/audit_rollouts.py                       # answer-leak audit of archived SWE-bench sessions (web/network/git-history); the harness itself is sealed
+bash evals/swebench/vendor_omp.sh && bash evals/swebench/smoke.sh   # sealed SWE-bench cell on the omp scaffold (PRESET= INSTANCES= TIMEOUT=; SCAFFOLD=opencode for the archived lane)
 python scripts/eval/structured_reads.py --server http://<cuda-host>:30000 --tokenizer google/diffusiongemma-26B-A4B-it --question ... --kind noul   # DiffusionGemma reads (CUDA/ROCm host)
 
 # Quality + benchmarks
@@ -90,12 +91,10 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   `validate_capabilities.py` before publishing numbers — the 3090 confirmed
   Qwen3.x can enter `</think>` repetition loops at temperature=0, so
   thinking workloads should use model-recommended sampling.
-- **MLX-format models required** — AWQ/GPTQ models from other platforms won't work; use `mlx_lm.convert` or download from `mlx-community/` on HuggingFace
+- **MLX-format models required** — AWQ/GPTQ models from other platforms won't work; use `mlx_lm.convert` or `mlx-community/` builds
 - **Always use full-size models for evals + benchmarks** — never substitute a smaller
-  variant (e.g. Qwen3.5-9B) "because it loads faster" when the README and quality
-  table track the full model (e.g. Qwen3.5-27B). 64GB unified memory was chosen
-  precisely so the full models fit; small variants exist for resource-constrained
-  users, not for our characterization runs.
+  variant (e.g. Qwen3.5-9B) "because it loads faster" when the quality table tracks the
+  full model; 64GB was chosen so the full models fit.
 - Always source `scripts/common.sh` before launching
 - **Model status and benchmarks** are in README.md (single source of truth)
 - **OOM guard MANDATORY for long-context (≥32K) work.** macOS doesn't have a
@@ -123,8 +122,13 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   first. Met: 256K validated, 6/6 recall at 245K, 36 tok/s true decode at 128K.
 - **Secondary:** multi-user throughput; never sacrifice single-user latency for batch wins.
 - **Tertiary (most productive workload):** single-user agentic coding at 8-32K per turn.
-  qwen36 + opencode is the validated recommendation (SWE-bench Lite engagement 26/26;
-  official Docker resolve 9/26 = 34.6%, scored on the 3090's harness).
+  qwen36 is the validated recommendation (SWE-bench Lite engagement 26/26; official
+  Docker resolve 9/26 = 34.6%, scored on the 3090's harness).
+- **Harness: one scaffold lane, omp (oh-my-pi) by default**, pinned to the 3090's version
+  so cells compare across rigs. The 3090's scaffold bake-off shows every opencode /
+  pi-family pair within noise (McNemar ties on 300 isolated instances), so harness
+  variants are not a lever: spend cycles on models, not scaffolds. `SCAFFOLD=opencode`
+  only to reproduce archived cells.
 
 ## Quality Rules
 - **Every new MLX model must pass `validate_capabilities.py`** before its numbers

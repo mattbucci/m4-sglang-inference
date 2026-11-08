@@ -1,8 +1,17 @@
 # SWE-bench Lite agentic coding on M4
 
 Tool-call-driven coding evaluation: feed the model a GitHub issue + repo,
-let it use `read`/`glob`/`grep`/`edit`/`write` tools to produce a patch,
-score the patch against the official SWE-bench test harness.
+let it use `read`/`glob`/`grep`/`edit`/`write`/`bash` tools to produce a
+patch, score the patch against the official SWE-bench test harness.
+
+**Scaffold: omp (oh-my-pi) 18.12.2, one lane.** The 3090 rig's scaffold
+bake-off ran opencode, opencode+DCP, little-coder, little-coder+RTK, prime
+and omp on the same 300 isolated instances and every opencode / pi-family
+pair is a McNemar tie (Flint: omp 186 vs opencode 182, p = 0.57), so harness
+variants are not a lever and the two rigs run the same pinned omp.
+`bash evals/swebench/vendor_omp.sh` installs the sha-pinned binary into
+`evals/swebench/bin/` (gitignored); `SCAFFOLD=opencode` reproduces the
+archived opencode cells.
 
 This is the **load-bearing benchmark for the M4 stack's "long-context
 agentic coding" goal.** Static MMLU / HumanEval / Needle numbers in the
@@ -13,22 +22,35 @@ README's quality table don't predict agentic capability on this hardware
 
 ```
 SWE-bench Lite (princeton-nlp/SWE-bench_Lite)
-  └── run_rollouts.py (HF dataset loader + ancestor-only checkout + opencode driver)
+  └── run_rollouts.py (HF dataset loader + ancestor-only checkout + scaffold driver)
       └── sandbox-exec localhost-only.sb (no network past this host)
-          └── opencode 1.15.4 (task/webfetch/websearch off)
+          └── omp 18.12.2 --yolo --no-title -p --thinking off
+              (tools read bash edit eval glob grep wait todo write; task/web_search off;
+               provider from <run>/omp-agent/models.yml, session jsonl in <run>/sessions/)
           └── HTTP → no_thinking_proxy.py :23335
               └── HTTP → SGLang :23334
                   └── MLX backend, native Apple Silicon
 ```
 
-**`no_thinking_proxy.py`** is the load-bearing piece. opencode's
-`@ai-sdk/openai-compatible` provider doesn't pass
-`chat_template_kwargs` to SGLang. Qwen3-family chat templates default
-to emitting `<think>...</think>` blocks; those either go to
-`reasoning_content` (invisible to opencode) or leak `</think>` markers
-into the content stream (breaks the tool-call parser). The proxy
-injects `chat_template_kwargs={"enable_thinking": false}` on every
-chat-completion POST so the model emits actionable content directly.
+omp reads its provider and settings from the per-run agent dir
+`run_rollouts.py` writes (`PI_CODING_AGENT_DIR`): `contextWindow` = the
+server's `CTX` (it drives compaction), `maxTokens` and the compaction
+reserve = `OUTPUT_BUDGET` (8192, the output cap the archived opencode cells
+ran with). `--no-title` is load-bearing: omp's title generator forks a side
+turn that replays the whole prefix on the served model whenever the todo
+tool initialises a plan, a second full prefill per step. Each session is
+archived twice: the `--mode json` event stream in `logs/<inst>.log` and the
+pi-row session store in `sessions/<inst>/*.jsonl`.
+
+**`no_thinking_proxy.py`** forces `chat_template_kwargs={"enable_thinking":
+false}` on every chat-completion POST. omp's `--thinking off` puts
+`enable_thinking: false` on the wire itself, so under omp the proxy is a
+belt-and-braces guard (and the Flint `description` backfill for the opencode
+lane); it stays on by default so every cell is served the same way. The
+rationale is the Qwen3.6 agent loop: thinking on, the model's content either
+lands in `reasoning_content` or leaks `</think>` markers into the tool-call
+stream, and the loop makes 9 tool calls for a 0-byte diff; thinking off it
+patches the canonical location.
 
 Verified 2026-05-18: without the proxy, qwen36 makes 9 tool calls but
 produces a 0-byte diff (reasoning is invisible). With the proxy, qwen36
@@ -43,11 +65,13 @@ produced a patch):
 
 - **Web tools.** opencode's `webfetch` pulled the post-fix
   `astropy/modeling/separable.py` from three later release tags during a
-  Qwen3.8 session on `astropy-12907`. `smoke.sh` now switches `webfetch` and
-  `websearch` off in the injected tools block alongside `task`.
+  Qwen3.8 session on `astropy-12907`. The web tools are off on both
+  scaffolds: omp runs with `--tools` naming the file/search/shell set only
+  (`web_search` and `task` out), opencode gets `webfetch`, `websearch` and
+  `task` switched off in its injected tools block.
 - **Package index / git over the network.** A Flint session on
   `astropy-14182` ran `pip download astropy==6.0`, unpacked the wheel and
-  read the fixed `rst.py` and its tests. `run_rollouts.py` runs opencode under
+  read the fixed `rst.py` and its tests. `run_rollouts.py` runs the scaffold under
   a seatbelt profile (`localhost-only.sb`: `deny network-outbound` except
   `localhost`), inherited by every process its bash tool spawns, so curl,
   pip, git and DNS fail; the model's server and the proxy are on 127.0.0.1.
@@ -63,7 +87,9 @@ produced a patch):
   `rev-list --all == rev-list HEAD` before the rollout (3.5 s per instance,
   106 MB for astropy).
 
-`audit_rollouts.py` scans every archived session for the three channels and
+`audit_rollouts.py` scans every archived session (opencode event logs and
+omp session rows; omp's `web_search`/`github` calls, a `read` of a URL and
+`eval` code that fetches count as web/network) for the three channels and
 prints the patch size the session produced:
 
 ```
@@ -296,19 +322,22 @@ python evals/swebench/score_local.py \
 ## Workflow
 
 1. `smoke.sh` orchestrates: stops prior server, launches SGLang via
-   `scripts/launch.sh`, waits for `/health`, starts `no_thinking_proxy`,
-   re-points `~/.config/opencode/opencode.jsonc` at port 23335.
+   `scripts/launch.sh`, waits for `/health`, starts `no_thinking_proxy`
+   and hands its URL to the scaffold (omp: the per-run `models.yml`;
+   opencode: `~/.config/opencode/opencode.jsonc` re-pointed at 23335).
 2. `run_rollouts.py` loads SWE-bench Lite from HF, clones each repo at
-   the issue's base commit, runs `opencode run --model sglang/<key>`
-   with the problem statement + tool-call directive prompt.
+   the issue's base commit, runs the scaffold in the worktree (omp:
+   `omp --model sglang/<served> --yolo --no-title -p`, task on stdin;
+   opencode: `opencode run --model sglang/<key>`) with the problem
+   statement + tool-call directive prompt.
 3. `eval_env.py` tries to build a per-instance venv from the repo's
    pinned deps so the model can `pytest`/`import` during the rollout.
    Often fails on M4 (we don't have system Python headers for old
    packages); falls back to a "no-venv" prompt mode where the model
    reasons about correctness from source alone.
 4. Final `git diff` from the worktree is captured as the prediction.
-5. `smoke.sh` tears down proxy + restores opencode config + kills
-   server.
+5. `smoke.sh` tears down the proxy (restoring the opencode config when
+   that scaffold ran) and kills the server.
 
 Two harness behaviours that matter on the MLX backend:
 
@@ -320,20 +349,26 @@ Two harness behaviours that matter on the MLX backend:
   reaped one; the probe retries for `SWEBENCH_HEALTH_WAIT` seconds
   (default 120) and only a refused connection or an exhausted budget
   counts as a dead server.
-- `opencode.json`'s `limit.context` per model key must match the `CTX`
-  the server is launched with. opencode compacts the session (a summary
-  turn, then re-exploration) as the input nears the limit; a 32K limit
-  against a 131K server cost the Qwen3.8 sessions one to four
-  compactions each, at 1-2K summary tokens a time on a 13 tok/s model.
+- The scaffold's context window must match the `CTX` the server is
+  launched with (omp: `contextWindow` in the per-run `models.yml`, written
+  from `CTX`; opencode: `opencode.json` `limit.context` per model key).
+  Both scaffolds compact the session (a summary turn, then
+  re-exploration) as the input nears the limit; a 32K limit against a
+  131K server cost the Qwen3.8 sessions one to four compactions each, at
+  1-2K summary tokens a time on a 13 tok/s model.
+- Task-repo mirrors live under the harness workdir in `/tmp`; the periodic
+  tmp cleanup can empty a mirror and leave its directory skeleton behind,
+  so `ensure_repo` re-clones any mirror git no longer recognises.
 
 ## Layout
 
 ```
 evals/swebench/
 ├── README.md                       # this file
-├── opencode.json                   # M4 provider config (sglang/* keys → 23334)
-├── no_thinking_proxy.py            # aiohttp+httpx proxy on 23335 (load-bearing)
-├── run_rollouts.py                 # opencode driver + SWE-bench loader
+├── vendor_omp.sh                   # installs the sha-pinned omp binary into bin/ (gitignored)
+├── opencode.json                   # opencode provider config (sglang/* keys → 23334), the opencode lane only
+├── no_thinking_proxy.py            # aiohttp+httpx proxy on 23335 (enable_thinking=false)
+├── run_rollouts.py                 # scaffold driver (omp default, opencode) + SWE-bench loader
 ├── eval_env.py                     # per-instance venv builder
 ├── score_local.py                  # local-venv scoring (when Docker unavailable)
 ├── smoke.sh                        # single-preset orchestrator
@@ -343,8 +378,10 @@ evals/swebench/
 └── runs/                           # archived rollout artifacts
     └── <model>-<tag>-<date>/
         ├── README.md               # per-run interpretation
-        ├── predictions.jsonl
-        └── predictions/<inst>.diff
+        ├── predictions.jsonl       # one row per instance, `scaffold` names the pin
+        ├── predictions/<inst>.diff
+        ├── logs/<inst>.log         # scaffold event stream
+        └── sessions/<inst>/*.jsonl # omp session store (pi row format)
 ```
 
 ## Validation gap
