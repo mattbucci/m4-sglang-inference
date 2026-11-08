@@ -14,7 +14,9 @@ agent loop on SWE-bench rollouts.
 Putting this proxy in front of the server makes the model behave as if
 opencode passed `enable_thinking=false` itself.
 
-BACKFILL_BASH_DESCRIPTION=1 adds a second, model-specific repair: opencode's
+BACKFILL_INTENT=1 is the omp-scaffold form of the same repair: omp's tools
+all require an `i` intent string, derived here from the call's payload when
+the model leaves it out. BACKFILL_BASH_DESCRIPTION=1 is the opencode form: opencode's
 `bash` tool requires a `description` argument (5-10 words) next to `command`,
 and Recursive Flint -- trained on single-argument shell tools -- omits it on
 nearly every call under opencode's real prompt (0-3 of ~12 calls across every
@@ -41,7 +43,18 @@ from aiohttp import web
 UPSTREAM = os.environ.get("UPSTREAM", "http://127.0.0.1:23334")
 PORT = int(os.environ.get("PORT", "23335"))
 BACKFILL_BASH_DESCRIPTION = os.environ.get("BACKFILL_BASH_DESCRIPTION", "0") == "1"
+# BACKFILL_INTENT=1: omp's tools all require an `i` ("concise intent") string
+# next to their payload argument (bash.command, read.path, edit.input, ...);
+# a model trained on single-argument tools omits it the way Flint omits
+# opencode's bash `description`. Every tool call is buffered and `i` is
+# derived from the payload when missing.
+BACKFILL_INTENT = os.environ.get("BACKFILL_INTENT", "0") == "1"
 BACKFILL_TOOLS = {"bash"}
+INTENT_SOURCES = ("command", "path", "pattern", "input", "code", "op", "content")
+
+
+def _needs_buffer(name: str | None) -> bool:
+    return BACKFILL_INTENT or name in BACKFILL_TOOLS
 
 
 def _derive_description(arguments: dict) -> str:
@@ -50,19 +63,35 @@ def _derive_description(arguments: dict) -> str:
     return ("Run: " + " ".join(words[:8]))[:80] if words else "Run a shell command"
 
 
+def _derive_intent(name: str, arguments: dict) -> str:
+    for key in INTENT_SOURCES:
+        val = arguments.get(key)
+        if isinstance(val, str) and val.strip():
+            head = val.strip().split("\n", 1)[0]
+            return f"{name}: {' '.join(head.split()[:8])}"[:80]
+    return f"{name} call"
+
+
 def _backfill_arguments(name: str, arguments: str) -> str:
-    """Return *arguments* (a JSON string) with `description` added for a
-    buffered tool call that lacks it; unparsable arguments pass through."""
-    if name not in BACKFILL_TOOLS:
+    """Return *arguments* (a JSON string) with the required metadata argument
+    added for a buffered tool call that lacks it (`description` on opencode's
+    bash, `i` on every omp tool); unparsable arguments pass through."""
+    if not _needs_buffer(name):
         return arguments
     try:
         parsed = json.loads(arguments)
     except Exception:
         return arguments
-    if not isinstance(parsed, dict) or parsed.get("description"):
+    if not isinstance(parsed, dict):
         return arguments
-    parsed["description"] = _derive_description(parsed)
-    return json.dumps(parsed, ensure_ascii=False)
+    changed = False
+    if BACKFILL_BASH_DESCRIPTION and name in BACKFILL_TOOLS and not parsed.get("description"):
+        parsed["description"] = _derive_description(parsed)
+        changed = True
+    if BACKFILL_INTENT and not parsed.get("i"):
+        parsed["i"] = _derive_intent(name, parsed)
+        changed = True
+    return json.dumps(parsed, ensure_ascii=False) if changed else arguments
 
 
 class _ToolCallBackfill:
@@ -141,7 +170,7 @@ class _ToolCallBackfill:
                     self.calls[key] = {"name": fn.get("name"), "args": "", "released": False,
                                        "template": {k: v for k, v in chunk.items() if k != "choices"}}
                     self.open = key
-                    if self.calls[key]["name"] in BACKFILL_TOOLS:
+                    if _needs_buffer(self.calls[key]["name"]):
                         # Forward the head (id/type/name) now, hold the arguments.
                         head = dict(tc)
                         head["function"] = {k: v for k, v in fn.items() if k != "arguments"}
@@ -155,7 +184,7 @@ class _ToolCallBackfill:
                 call = self.calls[key]
                 if fn.get("name"):
                     call["name"] = fn["name"]
-                if call["name"] in BACKFILL_TOOLS and not call["released"]:
+                if _needs_buffer(call["name"]) and not call["released"]:
                     call["args"] += fn.get("arguments") or ""
                     passthrough = False
             if choice.get("finish_reason"):
@@ -244,7 +273,7 @@ async def forward(request: web.Request) -> web.StreamResponse:
                 continue
             resp.headers[k] = v
         backfill = (
-            BACKFILL_BASH_DESCRIPTION
+            (BACKFILL_BASH_DESCRIPTION or BACKFILL_INTENT)
             and inject
             and upstream_resp.status_code == 200
         )
@@ -283,6 +312,8 @@ def main() -> int:
     print(f"  injects chat_template_kwargs={{\"enable_thinking\": false}} on POST /v1/chat/completions", file=sys.stderr)
     if BACKFILL_BASH_DESCRIPTION:
         print("  backfills the bash tool's required `description` argument on tool calls that omit it", file=sys.stderr)
+    if BACKFILL_INTENT:
+        print("  backfills omp's required `i` (intent) argument on tool calls that omit it", file=sys.stderr)
     web.run_app(app, host="127.0.0.1", port=PORT, access_log=None, print=None)
     return 0
 

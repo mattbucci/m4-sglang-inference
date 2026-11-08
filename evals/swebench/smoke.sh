@@ -41,6 +41,9 @@
 #                    make the proxy add opencode's required bash `description`
 #                    argument to tool calls that omit it (Flint; see the
 #                    proxy's docstring)
+#   BACKFILL_INTENT=1
+#                    the omp form of the same repair: add omp's required `i`
+#                    (intent) argument to tool calls that omit it (Flint)
 #   PROXY_UPSTREAM   where the harness proxy forwards (default: the server);
 #                    point it at a recording proxy to capture every request
 #   DISABLE_TOOLS    comma-separated scaffold tools to switch off for the run
@@ -94,6 +97,7 @@ EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size
 # astropy__astropy-12907. Set NO_THINKING_PROXY=0 to disable.
 NO_THINKING_PROXY="${NO_THINKING_PROXY:-1}"
 BACKFILL_BASH_DESCRIPTION="${BACKFILL_BASH_DESCRIPTION:-0}"
+BACKFILL_INTENT="${BACKFILL_INTENT:-0}"
 DISABLE_TOOLS="${DISABLE_TOOLS:-}"
 PROMPT_STYLE="${PROMPT_STYLE:-default}"
 
@@ -169,7 +173,7 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
     # incorrectly, so build the URL in a plain var first.
     upstream_url="${PROXY_UPSTREAM:-http://127.0.0.1:$PORT}"
     PORT="$PROXY_PORT" UPSTREAM="$upstream_url" \
-        BACKFILL_BASH_DESCRIPTION="$BACKFILL_BASH_DESCRIPTION" \
+        BACKFILL_BASH_DESCRIPTION="$BACKFILL_BASH_DESCRIPTION" BACKFILL_INTENT="$BACKFILL_INTENT" \
         nohup python3 "$SWE_SCRIPT_DIR/no_thinking_proxy.py" > "$OUT/proxy.log" 2>&1 &
     PROXY_PID=$!
     disown
