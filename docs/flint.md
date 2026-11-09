@@ -33,7 +33,7 @@ usual non-batch-invariance of batched kernels).
   (GLM-4.7's format without line breaks); `--tool-call-parser flint` returns structured
   `tool_calls`. Recursive's constrained grammar backend (`--grammar-backend flint`) is not
   ported. Under opencode Flint omits the `bash` tool's required `description` argument (see
-  the issue tracker); the SWE-bench proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`).
+  the issue tracker); the SWE-bench proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`). Under omp it omits the `i` intent argument the same way (`BACKFILL_INTENT=1`) and sends omp's hashline `edit` as `i` instead of `input` (`REMAP_INTENT=1` moves it back).
 - **Sampling:** the preset applies the checkpoint's `generation_config` (temperature 1.0 /
   top-p 0.95 / top-k 20) to requests that omit sampling fields; greedy requests stay greedy
   and pass every gate, although Recursive validates only the sampled setting.

@@ -49,6 +49,14 @@ BACKFILL_BASH_DESCRIPTION = os.environ.get("BACKFILL_BASH_DESCRIPTION", "0") == 
 # opencode's bash `description`. Every tool call is buffered and `i` is
 # derived from the payload when missing.
 BACKFILL_INTENT = os.environ.get("BACKFILL_INTENT", "0") == "1"
+# REMAP_INTENT=1 (needs BACKFILL_INTENT): when a call carries `i` but not the
+# tool's payload argument, the payload is in `i` -- Flint sends omp's hashline
+# edit as `{"i": "[file#TAG]\nPUT ..."}` on 115 of 118 edit calls -- so `i`
+# moves to the payload key and a fresh intent is derived. Also clamps `i` to
+# omp's 200-character limit, which rejects the call otherwise.
+REMAP_INTENT = BACKFILL_INTENT and os.environ.get("REMAP_INTENT", "0") == "1"
+OMP_PAYLOAD_KEY = {"edit": "input", "bash": "command", "eval": "code", "grep": "pattern", "read": "path"}
+INTENT_MAX = 200
 BACKFILL_TOOLS = {"bash"}
 INTENT_SOURCES = ("command", "path", "pattern", "input", "code", "op", "content")
 
@@ -88,6 +96,16 @@ def _backfill_arguments(name: str, arguments: str) -> str:
     if BACKFILL_BASH_DESCRIPTION and name in BACKFILL_TOOLS and not parsed.get("description"):
         parsed["description"] = _derive_description(parsed)
         changed = True
+    if REMAP_INTENT:
+        payload_key = OMP_PAYLOAD_KEY.get(name)
+        intent = parsed.get("i")
+        if payload_key and not parsed.get(payload_key) and isinstance(intent, str) and intent.strip():
+            parsed[payload_key] = parsed.pop("i")
+            changed = True
+        intent = parsed.get("i")
+        if isinstance(intent, str) and len(intent) > INTENT_MAX:
+            parsed["i"] = intent[: INTENT_MAX - 1] + "…"
+            changed = True
     if BACKFILL_INTENT and not parsed.get("i"):
         parsed["i"] = _derive_intent(name, parsed)
         changed = True
@@ -314,6 +332,8 @@ def main() -> int:
         print("  backfills the bash tool's required `description` argument on tool calls that omit it", file=sys.stderr)
     if BACKFILL_INTENT:
         print("  backfills omp's required `i` (intent) argument on tool calls that omit it", file=sys.stderr)
+    if REMAP_INTENT:
+        print("  moves a payload sent as `i` to the tool's own argument and clamps `i` to 200 chars", file=sys.stderr)
     web.run_app(app, host="127.0.0.1", port=PORT, access_log=None, print=None)
     return 0
 

@@ -45,8 +45,14 @@ pi-row session store in `sessions/<inst>/*.jsonl`.
 **`no_thinking_proxy.py`** forces `chat_template_kwargs={"enable_thinking":
 false}` on every chat-completion POST. omp's `--thinking off` puts
 `enable_thinking: false` on the wire itself, so under omp the proxy is a
-belt-and-braces guard (and the Flint `description` backfill for the opencode
-lane); it stays on by default so every cell is served the same way. The
+belt-and-braces guard; it stays on by default so every cell is served the
+same way. It also carries the argument repairs Flint needs: `BACKFILL_INTENT=1`
+derives omp's required `i` (intent) argument when a call omits it (the
+opencode form is `BACKFILL_BASH_DESCRIPTION=1` for the bash `description`),
+and `REMAP_INTENT=1` moves a payload Flint sends as `i` (its hashline edit
+on 115 of 118 `edit` calls in the full-tool smoke) to the tool's own
+argument and clamps `i` to omp's 200-character limit. Both are inherited
+by the proxy from the `smoke.sh` environment. The
 rationale is the Qwen3.6 agent loop: thinking on, the model's content either
 lands in `reasoning_content` or leaks `</think>` markers into the tool-call
 stream, and the loop makes 9 tool calls for a 0-byte diff; thinking off it
