@@ -1,0 +1,28 @@
+diff --git a/seaborn/axisgrid.py b/seaborn/axisgrid.py
+index 8526f44..4d18333 100644
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1453,6 +1453,9 @@ class PairGrid(Grid):
+             vector = self.data[var]
+             if self._hue_var is not None:
+                 hue = self.data[self._hue_var]
++                if self._hue_order is not None:
++                    hue = hue[hue.isin(self._hue_order)]
++                hue = self.data[self._hue_var]
+             else:
+                 hue = None
+ 
+@@ -1558,6 +1561,13 @@ class PairGrid(Grid):
+         if self._dropna:
+             data = data.dropna()
+ 
++        if (
++            self._hue_var is not None
++            and self._hue_order is not None
++            and self._hue_var in data.columns
++        ):
++            data = data[data[self._hue_var].isin(self._hue_order)]
++
+         x = data[x_var]
+         y = data[y_var]
+         if self._hue_var is None:

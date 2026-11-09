@@ -1,0 +1,131 @@
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..afc006ae6c 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -59,22 +59,31 @@ class Media:
+ 
+     @property
+     def _css(self):
+-        css = self._css_lists[0]
+-        # filter(None, ...) avoids calling merge with empty dicts.
+-        for obj in filter(None, self._css_lists[1:]):
+-            css = {
+-                medium: self.merge(css.get(medium, []), obj.get(medium, []))
+-                for medium in css.keys() | obj.keys()
+-            }
+-        return css
++        """
++        Merge all CSS lists at once, building a dependency graph from all
++        sub-lists and performing a topological sort to respect ordering
++        constraints.
++        """
++        # Collect all medium-specific sublists.
++        css = {}
++        for obj in filter(None, self._css_lists):
++            for medium, files in obj.items():
++                css.setdefault(medium, []).append(files)
++        # For each medium, merge all sub-lists at once.
++        return {
++            medium: self._merge(*sublists)
++            for medium, sublists in css.items()
++        }
+ 
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        """
++        Merge all JS lists at once, building a dependency graph from all
++        sub-lists and performing a topological sort to respect ordering
++        constraints.
++        """
++        # filter(None, ...) avoids calling _merge() with empty lists.
++        return self._merge(*filter(None, self._js_lists))
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))
+@@ -147,7 +156,80 @@ class Media:
+                 # path already exists in the list. Update last_insert_index so
+                 # that the following elements are inserted in front of this one.
+                 last_insert_index = index
+-        return combined_list
++
++    @staticmethod
++    def _merge(*sublists):
++        """
++        Merge all sublists at once, building a dependency graph from all
++        sub-lists and performing a topological sort to respect ordering
++        constraints.
++
++        This approach correctly handles the case where merging multiple
++        media objects creates intermediate ordering constraints that were
++        not present in any of the original lists. The topological sort
++        only respects the ordering constraints that exist in the original
++        sub-lists, not the ordering that emerges from sequential merging.
++        """
++        if not sublists:
++            return []
++
++        # Collect all unique items in first-seen order, and build
++        # a dependency graph from adjacency constraints within each
++        # sublist.
++        all_items = []
++        seen = set()
++        dependencies = {}  # item -> set of items that must precede it
++
++        for sublist in sublists:
++            for item in sublist:
++                if item not in seen:
++                    seen.add(item)
++                    all_items.append(item)
++                    dependencies[item] = set()
++
++        for sublist in sublists:
++            for i in range(len(sublist) - 1):
++                predecessor = sublist[i]
++                successor = sublist[i + 1]
++                dependencies[successor].add(predecessor)
++
++        # Topological sort using Kahn's algorithm.
++        # Build in-degree counts and the reverse adjacency (successors).
++        incoming = {item: len(deps) for item, deps in dependencies.items()}
++        successors = {item: set() for item in all_items}
++        for item, deps in dependencies.items():
++            for dep in deps:
++                successors[dep].add(item)
++
++        # Start with all items that have no incoming edges.
++        result = []
++        queue = [item for item in all_items if incoming[item] == 0]
++
++        while queue:
++            # Pick the first item from the queue (maintains first-seen order).
++            item = queue.pop(0)
++            result.append(item)
++            # Remove this item from the graph.
++            for succ in successors[item]:
++                incoming[succ] -= 1
++                if incoming[succ] == 0:
++                    # Insert into queue maintaining first-seen order.
++                    queue.append(succ)
++            # Re-sort the queue by first-seen order.
++            queue.sort(key=lambda x: all_items.index(x))
++
++        # If result doesn't contain all items, there's a cycle.
++        if len(result) != len(all_items):
++            # There's a dependency cycle; emit a warning and return all items
++            # in their first-seen order as a fallback.
++            warnings.warn(
++                'Ordering could not be established for all files; '
++                'possible dependency cycle detected.',
++                MediaOrderConflictWarning,
++            )
++            return all_items
++
++        return result
+ 
+     def __add__(self, other):
+         combined = Media()

@@ -75,8 +75,10 @@ across all 12 ecosystems in the 26-instance test set.**
   above the 14–30% band typical of ~30B models on SWE-bench Lite.
 - **Harness:** one scaffold lane, omp (oh-my-pi) 18.12.2, the 3090's pin; the 3090's
   scaffold bake-off puts every opencode / pi-family pair within noise (McNemar ties on 300
-  isolated instances), so harness variants are not a lever. opencode stays selectable
-  (`SCAFFOLD=opencode`) to reproduce the archived cells, which ran on it.
+  isolated instances), so harness variants are not a lever. The M4 validation cell agrees:
+  qwen36 under omp engages 26/26 with 25 patches on the file the opencode cell patched, 0
+  timeouts, 99 min against 87 (`evals/swebench/runs/qwen36-26inst-omp-2026-11-08/`). opencode
+  stays selectable (`SCAFFOLD=opencode`) to reproduce the archived cells, which ran on it.
 - **Sealed harness:** web tools off, the scaffold and its bash children under a localhost-only
   network sandbox, ancestor-only checkout (no branch, tag or commit past the base commit);
   `evals/swebench/audit_rollouts.py` scans the archive for leak channels, and no scored

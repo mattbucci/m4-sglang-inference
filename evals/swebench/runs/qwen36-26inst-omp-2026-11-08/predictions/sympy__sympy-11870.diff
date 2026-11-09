@@ -1,0 +1,23 @@
+diff --git a/sympy/simplify/trigsimp.py b/sympy/simplify/trigsimp.py
+index 34a3bab3f..61a1cbc30 100644
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -510,6 +510,18 @@ def traverse(e):
+         'old': lambda x: trigsimp_old(x, **opts),
+                    }[method]
+ 
++    # Try rewriting exp(I*x) patterns to trigonometric functions,
++    # which futrig skips because it only looks at expressions with
++    # TrigonometricFunction (line 1118). This handles cases like
++    # 1/2*(-I*exp(I*k) + I*exp(-I*k)) -> sin(k)
++    if expr.has(exp):
++        rewt = expr.rewrite(sin)
++        if rewt != expr:
++            res = trigsimpfunc(expr)
++            rewt_simp = trigsimpfunc(rewt)
++            if count_ops(rewt_simp) < count_ops(res):
++                return rewt_simp
++        return res
+     return trigsimpfunc(expr)
+ 
+ 

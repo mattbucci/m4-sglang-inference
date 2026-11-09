@@ -1,0 +1,102 @@
+diff --git a/xarray/core/concat.py b/xarray/core/concat.py
+index ecae2566..f277510b 100644
+--- a/xarray/core/concat.py
++++ b/xarray/core/concat.py
+@@ -16,6 +16,7 @@ def concat(
+     positions=None,
+     fill_value=dtypes.NA,
+     join="outer",
++    axis="raise",
+ ):
+     """Concatenate xarray objects along a new or existing dimension.
+ 
+@@ -91,6 +92,14 @@ def concat(
+           those of the first object with that dimension. Indexes for the same
+           dimension must have the same size in all objects.
+ 
++    axis : {'raise', 'minimal', 'all'}, optional
++        How to handle variables that are present in some datasets but not others.
++        - 'raise' (default): raise a ValueError if any variable is missing from
++          some datasets.
++        - 'minimal': silently skip variables that are not present in all
++          datasets. Only variables present in all datasets will be included
++          in the result.
++
+     indexers, mode, concat_over : deprecated
+ 
+     Returns
+@@ -128,7 +137,7 @@ def concat(
+             "can only concatenate xarray Dataset and DataArray "
+             "objects, got %s" % type(first_obj)
+         )
+-    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join)
++    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join, axis)
+ 
+ 
+ def _calc_concat_dim_coord(dim):
+@@ -269,6 +278,7 @@ def _dataset_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    axis="raise",
+ ):
+     """
+     Concatenate a sequence of datasets along a new or existing dimension
+@@ -309,16 +319,26 @@ def _dataset_concat(
+ 
+     result_vars = {}
+     if variables_to_merge:
++        if axis == "minimal":
++            # Only merge variables present in all datasets; skip those missing
++            # from some datasets.
++            variables_to_merge = {
++                var for var in variables_to_merge
++                if all(var in ds.variables for ds in datasets)
++            }
++        else:
++            # Raise error for variables present in some but not all datasets
++            for ds in datasets:
++                absent_merge_vars = variables_to_merge - set(ds.variables)
++                if absent_merge_vars:
++                    raise ValueError(
++                        "variables %r are present in some datasets but not others. "
++                        % absent_merge_vars
++                    )
++
+         to_merge = {var: [] for var in variables_to_merge}
+ 
+         for ds in datasets:
+-            absent_merge_vars = variables_to_merge - set(ds.variables)
+-            if absent_merge_vars:
+-                raise ValueError(
+-                    "variables %r are present in some datasets but not others. "
+-                    % absent_merge_vars
+-                )
+-
+             for var in variables_to_merge:
+                 to_merge[var].append(ds.variables[var])
+ 
+@@ -361,6 +381,8 @@ def _dataset_concat(
+             try:
+                 vars = ensure_common_dims([ds.variables[k] for ds in datasets])
+             except KeyError:
++                if axis == "minimal":
++                    continue
+                 raise ValueError("%r is not present in all datasets." % k)
+             combined = concat_vars(vars, dim, positions)
+             assert isinstance(combined, Variable)
+@@ -394,6 +416,7 @@ def _dataarray_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    axis="raise",
+ ):
+     arrays = list(arrays)
+ 
+@@ -422,5 +445,6 @@ def _dataarray_concat(
+         positions,
+         fill_value=fill_value,
+         join=join,
++        axis=axis,
+     )
+     return arrays[0]._from_temp_dataset(ds, name)

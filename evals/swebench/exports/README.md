@@ -11,7 +11,7 @@ score_docker.py harness. The handoff:
 ```
 M4 (this box)                    3090 stack
 ─────────────                    ──────────
-opencode → SGLang+MLX rollouts
+omp → SGLang+MLX rollouts
    ↓
 aggregate.py --export
    ↓
@@ -35,6 +35,10 @@ predictions.jsonl    ────────►   score_docker.py --predictions
   stock `mlx-community/Qwen3.8-27B-4bit` through the sealed harness
   (`runs/qwen38-27b-community-26inst-sealed-2026-11-02/`, 22/26 non-empty,
   model name `sglang/qwen38-27b-community`); awaiting Docker scoring.
+- `qwen36-omp-26inst-predictions.jsonl` — the same 26 instances on qwen36
+  through the omp scaffold and the sealed harness
+  (`runs/qwen36-26inst-omp-2026-11-08/`, 26/26 non-empty, model name
+  `sglang/qwen36-omp`); the opencode-vs-omp pair for Docker scoring.
 - `qwen36-predictions.jsonl` — deduplicated qwen36 results across all
   archived runs in `evals/swebench/runs/`. **26 instances, 21 non-empty
   patches (80.8%)** (export at commit a5a52d8). The 5 empty:

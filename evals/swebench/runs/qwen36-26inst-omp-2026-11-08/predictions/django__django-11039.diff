@@ -1,0 +1,40 @@
+diff --git a/django/core/management/commands/sqlmigrate.py b/django/core/management/commands/sqlmigrate.py
+index f0b663222a..de4fe91250 100644
+--- a/django/core/management/commands/sqlmigrate.py
++++ b/django/core/management/commands/sqlmigrate.py
+@@ -55,8 +55,8 @@ class Command(BaseCommand):
+                 migration_name, app_label))
+         targets = [(app_label, migration.name)]
+ 
+-        # Show begin/end around output only for atomic migrations
+-        self.output_transaction = migration.atomic
++        # Show begin/end around output only for atomic migrations where the DB supports transactional DDL
++        self.output_transaction = migration.atomic and connection.features.can_rollback_ddl
+ 
+         # Make a plan that represents just the requested migrations and show SQL
+         # for it
+diff --git a/tests/migrations/test_commands.py b/tests/migrations/test_commands.py
+index 0e8fa9fdd1..e72b4bd4b3 100644
+--- a/tests/migrations/test_commands.py
++++ b/tests/migrations/test_commands.py
+@@ -615,6 +615,20 @@ class MigrateTests(MigrationTestBase):
+         if connection.ops.start_transaction_sql():
+             self.assertNotIn(connection.ops.start_transaction_sql().lower(), queries)
+         self.assertNotIn(connection.ops.end_transaction_sql().lower(), queries)
++    @override_settings(MIGRATION_MODULES={"migrations": "migrations.test_migrations"})
++    @mock.patch.object(connection.features, 'can_rollback_ddl', False, create=True)
++    def test_sqlmigrate_non_rollbackable_ddl(self):
++        """
++        sqlmigrate doesn't show transaction wrappers when can_rollback_ddl is False.
++        """
++        out = io.StringIO()
++        call_command("sqlmigrate", "migrations", "0001", stdout=out)
++        output = out.getvalue().lower()
++        queries = [q.strip() for q in output.splitlines()]
++        if connection.ops.start_transaction_sql():
++            self.assertNotIn(connection.ops.start_transaction_sql().lower(), queries)
++        self.assertNotIn(connection.ops.end_transaction_sql().lower(), queries)
++
+ 
+     @override_settings(
+         INSTALLED_APPS=[

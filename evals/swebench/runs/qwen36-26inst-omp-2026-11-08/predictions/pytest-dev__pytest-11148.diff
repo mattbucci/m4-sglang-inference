@@ -1,0 +1,21 @@
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..625b9c337 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -533,8 +533,15 @@ def import_path(
+ 
+         if spec is None:
+             raise ImportError(f"Can't find module {module_name} at location {path}")
++        # If the module is already in sys.modules from a prior import_path call
++        # for the same file (e.g., when both Module.do_collect and
++        # DoctestModule.collect import the same .py file), return the existing
++        # module instead of creating a duplicate.
++        if module_name in sys.modules:
++            existing_mod = sys.modules[module_name]
++            if getattr(existing_mod, "__file__", None) == str(path):
++                return existing_mod
+         mod = importlib.util.module_from_spec(spec)
+-        sys.modules[module_name] = mod
+         spec.loader.exec_module(mod)  # type: ignore[union-attr]
+         insert_missing_modules(sys.modules, module_name)
+         return mod

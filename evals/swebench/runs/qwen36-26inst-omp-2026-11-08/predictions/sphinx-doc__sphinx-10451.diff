@@ -1,0 +1,55 @@
+diff --git a/sphinx/ext/autodoc/typehints.py b/sphinx/ext/autodoc/typehints.py
+index d912cd7d5..99c34f15e 100644
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -98,16 +98,28 @@ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str],
+                 # :param xxx:
+                 arg = arguments.setdefault(parts[1], {})
+                 arg['param'] = True
++                # Also register the un-starred name for *args/**kwargs matching
++                arg_name = parts[1].lstrip('*')
++                if arg_name not in arguments:
++                    arguments[arg_name] = arg
+             elif len(parts) > 2:
+                 # :param xxx yyy:
+                 name = ' '.join(parts[2:])
+                 arg = arguments.setdefault(name, {})
+                 arg['param'] = True
+                 arg['type'] = True
++                # Also register the un-starred name for *args/**kwargs matching
++                arg_name = name.lstrip('*')
++                if arg_name not in arguments:
++                    arguments[arg_name] = arg
+         elif parts[0] == 'type':
+             name = ' '.join(parts[1:])
+             arg = arguments.setdefault(name, {})
+             arg['type'] = True
++            # Also register the un-starred name for *args/**kwargs matching
++            arg_name = name.lstrip('*')
++            if arg_name not in arguments:
++                arguments[arg_name] = arg
+         elif parts[0] == 'rtype':
+             arguments['return'] = {'type': True}
+ 
+@@ -153,14 +165,21 @@ def augment_descriptions_with_types(
+             if len(parts) == 2:
+                 # :param xxx:
+                 has_description.add(parts[1])
++                # Also register the un-starred name for *args/**kwargs matching
++                has_description.add(parts[1].lstrip('*'))
+             elif len(parts) > 2:
+                 # :param xxx yyy:
+                 name = ' '.join(parts[2:])
+                 has_description.add(name)
+                 has_type.add(name)
++                # Also register the un-starred name for *args/**kwargs matching
++                has_description.add(name.lstrip('*'))
++                has_type.add(name.lstrip('*'))
+         elif parts[0] == 'type':
+             name = ' '.join(parts[1:])
+             has_type.add(name)
++            # Also register the un-starred name for *args/**kwargs matching
++            has_type.add(name.lstrip('*'))
+         elif parts[0] in ('return', 'returns'):
+             has_description.add('return')
+         elif parts[0] == 'rtype':
