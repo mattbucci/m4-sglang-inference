@@ -33,7 +33,13 @@ usual non-batch-invariance of batched kernels).
   (GLM-4.7's format without line breaks); `--tool-call-parser flint` returns structured
   `tool_calls`. Recursive's constrained grammar backend (`--grammar-backend flint`) is not
   ported. Under opencode Flint omits the `bash` tool's required `description` argument (see
-  the issue tracker); the SWE-bench proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`). Under omp it omits the `i` intent argument the same way (`BACKFILL_INTENT=1`) and sends omp's hashline `edit` as `i` instead of `input` (`REMAP_INTENT=1` moves it back).
+  the issue tracker); the SWE-bench proxy backfills it (`BACKFILL_BASH_DESCRIPTION=1`). Under
+  omp Flint fills whichever key the schema declares first: with omp's `i` intent key first it
+  sends the hashline `edit` as `i` instead of `input`, with `i` moved last (the proxy's
+  `INTENT_LAST=1`, the Flint lane default in `smoke.sh`) every call carries its payload in the
+  tool's own key and `i` is simply omitted on bash/read/grep, which omp accepts. The
+  response-side repairs (`BACKFILL_INTENT`, `REMAP_INTENT`) stay off: their rewrites get
+  copied into later calls and overrun omp's 200-character `i` limit.
 - **Sampling:** the preset applies the checkpoint's `generation_config` (temperature 1.0 /
   top-p 0.95 / top-k 20) to requests that omit sampling fields; greedy requests stay greedy
   and pass every gate, although Recursive validates only the sampled setting.
@@ -53,5 +59,8 @@ usual non-batch-invariance of batched kernels).
   to the cap; runaway turns 4 in 4443 responses. The three 3-instance smokes behind the
   configuration (`…/flint-oQ8e-omp-*-64k-sealed-2026-11-08/`): the full tool set lands
   edits only with the proxy's `REMAP_INTENT` (Flint sends omp's hashline edit as `i`) and
-  still routes 9 of 10 calls through bash, so the cell runs bash-only. The oQ6e/oQ4e sweep
-  on the depth bench and this cell is the remaining Flint item.
+  still routes 9 of 10 calls through bash, so the cell runs bash-only. The request-side
+  smoke (`…/flint-oQ8e-omp-ilast-64k-sealed-2026-11-09/`, `i` moved last, no rewrites)
+  is the lane configuration going forward: 366 of 366 calls well-formed, 0 omp
+  rejections, 10 of 22 edits applied, same 1/3 engagement with every instance at the
+  cap. The oQ6e/oQ4e sweep on the depth bench and this cell is the remaining Flint item.

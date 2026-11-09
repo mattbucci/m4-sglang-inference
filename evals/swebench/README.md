@@ -56,8 +56,10 @@ request-side alternative: it moves `i` (and the other metadata keys) last in
 every tool schema omp sends, so Flint's natural first argument meets the
 tool's own key first and nothing is rewritten after the fact for the model
 to copy into later calls; the 3090 made the same move inside its strict
-tool grammar. All three are inherited by the proxy from the `smoke.sh`
-environment. The
+tool grammar. On the astropy trio the reorder alone made all 366 calls
+well-formed with 0 omp rejections (omp runs a call that omits `i`), so
+`smoke.sh` sets `INTENT_LAST=1` for `PRESET=flint` and leaves the two
+response-side repairs off; all three are passed by `smoke.sh` to the proxy. The
 rationale is the Qwen3.6 agent loop: thinking on, the model's content either
 lands in `reasoning_content` or leaks `</think>` markers into the tool-call
 stream, and the loop makes 9 tool calls for a 0-byte diff; thinking off it

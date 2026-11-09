@@ -44,6 +44,12 @@
 #   BACKFILL_INTENT=1
 #                    the omp form of the same repair: add omp's required `i`
 #                    (intent) argument to tool calls that omit it (Flint)
+#   REMAP_INTENT=1   with BACKFILL_INTENT: move a payload sent as `i` to the
+#                    tool's own argument and clamp `i` to omp's 200 chars
+#   INTENT_LAST=1    move `i` and the other metadata keys last in every omp
+#                    tool schema on the request side (default 1 for
+#                    PRESET=flint, 0 otherwise); omp runs calls without `i`,
+#                    so this replaces both response-side repairs for Flint
 #   PROXY_UPSTREAM   where the harness proxy forwards (default: the server);
 #                    point it at a recording proxy to capture every request
 #   DISABLE_TOOLS    comma-separated scaffold tools to switch off for the run
@@ -98,6 +104,8 @@ EXTRA_LAUNCH="${EXTRA_LAUNCH:---kv-cache-dtype turboquant --chunked-prefill-size
 NO_THINKING_PROXY="${NO_THINKING_PROXY:-1}"
 BACKFILL_BASH_DESCRIPTION="${BACKFILL_BASH_DESCRIPTION:-0}"
 BACKFILL_INTENT="${BACKFILL_INTENT:-0}"
+REMAP_INTENT="${REMAP_INTENT:-0}"
+if [ "$PRESET" = flint ]; then INTENT_LAST="${INTENT_LAST:-1}"; else INTENT_LAST="${INTENT_LAST:-0}"; fi
 DISABLE_TOOLS="${DISABLE_TOOLS:-}"
 PROMPT_STYLE="${PROMPT_STYLE:-default}"
 
@@ -174,6 +182,7 @@ if [ "$NO_THINKING_PROXY" = "1" ]; then
     upstream_url="${PROXY_UPSTREAM:-http://127.0.0.1:$PORT}"
     PORT="$PROXY_PORT" UPSTREAM="$upstream_url" \
         BACKFILL_BASH_DESCRIPTION="$BACKFILL_BASH_DESCRIPTION" BACKFILL_INTENT="$BACKFILL_INTENT" \
+        REMAP_INTENT="$REMAP_INTENT" INTENT_LAST="$INTENT_LAST" \
         nohup python3 "$SWE_SCRIPT_DIR/no_thinking_proxy.py" > "$OUT/proxy.log" 2>&1 &
     PROXY_PID=$!
     disown
