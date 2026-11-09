@@ -55,6 +55,15 @@ BACKFILL_INTENT = os.environ.get("BACKFILL_INTENT", "0") == "1"
 # moves to the payload key and a fresh intent is derived. Also clamps `i` to
 # omp's 200-character limit, which rejects the call otherwise.
 REMAP_INTENT = BACKFILL_INTENT and os.environ.get("REMAP_INTENT", "0") == "1"
+# INTENT_LAST=1: rewrite the request's tool schemas so omp's `i` (and other
+# metadata keys) come last in `properties` and `required`. omp declares `i`
+# first; Flint writes its natural first argument into the first declared key,
+# so with `i` first the command lands in `i`. The 3090 fixed the same swap in
+# its strict tool grammar by moving the metadata keys last; here the schema
+# order is what the model sees in the prompt. A request-side fix, so no
+# response rewrite for the model to copy into later calls.
+INTENT_LAST = os.environ.get("INTENT_LAST", "0") == "1"
+TRAILING_KEYS = ("i", "description", "intent", "explanation", "reason", "summary")
 OMP_PAYLOAD_KEY = {"edit": "input", "bash": "command", "eval": "code", "grep": "pattern", "read": "path"}
 INTENT_MAX = 200
 BACKFILL_TOOLS = {"bash"}
@@ -241,8 +250,33 @@ def _backfill_json_body(body: bytes) -> bytes:
         return body
 
 
+def _intent_last(params):
+    """Move TRAILING_KEYS to the end of a JSON-schema object's `properties`
+    and `required`, keeping every other key in place; returns True if changed."""
+    if not isinstance(params, dict):
+        return False
+    props = params.get("properties")
+    if not isinstance(props, dict):
+        return False
+    trailing = [k for k in props if k in TRAILING_KEYS]
+    if not trailing or list(props)[-len(trailing):] == trailing:
+        changed = False
+    else:
+        params["properties"] = {**{k: v for k, v in props.items() if k not in TRAILING_KEYS},
+                                **{k: props[k] for k in trailing}}
+        changed = True
+    req = params.get("required")
+    if isinstance(req, list):
+        new_req = [k for k in req if k not in TRAILING_KEYS] + [k for k in req if k in TRAILING_KEYS]
+        if new_req != req:
+            params["required"] = new_req
+            changed = True
+    return changed
+
+
 def _inject_no_thinking(body_bytes: bytes) -> bytes:
-    """Add chat_template_kwargs.enable_thinking=false to a JSON body."""
+    """Add chat_template_kwargs.enable_thinking=false to a JSON body; with
+    INTENT_LAST, also move the metadata keys last in every tool schema."""
     try:
         payload = json.loads(body_bytes)
     except Exception:
@@ -254,6 +288,11 @@ def _inject_no_thinking(body_bytes: bytes) -> bytes:
         payload["chat_template_kwargs"] = {"enable_thinking": False}
     else:
         ctk["enable_thinking"] = False
+    if INTENT_LAST:
+        for tool in payload.get("tools") or []:
+            fn = tool.get("function") if isinstance(tool, dict) else None
+            if isinstance(fn, dict):
+                _intent_last(fn.get("parameters"))
     return json.dumps(payload).encode()
 
 
@@ -334,6 +373,8 @@ def main() -> int:
         print("  backfills omp's required `i` (intent) argument on tool calls that omit it", file=sys.stderr)
     if REMAP_INTENT:
         print("  moves a payload sent as `i` to the tool's own argument and clamps `i` to 200 chars", file=sys.stderr)
+    if INTENT_LAST:
+        print("  moves `i` and other metadata keys last in every tool schema (request side)", file=sys.stderr)
     web.run_app(app, host="127.0.0.1", port=PORT, access_log=None, print=None)
     return 0
 

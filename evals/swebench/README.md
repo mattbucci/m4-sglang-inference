@@ -51,8 +51,13 @@ derives omp's required `i` (intent) argument when a call omits it (the
 opencode form is `BACKFILL_BASH_DESCRIPTION=1` for the bash `description`),
 and `REMAP_INTENT=1` moves a payload Flint sends as `i` (its hashline edit
 on 115 of 118 `edit` calls in the full-tool smoke) to the tool's own
-argument and clamps `i` to omp's 200-character limit. Both are inherited
-by the proxy from the `smoke.sh` environment. The
+argument and clamps `i` to omp's 200-character limit. `INTENT_LAST=1` is the
+request-side alternative: it moves `i` (and the other metadata keys) last in
+every tool schema omp sends, so Flint's natural first argument meets the
+tool's own key first and nothing is rewritten after the fact for the model
+to copy into later calls; the 3090 made the same move inside its strict
+tool grammar. All three are inherited by the proxy from the `smoke.sh`
+environment. The
 rationale is the Qwen3.6 agent loop: thinking on, the model's content either
 lands in `reasoning_content` or leaks `</think>` markers into the tool-call
 stream, and the loop makes 9 tool calls for a 0-byte diff; thinking off it
