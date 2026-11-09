@@ -1,0 +1,96 @@
+diff --git a/astropy/modeling/core.py b/astropy/modeling/core.py
+index da4352cb0..fe565f075 100644
+--- a/astropy/modeling/core.py
++++ b/astropy/modeling/core.py
+@@ -1534,6 +1534,8 @@ class Model(metaclass=_ModelMeta):
+ 
+         if self._separable is not None:
+             return self._separable
++        if self._calculate_separability_matrix() is not NotImplemented:
++            return True
+         raise NotImplementedError(
+             'The "separable" property is not defined for '
+             'model {}'.format(self.__class__.__name__))
+diff --git a/astropy/modeling/mappings.py b/astropy/modeling/mappings.py
+index db228dd9a..0b27e453f 100644
+--- a/astropy/modeling/mappings.py
++++ b/astropy/modeling/mappings.py
+@@ -57,7 +57,6 @@ class Mapping(FittableModel):
+             self._n_inputs = n_inputs
+ 
+         self._n_outputs = len(mapping)
+-        super().__init__(name=name, meta=meta)
+ 
+         self.inputs = tuple('x' + str(idx) for idx in range(self._n_inputs))
+         self.outputs = tuple('x' + str(idx) for idx in range(self._n_outputs))
+diff --git a/astropy/modeling/projections.py b/astropy/modeling/projections.py
+index da0b75efd..41e6cc86d 100644
+--- a/astropy/modeling/projections.py
++++ b/astropy/modeling/projections.py
+@@ -100,7 +100,16 @@ class Projection(Model):
+     # This sets the circumference to 360 deg so that arc length is measured in deg.
+     r0 = 180 * u.deg / np.pi
+ 
+-    _separable = False
++    @property
++    def separable(self):
++        """
++        A flag indicating whether a model is separable.
++
++        Sky projections are generally not separable, since the outputs
++        (ra, dec) are coupled to the inputs (pixel x, y) through a
++        transformation that mixes the inputs and outputs.
++        """
++        return False
+ 
+     def __init__(self, *args, **kwargs):
+         super().__init__(*args, **kwargs)
+@@ -197,6 +206,10 @@ class Pix2SkyProjection(Projection):
+         pv = [getattr(self, param).value for param in self.param_names]
+         return self._inv_cls(*pv)
+ 
++    @property
++    def _separable_instance(self):
++        return False
++
+ 
+ class Sky2PixProjection(Projection):
+     """Base class for all Sky2Pix projections."""
+@@ -244,6 +257,10 @@ class Sky2PixProjection(Projection):
+         pv = [getattr(self, param).value for param in self.param_names]
+         return self._inv_cls(*pv)
+ 
++    @property
++    def _separable_instance(self):
++        return False
++
+ 
+ class Zenithal(Projection):
+     r"""Base class for all Zenithal projections.
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e2729..cec0814f2 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -57,10 +57,7 @@ def is_separable(transform):
+     if transform.n_inputs == 1 and transform.n_outputs > 1:
+         is_separable = np.array([False] * transform.n_outputs).T
+         return is_separable
+-    separable_matrix = _separable(transform)
+-    is_separable = separable_matrix.sum(1)
+-    is_separable = np.where(is_separable != 1, False, True)
+-    return is_separable
++    return _separable(transform).all(axis=1)
+ 
+ 
+ def separability_matrix(transform):
+@@ -97,9 +94,7 @@ def separability_matrix(transform):
+     if transform.n_inputs == 1 and transform.n_outputs > 1:
+         return np.ones((transform.n_outputs, transform.n_inputs),
+                        dtype=np.bool_)
+-    separable_matrix = _separable(transform)
+-    separable_matrix = np.where(separable_matrix != 0, True, False)
+-    return separable_matrix
++    return np.where(_separable(transform) != 0, True, False)
+ 
+ 
+ def _compute_n_outputs(left, right):

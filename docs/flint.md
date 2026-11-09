@@ -43,9 +43,15 @@ usual non-batch-invariance of batched kernels).
   radix-off preset. Set `MAX_TOTAL_TOKENS=131072` explicitly for CTX=131072 runs
   (`CTX * MAX_RUNNING` would be a 14.7 GB pool); `EXTRA_ARGS="--disable-radix-cache"`
   restores the pool-free recompute path. Per-request KV is 28 KB/token on top of the pool.
-- **Agentic cell:** SWE-bench Lite 3-instance smoke (opencode harness, model sampling, 64K
-  context bound): 1/3 with the default tool set and 1/3 bash-only, the `(?i)` fix on
-  `astropy-14365` both times; 0 runaway turns in 521 radix-on turns, 1.7–2.7 s median per
-  turn; the other two instances explore with bash to the 64K cap without an edit, where
-  qwen36 patches all three (`evals/swebench/runs/flint-oQ8e-*`). Three instances are a
-  smoke, so `flint` stays out of the recommended-picks ranking.
+- **Agentic cell:** SWE-bench Lite, the 26-instance scorecard set on the omp harness,
+  bash-only, sealed, 64K with the radix cache, 1800 s per instance: **5/26 non-empty
+  patches, 0/26 resolved** on the local scorer (three apply and fail their tests, two are
+  on astropy instances the box cannot build), every instance at the cap, 13 h wall
+  (`evals/swebench/runs/flint-oQ8e-26inst-omp-bashonly-remap-sealed-2026-11-08/`); qwen36
+  on the same harness engages 26/26 in 99 min. Flint never ends its turn under omp and on
+  14 of the 21 empties never attempts an edit, reading the code in `sed`/`grep` windows
+  to the cap; runaway turns 4 in 4443 responses. The three 3-instance smokes behind the
+  configuration (`…/flint-oQ8e-omp-*-64k-sealed-2026-11-08/`): the full tool set lands
+  edits only with the proxy's `REMAP_INTENT` (Flint sends omp's hashline edit as `i`) and
+  still routes 9 of 10 calls through bash, so the cell runs bash-only. The oQ6e/oQ4e sweep
+  on the depth bench and this cell is the remaining Flint item.

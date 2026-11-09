@@ -1,0 +1,72 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 62631f7ff..dc293865b 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -109,12 +109,14 @@ def exclude_members_option(arg: Any) -> Union[object, Set[str]]:
+     return {x.strip() for x in arg.split(',') if x.strip()}
+ 
+ 
+-def inherited_members_option(arg: Any) -> Union[object, Set[str]]:
+-    """Used to convert the :members: option to auto directives."""
++def inherited_members_option(arg: Any) -> Union[object, List[str]]:
++    """Used to convert the :inherited-members: option to auto directives."""
+     if arg in (None, True):
+-        return 'object'
++        return ALL
++    elif arg is False:
++        return None
+     else:
+-        return arg
++        return [x.strip() for x in arg.split(',') if x.strip()]
+ 
+ 
+ def member_order_option(arg: Any) -> Optional[str]:
+@@ -682,15 +684,19 @@ class Documenter:
+         def is_filtered_inherited_member(name: str, obj: Any) -> bool:
+             if inspect.isclass(self.object):
+                 for cls in self.object.__mro__:
+-                    if cls.__name__ == self.options.inherited_members and cls != self.object:
+-                        # given member is a member of specified *super class*
+-                        return True
+-                    elif name in cls.__dict__:
+-                        return False
+-                    elif name in self.get_attr(cls, '__annotations__', {}):
+-                        return False
+-                    elif isinstance(obj, ObjectMember) and obj.class_ is cls:
+-                        return False
++                    if cls != self.object:
++                        inherited = True
++                        if self.options.inherited_members is ALL:
++                            inherited = True
++                        elif (self.options.inherited_members and
++                              any(base == cls for base in self.options.inherited_members)):
++                            inherited = False
++                        if inherited:
++                            # given member is inherited from *super class*
++                            if name in cls.__dict__ or \
++                               name in self.get_attr(cls, '__annotations__', {}) or \
++                               (isinstance(obj, ObjectMember) and obj.class_ is cls):
++                                return True
+ 
+             return False
+ 
+@@ -829,7 +835,8 @@ class Documenter:
+             self.env.temp_data['autodoc:class'] = self.objpath[0]
+ 
+         want_all = (all_members or
+-                    self.options.inherited_members or
++                    self.options.inherited_members is ALL or
++                    (isinstance(self.options.inherited_members, list) and self.options.inherited_members) or
+                     self.options.members is ALL)
+         # find out which members are documentable
+         members_check_module, members = self.get_object_members(want_all)
+@@ -1709,7 +1716,8 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                     logger.warning(__('missing attribute %s in object %s') %
+                                    (name, self.fullname), type='autodoc')
+             return False, selected
+-        elif self.options.inherited_members:
++        elif self.options.inherited_members is ALL or (
++                isinstance(self.options.inherited_members, list) and self.options.inherited_members):
+             return False, list(members.values())
+         else:
+             return False, [m for m in members.values() if m.class_ == self.object]
