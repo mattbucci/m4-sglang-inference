@@ -12,8 +12,8 @@ STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache
 (`no_buffer` strategy; hits and cold runs are each deterministic, and a hit
 differs from a cold run only as much as two cold runs on different chunk sizes
-do — chunk-grid bf16 noise); the trade-off is that radix-on-hybrid disables
-the overlap schedule. `gemma4*` is blocked at boot
+do — chunk-grid bf16 noise); patch 028 keeps the overlap decode loop on.
+`gemma4*` is blocked at boot
 (mlx-vlm Gemma 4 attention is not recognised by the MLX attention contract).
 
 ## Documentation

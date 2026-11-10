@@ -344,7 +344,7 @@ apply_preset() {
             # names and restores them on an exact hit, so an agent turn
             # re-prefills only its new tokens (the 14 full layers gather from
             # the shared pool). The scheduler runs the hybrid no_buffer
-            # bookkeeping for it, which disables the overlap schedule.
+            # bookkeeping for it; patch 028 keeps the overlap schedule on.
             # --max-total-tokens from CTX*MAX_RUNNING sizes the shared pool:
             # 28 KB/token on the 14 full layers, 3.7 GB at the default
             # 131072 slots, on top of the per-request contiguous copies of
@@ -491,6 +491,16 @@ CMD=(python3 -m sglang.launch_server
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$AUX_SLOTS" && "$HYBRID_AUX" == 1 ]] && CMD+=(--max-mamba-cache-size "$AUX_SLOTS")
+# Hybrid presets keep the pipelined (overlap) decode loop under the radix
+# cache (patch 028): 5-25 % more decode tok/s than the normal loop, with a
+# finish-time checkpoint that resumes bit-equal to it on every preset
+# (benchmarks/perf/2026-11-10/). SGLANG_MLX_HYBRID_OVERLAP=0 restores the
+# normal loop; the commit flag is inert there (nothing is chained).
+# Radix-off launches already run the overlap loop and stay untouched.
+if [[ "$HYBRID_AUX" == 1 && " $EXTRA_ARGS " != *" --disable-radix-cache "* ]]; then
+    export SGLANG_MLX_HYBRID_OVERLAP="${SGLANG_MLX_HYBRID_OVERLAP:-1}"
+    export SGLANG_MLX_COMMIT_CHAINED="${SGLANG_MLX_COMMIT_CHAINED:-1}"
+fi
 [[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
 
 exec "${CMD[@]}"

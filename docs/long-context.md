@@ -56,6 +56,9 @@ every preset, including hybrids (DeltaNet/Mamba2 state snapshotted per prefix) a
 from a cold run only as much as two cold runs on different chunk sizes do: over 24 positions
 of a 16.6K-token agent request the top token matches at 20–21 of 24 with a median top-1
 shift of 0.02–0.05 nats (`benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md`).
+Hybrid presets keep the pipelined decode loop under the cache (patch 028), so cached serving
+decodes at the radix-off rate: qwen36 81.2 / 76.7 / 66.4 tok/s at 1K / 7.6K / 30K
+(`benchmarks/perf/2026-11-10/`).
 
 A follow-up turn re-rendered through the Qwen3.x template diverges 1–2 tokens before the
 primed prompt end, so it is served from the 64-token-grid DeltaNet checkpoint (patch 026)

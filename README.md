@@ -136,8 +136,9 @@ Session endurance, the append-turn cost and the radix prefix cache on hybrids:
 
 Every preset sets `--mlx-enable-sampling` (per-request temperature / top-p / top-k / min-p;
 greedy stays bit-stable argmax; `--sampling-defaults model` applies checkpoint generation
-configs). Hybrid presets and `flint` run the radix cache; the trade-off is that
-radix-on-hybrid turns the overlap schedule off. `launch.sh` knobs: `CTX`, `MEM_FRAC`,
+configs). Hybrid presets and `flint` run the radix cache and keep the pipelined decode loop
+under it (patch 028, +5–25 % decode tok/s; `SGLANG_MLX_HYBRID_OVERLAP=0` restores the normal
+loop). `launch.sh` knobs: `CTX`, `MEM_FRAC`,
 `CHUNKED`, `MAX_RUNNING`, `MAX_TOTAL_TOKENS`, `MODEL`, `EXTRA_ARGS`, `--kv-cache` (accepted,
 inert on this backend: KV stays bf16).
 

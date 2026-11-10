@@ -15,10 +15,10 @@ patch's checkpoint-layout adapter.
 
 Measured radix-off (oQ8e at the preset's `CHUNKED=1024`, 2 GB MLX buffer cache,
 `MAX_RUNNING=4`; oQ6e/oQ4e at `CHUNKED=4096` with the 4 GB cache). The shipped preset runs
-the radix cache, which keeps prefill where it is and costs ~12% of decode (50.3 / 47.0 /
-43.1 tok/s at 3.5K / 13.9K / 27K) because the hybrid `no_buffer` bookkeeping turns the
-overlap schedule off; turn 2 of a 13.4K-token conversation then starts in 0.6 s instead of
-19 s (`benchmarks/flint/2026-10-31/prefix-cache/`). A 27K prefill at chunk 1024 leaves 17 GB
+the radix cache and keeps the pipelined decode loop under it (patch 028): oQ8e decodes at
+55.1 / 52.5 / 47.2 tok/s at 1K / 7.6K / 22.8K (`benchmarks/perf/2026-11-10/hybrid-presets/`),
+against 49.5 / 47.3 / 42.7 on the scheduler's normal loop, and turn 2 of a 13.4K-token
+conversation starts in 0.6 s instead of 19 s (`benchmarks/flint/2026-10-31/prefix-cache/`). A 27K prefill at chunk 1024 leaves 17 GB
 kernel-available and never leaves pressure level "normal"; four concurrent requests decode
 at 123 tok/s aggregate (batched output is not bit-identical to single-request output, the
 usual non-batch-invariance of batched kernels).
