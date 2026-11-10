@@ -1,0 +1,31 @@
+module: /Users/letsrtfm/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/gated_delta_front.py
+PASS front bfloat16 rows=1 taps=4 heads=4x32 v=256 (q/k/v err 2.3e-03/2.1e-03/1.2e-03)
+PASS front bfloat16 rows=3 taps=4 heads=2x64 v=128 (q/k/v err 2.6e-03/2.3e-03/1.8e-03)
+PASS front bfloat16 rows=5 taps=3 heads=3x16 v=96 (q/k/v err 1.9e-03/2.1e-03/2.4e-03)
+PASS front bfloat16 rows=2 taps=2 heads=1x128 v=128 (q/k/v err 2.0e-03/1.6e-03/3.1e-03)
+PASS front float16 rows=1 taps=4 heads=4x32 v=256 (q/k/v err 2.4e-04/1.5e-04/2.6e-04)
+PASS front float16 rows=3 taps=4 heads=2x64 v=128 (q/k/v err 2.1e-04/3.3e-04/2.4e-04)
+PASS front float16 rows=5 taps=3 heads=3x16 v=96 (q/k/v err 2.5e-04/2.4e-04/2.9e-04)
+PASS front float16 rows=2 taps=2 heads=1x128 v=128 (q/k/v err 3.4e-04/2.2e-04/3.4e-04)
+PASS front float32 rows=1 taps=4 heads=4x32 v=256 (q/k/v err 1.4e-07/7.9e-08/7.2e-08)
+PASS front float32 rows=3 taps=4 heads=2x64 v=128 (q/k/v err 7.8e-08/1.3e-07/7.6e-08)
+PASS front float32 rows=5 taps=3 heads=3x16 v=96 (q/k/v err 1.1e-07/9.3e-08/1.5e-07)
+PASS front float32 rows=2 taps=2 heads=1x128 v=128 (q/k/v err 1.2e-07/1.2e-07/1.1e-07)
+PASS swap float32 rows=1: one layer swapped, idempotent, others untouched
+PASS swap float32 rows=1: six chained decode steps match stock (out err 2.4e-07, state err 1.2e-07, conv state equal True)
+PASS swap float32 rows=3: one layer swapped, idempotent, others untouched
+PASS swap float32 rows=3: six chained decode steps match stock (out err 4.1e-07, state err 2.2e-07, conv state equal True)
+PASS swap bfloat16 rows=1: one layer swapped, idempotent, others untouched
+PASS swap bfloat16 rows=1: six chained decode steps match stock (out err 1.1e-02, state err 8.9e-03, conv state equal True)
+PASS swap bfloat16 rows=3: one layer swapped, idempotent, others untouched
+PASS swap bfloat16 rows=3: six chained decode steps match stock (out err 1.3e-02, state err 5.9e-03, conv state equal True)
+PASS scope: prefill of five tokens keeps the stock chain
+PASS scope: masked decode step keeps the stock chain
+PASS scope: length-tracked cache keeps the stock chain
+PASS scope: target-verify call keeps the stock chain
+PASS scope: first step on an empty cache keeps the stock chain
+PASS scope: call without a cache keeps the stock chain
+PASS scope: cache of another batch size keeps the stock chain
+PASS scope: live decode step advances the cache bookkeeping as stock does
+
+ALL PASS

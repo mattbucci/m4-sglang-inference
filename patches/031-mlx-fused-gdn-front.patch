@@ -1,0 +1,310 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 55e260cf21..58d57fc110 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1111,6 +1111,10 @@ class Envs:
+     # One-launch MoE routing and combine kernels (moe/fused_router.py) for the
+     # Qwen3 and Qwen3.5/3.6 MoE blocks: ten small launches per layer become two.
+     SGLANG_MLX_FUSE_MOE_ROUTER = EnvBool(False)
++    # One-launch GatedDeltaNet decode front (gated_delta_front.py): the conv
++    # state shift, depthwise conv, silu and q/k norms of a Qwen3.5/3.6 linear
++    # attention layer, ten small launches, become one.
++    SGLANG_MLX_FUSE_GDN_FRONT = EnvBool(False)
+     # Number of decode steps between periodic mx.clear_cache() calls.
+     # Set to 0 to disable cache clearing entirely.
+     SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
+diff --git a/python/sglang/srt/hardware_backend/mlx/gated_delta_front.py b/python/sglang/srt/hardware_backend/mlx/gated_delta_front.py
+new file mode 100644
+index 0000000000..7a21962b68
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/gated_delta_front.py
+@@ -0,0 +1,266 @@
++"""One-launch GatedDeltaNet decode front.
++
++Between its input projections and the delta-rule kernel, a GatedDeltaNet
++decode step runs ten small Metal launches over a few thousand channels:
++
++    conv state   concatenate -> contiguous
++    conv         multiply -> sum -> astype
++    activation   silu
++    q, k         rms_norm -> multiply, twice
++
++A decode step on a hybrid model is launch-bound past its weight reads (about
++2 us of GPU time per small launch), and a Qwen3.5/3.6 model has thirty of
++these layers. ``fused_front`` does the ten in one launch: one threadgroup per
++key head, one thread per channel. A thread shifts its column of the conv
++state, takes the depthwise conv over the kept taps plus the new input, applies
++silu, and for the q and k heads shares its square through threadgroup memory
++for the RMS norm and writes the scaled result.
++
++The kernel accumulates in float32 and rounds once to the model dtype; the
++stock chain rounds after the conv, the silu, each norm and each scale. The
++shifted conv state is bit-identical, q, k and v are closer to the float32
++result. The swap is opt-in (``SGLANG_MLX_FUSE_GDN_FRONT=1``) and covers
++mlx-vlm ``Qwen3_5GatedDeltaNet`` on a single decode step with a live cache;
++prefill, masked or length-tracked batches, target-verify and training calls
++keep the stock chain.
++"""
++
++from __future__ import annotations
++
++import logging
++import sys
++
++import mlx.core as mx
++
++logger = logging.getLogger(__name__)
++
++# One threadgroup per key head: the head width is the threadgroup width.
++MAX_HEAD_DIM = 1024
++_FLOAT_DTYPES = (mx.bfloat16, mx.float16, mx.float32)
++
++# Inputs are indexed directly, never through a typed pointer: MLX binds an
++# input of fewer than eight elements in the ``constant`` address space.
++_FRONT_SRC = """
++    uint c = thread_position_in_grid.x;
++    uint row = thread_position_in_grid.y;
++    uint t = thread_position_in_threadgroup.x;
++    threadgroup float sq[D_SIZE];
++    uint s0 = row * KEEP * C_SIZE + c;
++    float acc = 0;
++    for (uint j = 0; j < KEEP; j++) {
++        T sv = cstate[s0 + j * C_SIZE];
++        acc += float(sv) * w[j * C_SIZE + c];
++        if (j > 0) {
++            new_state[s0 + (j - 1) * C_SIZE] = sv;
++        }
++    }
++    T xv = x[row * C_SIZE + c];
++    acc += float(xv) * w[KEEP * C_SIZE + c];
++    new_state[s0 + (KEEP - 1) * C_SIZE] = xv;
++    float o = acc / (1.0f + exp(-acc));
++    sq[t] = o * o;
++    threadgroup_barrier(mem_flags::mem_threadgroup);
++    if (c >= 2 * KD_SIZE) {
++        v[row * (C_SIZE - 2 * KD_SIZE) + c - 2 * KD_SIZE] = static_cast<T>(o);
++    } else {
++        float ss = 0;
++        for (uint i = 0; i < D_SIZE; i++) {
++            ss += sq[i];
++        }
++        float r = o * rsqrt(ss / float(D_SIZE) + 1e-6f);
++        if (c < KD_SIZE) {
++            q[row * KD_SIZE + c] = static_cast<T>(r / float(D_SIZE));
++        } else {
++            k[row * KD_SIZE + c - KD_SIZE] = static_cast<T>(r * rsqrt(float(D_SIZE)));
++        }
++    }
++"""
++_kernels: dict = {}
++
++
++def fused_front(
++    conv_state: mx.array, mixed: mx.array, weight: mx.array, key_dim: int, head_dim: int
++):
++    """Conv-state shift, depthwise conv, silu and the q/k RMS norms in one launch.
++
++    ``conv_state`` is ``(rows, taps - 1, channels)``, ``mixed`` the new input
++    ``(rows, 1, channels)`` of the same dtype, ``weight`` the float32 conv
++    taps ``(taps, channels)``. The first ``key_dim`` channels are q, the next
++    ``key_dim`` are k, the rest v; q and k are normalised per head of
++    ``head_dim`` channels and scaled by ``1 / head_dim`` and
++    ``head_dim ** -0.5``.
++
++    Returns ``(new_conv_state, q, k, v)`` with q and k ``(rows, 1, key_dim)``
++    and v ``(rows, 1, channels - 2 * key_dim)``.
++    """
++    rows, keep, channels = conv_state.shape
++    if "front" not in _kernels:
++        _kernels["front"] = mx.fast.metal_kernel(
++            name="sglang_gdn_front",
++            input_names=["cstate", "x", "w"],
++            output_names=["new_state", "q", "k", "v"],
++            source=_FRONT_SRC,
++        )
++    dtype = mixed.dtype
++    return _kernels["front"](
++        inputs=[conv_state, mixed, weight],
++        template=[
++            ("T", dtype),
++            ("C_SIZE", channels),
++            ("KD_SIZE", key_dim),
++            ("D_SIZE", head_dim),
++            ("KEEP", keep),
++        ],
++        grid=(channels, rows, 1),
++        threadgroup=(head_dim, 1, 1),
++        output_shapes=[
++            (rows, keep, channels),
++            (rows, 1, key_dim),
++            (rows, 1, key_dim),
++            (rows, 1, channels - 2 * key_dim),
++        ],
++        output_dtypes=[dtype, dtype, dtype, dtype],
++    )
++
++
++def _conv_weight(block) -> mx.array:
++    # The float32 (taps, channels) copy of the depthwise conv weight, in the
++    # slot and format the stock decode conv keeps it in.
++    cached = getattr(block, "_qwen3_5_decode_conv_weight", None)
++    key = id(block.conv1d.weight)
++    if cached is None or cached[0] != key:
++        weight = block.conv1d.weight[:, :, 0].T.astype(mx.float32)
++        mx.eval(weight)
++        cached = (key, weight)
++        block._qwen3_5_decode_conv_weight = cached
++    return cached[1]
++
++
++def _call_decode_front(
++    self, inputs, mask=None, cache=None, gdn_sink=None, target_verify=False
++):
++    conv_state = state = None
++    if (
++        inputs.ndim == 3
++        and inputs.shape[1] == 1
++        and mask is None
++        and gdn_sink is None
++        and not target_verify
++        and not self.training
++        and cache is not None
++        and getattr(cache, "lengths", None) is None
++    ):
++        conv_state, state = cache[0], cache[1]
++    rows = inputs.shape[0]
++    keep = self.conv_kernel_size - 1
++    if (
++        conv_state is None
++        or state is None
++        or conv_state.shape != (rows, keep, self.conv_dim)
++        or state.shape[0] != rows
++        or conv_state.dtype not in _FLOAT_DTYPES
++    ):
++        return self._sglang_stock_call(
++            inputs, mask, cache, gdn_sink=gdn_sink, target_verify=target_verify
++        )
++
++    lang = self._sglang_stock_module
++    mixed, z, b, a = lang._target_verify_linears(
++        (self.in_proj_qkv, self.in_proj_z, self.in_proj_b, self.in_proj_a),
++        inputs,
++        False,
++    )
++    if mixed.dtype != conv_state.dtype:
++        return self._sglang_stock_call(
++            inputs, mask, cache, gdn_sink=gdn_sink, target_verify=target_verify
++        )
++
++    cache[0], q, k, v = fused_front(
++        conv_state, mixed, _conv_weight(self), self.key_dim, self.head_k_dim
++    )
++    q = q.reshape(rows, 1, self.num_k_heads, self.head_k_dim)
++    k = k.reshape(rows, 1, self.num_k_heads, self.head_k_dim)
++    v = v.reshape(rows, 1, self.num_v_heads, self.head_v_dim)
++    out, state = lang.gated_delta_update(
++        q, k, v, a, b, self.A_log, self.dt_bias, state, None, use_kernel=True
++    )
++    cache[1] = state
++    if hasattr(cache, "advance"):
++        cache.advance(1)
++        lang._qwen3_5_advance_left_padding_info(cache, 1)
++        lang._qwen3_5_advance_lengths_info(cache, 1)
++    out = self.norm(out, z.reshape(rows, 1, -1, self.head_v_dim))
++    return lang._target_verify_linear(self.out_proj, out.reshape(rows, 1, -1), False)
++
++
++_BLOCK_ATTRS = (
++    "in_proj_qkv",
++    "in_proj_z",
++    "in_proj_b",
++    "in_proj_a",
++    "conv1d",
++    "norm",
++    "out_proj",
++    "A_log",
++    "dt_bias",
++)
++_STOCK_HELPERS = (
++    "_target_verify_linears",
++    "_target_verify_linear",
++    "gated_delta_update",
++    "_qwen3_5_advance_left_padding_info",
++    "_qwen3_5_advance_lengths_info",
++)
++_fused_classes: dict = {}
++
++
++def _fused_class(base: type, stock_module) -> type:
++    if base not in _fused_classes:
++        _fused_classes[base] = type(
++            f"Fused{base.__name__}",
++            (base,),
++            {
++                "__call__": _call_decode_front,
++                "_sglang_stock_call": base.__call__,
++                "_sglang_stock_module": stock_module,
++            },
++        )
++    return _fused_classes[base]
++
++
++def _eligible(block, stock_module) -> bool:
++    if stock_module is None or not all(hasattr(stock_module, n) for n in _STOCK_HELPERS):
++        return False
++    if not all(hasattr(block, a) for a in _BLOCK_ATTRS):
++        return False
++    head = getattr(block, "head_k_dim", 0)
++    key_dim = getattr(block, "key_dim", 0)
++    conv_dim = getattr(block, "conv_dim", 0)
++    value_dim = getattr(block, "value_dim", 0)
++    if not (0 < head <= MAX_HEAD_DIM and key_dim > 0 and value_dim > 0):
++        return False
++    if key_dim % head or conv_dim % head or conv_dim != 2 * key_dim + value_dim:
++        return False
++    return getattr(block, "conv_kernel_size", 0) >= 2
++
++
++def patch_gated_delta_front(model) -> int:
++    """Swap every supported GatedDeltaNet's call for the one-launch front.
++
++    Returns the number of layers swapped. Idempotent.
++    """
++    swapped = 0
++    for _, module in model.named_modules():
++        cls = type(module)
++        if cls in _fused_classes.values():
++            swapped += 1
++            continue
++        if cls.__name__ != "Qwen3_5GatedDeltaNet":
++            continue
++        stock_module = sys.modules.get(cls.__module__)
++        if not _eligible(module, stock_module):
++            logger.info("GatedDeltaNet %s is outside the fused front's scope", cls.__name__)
++            continue
++        module.__class__ = _fused_class(cls, stock_module)
++        swapped += 1
++    return swapped
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 43a9b77d0d..5bb9c8a58a 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -897,6 +897,18 @@ class MlxModelRunner:
+             n_patched = patch_moe_blocks_with_fused_router(self.model)
+             logger.info(f"MLX fused MoE router enabled: patched {n_patched} blocks")
+ 
++        # Optional: one-launch GatedDeltaNet decode front
++        # (SGLANG_MLX_FUSE_GDN_FRONT=1, gated_delta_front.py).
++        if envs.SGLANG_MLX_FUSE_GDN_FRONT.get():
++            from sglang.srt.hardware_backend.mlx.gated_delta_front import (
++                patch_gated_delta_front,
++            )
++
++            n_patched = patch_gated_delta_front(self.model)
++            logger.info(
++                f"MLX fused GatedDeltaNet front enabled: patched {n_patched} layers"
++            )
++
+     def _attention_module_for_layer(self, layer_idx: int) -> Any:
+         attn = getattr(
+             self._cache_layout.layers[layer_idx],

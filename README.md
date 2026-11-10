@@ -1,7 +1,7 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's
-native MLX backend: **SGLang v0.5.23** (`297e54f`) + 20 patches ([patches/README.md](patches/README.md)).
+native MLX backend: **SGLang v0.5.23** (`297e54f`) + 21 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
 than peak batch throughput. Known issues are
@@ -145,7 +145,7 @@ inert on this backend: KV stays bf16).
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 20 patches + gates
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 21 patches + gates
 source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; always before launching
 
 ./scripts/launch.sh qwen36                  # PRIMARY (any preset from the table above)
@@ -190,7 +190,7 @@ Python 3.12, ~200 GB disk for models. Reference rig: Mac mini (Mac16,11), M4 Pro
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 20 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 21 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
