@@ -1,0 +1,230 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 58d57fc110..95ea07fa7a 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1115,6 +1115,10 @@ class Envs:
+     # state shift, depthwise conv, silu and q/k norms of a Qwen3.5/3.6 linear
+     # attention layer, ten small launches, become one.
+     SGLANG_MLX_FUSE_GDN_FRONT = EnvBool(False)
++    # Grouped quantized linears on a decode step (fused_linears.py): linears
++    # that share an input and a bit width run as one quantized matmul, bit-equal
++    # to the separate calls.
++    SGLANG_MLX_FUSE_DECODE_LINEARS = EnvBool(False)
+     # Number of decode steps between periodic mx.clear_cache() calls.
+     # Set to 0 to disable cache clearing entirely.
+     SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
+diff --git a/python/sglang/srt/hardware_backend/mlx/fused_linears.py b/python/sglang/srt/hardware_backend/mlx/fused_linears.py
+new file mode 100644
+index 0000000000..70684cbaa7
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/fused_linears.py
+@@ -0,0 +1,157 @@
++"""Grouped quantized linears for a single-token decode step.
++
++Several blocks of a Qwen3.5/3.6 layer project one input through more than one
++quantized linear: the attention q/k/v projections, the two SwiGLU input
++projections of an MLP or shared expert, the GatedDeltaNet input projections,
++and the MoE router gate next to the shared-expert gate. Each is its own Metal
++launch, and on a small-active MoE a decode step is launch-bound.
++
++mlx-vlm folds such a set into one quantized matmul over the concatenated
++weights only when it has exactly four members of one bit width (the
++GatedDeltaNet set). ``fused_decode_linears`` extends the fold to any set of two
++or more and groups the members by (bits, group size, mode), so a mixed set
++folds per group: community 4-bit Qwen3.6 MoE checkpoints keep both gates at
++8 bits, which leaves the four linears of an MoE block as two pairs.
++
++Every output column of a quantized matmul depends on its own weight row only,
++so the folded outputs are bit-identical to the separate calls. The cost is a
++second copy of the folded weights, so a group folds only while its packed
++weights stay under ``MAX_GROUP_BYTES``; the large projections of the dense
++models stay separate, where a launch is noise next to the matmul anyway.
++
++Opt-in (``SGLANG_MLX_FUSE_DECODE_LINEARS=1``). ``patch_fused_decode_linears``
++installs the grouped fold behind mlx-vlm's own four-way fold, which keeps
++first refusal, and lets the fused MoE block (moe/fused_router.py) fold its two
++gates. Prefill, target-verify and non-quantized linears keep the stock calls.
++"""
++
++from __future__ import annotations
++
++import itertools
++import logging
++import sys
++
++import mlx.core as mx
++import mlx.nn as nn
++
++logger = logging.getLogger(__name__)
++
++# Packed-weight budget of one folded group: its concatenated copy is extra
++# resident memory for as long as the model is loaded.
++MAX_GROUP_BYTES = 16 << 20
++
++_CACHE_ATTR = "_sglang_fused_decode_linears"
++_STOCK_NAME = "_decode_quantized_linears_fused"
++_enabled = False
++
++
++def _foldable(linear, x: mx.array) -> bool:
++    if not isinstance(linear, nn.QuantizedLinear) or "bias" in linear:
++        return False
++    biases = getattr(linear, "biases", None)
++    return (
++        biases is not None
++        and linear.scales.dtype == x.dtype
++        and biases.dtype == x.dtype
++    )
++
++
++def fused_decode_linears(linears, x: mx.array):
++    """``linears`` applied to ``x`` with one quantized matmul per foldable
++    group, or None when nothing folds (the caller then runs them one by one).
++    """
++    if x.ndim != 3 or x.shape[1] != 1 or len(linears) < 2:
++        return None
++    by_config: dict = {}
++    for i, linear in enumerate(linears):
++        if _foldable(linear, x):
++            config = (linear.bits, linear.group_size, linear.mode)
++            by_config.setdefault(config, []).append(i)
++    groups = [
++        members
++        for members in by_config.values()
++        if len(members) > 1
++        and sum(linears[i].weight.nbytes for i in members) <= MAX_GROUP_BYTES
++    ]
++    if not groups:
++        return None
++
++    outs = [None] * len(linears)
++    for members in groups:
++        group = [linears[i] for i in members]
++        first = group[0]
++        key = tuple((id(m.weight), id(m.scales), id(m.biases)) for m in group)
++        cached = getattr(first, _CACHE_ATTR, None)
++        if cached is None or cached[0] != key:
++            weights = mx.concatenate([m.weight for m in group], axis=0)
++            scales = mx.concatenate([m.scales for m in group], axis=0)
++            biases = mx.concatenate([m.biases for m in group], axis=0)
++            rows = itertools.accumulate(m.weight.shape[0] for m in group)
++            splits = list(rows)[:-1]
++            mx.eval(weights, scales, biases)
++            cached = (key, weights, scales, biases, splits)
++            setattr(first, _CACHE_ATTR, cached)
++        _, weights, scales, biases, splits = cached
++        out = mx.quantized_matmul(
++            x,
++            weights,
++            scales=scales,
++            biases=biases,
++            transpose=True,
++            group_size=first.group_size,
++            bits=first.bits,
++            mode=first.mode,
++        )
++        for i, part in zip(members, mx.split(out, splits, axis=-1)):
++            outs[i] = part
++    for i, linear in enumerate(linears):
++        if outs[i] is None:
++            outs[i] = linear(x)
++    return tuple(outs)
++
++
++def decode_linears(linears, x: mx.array):
++    """``linears`` applied to ``x``, folded when the grouped fold is enabled."""
++    if _enabled:
++        out = fused_decode_linears(linears, x)
++        if out is not None:
++            return out
++    return tuple(linear(x) for linear in linears)
++
++
++def _grouped(stock):
++    def grouped(linears, x):
++        out = stock(linears, x)
++        if out is None:
++            out = fused_decode_linears(linears, x)
++        return out
++
++    grouped._sglang_stock = stock
++    return grouped
++
++
++def patch_fused_decode_linears(model) -> int:
++    """Enable the grouped fold and install it behind mlx-vlm's four-way fold in
++    every module namespace the model's layers dispatch their linears through.
++
++    Returns the number of namespaces hooked. Idempotent.
++    """
++    global _enabled
++    _enabled = True
++    hooked = 0
++    seen = set()
++    for _, module in model.named_modules():
++        dispatch = getattr(
++            sys.modules.get(type(module).__module__), "_target_verify_linears", None
++        )
++        namespace = getattr(dispatch, "__globals__", None)
++        if namespace is None or id(namespace) in seen:
++            continue
++        seen.add(id(namespace))
++        stock = namespace.get(_STOCK_NAME)
++        if stock is None:
++            continue
++        if getattr(stock, "_sglang_stock", None) is None:
++            namespace[_STOCK_NAME] = _grouped(stock)
++        hooked += 1
++    return hooked
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 65153e733e..43812fa8a5 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -909,6 +909,18 @@ class MlxModelRunner:
+                 f"MLX fused GatedDeltaNet front enabled: patched {n_patched} layers"
+             )
+ 
++        # Optional: linears that share an input fold into one quantized matmul
++        # on a decode step (SGLANG_MLX_FUSE_DECODE_LINEARS=1, fused_linears.py).
++        if envs.SGLANG_MLX_FUSE_DECODE_LINEARS.get():
++            from sglang.srt.hardware_backend.mlx.fused_linears import (
++                patch_fused_decode_linears,
++            )
++
++            n_patched = patch_fused_decode_linears(self.model)
++            logger.info(
++                f"MLX grouped decode linears enabled: hooked {n_patched} modules"
++            )
++
+     def _attention_module_for_layer(self, layer_idx: int) -> Any:
+         attn = getattr(
+             self._cache_layout.layers[layer_idx],
+diff --git a/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py b/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py
+index 1658a701ef..5a9cb601fe 100644
+--- a/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py
++++ b/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py
+@@ -33,6 +33,8 @@ import math
+ 
+ import mlx.core as mx
+ 
++from sglang.srt.hardware_backend.mlx.fused_linears import decode_linears
++
+ logger = logging.getLogger(__name__)
+ 
+ # One threadgroup per row: the expert count is the threadgroup width.
+@@ -185,10 +187,13 @@ def _call_shared_expert_block(self, x, target_verify: bool = False):
+     # keeps the stock chain.
+     if target_verify or self.training:
+         return self._sglang_stock_call(x, target_verify)
+-    inds, scores = fused_route(self.gate(x), self.top_k)
++    # Both gates read x; they fold into one launch under
++    # SGLANG_MLX_FUSE_DECODE_LINEARS (fused_linears.py).
++    logits, shared_gate = decode_linears((self.gate, self.shared_expert_gate), x)
++    inds, scores = fused_route(logits, self.top_k)
+     y = self.switch_mlp(x, inds)
+     shared = self.shared_expert(x, False)
+-    return fused_combine(y, scores, shared, self.shared_expert_gate(x))
++    return fused_combine(y, scores, shared, shared_gate)
+ 
+ 
+ def _call_plain_block(self, x):

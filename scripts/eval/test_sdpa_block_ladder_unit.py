@@ -3,11 +3,12 @@
 decode attention kernel.
 
 Covers the ladder itself, the holder that keeps MLX_SDPA_BLOCKS in step with
-the decode depth (writes only on a change, leaves an operator pin alone), and
-the one property of MLX the patch depends on: the variable is read on every
-kernel call, so a value set after import takes effect and any value gives the
-same attention output up to rounding. That last part runs a small kernel on
-the GPU; pass --no-gpu to skip it.
+the decode depth (writes only on a change, leaves an operator pin alone), the
+runner asking for a block count on both decode paths (serial for mlx-vlm
+attention, batched for mlx-lm), and the one property of MLX the patch depends
+on: the variable is read on every kernel call, so a value set after import
+takes effect and any value gives the same attention output up to rounding.
+That last part runs a small kernel on the GPU; pass --no-gpu to skip it.
 
     python scripts/eval/test_sdpa_block_ladder_unit.py
 """
@@ -84,12 +85,48 @@ try:
 finally:
     sdpa_blocks.os.environ = real_environ
 
+# --- the runner asks on both decode paths ---------------------------------------
+import inspect
+import types
+
+import mlx.core as mx
+
+import sglang.srt.hardware_backend.mlx.model_runner as mr
+
+
+class Spy:
+    def __init__(self, enabled):
+        self.enabled = enabled
+        self.seen = []
+
+    def apply(self, n_keys):
+        self.seen.append(n_keys)
+        return 0
+
+
+def serial_step(spy):
+    r = mr.MlxModelRunner.__new__(mr.MlxModelRunner)
+    r._cache_layout = types.SimpleNamespace(first_attention_layer_index=1)
+    r._sdpa_block_ladder = spy
+    r.model = lambda ids, cache: mx.zeros((1, 1, 4))
+    caches = [[None, types.SimpleNamespace(offset=200_000)], [None, types.SimpleNamespace(offset=9)]]
+    return r._decode_with_native_cache(caches, [mx.array([[1]]), mx.array([[2]])])
+
+
+spy = Spy(True)
+out = serial_step(spy)
+check(spy.seen == [200_001] and out.shape == (2, 4),
+      f"serial decode (mlx-vlm attention) asks for the deepest request's key count ({spy.seen})")
+spy = Spy(False)
+serial_step(spy)
+check(not spy.seen, "serial decode with the ladder off does not read the caches")
+check("_sdpa_block_ladder.apply(ctx.max_len)" in inspect.getsource(mr.MlxModelRunner._build_batched_decode_context),
+      "batched decode asks with the step's context length")
+
 # --- MLX reads the variable on every call --------------------------------------
 if "--no-gpu" in sys.argv:
     print("SKIP kernel checks (--no-gpu)")
 else:
-    import mlx.core as mx
-
     mx.random.seed(3)
     n_keys = 20_000
     q = mx.random.normal((1, 16, 1, 256)).astype(mx.bfloat16)

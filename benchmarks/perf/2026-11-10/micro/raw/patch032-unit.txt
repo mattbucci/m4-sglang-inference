@@ -1,0 +1,51 @@
+test_fold
+  PASS  mlx.core.bfloat16 rows=1 bits=[4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=1 bits=[8, 8, 8] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=1 bits=[4, 4, 4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=1 bits=[8, 4, 4, 8] bit-equal to separate calls  groups 2
+  PASS  mlx.core.bfloat16 rows=1 bits=[4, 8, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=3 bits=[4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=3 bits=[8, 8, 8] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=3 bits=[4, 4, 4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.bfloat16 rows=3 bits=[8, 4, 4, 8] bit-equal to separate calls  groups 2
+  PASS  mlx.core.bfloat16 rows=3 bits=[4, 8, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=1 bits=[4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=1 bits=[8, 8, 8] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=1 bits=[4, 4, 4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=1 bits=[8, 4, 4, 8] bit-equal to separate calls  groups 2
+  PASS  mlx.core.float16 rows=1 bits=[4, 8, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=3 bits=[4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=3 bits=[8, 8, 8] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=3 bits=[4, 4, 4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float16 rows=3 bits=[8, 4, 4, 8] bit-equal to separate calls  groups 2
+  PASS  mlx.core.float16 rows=3 bits=[4, 8, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=1 bits=[4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=1 bits=[8, 8, 8] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=1 bits=[4, 4, 4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=1 bits=[8, 4, 4, 8] bit-equal to separate calls  groups 2
+  PASS  mlx.core.float32 rows=1 bits=[4, 8, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=3 bits=[4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=3 bits=[8, 8, 8] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=3 bits=[4, 4, 4, 4] bit-equal to separate calls  groups 1
+  PASS  mlx.core.float32 rows=3 bits=[8, 4, 4, 8] bit-equal to separate calls  groups 2
+  PASS  mlx.core.float32 rows=3 bits=[4, 8, 4] bit-equal to separate calls  groups 1
+  PASS  one member per bit width folds nothing
+  PASS  a single linear folds nothing
+  PASS  a prefill-shaped input folds nothing
+  PASS  an input of another dtype folds nothing
+  PASS  a group over the byte budget stays separate
+  PASS  dense and biased members run on their own, the rest fold
+  PASS  decode_linears without the flag is the separate calls
+test_hook
+  PASS  hook installs once in the dispatch namespace
+  PASS  Qwen3_5MLP folds its two input projections, output bit-equal
+  PASS  prefill and target-verify calls leave the fold alone
+  PASS  a three-member set folds through the hook
+  PASS  four members of one bit width stay with the stock fold
+  PASS  four members of two bit widths fold as two pairs
+test_moe_block
+  PASS  test block mirrors the community recipe (8-bit gates, 4-bit rest)
+  PASS  fused block without the flag keeps separate gates
+  PASS  fused block folds both gates and the shared expert's projections, output bit-equal
+  PASS  prefill rows give the stock fused-block output
+ALL PASS

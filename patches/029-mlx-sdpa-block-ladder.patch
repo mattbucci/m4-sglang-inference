@@ -14,7 +14,7 @@ index b98108237b..0e8ccc71d9 100644
      # ===================================================================
      # Ascend NPU
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 43c471bd54..beaae2df64 100644
+index 43c471bd54..fcd5829365 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 @@ -66,6 +66,7 @@ from sglang.srt.hardware_backend.mlx.remote_code_gate import (
@@ -38,7 +38,19 @@ index 43c471bd54..beaae2df64 100644
          if self._cache_layout.has_auxiliary_state:
              self._maybe_adapt_compact_cache_model()
              self._model_embed, self._model_norm, self._model_lm_head = (
-@@ -2019,7 +2026,7 @@ class MlxModelRunner:
+@@ -1981,6 +1988,11 @@ class MlxModelRunner:
+         caches: list[list[Any]],
+         input_ids_by_request: list[mx.array],
+     ) -> mx.array:
++        if self._sdpa_block_ladder.enabled:
++            # The step's SDPA kernels are encoded after this, on this thread.
++            self._sdpa_block_ladder.apply(
++                max(self._first_attention_cache(c).offset for c in caches) + 1
++            )
+         lazy_logits_list = []
+         for input_ids, cache in zip(input_ids_by_request, caches):
+             model_output = self.model(input_ids, cache=cache)
+@@ -2019,7 +2031,7 @@ class MlxModelRunner:
          req_ids: list[str],
      ) -> BatchedDecodeContext:
          """Build the shared attention/AOT context for one decode step."""
@@ -47,7 +59,7 @@ index 43c471bd54..beaae2df64 100644
              caches=caches,
              req_ids=req_ids,
              aot_kernels=self._aot_kernels,
-@@ -2032,6 +2039,9 @@ class MlxModelRunner:
+@@ -2032,6 +2044,9 @@ class MlxModelRunner:
              ),
              full_kv_pool_index_by_layer=self._cache_layout.full_kv_pool_index_by_layer,
          )

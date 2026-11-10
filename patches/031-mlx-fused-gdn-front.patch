@@ -286,7 +286,7 @@ index 0000000000..7a21962b68
 +        swapped += 1
 +    return swapped
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 43a9b77d0d..5bb9c8a58a 100644
+index ecf7e15388..65153e733e 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 @@ -897,6 +897,18 @@ class MlxModelRunner:

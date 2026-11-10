@@ -13,7 +13,7 @@ index 0e8ccc71d9..55e260cf21 100644
      # Set to 0 to disable cache clearing entirely.
      SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index beaae2df64..43a9b77d0d 100644
+index fcd5829365..ecf7e15388 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 @@ -887,6 +887,16 @@ class MlxModelRunner:

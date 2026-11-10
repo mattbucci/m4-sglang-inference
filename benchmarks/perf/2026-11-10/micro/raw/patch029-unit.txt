@@ -1,3 +1,7 @@
+/Users/letsrtfm/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/awq/awq.py:53: UserWarning: Only CUDA, HIP and XPU support AWQ currently.
+  warnings.warn(f"Only CUDA, HIP and XPU support AWQ currently.")
+/Users/letsrtfm/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/gguf.py:76: UserWarning: Only CUDA, MUSA and NPU support GGUF quantization currently.
+  warnings.warn(f"Only CUDA, MUSA and NPU support GGUF quantization currently.")
 PASS up to 139,264 keys MLX's own ladder is kept
 PASS 512 blocks per 65,536 keys past the threshold ({139265: 1536, 163840: 1536, 196608: 1536, 196609: 2048, 251659: 2048, 262144: 2048, 262145: 2560, 327680: 2560})
 PASS every count is a multiple of 32 (MLX rounds up otherwise)
@@ -11,6 +15,9 @@ PASS the next rung sets 2048
 PASS a shallow request after a deep one clears the variable
 PASS past 262,144 keys the ladder keeps going
 PASS a value set before launch is a pin: left alone
+PASS serial decode (mlx-vlm attention) asks for the deepest request's key count ([200001])
+PASS serial decode with the ladder off does not read the caches
+PASS batched decode asks with the step's context length
 PASS every block count matches a float32 reference (stock 0.00231, {512: 0.0023, 1536: 0.00232, 2048: 0.0023, 2560: 0.00232})
 PASS a value set after import changes the reduction order: MLX reads it per call
 PASS clearing the variable restores the stock result bit for bit
