@@ -177,10 +177,10 @@ index 0000000000..70684cbaa7
 +        hooked += 1
 +    return hooked
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index 65153e733e..43812fa8a5 100644
+index d319976399..a1729543a9 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -909,6 +909,18 @@ class MlxModelRunner:
+@@ -916,6 +916,18 @@ class MlxModelRunner:
                  f"MLX fused GatedDeltaNet front enabled: patched {n_patched} layers"
              )
  

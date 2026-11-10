@@ -286,10 +286,10 @@ index 0000000000..7a21962b68
 +        swapped += 1
 +    return swapped
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index ecf7e15388..65153e733e 100644
+index d64adc3075..d319976399 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -897,6 +897,18 @@ class MlxModelRunner:
+@@ -904,6 +904,18 @@ class MlxModelRunner:
              n_patched = patch_moe_blocks_with_fused_router(self.model)
              logger.info(f"MLX fused MoE router enabled: patched {n_patched} blocks")
  

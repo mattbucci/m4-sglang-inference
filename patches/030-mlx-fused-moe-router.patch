@@ -13,13 +13,27 @@ index 0e8ccc71d9..55e260cf21 100644
      # Set to 0 to disable cache clearing entirely.
      SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-index fcd5829365..ecf7e15388 100644
+index fcd5829365..d64adc3075 100644
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -887,6 +887,16 @@ class MlxModelRunner:
+@@ -804,6 +804,7 @@ class MlxModelRunner:
+                 f"MLX model loaded in {time.time() - start_time:.2f}s "
+                 "(vlm=True via mlx_vlm)"
+             )
++            self._install_decode_fusions()
+             return
+ 
+         # The config dict feeds quantize_model (tied/embedding layout); the
+@@ -887,6 +888,22 @@ class MlxModelRunner:
                  f"MLX SwiGLU activation fusion enabled: patched {n_patched} blocks"
              )
  
++        self._install_decode_fusions()
++
++    def _install_decode_fusions(self) -> None:
++        """Opt-in decode-step fusions. Both load paths end here: an mlx_vlm
++        checkpoint returns from ``_load_model`` before the text-path tail.
++        """
 +        # Optional: one-launch MoE routing and combine kernels
 +        # (SGLANG_MLX_FUSE_MOE_ROUTER=1, moe/fused_router.py).
 +        if envs.SGLANG_MLX_FUSE_MOE_ROUTER.get():

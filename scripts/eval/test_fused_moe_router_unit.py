@@ -15,6 +15,8 @@ Runs small arrays on the Metal device; no server and no model download.
      chain has no intermediate rounding to differ from), for one decode row
      and for a batch of prefill rows; the swap is idempotent, leaves other
      modules alone, and the target-verify call keeps the stock chain.
+  4. Install site: the runner's mlx_vlm load branch returns early, so it and
+     the text path must each call the helper that reads the flag.
 
   python scripts/eval/test_fused_moe_router_unit.py
 """
@@ -168,9 +170,44 @@ def test_swap():
           f"max err {float(mx.abs(got - want).max()):.2e}")
 
 
+def test_install_site():
+    import ast
+
+    runner = os.path.join(
+        os.path.dirname(os.path.dirname(fr.__file__)), "model_runner.py"
+    )
+    tree = ast.parse(open(runner).read())
+    funcs = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+
+    def calls_helper(stmt):
+        return any(
+            isinstance(n, ast.Attribute) and n.attr == "_install_decode_fusions"
+            for n in ast.walk(stmt)
+        )
+
+    load = funcs["_load_model"]
+    vlm = [
+        n
+        for n in load.body
+        if isinstance(n, ast.If) and "_is_vlm_config" in ast.dump(n.test)
+    ]
+    check(
+        "install site: mlx_vlm branch calls the helper before returning",
+        len(vlm) == 1
+        and isinstance(vlm[0].body[-1], ast.Return)
+        and calls_helper(vlm[0].body[-2]),
+    )
+    check("install site: text path ends in the helper", calls_helper(load.body[-1]))
+    check(
+        "install site: helper reads the router flag",
+        "SGLANG_MLX_FUSE_MOE_ROUTER" in ast.dump(funcs["_install_decode_fusions"]),
+    )
+
+
 if __name__ == "__main__":
     test_route()
     test_combine()
     test_swap()
+    test_install_site()
     print("\n" + ("ALL PASS" if not FAILS else f"{len(FAILS)} FAILED: {FAILS}"))
     sys.exit(1 if FAILS else 0)

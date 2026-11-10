@@ -15,6 +15,8 @@ Runs small arrays on the Metal device; no server and no model download.
      Qwen3_5MLP gives its stock output bit for bit.
   3. MoE block: the fused shared-expert block (patch 030) folds its two 8-bit
      gates when the fold is enabled and returns the same output bit for bit.
+  4. Install site: the flag is read in the helper both load paths of the
+     runner call (mlx-vlm checkpoints return before the text-path tail).
 
   python scripts/eval/test_fused_decode_linears_unit.py
 """
@@ -208,8 +210,24 @@ def test_moe_block():
         fl._enabled = False
 
 
+def test_install_site():
+    import ast
+
+    runner = os.path.join(os.path.dirname(fl.__file__), "model_runner.py")
+    tree = ast.parse(open(runner).read())
+    helper = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef) and n.name == "_install_decode_fusions"
+    ]
+    check(
+        "install site: the helper both load paths call reads the flag",
+        len(helper) == 1 and "SGLANG_MLX_FUSE_DECODE_LINEARS" in ast.dump(helper[0]),
+    )
+
+
 if __name__ == "__main__":
-    for t in (test_fold, test_hook, test_moe_block):
+    for t in (test_fold, test_hook, test_moe_block, test_install_site):
         print(t.__name__)
         t()
     print("ALL PASS" if not FAILS else f"FAILED: {FAILS}")

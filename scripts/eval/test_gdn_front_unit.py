@@ -15,6 +15,8 @@ Runs small arrays on the Metal device; no server and no model download.
   3. Scope: prefill, masked, length-tracked, target-verify, cache-less and
      first-step (empty cache) calls keep the stock chain bit for bit; the
      swap is idempotent and leaves other modules alone.
+  4. Install site: the flag is read in the helper both load paths of the
+     runner call (mlx-vlm checkpoints return before the text-path tail).
 
   python scripts/eval/test_gdn_front_unit.py
 """
@@ -208,11 +210,28 @@ def test_scope():
     )
 
 
+def test_install_site():
+    import ast
+
+    runner = os.path.join(os.path.dirname(gf.__file__), "model_runner.py")
+    tree = ast.parse(open(runner).read())
+    helper = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef) and n.name == "_install_decode_fusions"
+    ]
+    check(
+        "install site: the helper both load paths call reads the flag",
+        len(helper) == 1 and "SGLANG_MLX_FUSE_GDN_FRONT" in ast.dump(helper[0]),
+    )
+
+
 if __name__ == "__main__":
     print("module:", gf.__file__)
     test_kernel()
     test_block_swap()
     test_scope()
+    test_install_site()
     print()
     if FAILS:
         print(f"{len(FAILS)} FAILED: {FAILS}")
