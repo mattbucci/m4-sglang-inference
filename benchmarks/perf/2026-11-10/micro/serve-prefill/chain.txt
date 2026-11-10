@@ -1,0 +1,74 @@
+[10:24:10] chain5 start
+[10:24:35] base-1 up
+[base-1]    7583 tok: 12.57 ms/step 79.6 tok/s (min 12.55 max 12.57) ttft cold 9.7138s repeat 9.732s shas 1
+[base-1]   30391 tok: 14.78 ms/step 67.7 tok/s (min 14.66 max 14.85) ttft cold 51.5345s repeat 51.8563s shas 1
+wired_gb 23.0
+[10:27:52] base-1 done
+wired_peak_gb base-1 26.22 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 21: 77884 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:28:15] m150-1 up
+[m150-1]    7583 tok: 12.07 ms/step 82.8 tok/s (min 12.02 max 12.08) ttft cold 9.8616s repeat 9.8891s shas 1
+[m150-1]   30391 tok: 14.38 ms/step 69.6 tok/s (min 14.32 max 14.57) ttft cold 51.8548s repeat 50.3039s shas 1
+wired_gb 22.6
+[10:31:28] m150-1 done
+wired_peak_gb m150-1 26.35 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 22: 79579 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:31:52] m200-1 up
+[m200-1]    7583 tok: 12.02 ms/step 83.2 tok/s (min 12.02 max 12.03) ttft cold 9.7955s repeat 9.8387s shas 1
+[m200-1]   30391 tok: 14.20 ms/step 70.4 tok/s (min 14.19 max 14.39) ttft cold 50.6227s repeat 50.3392s shas 1
+wired_gb 22.3
+[10:35:03] m200-1 done
+wired_peak_gb m200-1 25.93 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 23: 81235 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:35:29] m400-1 up
+[m400-1]    7583 tok: 12.14 ms/step 82.4 tok/s (min 12.05 max 12.71) ttft cold 10.0089s repeat 10.0626s shas 1
+[m400-1]   30391 tok: 14.21 ms/step 70.4 tok/s (min 14.15 max 14.56) ttft cold 51.1574s repeat 50.1804s shas 1
+wired_gb 21.7
+[10:38:41] m400-1 done
+wired_peak_gb m400-1 28.43 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 24: 82799 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:39:07] m400-2 up
+[m400-2]    7583 tok: 12.08 ms/step 82.8 tok/s (min 12.05 max 12.09) ttft cold 9.8583s repeat 9.8284s shas 1
+[m400-2]   30391 tok: 14.24 ms/step 70.2 tok/s (min 14.14 max 14.39) ttft cold 50.8797s repeat 50.9856s shas 1
+wired_gb 21.7
+[10:42:20] m400-2 done
+wired_peak_gb m400-2 28.36 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 25: 84410 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:42:46] m200-2 up
+[m200-2]    7583 tok: 11.92 ms/step 83.9 tok/s (min 11.84 max 12.01) ttft cold 9.728s repeat 9.7262s shas 1
+[m200-2]   30391 tok: 14.09 ms/step 71.0 tok/s (min 14.07 max 14.20) ttft cold 50.4185s repeat 49.9539s shas 1
+wired_gb 22.3
+[10:45:58] m200-2 done
+wired_peak_gb m200-2 25.80 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 26: 86016 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:46:21] m150-2 up
+[m150-2]    7583 tok: 11.98 ms/step 83.5 tok/s (min 11.90 max 12.02) ttft cold 9.7089s repeat 9.7259s shas 1
+[m150-2]   30391 tok: 14.28 ms/step 70.0 tok/s (min 14.27 max 14.38) ttft cold 50.4938s repeat 50.0232s shas 1
+wired_gb 22.3
+[10:49:33] m150-2 done
+wired_peak_gb m150-2 26.33 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 27: 87610 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:49:57] base-2 up
+[base-2]    7583 tok: 12.56 ms/step 79.7 tok/s (min 12.49 max 12.57) ttft cold 9.7399s repeat 9.7448s shas 1
+[base-2]   30391 tok: 14.68 ms/step 68.1 tok/s (min 14.54 max 14.77) ttft cold 50.3212s repeat 50.8006s shas 1
+wired_gb 23.0
+[10:53:09] base-2 done
+wired_peak_gb base-2 26.20 tracebacks 0
+/private/tmp/claude-501/-Users-letsrtfm-AI-m4-sglang-inference/661360f8-a378-48ff-b81c-7214e8f16f55/scratchpad/perf/chain5.sh: line 28: 89191 Terminated: 15          ( while :; do
+    vm_stat | awk '/wired/ {printf "%.2f\n", $4*16384/2^30}'; /bin/sleep 1;
+done ) > $S/prefill/$tag.wired
+[10:53:11] CHAIN5_DONE

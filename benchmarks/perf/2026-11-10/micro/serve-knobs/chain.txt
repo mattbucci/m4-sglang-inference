@@ -1,0 +1,74 @@
+[09:20:32] chain3 start
+SLACK_DONE
+PROF_DONE 12142
+[base-1]     948 tok: 12.14 ms/step 82.4 tok/s (min 12.10 max 12.29) ttft cold 1.1064s repeat 0.1796s shas 2
+[base-1]    7583 tok: 12.92 ms/step 77.4 tok/s (min 12.87 max 12.95) ttft cold 8.3802s repeat 0.1461s shas 2
+[base-1]   30391 tok: 15.00 ms/step 66.7 tok/s (min 15.00 max 15.11) ttft cold 42.7043s repeat 0.2923s shas 2
+wired_peak_gb base-1 30.10
+tracebacks base-1 0 censusfail 0
+[m200-1]     948 tok: 11.48 ms/step 87.1 tok/s (min 11.47 max 11.49) ttft cold 1.1035s repeat 0.196s shas 2
+[m200-1]    7583 tok: 12.16 ms/step 82.2 tok/s (min 12.13 max 12.18) ttft cold 8.592s repeat 0.1634s shas 2
+[m200-1]   30391 tok: 14.48 ms/step 69.1 tok/s (min 14.40 max 14.54) ttft cold 45.0939s repeat 0.2964s shas 2
+wired_peak_gb m200-1 30.73
+tracebacks m200-1 4 censusfail 0
+[m400-1]     948 tok: 11.50 ms/step 86.9 tok/s (min 11.47 max 11.50) ttft cold 1.128s repeat 0.1972s shas 2
+[m400-1]    7583 tok: 12.17 ms/step 82.2 tok/s (min 12.10 max 12.20) ttft cold 8.6994s repeat 0.1631s shas 2
+[m400-1]   30391 tok: 14.40 ms/step 69.4 tok/s (min 14.39 max 14.44) ttft cold 43.8495s repeat 0.3008s shas 2
+wired_peak_gb m400-1 30.69
+tracebacks m400-1 4 censusfail 0
+[m1000-1]     948 tok: 11.44 ms/step 87.4 tok/s (min 11.40 max 11.45) ttft cold 1.1202s repeat 0.1945s shas 2
+[m1000-1]    7583 tok: 12.18 ms/step 82.1 tok/s (min 12.18 max 12.19) ttft cold 8.8956s repeat 0.1655s shas 2
+[m1000-1]   30391 tok: 14.40 ms/step 69.5 tok/s (min 14.31 max 14.58) ttft cold 45.0496s repeat 0.3164s shas 2
+wired_peak_gb m1000-1 29.14
+tracebacks m1000-1 0 censusfail 0
+[o100m400-1]     948 tok: 11.48 ms/step 87.1 tok/s (min 11.47 max 11.48) ttft cold 1.1136s repeat 0.1981s shas 2
+[o100m400-1]    7583 tok: 12.12 ms/step 82.5 tok/s (min 12.11 max 12.16) ttft cold 8.8558s repeat 0.1653s shas 2
+[o100m400-1]   30391 tok: 14.31 ms/step 69.9 tok/s (min 14.18 max 14.38) ttft cold 43.9777s repeat 0.2979s shas 2
+wired_peak_gb o100m400-1 30.47
+tracebacks o100m400-1 0 censusfail 0
+[o100m1000-1]     948 tok: 11.46 ms/step 87.2 tok/s (min 11.45 max 11.47) ttft cold 1.1427s repeat 0.1995s shas 2
+[o100m1000-1]    7583 tok: 11.97 ms/step 83.5 tok/s (min 11.97 max 12.04) ttft cold 8.7448s repeat 0.1683s shas 2
+[o100m1000-1]   30391 tok: 14.35 ms/step 69.7 tok/s (min 14.34 max 14.37) ttft cold 45.7291s repeat 0.3069s shas 2
+wired_peak_gb o100m1000-1 30.98
+tracebacks o100m1000-1 0 censusfail 0
+[o200m1000-1]     948 tok: 11.84 ms/step 84.5 tok/s (min 11.81 max 11.87) ttft cold 1.1158s repeat 0.2118s shas 2
+[o200m1000-1]    7583 tok: 12.88 ms/step 77.7 tok/s (min 12.87 max 12.88) ttft cold 8.9494s repeat 0.1808s shas 2
+[o200m1000-1]   30391 tok: 18.16 ms/step 55.0 tok/s (min 18.13 max 18.23) ttft cold 45.9085s repeat 0.3295s shas 2
+wired_peak_gb o200m1000-1 31.21
+tracebacks o200m1000-1 0 censusfail 0
+[o200m1000-2]     948 tok: 11.87 ms/step 84.2 tok/s (min 11.82 max 11.87) ttft cold 1.1078s repeat 0.2113s shas 2
+[o200m1000-2]    7583 tok: 12.87 ms/step 77.7 tok/s (min 12.85 max 12.87) ttft cold 8.9397s repeat 0.1812s shas 2
+[o200m1000-2]   30391 tok: 18.16 ms/step 55.1 tok/s (min 18.04 max 18.19) ttft cold 46.0409s repeat 0.3306s shas 2
+wired_peak_gb o200m1000-2 32.91
+tracebacks o200m1000-2 0 censusfail 0
+[o100m1000-2]     948 tok: 11.39 ms/step 87.8 tok/s (min 11.37 max 11.39) ttft cold 1.1219s repeat 0.1991s shas 2
+[o100m1000-2]    7583 tok: 12.03 ms/step 83.1 tok/s (min 12.01 max 12.06) ttft cold 8.8018s repeat 0.168s shas 2
+[o100m1000-2]   30391 tok: 14.33 ms/step 69.8 tok/s (min 14.29 max 14.34) ttft cold 44.9268s repeat 0.3066s shas 2
+wired_peak_gb o100m1000-2 30.97
+tracebacks o100m1000-2 0 censusfail 0
+[o100m400-2]     948 tok: 11.45 ms/step 87.3 tok/s (min 11.40 max 11.47) ttft cold 1.1113s repeat 0.1958s shas 2
+[o100m400-2]    7583 tok: 12.07 ms/step 82.8 tok/s (min 12.04 max 12.07) ttft cold 8.6772s repeat 0.1638s shas 2
+[o100m400-2]   30391 tok: 14.40 ms/step 69.4 tok/s (min 14.37 max 14.54) ttft cold 44.1284s repeat 0.3045s shas 2
+wired_peak_gb o100m400-2 30.98
+tracebacks o100m400-2 0 censusfail 0
+[m1000-2]     948 tok: 11.51 ms/step 86.9 tok/s (min 11.47 max 11.52) ttft cold 1.1077s repeat 0.1991s shas 2
+[m1000-2]    7583 tok: 12.19 ms/step 82.0 tok/s (min 12.18 max 12.21) ttft cold 8.7443s repeat 0.1669s shas 2
+[m1000-2]   30391 tok: 14.31 ms/step 69.9 tok/s (min 14.29 max 14.34) ttft cold 44.9633s repeat 0.3096s shas 2
+wired_peak_gb m1000-2 30.15
+tracebacks m1000-2 0 censusfail 0
+[m400-2]     948 tok: 11.53 ms/step 86.7 tok/s (min 11.51 max 11.55) ttft cold 1.1256s repeat 0.1966s shas 2
+[m400-2]    7583 tok: 12.21 ms/step 81.9 tok/s (min 12.15 max 12.21) ttft cold 8.7505s repeat 0.1628s shas 2
+[m400-2]   30391 tok: 14.43 ms/step 69.3 tok/s (min 14.43 max 14.52) ttft cold 44.3074s repeat 0.3015s shas 2
+wired_peak_gb m400-2 29.50
+tracebacks m400-2 0 censusfail 0
+[m200-2]     948 tok: 11.50 ms/step 87.0 tok/s (min 11.47 max 11.54) ttft cold 1.11s repeat 0.195s shas 2
+[m200-2]    7583 tok: 12.18 ms/step 82.1 tok/s (min 12.18 max 12.20) ttft cold 8.7239s repeat 0.1619s shas 2
+[m200-2]   30391 tok: 14.43 ms/step 69.3 tok/s (min 14.42 max 14.44) ttft cold 44.1037s repeat 0.2993s shas 2
+wired_peak_gb m200-2 29.48
+tracebacks m200-2 0 censusfail 0
+[base-2]     948 tok: 12.24 ms/step 81.7 tok/s (min 12.20 max 12.38) ttft cold 1.127s repeat 0.1789s shas 2
+[base-2]    7583 tok: 12.93 ms/step 77.4 tok/s (min 12.90 max 12.97) ttft cold 8.582s repeat 0.1473s shas 2
+[base-2]   30391 tok: 15.12 ms/step 66.1 tok/s (min 15.07 max 15.20) ttft cold 43.1642s repeat 0.2932s shas 2
+wired_peak_gb base-2 28.68
+tracebacks base-2 0 censusfail 0
+[09:54:04] CHAIN3_DONE

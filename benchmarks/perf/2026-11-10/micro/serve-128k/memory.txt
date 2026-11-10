@@ -1,0 +1,6 @@
+[deep-base]  121606 tok: 23.56 ms/step 42.4 tok/s (min 23.56 max 23.56) ttft cold 385.3937s repeat Nones shas 1
+deep_mem deep-base wired_peak_gb 25.76 min_memorystatus_level 57 tracebacks 0 guard_kills 
+[deep-m200]  121606 tok: 23.23 ms/step 43.1 tok/s (min 23.23 max 23.23) ttft cold 376.598s repeat Nones shas 1
+deep_mem deep-m200 wired_peak_gb 27.45 min_memorystatus_level 54 tracebacks 0 guard_kills 
+[deep-m400]  121606 tok: 23.24 ms/step 43.0 tok/s (min 23.24 max 23.24) ttft cold 375.9889s repeat Nones shas 1
+deep_mem deep-m400 wired_peak_gb 27.79 min_memorystatus_level 53 tracebacks 0 guard_kills 

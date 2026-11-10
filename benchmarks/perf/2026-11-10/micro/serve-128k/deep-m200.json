@@ -1,0 +1,32 @@
+{
+  "tag": "deep-m200",
+  "max_tokens": 512,
+  "runs": 1,
+  "contexts": [
+    {
+      "target": 131072,
+      "prompt_tokens": 121606,
+      "tpot_ms_median": 23.2257,
+      "tpot_ms_min": 23.2257,
+      "tpot_ms_max": 23.2257,
+      "decode_tok_s_median": 43.06,
+      "ttft_cold_s": 376.598,
+      "ttft_repeat_s": null,
+      "text_shas": [
+        "21c401fd6362cca4"
+      ],
+      "runs": [
+        {
+          "prompt_tokens": 121606,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 376.598,
+          "total_s": 388.4664,
+          "text_sha": "21c401fd6362cca4",
+          "tpot_ms": 23.2257,
+          "decode_tok_s": 43.06
+        }
+      ]
+    }
+  ]
+}

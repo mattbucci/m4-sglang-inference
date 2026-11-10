@@ -1,0 +1,25 @@
+[09:57:16] samp-base-1 up
+[samp-base-1]     948 tok: 12.44 ms/step 80.4 tok/s (min 12.40 max 12.61) ttft cold 1.1163s repeat 0.1798s shas 3
+[samp-base-1]    7583 tok: 13.12 ms/step 76.2 tok/s (min 13.03 max 13.15) ttft cold 8.4233s repeat 0.1477s shas 3
+tracebacks samp-base-1 0 freezefail 0
+[09:58:16] samp-m200-1 up
+[samp-m200-1]     948 tok: 11.70 ms/step 85.5 tok/s (min 11.68 max 11.78) ttft cold 1.1159s repeat 0.1831s shas 3
+[samp-m200-1]    7583 tok: 12.41 ms/step 80.6 tok/s (min 12.39 max 12.43) ttft cold 8.6082s repeat 0.1637s shas 3
+tracebacks samp-m200-1 0 freezefail 0
+[09:59:16] samp-m400-1 up
+[samp-m400-1]     948 tok: 11.79 ms/step 84.8 tok/s (min 11.74 max 11.85) ttft cold 1.1195s repeat 0.1855s shas 3
+[samp-m400-1]    7583 tok: 12.43 ms/step 80.5 tok/s (min 12.42 max 12.48) ttft cold 8.9276s repeat 0.1655s shas 3
+tracebacks samp-m400-1 0 freezefail 0
+[10:00:17] samp-m400-2 up
+[samp-m400-2]     948 tok: 11.85 ms/step 84.4 tok/s (min 11.83 max 11.86) ttft cold 1.0909s repeat 0.1741s shas 3
+[samp-m400-2]    7583 tok: 12.37 ms/step 80.8 tok/s (min 12.36 max 12.38) ttft cold 8.8589s repeat 0.1629s shas 3
+tracebacks samp-m400-2 0 freezefail 0
+[10:01:17] samp-m200-2 up
+[samp-m200-2]     948 tok: 11.71 ms/step 85.4 tok/s (min 11.66 max 11.77) ttft cold 1.1068s repeat 0.1937s shas 3
+[samp-m200-2]    7583 tok: 12.43 ms/step 80.5 tok/s (min 12.42 max 12.48) ttft cold 8.7544s repeat 0.1644s shas 3
+tracebacks samp-m200-2 0 freezefail 0
+[10:02:18] samp-base-2 up
+[samp-base-2]     948 tok: 12.45 ms/step 80.3 tok/s (min 12.42 max 12.56) ttft cold 1.0834s repeat 0.1811s shas 3
+[samp-base-2]    7583 tok: 13.04 ms/step 76.7 tok/s (min 13.03 max 13.08) ttft cold 8.5246s repeat 0.1475s shas 3
+tracebacks samp-base-2 0 freezefail 0
+SAMP_DONE

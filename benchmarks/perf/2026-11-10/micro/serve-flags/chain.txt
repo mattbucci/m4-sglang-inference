@@ -1,0 +1,109 @@
+[09:02:38] chain2 start
+[09:03:02] census up
+wired_gb 26.6
+[09:04:36] census done
+CENSUS_DONE rows=      35
+0
+[09:05:01] base-1 up
+[base-1]     948 tok: 12.38 ms/step 80.8 tok/s (min 12.29 max 12.57) ttft cold 1.1334s repeat 0.1792s shas 2
+[base-1]    7583 tok: 12.97 ms/step 77.1 tok/s (min 12.96 max 13.09) ttft cold 9.0038s repeat 0.1488s shas 2
+[base-1]   30391 tok: 15.20 ms/step 65.8 tok/s (min 15.13 max 15.30) ttft cold 45.765s repeat 0.2985s shas 2
+wired_gb 26.6
+[09:06:39] base-1 done
+wired_peak_gb base-1 30.13
+tracebacks base-1 0
+done ) > $S/flags/$tag.wired
+[09:07:04] m400-1 up
+[m400-1]     948 tok: 11.41 ms/step 87.7 tok/s (min 11.40 max 11.41) ttft cold 1.0961s repeat 0.1956s shas 2
+[m400-1]    7583 tok: 12.23 ms/step 81.8 tok/s (min 12.20 max 12.24) ttft cold 9.2824s repeat 0.1677s shas 2
+[m400-1]   30391 tok: 14.52 ms/step 68.9 tok/s (min 14.44 max 14.52) ttft cold 45.3636s repeat 0.3039s shas 2
+wired_gb 24.5
+[09:08:37] m400-1 done
+wired_peak_gb m400-1 30.67
+tracebacks m400-1 0
+done ) > $S/flags/$tag.wired
+[09:09:02] swiglu-1 up
+[swiglu-1]     948 tok: 12.26 ms/step 81.6 tok/s (min 12.26 max 12.27) ttft cold 1.1264s repeat 0.1802s shas 2
+[swiglu-1]    7583 tok: 13.04 ms/step 76.7 tok/s (min 12.94 max 13.05) ttft cold 8.5909s repeat 0.1492s shas 2
+[swiglu-1]   30391 tok: 15.16 ms/step 66.0 tok/s (min 15.00 max 15.21) ttft cold 43.7001s repeat 0.2942s shas 2
+wired_gb 26.6
+[09:10:34] swiglu-1 done
+wired_peak_gb swiglu-1 30.23
+tracebacks swiglu-1 0
+done ) > $S/flags/$tag.wired
+[09:10:59] clear0-1 up
+[clear0-1]     948 tok: 12.28 ms/step 81.5 tok/s (min 12.23 max 12.29) ttft cold 1.1239s repeat 0.1786s shas 2
+[clear0-1]    7583 tok: 12.94 ms/step 77.3 tok/s (min 12.84 max 12.95) ttft cold 8.7521s repeat 0.1508s shas 2
+[clear0-1]   30391 tok: 14.97 ms/step 66.8 tok/s (min 14.92 max 14.98) ttft cold 44.3344s repeat 0.2912s shas 2
+wired_gb 26.0
+[09:12:32] clear0-1 done
+wired_peak_gb clear0-1 30.10
+tracebacks clear0-1 0
+done ) > $S/flags/$tag.wired
+[09:12:57] clear0-2 up
+[clear0-2]     948 tok: 12.29 ms/step 81.4 tok/s (min 12.22 max 12.31) ttft cold 1.1238s repeat 0.1784s shas 2
+[clear0-2]    7583 tok: 12.86 ms/step 77.8 tok/s (min 12.86 max 12.94) ttft cold 8.5955s repeat 0.1498s shas 2
+[clear0-2]   30391 tok: 15.22 ms/step 65.7 tok/s (min 15.05 max 15.30) ttft cold 43.9025s repeat 0.2963s shas 2
+wired_gb 25.9
+[09:14:29] clear0-2 done
+wired_peak_gb clear0-2 30.14
+tracebacks clear0-2 0
+done ) > $S/flags/$tag.wired
+[09:14:54] swiglu-2 up
+[swiglu-2]     948 tok: 12.30 ms/step 81.3 tok/s (min 12.29 max 12.40) ttft cold 1.1497s repeat 0.1804s shas 2
+[swiglu-2]    7583 tok: 13.09 ms/step 76.4 tok/s (min 12.98 max 13.12) ttft cold 8.7221s repeat 0.1493s shas 2
+[swiglu-2]   30391 tok: 15.18 ms/step 65.9 tok/s (min 15.13 max 15.24) ttft cold 43.9849s repeat 0.2946s shas 2
+wired_gb 26.6
+[09:16:27] swiglu-2 done
+wired_peak_gb swiglu-2 30.07
+tracebacks swiglu-2 0
+done ) > $S/flags/$tag.wired
+[09:16:52] m400-2 up
+[m400-2]     948 tok: 11.62 ms/step 86.1 tok/s (min 11.55 max 11.62) ttft cold 1.1233s repeat 0.1992s shas 2
+[m400-2]    7583 tok: 12.31 ms/step 81.3 tok/s (min 12.29 max 12.34) ttft cold 8.8651s repeat 0.1656s shas 2
+[m400-2]   30391 tok: 14.61 ms/step 68.5 tok/s (min 14.58 max 14.70) ttft cold 44.8735s repeat 0.3071s shas 2
+wired_gb 24.4
+[09:18:24] m400-2 done
+wired_peak_gb m400-2 28.89
+tracebacks m400-2 0
+done ) > $S/flags/$tag.wired
+[09:18:50] base-2 up
+[base-2]     948 tok: 12.33 ms/step 81.1 tok/s (min 12.29 max 12.47) ttft cold 1.128s repeat 0.1805s shas 2
+[base-2]    7583 tok: 13.07 ms/step 76.5 tok/s (min 13.03 max 13.12) ttft cold 8.7105s repeat 0.1486s shas 2
+[base-2]   30391 tok: 15.30 ms/step 65.4 tok/s (min 15.24 max 15.30) ttft cold 44.1657s repeat 0.2941s shas 2
+wired_gb 26.6
+[09:20:22] base-2 done
+wired_peak_gb base-2 30.18
+tracebacks base-2 0
+done ) > $S/flags/$tag.wired
+| depth | base-1 ms / tok/s | m400-1 ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|
+| 948 | 12.38 / 80.8 | 11.41 / 87.7 | +8.6% | yes |
+| 7583 | 12.97 / 77.1 | 12.23 / 81.8 | +6.1% | yes |
+| 30391 | 15.20 / 65.8 | 14.52 / 68.9 | +4.7% | yes |
+| depth | base-2 ms / tok/s | m400-2 ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|
+| 948 | 12.33 / 81.1 | 11.62 / 86.1 | +6.2% | yes |
+| 7583 | 13.07 / 76.5 | 12.31 / 81.3 | +6.2% | yes |
+| 30391 | 15.30 / 65.4 | 14.61 / 68.5 | +4.8% | yes |
+| depth | base-1 ms / tok/s | swiglu-1 ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|
+| 948 | 12.38 / 80.8 | 12.26 / 81.6 | +1.0% | yes |
+| 7583 | 12.97 / 77.1 | 13.04 / 76.7 | -0.5% | yes |
+| 30391 | 15.20 / 65.8 | 15.16 / 66.0 | +0.3% | yes |
+| depth | base-2 ms / tok/s | swiglu-2 ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|
+| 948 | 12.33 / 81.1 | 12.30 / 81.3 | +0.2% | yes |
+| 7583 | 13.07 / 76.5 | 13.09 / 76.4 | -0.2% | yes |
+| 30391 | 15.30 / 65.4 | 15.18 / 65.9 | +0.8% | yes |
+| depth | base-1 ms / tok/s | clear0-1 ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|
+| 948 | 12.38 / 80.8 | 12.28 / 81.5 | +0.9% | yes |
+| 7583 | 12.97 / 77.1 | 12.94 / 77.3 | +0.2% | yes |
+| 30391 | 15.20 / 65.8 | 14.97 / 66.8 | +1.6% | yes |
+| depth | base-2 ms / tok/s | clear0-2 ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|
+| 948 | 12.33 / 81.1 | 12.29 / 81.4 | +0.4% | yes |
+| 7583 | 13.07 / 76.5 | 12.86 / 77.8 | +1.6% | yes |
+| 30391 | 15.30 / 65.4 | 15.22 / 65.7 | +0.5% | yes |
+[09:20:24] CHAIN2_DONE

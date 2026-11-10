@@ -1,0 +1,75 @@
+# cProfile of decode_batch_start_chained, qwen36 default launch, 256 chained decode steps at 948 prompt tokens
+# profiled total 3.217 ms per step (the unprofiled graph build is 2.2 ms; cProfile inflates call-heavy code)
+# columns: self us/step, cumulative us/step, calls/step, function
+## by self time
+   386.1   1415.1     30.0  mlx_vlm/models/qwen3_5/language.py:1615 __call__
+   308.9    994.8     40.0  mlx_vlm/models/qwen3_5_moe/language.py:51 __call__
+   197.2    304.9   1888.0  mlx/nn/layers/base.py:99 __getattr__
+   193.5    210.7    271.0  mlx/nn/layers/quantized.py:272 __call__
+   151.6    151.6     30.0  mlx_vlm/models/qwen3_5/gated_delta.py:170 gated_delta_kernel
+   147.6    154.5    120.0  mlx_vlm/models/switch_layers.py:71 __call__
+   133.6    133.6   2293.0  ~:0 <method 'get' of 'dict' objects>
+   126.1    522.8     80.0  mlx_vlm/models/qwen3_5/language.py:527 _decode_quantized_linears_fused
+   112.3    171.5    150.0  mlx_vlm/models/qwen3_5/language.py:537 <genexpr>
+    87.3    318.2     40.0  mlx_vlm/models/switch_layers.py:172 __call__
+    86.8   2851.1     40.0  mlx_vlm/models/qwen3_5_moe/language.py:91 __call__
+    82.4    106.1     30.0  mlx_vlm/models/qwen3_5/language.py:1603 _causal_conv1d_decode
+    75.7    258.3     10.0  mlx_vlm/models/qwen3_5/language.py:1427 __call__
+    73.6    225.3     30.0  mlx_vlm/models/qwen3_5/gated_delta.py:382 gated_delta_update
+    70.3   3194.5      1.0  sglang/srt/hardware_backend/mlx/model_runner.py:2088 decode_batch_start_chained
+    68.1     93.9    180.0  sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py:34 _clone_tree
+    65.1    246.6     40.0  mlx_vlm/models/qwen3_5/language.py:1549 __call__
+    60.4     60.4    101.0  mlx/nn/layers/normalization.py:165 __call__
+    59.3     59.3    390.0  ~:0 <built-in method builtins.id>
+    57.1    160.3    150.0  mlx_vlm/models/qwen3_5/language.py:549 <genexpr>
+    50.7     57.0     30.0  mlx_vlm/models/qwen3_5/language.py:53 __call__
+    44.9     44.9     10.0  sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py:143 update_and_fetch
+    43.9    178.4    161.0  mlx_vlm/models/qwen3_5/language.py:631 _target_verify_linear
+    42.4     42.4     40.0  mlx_vlm/models/switch_layers.py:152 __call__
+    41.5    675.7     80.0  mlx_vlm/models/qwen3_5/language.py:651 _target_verify_linears
+    40.0    164.6     30.0  sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py:102 __init__
+    38.2     49.0     10.0  mlx_vlm/models/rope_utils.py:1084 apply_rotary
+    35.7     35.7    637.0  ~:0 <built-in method builtins.isinstance>
+    32.3     46.9    287.0  ~:0 <built-in method builtins.getattr>
+    31.0   2914.7      1.0  mlx_vlm/models/qwen3_5/language.py:1807 __call__
+    27.6    223.3     61.0  ~:0 <built-in method builtins.all>
+    24.7    111.4    160.0  mlx_vlm/models/qwen3_5/language.py:663 <genexpr>
+    22.3   2941.7      1.0  mlx_vlm/models/qwen3_5/language.py:2465 __call__
+    20.8     20.8      1.0  ~:0 <method 'disable' of '_lsprof.Profiler' objects>
+    17.9     19.5    204.0  ~:0 <built-in method builtins.hasattr>
+    17.1     23.6    150.0  mlx_vlm/models/qwen3_5/language.py:532 <genexpr>
+    14.3     16.8     10.0  mlx_vlm/models/base.py:292 scaled_dot_product_attention
+    11.7     11.7     70.0  mlx/nn/layers/base.py:66 training
+    10.6     10.6    161.0  mlx_vlm/models/qwen3_5/language.py:155 _use_target_verify_dense
+    10.4    328.6     40.0  mlx_vlm/models/qwen3_5_moe/language.py:15 _target_verify_switch_glu
+## by cumulative time
+     4.0   3196.6      3.0  scripts/bench/serve_census/sitecustomize.py:48 w
+    70.3   3194.5      1.0  sglang/srt/hardware_backend/mlx/model_runner.py:2088 decode_batch_start_chained
+     4.7   2950.9      1.0  sglang/srt/hardware_backend/mlx/model_runner.py:1979 _decode_with_native_cache
+     3.1   2945.5      1.0  sglang/srt/hardware_backend/mlx/model_runner.py:746 __call__
+    22.3   2941.7      1.0  mlx_vlm/models/qwen3_5/language.py:2465 __call__
+    31.0   2914.7      1.0  mlx_vlm/models/qwen3_5/language.py:1807 __call__
+    86.8   2851.1     40.0  mlx_vlm/models/qwen3_5_moe/language.py:91 __call__
+   386.1   1415.1     30.0  mlx_vlm/models/qwen3_5/language.py:1615 __call__
+   308.9    994.8     40.0  mlx_vlm/models/qwen3_5_moe/language.py:51 __call__
+    41.5    675.7     80.0  mlx_vlm/models/qwen3_5/language.py:651 _target_verify_linears
+   126.1    522.8     80.0  mlx_vlm/models/qwen3_5/language.py:527 _decode_quantized_linears_fused
+    10.4    328.6     40.0  mlx_vlm/models/qwen3_5_moe/language.py:15 _target_verify_switch_glu
+    87.3    318.2     40.0  mlx_vlm/models/switch_layers.py:172 __call__
+   197.2    304.9   1888.0  mlx/nn/layers/base.py:99 __getattr__
+     9.8    275.5     10.0  sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py:248 __call__
+    75.7    258.3     10.0  mlx_vlm/models/qwen3_5/language.py:1427 __call__
+    65.1    246.6     40.0  mlx_vlm/models/qwen3_5/language.py:1549 __call__
+    73.6    225.3     30.0  mlx_vlm/models/qwen3_5/gated_delta.py:382 gated_delta_update
+    27.6    223.3     61.0  ~:0 <built-in method builtins.all>
+   193.5    210.7    271.0  mlx/nn/layers/quantized.py:272 __call__
+    43.9    178.4    161.0  mlx_vlm/models/qwen3_5/language.py:631 _target_verify_linear
+   112.3    171.5    150.0  mlx_vlm/models/qwen3_5/language.py:537 <genexpr>
+    40.0    164.6     30.0  sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py:102 __init__
+    57.1    160.3    150.0  mlx_vlm/models/qwen3_5/language.py:549 <genexpr>
+   147.6    154.5    120.0  mlx_vlm/models/switch_layers.py:71 __call__
+   151.6    151.6     30.0  mlx_vlm/models/qwen3_5/gated_delta.py:170 gated_delta_kernel
+   133.6    133.6   2293.0  ~:0 <method 'get' of 'dict' objects>
+    24.7    111.4    160.0  mlx_vlm/models/qwen3_5/language.py:663 <genexpr>
+    82.4    106.1     30.0  mlx_vlm/models/qwen3_5/language.py:1603 _causal_conv1d_decode
+    68.1     93.9    180.0  sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py:34 _clone_tree
