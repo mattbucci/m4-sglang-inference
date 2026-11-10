@@ -1,0 +1,13 @@
+Periodic mx.clear_cache() at 122K: SGLANG_MLX_CLEAR_CACHE_STEPS stock (256) against 0.
+launch: CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache MLX_MAX_MB_PER_BUFFER=200 [SGLANG_MLX_CLEAR_CACHE_STEPS=0]
+one cold request per arm: 121,606 prompt tokens, 1,100 generated, per-chunk usage (scripts/bench/decode_step_trace.py)
+arm order: base-1 clear0-1 clear0-2 base-2; the runner's step counter is global, so the first clear lands at trace step 254
+
+arm        steps   median     mean     p99     max  wired_peak  ms at the steps where a clear lands (254, 510, 766, 1022)
+base-1      1098   23.540   23.416   25.86   39.22    27.15 GB  [39.2, 22.5, 23.7, 25.3]
+clear0-1    1098   23.484   23.341   25.50   26.80    27.08 GB  [24.7, 22.5, 23.8, 22.1]
+clear0-2    1098   23.545   23.423   25.94   26.85    27.03 GB  [22.7, 23.9, 26.7, 25.5]
+base-2      1098   23.491   23.396   25.73   38.01    27.11 GB  [38.0, 23.7, 24.0, 24.4]
+
+pooled mean ms per token: base 23.406, clear0 23.382, difference -0.10 %
+tracebacks: 0 in all four server logs

@@ -48,7 +48,7 @@ The R9700 team's decode lane, carried over to Metal:
 | `MLX_MAX_OPS_PER_BUFFER` 200 | launch commit | −17.1 % at 30K | rejected |
 | `MLX_METAL_FAST_SYNCH=1` | launch commit | raw: equal to stock | rejected |
 | `MLX_BFS_MAX_WIDTH` 1 / 5 / 100 / 100000 (stock 20) | graph order | raw: 1 costs 0.75 ms, 5 equal, 100 and up 0.1 to 0.4 ms slower | rejected, stock is best |
-| `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | +0.6 to +1.1 % to 30K; traces show a 93 to 186 ms stall every 256 steps at 139K and 196K | open, deep arms decide (cache-clear section) |
+| `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | no cost to 122K (−0.1 % pooled over four traces, equal wired peak); a 93 to 186 ms stall every 256 steps at 139K and 196K, 1.7 % | open, the 256K arm decides (cache-clear section) |
 | `SGLANG_MLX_FUSE_SWIGLU=1` | launches | never installed on qwen36 (read on the mlx-lm load path, and it matches mlx-lm's `SwitchGLU` class only); the −0.3 to +0.6 % was noise | not measured on qwen36, coder-30b arm queued |
 | `mx.compile` around the MoE and DeltaNet blocks | graph build | raw: build 1.72 → 0.87 ms, step time equal | rejected, the build already overlaps the GPU |
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
@@ -273,13 +273,22 @@ The runner calls `mx.clear_cache()` every `SGLANG_MLX_CLEAR_CACHE_STEPS`
 decode steps (stock 256). `scripts/common.sh` also caps the buffer cache
 (`SGLANG_MLX_CACHE_LIMIT_GB`, 4 GB), so the clear is not what bounds
 memory on this stack; it only empties a cache that the cap already holds
-under 4 GB, and the next step pays to allocate its working buffers again.
+under 4 GB. What the clear costs depends on the depth.
 
 | depth | evidence | cost of the clear |
 |---|---|---|
-| 948 / 7,583 / 30,391 | `serve-flags/`, A/B with the setting at 0 | 0.6 / 0.9 / 1.1 % of a step |
+| 948 / 7,583 / 30,391 | `serve-flags/`, A/B with the setting at 0 | 0.6 / 0.9 / 1.1 % of a step, at the A/B noise floor |
+| 122K | `serve-clear/c122-*`, four 1,100-token traces in mirrored order | one 15 ms stall at the first clear, none at the next three: 0.014 ms per token, 0.06 % |
 | 139K | `serve-ladder/cross139-ladder.trace.json`, stalls of 178 and 156 ms | 0.43 ms per token, 1.7 % |
 | 196K | `serve-ladder/cross196-ladder.trace.json`, stalls of 186, 127 and 93 ms | 0.52 ms per token, 1.7 % |
+
+At 122K the two arms are the same request to the token: 23.42 and 23.40 ms
+per token with the clear, 23.34 and 23.42 without, pooled −0.10 %, and a
+wired peak of 27.03 to 27.15 GB in all four (`serve-clear/c122-summary.txt`).
+The runner's step counter is global, so the first clear of a trace lands
+where earlier requests left the count; at 122K that step takes 38 to 39 ms
+against 23.5 and the later clears cost nothing. The repeating stall is in
+the 139K and 196K traces only.
 
 ## Launch folding (patches 030, 031, 032), raw MLX
 
@@ -330,5 +339,6 @@ groups by bit width instead.
 | `serve-knobs/`, `serve-flags/`, `serve-sampled/`, `serve-prefill/` | serving A/B chains to 30K |
 | `serve-128k/`, `serve-256k/` | deep arms with memory lines |
 | `serve-ladder/` | threshold-crossing trace |
+| `serve-clear/` | cache-clear traces at 122K with memory lines |
 | `serve-router-null/` | eleven arms of one build (launch-folding flags set, hooks not installed): the A/B design's noise floor |
 | `recall/` | depth recall at the 215,040 label |
