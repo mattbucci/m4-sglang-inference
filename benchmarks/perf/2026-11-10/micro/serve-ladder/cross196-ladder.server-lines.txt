@@ -1,0 +1,4 @@
+[2026-11-10 14:53:41] SDPA block ladder: 196609 keys -> 2048 blocks
+tracebacks 0
+wired_peak_gb 27.91 min_memorystatus_level 53
+launch: CTX=198656 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache MLX_MAX_MB_PER_BUFFER=200 SGLANG_MLX_SDPA_BLOCK_LADDER=1

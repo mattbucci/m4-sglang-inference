@@ -38,7 +38,7 @@ The R9700 team's decode lane, carried over to Metal:
 | `MLX_MAX_OPS_PER_BUFFER` 200 | launch commit | −17.1 % at 30K | rejected |
 | `MLX_METAL_FAST_SYNCH=1` | launch commit | raw: equal to stock | rejected |
 | `MLX_BFS_MAX_WIDTH` 1 / 5 / 100 / 100000 (stock 20) | graph order | raw: 1 costs 0.75 ms, 5 equal, 100 and up 0.1 to 0.4 ms slower | rejected, stock is best |
-| `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | +0.6 to +1.1 % | rejected, inside noise |
+| `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | +0.6 to +1.1 % to 30K; traces show a 93 to 186 ms stall every 256 steps at 139K and 196K | open, deep arms decide (cache-clear section) |
 | `SGLANG_MLX_FUSE_SWIGLU=1` | launches | −0.3 to +0.6 % | rejected |
 | `mx.compile` around the MoE and DeltaNet blocks | graph build | raw: build 1.72 → 0.87 ms, step time equal | rejected, the build already overlaps the GPU |
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
@@ -232,16 +232,44 @@ the patch now asks on both paths and its unit test fails on the old tree.
 The second build switched to 1536 blocks at 139,264 keys, the joint
 shape's crossover. One request decoding across that point
 (`serve-ladder/cross139-ladder.trace.json`, 138,991 prompt tokens, 800
-generated, `scripts/bench/decode_step_trace.py`) ran 24.68 ms per step
-before and 24.71 ms after: no stall on the change, and no gain, which is
+generated, `scripts/bench/decode_step_trace.py`) ran 25.50 ms per token
+before and 25.56 ms after: no stall on the change, and no gain, which is
 what the per-layer shape says. The 256K arm above is unaffected, both
 builds pick 2048 blocks there.
+
+The current build crosses at 196,608 keys. One request decoding across it
+(`serve-ladder/cross196-ladder.trace.json`, 196,298 prompt tokens, 800
+generated, log line `SDPA block ladder: 196609 keys -> 2048 blocks`) ran
+31.08 ms per token over the 309 steps before and 30.70 ms over the 476
+steps after, −1.2 %, with no stall on the change, 0 tracebacks and a
+27.91 GB wired peak. The per-layer probe says 21.23 against 21.20 ms of
+attention at that depth, so the threshold sits where the two ladders meet.
+
+Both traces show something else: a step that takes 93 to 186 ms longer
+than its neighbours every 256 decode steps (at 139,491 and 139,729; at
+196,484, 196,740 and 196,973), 0.43 and 0.52 ms per token averaged in.
+That is the runner's periodic `mx.clear_cache()`; see the cache-clear
+section.
 
 At 251,474 tokens the ten attention layers read 5.15 GB of keys and values
 per token. The ladder arm spends about 26 ms above the short-context
 floor, about 200 GB/s, the rate the kernel holds at 131K. Past the ladder
 the deep step is bound by how fast this machine reads the cache; what is
 left is the launch-bound floor, which every depth pays.
+
+## Periodic cache clear
+
+The runner calls `mx.clear_cache()` every `SGLANG_MLX_CLEAR_CACHE_STEPS`
+decode steps (stock 256). `scripts/common.sh` also caps the buffer cache
+(`SGLANG_MLX_CACHE_LIMIT_GB`, 4 GB), so the clear is not what bounds
+memory on this stack; it only empties a cache that the cap already holds
+under 4 GB, and the next step pays to allocate its working buffers again.
+
+| depth | evidence | cost of the clear |
+|---|---|---|
+| 948 / 7,583 / 30,391 | `serve-flags/`, A/B with the setting at 0 | 0.6 / 0.9 / 1.1 % of a step |
+| 139K | `serve-ladder/cross139-ladder.trace.json`, stalls of 178 and 156 ms | 0.43 ms per token, 1.7 % |
+| 196K | `serve-ladder/cross196-ladder.trace.json`, stalls of 186, 127 and 93 ms | 0.52 ms per token, 1.7 % |
 
 ## Launch folding (patches 030, 031, 032), raw MLX
 
