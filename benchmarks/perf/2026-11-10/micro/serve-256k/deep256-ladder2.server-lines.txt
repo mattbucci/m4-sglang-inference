@@ -1,0 +1,3 @@
+[2026-11-10 14:05:13] SDPA block ladder: 251475 keys -> 2048 blocks
+[deep256-ladder2]  251474 tok: 37.28 ms/step 26.8 tok/s (min 37.28 max 37.28) ttft cold 1426.0239s repeat Nones shas 1
+deep_mem deep256-ladder2 wired_peak_gb 29.44 min_memorystatus_level 51 tracebacks 0 guard_kills 

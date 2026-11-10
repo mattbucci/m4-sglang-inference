@@ -32,10 +32,10 @@ def check(cond, msg):
 
 
 # --- the ladder ---------------------------------------------------------------
-check(all(blocks_for(n) == 0 for n in (1, 1024, 65_536, 131_072, 139_264)),
-      "up to 139,264 keys MLX's own ladder is kept")
-want = {139_265: 1536, 163_840: 1536, 196_608: 1536, 196_609: 2048, 251_659: 2048,
-        262_144: 2048, 262_145: 2560, 327_680: 2560}
+check(all(blocks_for(n) == 0 for n in (1, 1024, 65_536, 131_072, 139_265, 180_224, 196_608)),
+      "up to 196,608 keys MLX's own ladder is kept")
+want = {196_609: 2048, 212_992: 2048, 251_659: 2048, 262_144: 2048, 262_145: 2560,
+        327_680: 2560, 327_681: 3072}
 got = {n: blocks_for(n) for n in want}
 check(got == want, f"512 blocks per 65,536 keys past the threshold ({got})")
 deep = range(sdpa_blocks.STOCK_MAX_KEYS + 1, 1_048_577, 4099)
@@ -67,14 +67,15 @@ try:
 
     ladder = SdpaBlockLadder(True)
     check(ladder.enabled and ladder.apply(8_192) == 0 and not writes, "enabled, shallow: nothing is written")
-    check(ladder.apply(150_000) == 1536 and env.get(ENV) == "1536", "crossing the threshold sets 1536")
+    check(ladder.apply(196_608) == 0 and not writes, "enabled, at the threshold: nothing is written")
+    check(ladder.apply(196_609) == 2048 and env.get(ENV) == "2048", "crossing the threshold sets 2048")
     n = len(writes)
-    for depth in range(150_001, 150_300):
+    for depth in range(196_610, 196_910):
         ladder.apply(depth)
     check(len(writes) == n, "steps inside one rung write nothing")
-    check(ladder.apply(200_000) == 2048 and env.get(ENV) == "2048", "the next rung sets 2048")
+    check(ladder.apply(262_145) == 2560 and env.get(ENV) == "2560", "the next rung sets 2560")
     check(ladder.apply(4_096) == 0 and ENV not in env, "a shallow request after a deep one clears the variable")
-    check(ladder.apply(262_145) == 2560 and env.get(ENV) == "2560", "past 262,144 keys the ladder keeps going")
+    check(ladder.apply(250_000) == 2048 and env.get(ENV) == "2048", "a deep request after a shallow one sets it again")
 
     writes.clear()
     sdpa_blocks.os.environ = env = Recorder({ENV: "768"})

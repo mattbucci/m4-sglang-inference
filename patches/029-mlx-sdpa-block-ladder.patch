@@ -71,22 +71,26 @@ index 43c471bd54..fcd5829365 100644
          self,
 diff --git a/python/sglang/srt/hardware_backend/mlx/sdpa_blocks.py b/python/sglang/srt/hardware_backend/mlx/sdpa_blocks.py
 new file mode 100644
-index 0000000000..5fb93af6e8
+index 0000000000..7ab5589b64
 --- /dev/null
 +++ b/python/sglang/srt/hardware_backend/mlx/sdpa_blocks.py
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,87 @@
 +"""Depth-aware block count for MLX's two-pass decode attention kernel.
 +
 +One decode query against N cached keys runs MLX's vector SDPA kernel: a first
 +pass splits the keys into ``blocks`` interleaved slices, one threadgroup each,
 +and a second pass reduces the partials. MLX picks ``blocks`` from N on a ladder
-+that stops at 1024. On Apple "s"-class GPUs the first pass holds its byte rate
-+(about 200 GB/s on an M4 Pro) only while a slice has at most about 136 keys;
-+past that the rate falls with depth (about 106 GB/s at 262,144 keys).
++that stops at 1024. Evaluated one layer at a time, the way a decode step meets
++its attention layers, the first pass holds its byte rate (190-200 GB/s on an
++M4 Pro) while a slice has at most about 192 keys; past that the rate falls
++with depth (about 160 GB/s at 262,144 keys).
 +
 +MLX reads ``MLX_SDPA_BLOCKS`` on every kernel call, so the count can follow the
 +cached length. Past ``STOCK_MAX_KEYS`` this module asks for 512 blocks per
-+65,536 keys, which keeps a slice at 128 keys or fewer.
++65,536 keys, which keeps a slice at 128 keys or fewer. Several kernels queued
++back to back lose more on large slices than a serving step does, so a raw
++benchmark that evaluates all layers at once overstates the gain and puts the
++crossover too early.
 +
 +The variable is process-wide and applies to every two-pass call encoded while
 +it is set. A block count only changes the order partial sums are reduced in,
@@ -104,8 +108,8 @@ index 0000000000..5fb93af6e8
 +logger = logging.getLogger(__name__)
 +
 +ENV = "MLX_SDPA_BLOCKS"
-+# MLX's own ladder is the faster choice up to here (1024 blocks, <= 136 keys).
-+STOCK_MAX_KEYS = 139_264
++# MLX's own ladder is as fast or faster up to here (1024 blocks, <= 192 keys).
++STOCK_MAX_KEYS = 196_608
 +BLOCK_STEP = 512
 +KEYS_PER_STEP = 65_536
 +
