@@ -1,0 +1,33 @@
+# Eleven arms of one build: the three launch-folding flags were set but never installed (mlx-vlm load path, fixed in the next chain).
+# hook lines per arm server log (fused MoE router / GatedDeltaNet front / grouped decode linears 'enabled'):
+base-1 hook_lines 0 tracebacks 0
+fused-1 hook_lines 0 tracebacks 0
+front-1 hook_lines 0 tracebacks 0
+lin-1 hook_lines 0 tracebacks 0
+all-1 hook_lines 0 tracebacks 0
+ladder hook_lines 0 tracebacks 0
+all-2 hook_lines 0 tracebacks 0
+lin-2 hook_lines 0 tracebacks 0
+front-2 hook_lines 0 tracebacks 0
+fused-2 hook_lines 0 tracebacks 0
+base-2 hook_lines 0 tracebacks 0
+
+arm                 948        7583       30391
+base-1           11.492      12.168      14.321
+fused-1          11.463      12.166      14.580
+front-1          11.471      12.208      14.441
+lin-1            11.551      12.211      14.541
+all-1            11.539      12.214      14.457
+ladder           11.514      12.207      14.491
+all-2            11.517      12.224      14.515
+lin-2            11.531      12.207      14.526
+front-2          11.543      12.273      14.439
+fused-2          11.347      12.094      14.389
+base-2           11.524      12.188      14.466
+all arms: 948: mean 11.499 sd 0.055 (0.48%) range 11.35-11.55 (1.77%)  7583: mean 12.197 sd 0.042 (0.35%) range 12.09-12.27 (1.47%)  30391: mean 14.470 sd 0.070 (0.48%) range 14.32-14.58 (1.79%)
+base          11.488 ms  +0.0%   12.160 ms  +0.0%   14.398 ms  +0.0%   tok/s 87.0 82.2 69.5
+fused         11.399 ms  +0.8%   12.146 ms  +0.1%   14.463 ms  -0.4%   tok/s 87.7 82.3 69.1
+front         11.500 ms  -0.1%   12.238 ms  -0.6%   14.442 ms  -0.3%   tok/s 87.0 81.7 69.2
+lin           11.556 ms  -0.6%   12.215 ms  -0.4%   14.536 ms  -1.0%   tok/s 86.5 81.9 68.8
+all           11.520 ms  -0.3%   12.216 ms  -0.5%   14.477 ms  -0.5%   tok/s 86.8 81.9 69.1
+ladder        11.507 ms  -0.2%   12.211 ms  -0.4%   14.510 ms  -0.8%   tok/s 86.9 81.9 68.9

@@ -19,6 +19,10 @@ The R9700 team's decode lane, carried over to Metal:
 3. Every candidate is a same-tree serving A/B: `scripts/bench/decode_ab.py`,
    3 runs per depth at 948 / 7,583 / 30,391 prompt tokens, 256 generated,
    greedy, `ignore_eos`, each arm run twice in mirrored order and pooled.
+   The design's noise floor is measured (`serve-router-null/`, eleven arms
+   of one build): arm medians spread 0.4 to 0.5 % (SD) and 1.5 to 1.8 % end
+   to end, and one pooled pair of arms lands up to 1.0 % from another. A
+   pooled difference under 1 % is not a result.
 4. Deep arms at 121,606 and 251,474 prompt tokens under the long-context
    recipe (`CTX=<label+64> MEM_FRAC=0.5 CHUNKED=1024
    EXTRA_ARGS=--disable-radix-cache`) with the OOM guard, one cold request
@@ -27,6 +31,12 @@ The R9700 team's decode lane, carried over to Metal:
    default changes.
 6. A retained code change is a numbered opt-in patch. A neutral one is
    reverted. Every experiment ends with a disposition.
+7. A flag-gated arm counts only if its server log shows the hook's
+   "enabled" line. Two chains here timed flags that never installed:
+   mlx-vlm checkpoints return from the runner's load before the text-path
+   tail where the fusion flags were read. Patches 030 to 032 now install
+   from a helper both load paths call, and each patch's unit test checks
+   the call sites.
 
 ## Dispositions
 
@@ -39,7 +49,7 @@ The R9700 team's decode lane, carried over to Metal:
 | `MLX_METAL_FAST_SYNCH=1` | launch commit | raw: equal to stock | rejected |
 | `MLX_BFS_MAX_WIDTH` 1 / 5 / 100 / 100000 (stock 20) | graph order | raw: 1 costs 0.75 ms, 5 equal, 100 and up 0.1 to 0.4 ms slower | rejected, stock is best |
 | `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | +0.6 to +1.1 % to 30K; traces show a 93 to 186 ms stall every 256 steps at 139K and 196K | open, deep arms decide (cache-clear section) |
-| `SGLANG_MLX_FUSE_SWIGLU=1` | launches | −0.3 to +0.6 % | rejected |
+| `SGLANG_MLX_FUSE_SWIGLU=1` | launches | never installed on qwen36 (read on the mlx-lm load path, and it matches mlx-lm's `SwitchGLU` class only); the −0.3 to +0.6 % was noise | not measured on qwen36, coder-30b arm queued |
 | `mx.compile` around the MoE and DeltaNet blocks | graph build | raw: build 1.72 → 0.87 ms, step time equal | rejected, the build already overlaps the GPU |
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
 | SDPA block ladder (patch 029) | attention | 251K: 37.3 against 40.1 to 40.8 ms per token, recall 6/6; stock kept through 196,608 keys | retained, opt-in flag |
@@ -141,7 +151,7 @@ the same chain's base arm:
 | | ops 200, 1000 MB | +2.8 % | +0.4 % | −17.1 % |
 | `serve-flags/` | base | 12.36 | 13.02 | 15.25 |
 | | clear-cache off | +0.6 % | +0.9 % | +1.1 % |
-| | fused SwiGLU | +0.6 % | −0.3 % | +0.5 % |
+| | fused SwiGLU (hook not installed) | +0.6 % | −0.3 % | +0.5 % |
 | | 400 MB | +7.4 % | +6.1 % | +4.8 % |
 | `serve-sampled/` (temperature 0.7) | base | 12.44 | 13.08 | |
 | | 200 MB | +6.3 % | +5.3 % | |
@@ -320,4 +330,5 @@ groups by bit width instead.
 | `serve-knobs/`, `serve-flags/`, `serve-sampled/`, `serve-prefill/` | serving A/B chains to 30K |
 | `serve-128k/`, `serve-256k/` | deep arms with memory lines |
 | `serve-ladder/` | threshold-crossing trace |
+| `serve-router-null/` | eleven arms of one build (launch-folding flags set, hooks not installed): the A/B design's noise floor |
 | `recall/` | depth recall at the 215,040 label |
