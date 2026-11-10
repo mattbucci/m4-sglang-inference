@@ -1,0 +1,19 @@
+PASS up to 139,264 keys MLX's own ladder is kept
+PASS 512 blocks per 65,536 keys past the threshold ({139265: 1536, 163840: 1536, 196608: 1536, 196609: 2048, 251659: 2048, 262144: 2048, 262145: 2560, 327680: 2560})
+PASS every count is a multiple of 32 (MLX rounds up otherwise)
+PASS a slice never holds more than 128 keys past the threshold
+PASS the count never falls as the context grows
+PASS disabled: nothing is written at any depth
+PASS enabled, shallow: nothing is written
+PASS crossing the threshold sets 1536
+PASS steps inside one rung write nothing
+PASS the next rung sets 2048
+PASS a shallow request after a deep one clears the variable
+PASS past 262,144 keys the ladder keeps going
+PASS a value set before launch is a pin: left alone
+PASS every block count matches a float32 reference (stock 0.00231, {512: 0.0023, 1536: 0.00232, 2048: 0.0023, 2560: 0.00232})
+PASS a value set after import changes the reduction order: MLX reads it per call
+PASS clearing the variable restores the stock result bit for bit
+PASS one block count gives one result
+
+ALL PASS
