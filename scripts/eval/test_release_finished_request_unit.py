@@ -34,8 +34,9 @@ class Runner:
     def has_request(self, rid):
         return rid in self.known
 
-    def store_auxiliary_state_for_request(self, rid):
+    def store_auxiliary_state_for_request(self, rid, key_len=None):
         self.calls.append(("store", rid))
+        return True
 
     def release_request_row(self, rid, owned_len):
         self.calls.append(("release", rid, owned_len))
@@ -64,6 +65,7 @@ def req(rid, n_out):
         output_ids=list(range(n_out)),
         kv=SimpleNamespace(mamba_last_track_seqlen=4096),
         owned_kv_len=lambda: 1234,
+        skip_radix_cache_insert=False,
     )
 
 

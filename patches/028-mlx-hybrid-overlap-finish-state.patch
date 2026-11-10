@@ -1,0 +1,313 @@
+diff --git a/python/sglang/srt/arg_groups/mamba_hook.py b/python/sglang/srt/arg_groups/mamba_hook.py
+index 3376683273..b36ac06fc8 100644
+--- a/python/sglang/srt/arg_groups/mamba_hook.py
++++ b/python/sglang/srt/arg_groups/mamba_hook.py
+@@ -155,7 +155,12 @@ def validate_mamba_extra_buffer(view, hf_config: Any, *, mamba_cache_chunk_size_
+ 
+ def validate_mamba_no_buffer(view, model_arch: str):
+     assert view.page_size in (1, None), "no_buffer only supports page_size=1."
+-    assert view.disable_overlap_schedule, (
++    from sglang.srt.environ import envs
++    from sglang.srt.hardware_backend.mlx.runtime import use_mlx
++
++    assert view.disable_overlap_schedule or (
++        use_mlx() and envs.SGLANG_MLX_HYBRID_OVERLAP.get()
++    ), (
+         "no_buffer do not support overlap schedule. Try to set disable_overlap_schedule=True."
+     )
+     assert view.attention_backend != "trtllm_mha", (
+diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
+index a787a8bf5a..37a5ac55e2 100644
+--- a/python/sglang/srt/arg_groups/overrides.py
++++ b/python/sglang/srt/arg_groups/overrides.py
+@@ -500,7 +500,11 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
+             declared["mamba_radix_cache_strategy"] = "extra_buffer"
+         else:
+             declared["mamba_radix_cache_strategy"] = "no_buffer"
+-            declared["disable_overlap_schedule"] = True
++            # MLX can keep its pipelined decode loop: the runner hands the
++            # radix insert the pre-lookahead auxiliary state (model_runner
++            # ``_lookahead_aux_base``).
++            if not (use_mlx() and envs.SGLANG_MLX_HYBRID_OVERLAP.get()):
++                declared["disable_overlap_schedule"] = True
+     return declared
+ 
+ 
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 3ba24f05c1..b98108237b 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1116,6 +1116,17 @@ class Envs:
+     # MLX wired-memory limit in GB. Unset: the max recommended working set.
+     # 0: no wired limit (no residency-set traffic).
+     SGLANG_MLX_WIRED_LIMIT_GB = EnvFloat(None)
++    # Keep the pipelined (overlap) decode loop for hybrid models that use the
++    # radix cache. The runner snapshots the auxiliary state a chained
++    # lookahead step was built on, so a request that finishes under the
++    # lookahead still donates the state that matches its radix key.
++    SGLANG_MLX_HYBRID_OVERLAP = EnvBool(False)
++    # Chained decode steps skip prepare_for_decode, so the scheduler owns one
++    # pool slot per fresh decode launch and a finished request donates only
++    # that much of its output to the radix tree. With this set, the release
++    # allocates the slots for the rest of the committed output first, so the
++    # whole reply is keyed.
++    SGLANG_MLX_COMMIT_CHAINED = EnvBool(False)
+ 
+     # ===================================================================
+     # Ascend NPU
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+index 8924804fdc..085beb2f30 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+@@ -89,6 +89,28 @@ def _snapshot_cache(cache: Any) -> _CacheSnapshot:
+     return _CacheSnapshot(state=state, meta_state=meta_state, attrs=attrs)
+ 
+ 
++class FrozenCacheView:
++    """What ``_snapshot_cache`` reads from a layer cache, pinned at one moment.
++
++    Holds array handles only (no data copies, no evaluation), so taking one
++    per snapshot layer before a chained decode step costs a few small
++    allocations. The model then rebinds or overwrites the live cache's
++    entries with the next step's lazy arrays while this view keeps the state
++    the step was built on.
++    """
++
++    def __init__(self, cache: Any):
++        if hasattr(cache, "snapshot_state"):
++            self.state = _clone_tree(cache.snapshot_state())
++        else:
++            self.state = _clone_tree(getattr(cache, "state", ()))
++        if hasattr(cache, "meta_state"):
++            self.meta_state = _clone_tree(cache.meta_state)
++        for name in _CACHE_ATTRS:
++            if hasattr(cache, name):
++                setattr(self, name, _clone_tree(getattr(cache, name)))
++
++
+ def _restore_cache(cache: Any, snapshot: _CacheSnapshot) -> None:
+     cache.state = _clone_tree(snapshot.state)
+     if snapshot.meta_state is not _MISSING and hasattr(cache, "meta_state"):
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index ed91905a22..43c471bd54 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -61,6 +61,7 @@ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     set_context,
+     uses_sliding_window_attention,
+ )
++from sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state import FrozenCacheView
+ from sglang.srt.hardware_backend.mlx.remote_code_gate import (
+     ensure_remote_code_allowed,
+     resolve_model_directory,
+@@ -145,6 +146,9 @@ class MlxPendingDecode:
+     # Never holds a grammar mask on the chained path: grammar batches are
+     # not chain_safe, so their pendings never become a chain root.
+     edit_rows: mx.array | None = None
++    # Nonzero for a chained step that recorded a pre-lookahead auxiliary
++    # state (``MlxModelRunner._lookahead_aux_base``) at launch.
++    chain_seq: int = 0
+ 
+ 
+ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
+@@ -366,6 +370,13 @@ class MlxModelRunner:
+         self._req_to_token_pool: ReqToTokenPool | None = None
+         self._req_pool_idx: dict[str, int] = {}
+         self._req_synced_offset: dict[str, int] = {}
++        # Per request: (chain_seq, {layer_idx: FrozenCacheView}) — the
++        # auxiliary state the newest launched-but-unfinalised chained decode
++        # step was built on. A request that finishes while that lookahead is
++        # in flight donates this state, which matches its radix key; the live
++        # caches have already consumed one more token.
++        self._lookahead_aux_base: dict[str, tuple[int, dict[int, Any]]] = {}
++        self._chain_seq = 0
+ 
+         self._pool_size = self._compute_pool_size(pool_size)
+         self._aot_kernels = self._build_aot_kernels()
+@@ -503,13 +514,34 @@ class MlxModelRunner:
+             self._snapshot_layer_indices,
+         )
+ 
+-    def store_auxiliary_state_for_request(self, req_id: str) -> None:
+-        """Snapshot native auxiliary state before scheduler-owned radix insert."""
++    def store_auxiliary_state_for_request(
++        self, req_id: str, key_len: int | None = None
++    ) -> bool:
++        """Snapshot the request's auxiliary state for the radix insert.
++
++        *key_len* is the length of the key the scheduler is about to insert.
++        Returns False, storing nothing, when the runner holds no state after
++        exactly that many tokens: the caller must then skip the insert, since
++        auxiliary state cannot be shortened with the key.
++        """
++        if not self._has_snapshot_state:
++            return True
+         req_pool_idx = self._req_pool_idx.get(req_id)
+         cache = self._req_caches.get(req_id)
+         if req_pool_idx is None or cache is None:
+-            return
++            return False
++        # The newest token in the list has been sampled but not consumed by
++        # a finalised step.
++        state_len = len(self._req_token_ids[req_id]) - 1
++        if key_len is not None and key_len != state_len:
++            return False
++        base = self._lookahead_aux_base.get(req_id)
++        if base is not None:
++            # A chained lookahead step is in flight: the live caches are one
++            # token past the request's last committed position.
++            cache = base[1]
+         self._store_auxiliary_state(req_pool_idx, cache)
++        return True
+ 
+     def _select_auxiliary_state_track_len(
+         self,
+@@ -2077,6 +2109,19 @@ class MlxModelRunner:
+         """
+         caches = prev.caches
+ 
++        chain_seq = 0
++        if self._has_snapshot_state and not self.disable_radix_cache:
++            self._chain_seq += 1
++            chain_seq = self._chain_seq
++            for rid, cache in zip(prev.req_ids, caches):
++                self._lookahead_aux_base[rid] = (
++                    chain_seq,
++                    {
++                        layer_idx: FrozenCacheView(cache[layer_idx])
++                        for layer_idx in self._snapshot_layer_indices
++                    },
++                )
++
+         # After prev's graph ran, each attention KV cache offset was
+         # bumped by one per layer - attention wrapper's `write_token`
+         # mutates the Python offset synchronously at graph-build time.
+@@ -2106,6 +2151,7 @@ class MlxModelRunner:
+             lazy_logprobs=lazy_logprobs,
+             logprob_spec=prev.logprob_spec,
+             edit_rows=prev.edit_rows,
++            chain_seq=chain_seq,
+         )
+ 
+     def decode_batch_finalize(
+@@ -2129,6 +2175,13 @@ class MlxModelRunner:
+         for i, rid in enumerate(pending.req_ids):
+             self._req_token_ids[rid].append(next_tokens[i])
+ 
++        if pending.chain_seq:
++            # This step is no longer a lookahead: its tokens are committed.
++            for rid in pending.req_ids:
++                base = self._lookahead_aux_base.get(rid)
++                if base is not None and base[0] == pending.chain_seq:
++                    del self._lookahead_aux_base[rid]
++
+         self._decode_step_ct += 1
+         if self._clear_steps > 0 and self._decode_step_ct % self._clear_steps == 0:
+             mx.clear_cache()
+@@ -2149,6 +2202,7 @@ class MlxModelRunner:
+             self._release_cache(cache)
+         self._req_pool_idx.pop(req_id, None)
+         self._req_synced_offset.pop(req_id, None)
++        self._lookahead_aux_base.pop(req_id, None)
+ 
+     def clear(self):
+         """Clear all request states."""
+@@ -2159,5 +2213,6 @@ class MlxModelRunner:
+         self._req_caches.clear()
+         self._req_pool_idx.clear()
+         self._req_synced_offset.clear()
++        self._lookahead_aux_base.clear()
+         if self._attention_kv_pool is not None:
+             self._attention_kv_pool.clear()
+diff --git a/python/sglang/srt/hardware_backend/mlx/tp_worker.py b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+index a723326512..3eb506172c 100644
+--- a/python/sglang/srt/hardware_backend/mlx/tp_worker.py
++++ b/python/sglang/srt/hardware_backend/mlx/tp_worker.py
+@@ -19,6 +19,7 @@ from typing import Optional
+ import mlx.core as mx
+ import torch
+ 
++from sglang.srt.environ import envs
+ from sglang.srt.hardware_backend.mlx.model_runner import (
+     MlxPendingDecode,
+     MlxPendingExtend,
+@@ -43,6 +44,7 @@ from sglang.srt.runtime_context import (
+     get_memory,
+     get_model,
+     get_schedule,
++    get_serving,
+ )
+ 
+ logger = logging.getLogger(__name__)
+@@ -174,7 +176,37 @@ class MlxTpModelWorker(TpModelWorker):
+         else:
+             self._mlx_active_rids |= current_rids
+ 
+-    def prepare_for_kv_cache_release(self, req) -> None:
++    def _commit_chained_decode_tokens(self, req, tree_cache) -> None:
++        """Give the scheduler slots for the decode tokens chained steps
++        committed without passing through prepare_for_decode, so the radix
++        key and the pool sync cover the request's whole committed output."""
++        # Every token but the newest sample has been consumed by a finalised step.
++        target = len(req.origin_input_ids) + len(req.output_ids) - 1
++        allocated = req.kv.kv_allocated_len
++        allocator = tree_cache.token_to_kv_pool_allocator
++        if (
++            target <= allocated
++            or allocated != req.kv.kv_committed_len
++            or allocator.page_size != 1
++            # Nothing past the prompt is keyed for these requests.
++            or req.skip_radix_cache_insert
++            or get_serving().strip_thinking_cache
++        ):
++            return
++        from sglang.srt.mem_cache.common import evict_from_tree_cache
++
++        evict_from_tree_cache(tree_cache, target - allocated)
++        locs = allocator.alloc(target - allocated)
++        if locs is None:
++            # Pool exhausted: the request keeps its short key.
++            return
++        tree_cache.req_to_token_pool.write(
++            (req.kv.req_pool_idx, slice(allocated, target)), locs.to(torch.int32)
++        )
++        req.kv.kv_allocated_len = target
++        req.kv.kv_committed_len = target
++
++    def prepare_for_kv_cache_release(self, req, tree_cache=None) -> None:
+         """Write the request's MLX state to the pool at the scheduler's radix
+         insert point, while the request still owns its req_to_token row, then
+         drop the runner's per-request state."""
+@@ -182,7 +214,18 @@ class MlxTpModelWorker(TpModelWorker):
+             # Only decode steps leave KV and auxiliary state the prefill
+             # finalize did not sync; output_ids holds the prefill token first.
+             if len(req.output_ids) > 1:
+-                self._mlx_runner.store_auxiliary_state_for_request(req.rid)
++                if (
++                    tree_cache is not None
++                    and envs.SGLANG_MLX_COMMIT_CHAINED.get()
++                    and not self._mlx_runner.disable_radix_cache
++                ):
++                    self._commit_chained_decode_tokens(req, tree_cache)
++                if not self._mlx_runner.store_auxiliary_state_for_request(
++                    req.rid, req.owned_kv_len()
++                ):
++                    # Chained decode steps ran past the length the scheduler
++                    # keys, and auxiliary state cannot be shortened to it.
++                    req.skip_radix_cache_insert = True
+                 # Prefer the just-snapshotted live auxiliary state for the final
+                 # insert. Any older tracked slot is released during component cleanup.
+                 req.kv.mamba_last_track_seqlen = None
+diff --git a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
+index b9b3155a46..46769558b5 100644
+--- a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
++++ b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
+@@ -1360,7 +1360,7 @@ class SchedulerBatchResultProcessor:
+             self.model_worker, "prepare_for_kv_cache_release", None
+         )
+         if callable(prepare_release):
+-            prepare_release(req)
++            prepare_release(req, self.tree_cache)
+ 
+     def _handle_sampling_mask_abort(self, req: Req) -> None:
+         """Release a request whose sampled token must not be committed."""
