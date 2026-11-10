@@ -1,0 +1,1 @@
+[2026-11-10 13:40:43] SDPA block ladder: 139265 keys -> 1536 blocks

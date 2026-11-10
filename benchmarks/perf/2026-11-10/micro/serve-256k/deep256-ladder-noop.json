@@ -1,0 +1,32 @@
+{
+  "tag": "deep256-ladder",
+  "max_tokens": 256,
+  "runs": 1,
+  "contexts": [
+    {
+      "target": 271000,
+      "prompt_tokens": 251474,
+      "tpot_ms_median": 40.7137,
+      "tpot_ms_min": 40.7137,
+      "tpot_ms_max": 40.7137,
+      "decode_tok_s_median": 24.56,
+      "ttft_cold_s": 1450.9674,
+      "ttft_repeat_s": null,
+      "text_shas": [
+        "d60f0a388811dcdd"
+      ],
+      "runs": [
+        {
+          "prompt_tokens": 251474,
+          "cached_tokens": null,
+          "completion_tokens": 256,
+          "ttft_s": 1450.9674,
+          "total_s": 1461.3498,
+          "text_sha": "d60f0a388811dcdd",
+          "tpot_ms": 40.7137,
+          "decode_tok_s": 24.56
+        }
+      ]
+    }
+  ]
+}
