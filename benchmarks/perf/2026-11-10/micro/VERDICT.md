@@ -11,8 +11,8 @@ shared expert, attention with 16 query heads over 2 KV heads of dim 256.
 The R9700 team's decode lane, carried over to Metal:
 
 1. A census first. Every millisecond of a decode step is attributed to a
-   family (host graph build, launch encode and commit, GPU kernels) and each
-   family gets an owner experiment.
+   family (host graph build, launch encode and commit, GPU kernels, weight
+   and KV bytes read) and each family gets an owner experiment.
 2. A raw-MLX microbench of the kernel or setting before any serving work
    (`scripts/bench/mlx_*.py`, receipts in `raw/`, `slack/` and the two
    `*-raw.jsonl` files).
@@ -68,11 +68,42 @@ A step is 2,779 graph primitives: 321 reshapes, 301 quantized matmuls, 261
 broadcasts, 191 RMS norms, 150 multiplies, 120 gathered quantized matmuls,
 50 custom kernels and 10 attention calls among them. The launch microbench
 (`raw/launch-microbench.md`) prices a small launch at 0.5 to 2.5 µs of
-encode plus 1.5 to 2.7 µs of GPU, so at short context the step is bound by
-launch count, not by bytes. That splits the work into three owners: how
-launches are committed (buffer limits), how many launches there are
-(patches 030 to 032), and what the ten attention kernels read at depth
-(patch 029).
+encode plus 1.5 to 2.7 µs of GPU, so the launches alone account for the 4
+to 5 ms a step spends beyond its weight reads (next section). That splits
+the work into three owners: how launches are committed (buffer limits),
+how many launches there are (patches 030 to 032), and what the ten
+attention kernels read at depth (patch 029).
+
+## Weight reads set the floor
+
+`raw/weight-read-census.jsonl` (`scripts/bench/mlx_weight_read_census.py`,
+safetensors headers only, no GPU): the bytes of weights one decode step
+streams, counting only the routed experts of a MoE layer, one embedding
+row and no vision tower. Step time is the README decode rate at 1K.
+
+| preset | weights read per token | step at 1K | effective read rate | step minus the read at 220 GB/s |
+|---|---|---|---|---|
+| `qwen36` | 1,670 MB | 12.59 ms | 133 GB/s | 5.0 ms |
+| `coder-30b`, `qwen3-moe` | 1,711 MB | 12.21 ms | 140 GB/s | 4.4 ms |
+| `flint` (oQ8e, at 83 tokens) | 2,673 MB | 16.16 ms | 165 GB/s | 4.0 ms |
+| `nemotron-30b` | 2,027 MB | not in the README table | | |
+| `qwen35-9b-8bit` | 8,434 MB | 37.31 ms | 226 GB/s | −1.0 ms |
+| `devstral` | 13,919 MB | 62.11 ms | 224 GB/s | −1.2 ms |
+| `qwen35`, `qwen36-27b` | 14,418 MB | 68.97 ms | 209 GB/s | 3.4 ms |
+| `qwen3-32b` | 17,992 MB | 83.33 ms | 216 GB/s | 1.6 ms |
+
+The dense presets decode at 209 to 226 GB/s of weight reads, inside the
+178 to 239 GB/s the launch microbench measures for chained and independent
+quantized matmuls. They sit on the memory wall, and nothing in the decode
+loop can move them by more than a few percent. The MoE presets read about
+a tenth as much per token and spend 4 to 5 ms of every step on something
+other than weights. That margin is the launch count and the host, and it
+is the whole target of this lane.
+
+For qwen36 the read splits into GatedDeltaNet 570 MB, routed experts
+566 MB, LM head 286 MB, attention 153 MB, shared expert 71 MB and router
+gates 22 MB. At 220 GB/s that is 7.6 ms per token, or 132 tok/s, before
+any KV read: the ceiling for launch folding on this checkpoint.
 
 ## Command-buffer limits
 
