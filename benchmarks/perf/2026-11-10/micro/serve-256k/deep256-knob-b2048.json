@@ -1,0 +1,32 @@
+{
+  "tag": "deep256-knob-b2048",
+  "max_tokens": 256,
+  "runs": 1,
+  "contexts": [
+    {
+      "target": 271000,
+      "prompt_tokens": 251474,
+      "tpot_ms_median": 36.887,
+      "tpot_ms_min": 36.887,
+      "tpot_ms_max": 36.887,
+      "decode_tok_s_median": 27.11,
+      "ttft_cold_s": 1434.5029,
+      "ttft_repeat_s": null,
+      "text_shas": [
+        "f0e76c51cabcfd1f"
+      ],
+      "runs": [
+        {
+          "prompt_tokens": 251474,
+          "cached_tokens": null,
+          "completion_tokens": 256,
+          "ttft_s": 1434.5029,
+          "total_s": 1443.9094,
+          "text_sha": "f0e76c51cabcfd1f",
+          "tpot_ms": 36.887,
+          "decode_tok_s": 27.11
+        }
+      ]
+    }
+  ]
+}

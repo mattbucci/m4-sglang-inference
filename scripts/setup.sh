@@ -82,7 +82,7 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     cd "$SGLANG_DIR"
     shopt -s nullglob 2>/dev/null || true
     applied=0; failed_patches=""
-    for p in "$PATCH_DIR"/0[012][0-9]-*.patch; do
+    for p in "$PATCH_DIR"/0[0-9][0-9]-*.patch; do
         name=$(basename "$p")
         if git apply --check "$p" 2>/dev/null; then
             git apply "$p"

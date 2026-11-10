@@ -1,7 +1,7 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's
-native MLX backend: **SGLang v0.5.23** (`297e54f`) + 18 patches ([patches/README.md](patches/README.md)).
+native MLX backend: **SGLang v0.5.23** (`297e54f`) + 20 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
 than peak batch throughput. Known issues are
@@ -145,7 +145,7 @@ inert on this backend: KV stays bf16).
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 18 patches + gates
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 20 patches + gates
 source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; always before launching
 
 ./scripts/launch.sh qwen36                  # PRIMARY (any preset from the table above)
@@ -190,7 +190,7 @@ Python 3.12, ~200 GB disk for models. Reference rig: Mac mini (Mac16,11), M4 Pro
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 18 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 20 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -205,7 +205,7 @@ conda create -y -n sglang-0523 python=3.12 && conda activate sglang-0523
 conda install -y -c conda-forge "rust>=1.88"   # SGLang builds a Rust extension at install time
 git clone --depth 1 --branch v0.5.23 https://github.com/sgl-project/sglang.git components/sglang
 cd components/sglang
-for p in ../../patches/0[012][0-9]-*.patch; do git apply "$p"; done
+for p in ../../patches/0[0-9][0-9]-*.patch; do git apply "$p"; done
 cd python && cp pyproject_other.toml pyproject.toml
 pip install -e ".[srt_mps]"
 pip install "mlx-lm @ git+https://github.com/ml-explore/mlx-lm.git@736ab0d8c1d0edc79c3d798044fe6904e2fa23be"   # Flint model

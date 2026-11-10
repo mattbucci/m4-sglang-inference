@@ -1,0 +1,296 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 0e8ccc71d9..55e260cf21 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1108,6 +1108,9 @@ class Envs:
+     SGLANG_USE_MLX = EnvBool(False)
+     SGLANG_MLX_USE_CUSTOM_ROPE = EnvBool(False)
+     SGLANG_MLX_FUSE_SWIGLU = EnvBool(False)
++    # One-launch MoE routing and combine kernels (moe/fused_router.py) for the
++    # Qwen3 and Qwen3.5/3.6 MoE blocks: ten small launches per layer become two.
++    SGLANG_MLX_FUSE_MOE_ROUTER = EnvBool(False)
+     # Number of decode steps between periodic mx.clear_cache() calls.
+     # Set to 0 to disable cache clearing entirely.
+     SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index beaae2df64..43a9b77d0d 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -887,6 +887,16 @@ class MlxModelRunner:
+                 f"MLX SwiGLU activation fusion enabled: patched {n_patched} blocks"
+             )
+ 
++        # Optional: one-launch MoE routing and combine kernels
++        # (SGLANG_MLX_FUSE_MOE_ROUTER=1, moe/fused_router.py).
++        if envs.SGLANG_MLX_FUSE_MOE_ROUTER.get():
++            from sglang.srt.hardware_backend.mlx.moe.fused_router import (
++                patch_moe_blocks_with_fused_router,
++            )
++
++            n_patched = patch_moe_blocks_with_fused_router(self.model)
++            logger.info(f"MLX fused MoE router enabled: patched {n_patched} blocks")
++
+     def _attention_module_for_layer(self, layer_idx: int) -> Any:
+         attn = getattr(
+             self._cache_layout.layers[layer_idx],
+diff --git a/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py b/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py
+new file mode 100644
+index 0000000000..1658a701ef
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/moe/fused_router.py
+@@ -0,0 +1,255 @@
++"""One-launch MoE routing and combine kernels.
++
++A decode step on a small-active MoE is launch-bound past its weight reads: a
++Qwen3.6-35B-A3B step issues about 1,400 small Metal launches at about 2 us of
++GPU time each, next to 7.8 ms of weight bandwidth. The MoE block's own
++bookkeeping is ten of those launches per layer:
++
++    router   softmax -> argpartition -> take_along_axis -> sum -> divide
++    combine  multiply -> sum -> sigmoid -> multiply -> add
++
++``fused_route`` does the router half in one launch. One threadgroup handles one
++row and one thread one expert: a thread counts the experts that beat it (ties
++go to the lower index, so ranks are a permutation), and the top ``k`` threads
++share ``exp(logit - max)`` through threadgroup memory to renormalise. The
++softmax denominator cancels in the renormalised top-k scores, so they are the
++stock values computed in float32 with a single rounding to the model dtype.
++
++``fused_combine`` does the combine half in one launch: the score-weighted sum
++over the routed experts and, for blocks with a shared expert, the
++``sigmoid(gate) * shared`` term, accumulated in float32 and rounded once.
++
++Neither kernel is bit-identical to the stock chain, which rounds to the model
++dtype after every primitive; both are closer to the float32 result. The swap
++is opt-in (``SGLANG_MLX_FUSE_MOE_ROUTER=1``) and covers the two block shapes
++that share this router: mlx-vlm ``Qwen3_5MoeSparseMoeBlock`` (shared expert)
++and mlx-lm ``Qwen3MoeSparseMoeBlock``. Anything else is left alone.
++"""
++
++from __future__ import annotations
++
++import logging
++import math
++
++import mlx.core as mx
++
++logger = logging.getLogger(__name__)
++
++# One threadgroup per row: the expert count is the threadgroup width.
++MAX_EXPERTS = 1024
++_FLOAT_DTYPES = (mx.bfloat16, mx.float16, mx.float32)
++
++_ROUTE_SRC = """
++    uint e = thread_position_in_grid.x;
++    uint row = thread_position_in_grid.y;
++    threadgroup float top_exp[K_SIZE];
++    uint g = row * E_SIZE;
++    float mine = float(gates[g + e]);
++    float best = mine;
++    uint rank = 0;
++    for (uint j = 0; j < E_SIZE; j++) {
++        float v = float(gates[g + j]);
++        best = max(best, v);
++        rank += uint((v > mine) || (v == mine && j < e));
++    }
++    float ex = 0;
++    float total = 0;
++    if (rank < K_SIZE) {
++        ex = exp(mine - best);
++        top_exp[rank] = ex;
++        if (NORM_TOPK == 0) {
++            for (uint j = 0; j < E_SIZE; j++) {
++                total += exp(float(gates[g + j]) - best);
++            }
++        }
++    }
++    threadgroup_barrier(mem_flags::mem_threadgroup);
++    if (rank < K_SIZE) {
++        if (NORM_TOPK != 0) {
++            for (uint i = 0; i < K_SIZE; i++) {
++                total += top_exp[i];
++            }
++        }
++        uint slot = K_SIZE - 1 - rank;
++        inds[row * K_SIZE + slot] = e;
++        scores[row * K_SIZE + slot] = static_cast<T>(ex / total);
++    }
++"""
++
++_COMBINE_SRC = """
++    uint h = thread_position_in_grid.x;
++    uint row = thread_position_in_grid.y;
++    uint y0 = row * K_SIZE * H_SIZE + h;
++    uint s0 = row * K_SIZE;
++    float acc = 0;
++    for (uint k = 0; k < K_SIZE; k++) {
++        acc += float(y[y0 + k * H_SIZE]) * float(scores[s0 + k]);
++    }
++    out[row * H_SIZE + h] = static_cast<T>(acc);
++"""
++
++_COMBINE_SHARED_SRC = """
++    uint h = thread_position_in_grid.x;
++    uint row = thread_position_in_grid.y;
++    uint y0 = row * K_SIZE * H_SIZE + h;
++    uint s0 = row * K_SIZE;
++    float acc = 0;
++    for (uint k = 0; k < K_SIZE; k++) {
++        acc += float(y[y0 + k * H_SIZE]) * float(scores[s0 + k]);
++    }
++    float g = 1.0f / (1.0f + exp(-float(sgate[row])));
++    out[row * H_SIZE + h] = static_cast<T>(acc + g * float(shared[row * H_SIZE + h]));
++"""
++
++# Inputs are indexed directly, never through a typed pointer: MLX binds an
++# input of fewer than eight elements in the ``constant`` address space and the
++# rest in ``device``, and a score row or a single gate logit can be either.
++_kernels: dict = {}
++
++
++def _kernel(name: str, input_names, output_names, source: str):
++    if name not in _kernels:
++        _kernels[name] = mx.fast.metal_kernel(
++            name=name,
++            input_names=input_names,
++            output_names=output_names,
++            source=source,
++        )
++    return _kernels[name]
++
++
++def fused_route(logits: mx.array, k: int, norm_topk: bool = True):
++    """Top-``k`` expert indices and scores from router logits in one launch.
++
++    Returns ``(inds, scores)`` shaped ``logits.shape[:-1] + (k,)``; ``inds`` is
++    uint32 and ascending by score (the order ``argpartition(...)[..., -k:]``
++    is consumed in), ``scores`` has the logits' dtype. With ``norm_topk`` the
++    scores sum to one over the top ``k``; without it they are the softmax
++    probabilities over every expert.
++    """
++    e = logits.shape[-1]
++    rows = math.prod(logits.shape[:-1])
++    kernel = _kernel("sglang_moe_route", ["gates"], ["inds", "scores"], _ROUTE_SRC)
++    inds, scores = kernel(
++        inputs=[logits],
++        template=[
++            ("T", logits.dtype),
++            ("E_SIZE", e),
++            ("K_SIZE", k),
++            ("NORM_TOPK", int(bool(norm_topk))),
++        ],
++        grid=(e, rows, 1),
++        threadgroup=(e, 1, 1),
++        output_shapes=[(rows, k), (rows, k)],
++        output_dtypes=[mx.uint32, logits.dtype],
++    )
++    shape = tuple(logits.shape[:-1]) + (k,)
++    return inds.reshape(shape), scores.reshape(shape)
++
++
++def fused_combine(y: mx.array, scores: mx.array, shared=None, shared_gate=None):
++    """``sum_k y[..., k, :] * scores[..., k]`` in one launch.
++
++    With ``shared`` (``y.shape[:-2] + (H,)``) and ``shared_gate`` (one logit
++    per row) the kernel also adds ``sigmoid(shared_gate) * shared``.
++    """
++    k, h = y.shape[-2], y.shape[-1]
++    rows = math.prod(y.shape[:-2])
++    template = [("T", y.dtype), ("K_SIZE", k), ("H_SIZE", h)]
++    if shared is None:
++        kernel = _kernel(
++            "sglang_moe_combine", ["y", "scores"], ["out"], _COMBINE_SRC
++        )
++        inputs = [y, scores]
++    else:
++        kernel = _kernel(
++            "sglang_moe_combine_shared",
++            ["y", "scores", "shared", "sgate"],
++            ["out"],
++            _COMBINE_SHARED_SRC,
++        )
++        inputs = [y, scores, shared, shared_gate]
++    (out,) = kernel(
++        inputs=inputs,
++        template=template,
++        grid=(h, rows, 1),
++        threadgroup=(min(h, 256), 1, 1),
++        output_shapes=[(rows, h)],
++        output_dtypes=[y.dtype],
++    )
++    return out.reshape(tuple(y.shape[:-2]) + (h,))
++
++
++def _call_shared_expert_block(self, x, target_verify: bool = False):
++    # mlx-vlm Qwen3_5MoeSparseMoeBlock. The target-verify (speculative) path
++    # keeps the stock chain.
++    if target_verify or self.training:
++        return self._sglang_stock_call(x, target_verify)
++    inds, scores = fused_route(self.gate(x), self.top_k)
++    y = self.switch_mlp(x, inds)
++    shared = self.shared_expert(x, False)
++    return fused_combine(y, scores, shared, self.shared_expert_gate(x))
++
++
++def _call_plain_block(self, x):
++    # mlx-lm Qwen3MoeSparseMoeBlock. Sharded and training runs keep the stock
++    # chain.
++    if self.training or getattr(self, "sharding_group", None) is not None:
++        return self._sglang_stock_call(x)
++    inds, scores = fused_route(self.gate(x), self.top_k, self.norm_topk_prob)
++    return fused_combine(self.switch_mlp(x, inds), scores)
++
++
++_BLOCK_CALLS = {
++    "Qwen3_5MoeSparseMoeBlock": (
++        _call_shared_expert_block,
++        ("gate", "switch_mlp", "shared_expert", "shared_expert_gate"),
++    ),
++    "Qwen3MoeSparseMoeBlock": (_call_plain_block, ("gate", "switch_mlp")),
++}
++_fused_classes: dict = {}
++
++
++def _fused_class(base: type, call) -> type:
++    if base not in _fused_classes:
++        _fused_classes[base] = type(
++            f"Fused{base.__name__}",
++            (base,),
++            {"__call__": call, "_sglang_stock_call": base.__call__},
++        )
++    return _fused_classes[base]
++
++
++def _eligible(block, attrs) -> bool:
++    if not all(hasattr(block, a) for a in attrs):
++        return False
++    num_experts = getattr(block, "num_experts", 0)
++    top_k = getattr(block, "top_k", 0)
++    if not (0 < top_k <= num_experts <= MAX_EXPERTS):
++        return False
++    scales = block.gate.get("scales") if hasattr(block.gate, "get") else None
++    dtype = scales.dtype if scales is not None else block.gate.weight.dtype
++    return dtype in _FLOAT_DTYPES
++
++
++def patch_moe_blocks_with_fused_router(model) -> int:
++    """Swap every supported MoE block's call for the two-kernel version.
++
++    Returns the number of blocks swapped. Idempotent.
++    """
++    swapped = 0
++    for _, module in model.named_modules():
++        cls = type(module)
++        if cls in _fused_classes.values():
++            swapped += 1
++            continue
++        entry = _BLOCK_CALLS.get(cls.__name__)
++        if entry is None:
++            continue
++        call, attrs = entry
++        if not _eligible(module, attrs):
++            logger.info("MoE block %s is outside the fused router's scope", cls.__name__)
++            continue
++        module.__class__ = _fused_class(cls, call)
++        swapped += 1
++    return swapped
