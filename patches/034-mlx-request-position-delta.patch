@@ -1,0 +1,146 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index ad5d37dba6..c65af06624 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -211,6 +211,7 @@ class MlxModelRunner:
+     _pool_dirty = False
+     _sanitize_nan = False
+     _deterministic_seeding = False
++    is_vlm = False
+ 
+     def __init__(
+         self,
+@@ -370,6 +371,9 @@ class MlxModelRunner:
+         self._req_caches: dict[str, list[Any]] = {}
+         self._req_token_ids: dict[str, list[int]] = {}
+         self._req_sampling: dict[str, MlxSamplingParams] = {}
++        # req_id -> the mRoPE delta its prompt left on an mlx_vlm language
++        # model (see _keep_position_delta).
++        self._req_rope_delta: dict[str, Any] = {}
+         # Reusable cache lists, for models without auxiliary layer state.
+         self._cache_pool: list[list[Any]] = []
+ 
+@@ -1336,6 +1340,7 @@ class MlxModelRunner:
+             model_kwargs.update(mm_kwargs)
+         if self.is_vlm:
+             self._reset_mlx_vlm_position_cache()
++            self._req_rope_delta.pop(req_id, None)
+         if req is not None:
+             req.kv.mamba_last_track_seqlen = None
+         if self._enable_sampling:
+@@ -1564,6 +1569,7 @@ class MlxModelRunner:
+         )
+ 
+         cache = self._req_caches[req_id]
++        self._restore_position_delta(req_id)
+         new_token_count = len(new_token_ids)
+         prefix_len = int(self._first_attention_cache(cache).offset)
+         track_len = None
+@@ -1643,7 +1649,47 @@ class MlxModelRunner:
+             return None
+         return self._trunk(input_ids, cache=cache)
+ 
+-    def _forward_lazy_token(
++    def _keep_position_delta(self, req_id: str) -> None:
++        """Remember the mRoPE delta ``req_id``'s prompt left on the language model.
++
++        mlx_vlm's Qwen-family language models number every token forwarded on
++        a cache with history as ``cache offset + _rope_deltas``, and
++        ``_rope_deltas`` is one field on the model: zero after a text prompt,
++        negative after an image (its tokens share positions). Each prefill
++        overwrites it, so with two live requests the one that prefilled first
++        would have its later tokens numbered with the other's delta. The
++        runner keeps the delta per request and puts it back before each of
++        the request's forwards.
++        """
++        if not self.is_vlm:
++            return
++        lm = getattr(self.model, "language_model", None)
++        delta = getattr(lm, "_rope_deltas", None)
++        if delta is not None:
++            self._req_rope_delta[req_id] = delta
++
++    def _restore_position_delta(self, req_id: str) -> None:
++        """Put ``req_id``'s mRoPE delta back on the language model.
++
++        Nothing to do while the model still holds it, which is always so with
++        one live request.
++        """
++        delta = self._req_rope_delta.get(req_id) if self.is_vlm else None
++        if delta is None:
++            return
++        lm = self.model.language_model
++        if lm._rope_deltas is not delta:
++            lm._rope_deltas = delta
++
++    def _forward_lazy_token(self, input_ids, cache, needs_logits, req_id, *args, **kw):
++        """``_forward_prompt_chunk``, then keep the request's mRoPE delta."""
++        out = self._forward_prompt_chunk(
++            input_ids, cache, needs_logits, req_id, *args, **kw
++        )
++        self._keep_position_delta(req_id)
++        return out
++
++    def _forward_prompt_chunk(
+         self,
+         input_ids: mx.array,
+         cache: list[Any],
+@@ -2048,6 +2094,7 @@ class MlxModelRunner:
+         self,
+         caches: list[list[Any]],
+         input_ids_by_request: list[mx.array],
++        req_ids: list[str] | None = None,
+     ) -> mx.array:
+         if self._sdpa_block_ladder.enabled:
+             # The step's SDPA kernels are encoded after this, on this thread.
+@@ -2055,7 +2102,9 @@ class MlxModelRunner:
+                 max(self._first_attention_cache(c).offset for c in caches) + 1
+             )
+         lazy_logits_list = []
+-        for input_ids, cache in zip(input_ids_by_request, caches):
++        for i, (input_ids, cache) in enumerate(zip(input_ids_by_request, caches)):
++            if req_ids is not None:
++                self._restore_position_delta(req_ids[i])
+             model_output = self.model(input_ids, cache=cache)
+             logits = self._extract_logits(model_output)
+             lazy_logits_list.append(logits[:, -1, :])
+@@ -2131,7 +2180,9 @@ class MlxModelRunner:
+             # (NemotronH) attention — the batched wrapper's inner.rope path does
+             # not apply. Delegates to the model's own forward (correct RoPE).
+             last_logits = self._decode_with_native_cache(
+-                caches, [batched_input[i : i + 1] for i in range(len(req_ids))]
++                caches,
++                [batched_input[i : i + 1] for i in range(len(req_ids))],
++                req_ids,
+             )
+         elif self._cache_layout.has_auxiliary_state:
+             last_logits = self._decode_with_hybrid_batching(
+@@ -2206,7 +2257,9 @@ class MlxModelRunner:
+         batched_input = prev.lazy_tokens[:, None]
+         if not self._attention_wrapper_batchable:
+             last_logits = self._decode_with_native_cache(
+-                caches, [batched_input[i : i + 1] for i in range(len(prev.req_ids))]
++                caches,
++                [batched_input[i : i + 1] for i in range(len(prev.req_ids))],
++                prev.req_ids,
+             )
+         elif self._cache_layout.has_auxiliary_state:
+             last_logits = self._decode_with_hybrid_batching(
+@@ -2273,6 +2326,8 @@ class MlxModelRunner:
+         only through release_request_row, while the request owns its row."""
+         self._req_token_ids.pop(req_id, None)
+         self._req_sampling.pop(req_id, None)
++        if self.is_vlm:
++            self._req_rope_delta.pop(req_id, None)
+         cache = self._req_caches.pop(req_id, None)
+         if cache is not None:
+             self._release_cache(cache)
+@@ -2284,6 +2339,8 @@ class MlxModelRunner:
+         """Clear all request states."""
+         self._req_token_ids.clear()
+         self._req_sampling.clear()
++        if self.is_vlm:
++            self._req_rope_delta.clear()
+         for cache in self._req_caches.values():
+             self._release_cache(cache)
+         self._req_caches.clear()

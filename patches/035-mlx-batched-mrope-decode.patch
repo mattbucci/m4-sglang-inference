@@ -1,0 +1,265 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 95ea07fa7a..f5ce8379e0 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1142,6 +1142,11 @@ class Envs:
+     # decode step (hardware_backend/mlx/sdpa_blocks.py): MLX's own block
+     # ladder stops at 1024 and loses byte rate past about 139K keys.
+     SGLANG_MLX_SDPA_BLOCK_LADDER = EnvBool(False)
++    # Run a decode step of several requests as one batched forward on
++    # mlx_vlm Qwen-family hybrids (mRoPE through ``rotary_emb``). Unset,
++    # those models decode one request at a time and concurrent streams share
++    # one stream's throughput. A single request keeps the model's own forward.
++    SGLANG_MLX_BATCH_MROPE_DECODE = EnvBool(False)
+ 
+     # ===================================================================
+     # Ascend NPU
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+index db3f47cb01..68cb24b30e 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -49,6 +49,10 @@ class BatchedDecodeContext:
+     # MLX decode path so future AOT kernels can be added without growing this
+     # context one field at a time.
+     aot: MlxAOTKernelContext = field(default_factory=MlxAOTKernelContext)
++    # mRoPE models (mlx_vlm Qwen-family) number a new token from its cache
++    # offset plus a per-request delta: zero for text, negative after an image
++    # (an image's tokens share positions). None for every other model.
++    position_deltas: Optional[list[int]] = None
+ 
+     # Derived tensors/metadata, shared across all layers in one forward pass.
+     offsets: mx.array = field(init=False)
+@@ -61,6 +65,18 @@ class BatchedDecodeContext:
+     # ``seq_lens`` and the window, so every layer sharing a window reuses
+     # one entry instead of rebuilding it.
+     _padding_by_window: dict = field(init=False, default_factory=dict)
++    _mrope_position_ids: Optional[mx.array] = field(init=False, default=None)
++
++    def mrope_position_ids(self) -> mx.array:
++        """``(3, B, 1)`` positions of the new tokens, one array per step."""
++        if self._mrope_position_ids is None:
++            positions = self.offsets
++            if self.position_deltas is not None:
++                positions = positions + mx.array(self.position_deltas, dtype=mx.int32)
++            self._mrope_position_ids = mx.broadcast_to(
++                positions[None, :, None], (3, self.batch_size, 1)
++            )
++        return self._mrope_position_ids
+ 
+     def __post_init__(self) -> None:
+         seq_lens = self.seq_lens
+@@ -137,6 +153,7 @@ class BatchedDecodeContext:
+         attention_layer_indices: list[int] | None = None,
+         attention_pool_index_by_layer: dict[int, int] | None = None,
+         full_kv_pool_index_by_layer: dict[int, int] | None = None,
++        position_deltas: list[int] | None = None,
+     ) -> BatchedDecodeContext:
+         batch_size = len(req_ids)
+         if attention_layer_indices is None:
+@@ -156,6 +173,7 @@ class BatchedDecodeContext:
+             attention_layer_caches=attention_layer_caches,
+             attention_pool_index_by_layer=attention_pool_index_by_layer or {},
+             full_kv_pool_index_by_layer=full_kv_pool_index_by_layer or {},
++            position_deltas=position_deltas,
+             aot=MlxAOTKernelContext.from_decode(
+                 aot_kernels=aot_kernels,
+                 kv_pool=kv_pool,
+@@ -213,6 +231,14 @@ class MLXAttentionWrapper(nn.Module):
+             raise RuntimeError(
+                 f"Cannot determine attention head counts for {type(inner).__name__}"
+             )
++        # mlx_vlm's Qwen-family attention has no ``rope``: it rotates Q and K
++        # together through ``rotary_emb.apply_rotary`` from explicit positions.
++        rotary = None if hasattr(inner, "rope") else getattr(inner, "rotary_emb", None)
++        object.__setattr__(
++            self,
++            "_mrope",
++            rotary if callable(getattr(rotary, "apply_rotary", None)) else None,
++        )
+         object.__setattr__(self, "_scale", scale)
+         object.__setattr__(self, "_n_heads", n_heads)
+         object.__setattr__(self, "_n_kv_heads", n_kv_heads)
+@@ -304,6 +330,8 @@ class MLXAttentionWrapper(nn.Module):
+         cache_idx = ctx.attention_pool_index_by_layer[layer_idx]
+         window = self._window_size
+ 
++        if self._mrope is not None:
++            return self._mrope_decode(queries, keys, values, gate, ctx)
+         if inner.rope is None:
+             # NoPE layer (flint's full-attention layers): no rotation at all.
+             pass
+@@ -369,6 +397,50 @@ class MLXAttentionWrapper(nn.Module):
+             output = output * mx.sigmoid(gate)
+         return inner.o_proj(output)
+ 
++    def _mrope_decode(
++        self,
++        queries: mx.array,
++        keys: mx.array,
++        values: mx.array,
++        gate: Optional[mx.array],
++        ctx: BatchedDecodeContext,
++    ) -> mx.array:
++        """One decode step of B requests on an mRoPE attention layer.
++
++        Each request attends over its own cache: one SDPA launch per request
++        on the buffer the cache already holds. Padding the caches into one
++        ragged batch would copy every request's whole context on every step,
++        which costs more than the launches it saves once contexts are long.
++        """
++        inner = self._inner
++        B = ctx.batch_size
++        queries, keys = self._mrope.apply_rotary(
++            queries, keys, ctx.mrope_position_ids(), unsqueeze_dim=1
++        )
++        layer_caches = ctx.attention_layer_caches[
++            ctx.attention_pool_index_by_layer[self._layer_idx]
++        ]
++        window = self._window_size
++        outputs = []
++        for i in range(B):
++            layer_caches[i].write_token(keys[i : i + 1], values[i : i + 1])
++            k_all, v_all = layer_caches[i].get_kv(window)
++            outputs.append(
++                mx.fast.scaled_dot_product_attention(
++                    queries[i : i + 1],
++                    k_all,
++                    v_all,
++                    scale=self._scale,
++                    mask=None,
++                    **self._sink_kwargs,
++                )
++            )
++        output = mx.concatenate(outputs, axis=0)
++        output = output.transpose(0, 2, 1, 3).reshape(B, 1, -1)
++        if gate is not None:
++            output = output * mx.sigmoid(gate)
++        return inner.o_proj(output)
++
+     @staticmethod
+     def _rope_custom_aot(
+         queries: mx.array,
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index c65af06624..0079bb8e55 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -212,6 +212,7 @@ class MlxModelRunner:
+     _sanitize_nan = False
+     _deterministic_seeding = False
+     is_vlm = False
++    _mrope_batched_decode = False
+ 
+     def __init__(
+         self,
+@@ -363,6 +364,35 @@ class MlxModelRunner:
+             ),
+             "rope",
+         )
++        # mlx_vlm Qwen-family hybrids rotate through ``rotary_emb`` from
++        # explicit positions, which the wrapper can also do per request. Opt-in
++        # and only for a step of two or more requests: a single request keeps
++        # the model's own forward, so its latency does not move.
++        self._mrope_batched_decode = bool(
++            envs.SGLANG_MLX_BATCH_MROPE_DECODE.get()
++            and not self._attention_wrapper_batchable
++            and self._cache_layout.has_auxiliary_state
++            and callable(
++                getattr(
++                    getattr(
++                        self._attention_module_for_layer(
++                            self._cache_layout.first_attention_layer_index
++                        ),
++                        "rotary_emb",
++                        None,
++                    ),
++                    "apply_rotary",
++                    None,
++                )
++            )
++        )
++        if self._mrope_batched_decode:
++            logger.info(
++                "MLX batched mRoPE decode enabled: steps of two or more "
++                "requests run as one forward"
++            )
++        # req_id -> _req_rope_delta as a Python int, read once per request.
++        self._req_position_delta: dict[str, int] = {}
+         # Initial per-request attention-cache capacity. Requests whose known
+         # total length exceeds it are pre-sized at acquisition (reserve());
+         # anything else grows by doubling on overflow.
+@@ -1341,6 +1371,7 @@ class MlxModelRunner:
+         if self.is_vlm:
+             self._reset_mlx_vlm_position_cache()
+             self._req_rope_delta.pop(req_id, None)
++            self._req_position_delta.pop(req_id, None)
+         if req is not None:
+             req.kv.mamba_last_track_seqlen = None
+         if self._enable_sampling:
+@@ -1681,6 +1712,21 @@ class MlxModelRunner:
+         if lm._rope_deltas is not delta:
+             lm._rope_deltas = delta
+ 
++    def _position_delta(self, req_id: str) -> int:
++        """``req_id``'s mRoPE delta as an int, for the batched decode context."""
++        delta = self._req_position_delta.get(req_id)
++        if delta is None:
++            lazy = self._req_rope_delta.get(req_id)
++            delta = 0 if lazy is None else int(lazy.reshape(-1)[0].item())
++            self._req_position_delta[req_id] = delta
++        return delta
++
++    def _batches_decode(self, batch_size: int) -> bool:
++        """Whether a decode step of this many requests runs as one forward."""
++        return self._attention_wrapper_batchable or (
++            self._mrope_batched_decode and batch_size > 1
++        )
++
+     def _forward_lazy_token(self, input_ids, cache, needs_logits, req_id, *args, **kw):
+         """``_forward_prompt_chunk``, then keep the request's mRoPE delta."""
+         out = self._forward_prompt_chunk(
+@@ -2153,6 +2199,11 @@ class MlxModelRunner:
+                 self._cache_layout.attention_pool_index_by_layer
+             ),
+             full_kv_pool_index_by_layer=self._cache_layout.full_kv_pool_index_by_layer,
++            position_deltas=(
++                [self._position_delta(rid) for rid in req_ids]
++                if self._mrope_batched_decode
++                else None
++            ),
+         )
+         # The step's SDPA kernels are encoded after this, on this thread.
+         self._sdpa_block_ladder.apply(ctx.max_len)
+@@ -2175,7 +2226,7 @@ class MlxModelRunner:
+         last_tokens = [self._req_token_ids[rid][-1] for rid in req_ids]
+         batched_input = mx.array(last_tokens, dtype=mx.int32)[:, None]
+ 
+-        if not self._attention_wrapper_batchable:
++        if not self._batches_decode(len(req_ids)):
+             # Serial per-request decode for mlx_vlm (rotary_emb) / position-free
+             # (NemotronH) attention — the batched wrapper's inner.rope path does
+             # not apply. Delegates to the model's own forward (correct RoPE).
+@@ -2255,7 +2306,7 @@ class MlxModelRunner:
+         # So layer-0 offsets reflect the position the NEW token will
+         # be written at in step N+1 (and equivalently the RoPE offset).
+         batched_input = prev.lazy_tokens[:, None]
+-        if not self._attention_wrapper_batchable:
++        if not self._batches_decode(len(prev.req_ids)):
+             last_logits = self._decode_with_native_cache(
+                 caches,
+                 [batched_input[i : i + 1] for i in range(len(prev.req_ids))],
+@@ -2328,6 +2379,7 @@ class MlxModelRunner:
+         self._req_sampling.pop(req_id, None)
+         if self.is_vlm:
+             self._req_rope_delta.pop(req_id, None)
++            self._req_position_delta.pop(req_id, None)
+         cache = self._req_caches.pop(req_id, None)
+         if cache is not None:
+             self._release_cache(cache)
+@@ -2341,6 +2393,7 @@ class MlxModelRunner:
+         self._req_sampling.clear()
+         if self.is_vlm:
+             self._req_rope_delta.clear()
++            self._req_position_delta.clear()
+         for cache in self._req_caches.values():
+             self._release_cache(cache)
+         self._req_caches.clear()

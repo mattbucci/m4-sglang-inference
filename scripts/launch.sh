@@ -169,10 +169,13 @@ apply_preset() {
             # MlxAuxiliaryStatePool (no_buffer strategy, patch 008); greedy
             # determinism validated on the same machinery as qwen36.
             MODEL="${MODEL:-mlx-community/Qwen3.5-27B-4bit}"
-            # MAX_RUNNING=4: patch 010 reset of mlx_vlm position cache +
-            # patch 011 batched DeltaNet decode + Qwen3_5-aware
-            # MLXAttentionWrapper unblock concurrent serving on this
-            # gated multimodal hybrid (2026-05-12).
+            # MAX_RUNNING=4: patch 034 keeps the mRoPE position delta per
+            # request, and patch 035 (on by default for this preset, =0
+            # restores one forward per request) decodes a step of several
+            # requests as one forward: 25.6 / 35.9 tok/s aggregate at 2 / 4
+            # streams against 14.4 / 14.8, single stream unchanged
+            # (benchmarks/perf/2026-11-10/concurrent/VERDICT.md).
+            export SGLANG_MLX_BATCH_MROPE_DECODE="${SGLANG_MLX_BATCH_MROPE_DECODE:-1}"
             # --tool-call-parser qwen3_coder per 3090 mapping: every Qwen3.5/3.6
             # family member emits `<function=NAME>...</function>` XML tool calls
             # that need the qwen3_coder parser to surface as structured tool_calls.

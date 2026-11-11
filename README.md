@@ -1,7 +1,7 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's
-native MLX backend: **SGLang v0.5.23** (`297e54f`) + 23 patches ([patches/README.md](patches/README.md)).
+native MLX backend: **SGLang v0.5.23** (`297e54f`) + 25 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
 than peak batch throughput. Known issues are
@@ -142,10 +142,16 @@ loop). `launch.sh` knobs: `CTX`, `MEM_FRAC`,
 `CHUNKED`, `MAX_RUNNING`, `MAX_TOTAL_TOKENS`, `MODEL`, `EXTRA_ARGS`, `--kv-cache` (accepted,
 inert on this backend: KV stays bf16).
 
+Several streams on the Qwen3.5/3.6 presets: `SGLANG_MLX_BATCH_MROPE_DECODE=1` (patch 035, the
+`qwen35` default) decodes a step of several requests as one forward. Aggregate tok/s at
+1 / 2 / 4 / 8 streams with `MAX_RUNNING=8`: qwen36 80 / 117 / 152 / 190 (81 / 98 / 106 / 76 with
+one forward per request), qwen36-27b 14 / 26 / 36 / 37 (14 / 14 / 15 / 14); a single stream
+does not move. Receipts: `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`.
+
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 23 patches + gates
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 25 patches + gates
 source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; always before launching
 
 ./scripts/launch.sh qwen36                  # PRIMARY (any preset from the table above)
@@ -190,7 +196,7 @@ Python 3.12, ~200 GB disk for models. Reference rig: Mac mini (Mac16,11), M4 Pro
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 23 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 25 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
