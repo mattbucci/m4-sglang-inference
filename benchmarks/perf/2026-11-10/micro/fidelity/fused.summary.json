@@ -1,0 +1,60 @@
+{
+ "tag": "fused",
+ "ref": "base.json",
+ "stride": 4,
+ "topk": 20,
+ "summary": {
+  "all": {
+   "positions": 992,
+   "nll_mean": 1.6538046761866538,
+   "ppl": 5.226828434150542,
+   "nll_se": 0.07566985573435002,
+   "top1_acc": 0.6219758064516129,
+   "kl_ref_mean": 0.00907464330253409,
+   "kl_ref_median": 0.0022103166613995405,
+   "kl_ref_se": 0.0010744930059671265,
+   "argmax_agree_ref": 0.9747983870967742
+  },
+  "prose": {
+   "positions": 496,
+   "nll_mean": 1.8477755958034146,
+   "ppl": 6.34568843581729,
+   "nll_se": 0.10350178638625929,
+   "top1_acc": 0.5604838709677419,
+   "kl_ref_mean": 0.014155234117812882,
+   "kl_ref_median": 0.0038220952354518765,
+   "kl_ref_se": 0.002092682177750491,
+   "argmax_agree_ref": 0.9616935483870968
+  },
+  "code": {
+   "positions": 496,
+   "nll_mean": 1.4598337565698931,
+   "ppl": 4.3052437503616545,
+   "nll_se": 0.10972408993053924,
+   "top1_acc": 0.6834677419354839,
+   "kl_ref_mean": 0.003994052487255297,
+   "kl_ref_median": 0.0011715874044043667,
+   "kl_ref_se": 0.00036706935601195953,
+   "argmax_agree_ref": 0.9879032258064516
+  }
+ },
+ "settings": "+ SGLANG_MLX_FUSE_MOE_ROUTER=1",
+ "docs": [
+  {
+   "domain": "prose",
+   "positions": 248
+  },
+  {
+   "domain": "code",
+   "positions": 248
+  },
+  {
+   "domain": "prose",
+   "positions": 248
+  },
+  {
+   "domain": "code",
+   "positions": 248
+  }
+ ]
+}

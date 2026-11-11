@@ -1,0 +1,19 @@
+qwen36 teacher-forced fidelity through the server (scripts/eval/quant_fidelity.py --docs 4), tree with patches 001-033
+each position is a radix hit extending the previous prefix by 4 tokens, max_new_tokens 1; the radix-off arm prefills every prefix cold
+992 positions (496 prose, 496 code); KL and top-1 agreement are against the base arm's dump
+
+arm          nll     se    ppl   top1  kl_mean   kl_med   kl_se  agree  settings
+base      1.6572 0.0758  5.244  0.616        -        -       -      -  MLX_MAX_MB_PER_BUFFER=200
+fused     1.6538 0.0757  5.227  0.622   0.0091   0.0022  0.0011  0.975  + SGLANG_MLX_FUSE_MOE_ROUTER=1
+front     1.6572 0.0758  5.244  0.616   0.0000   0.0000  0.0000  1.000  + SGLANG_MLX_FUSE_GDN_FRONT=1
+lin       1.6572 0.0758  5.244  0.616   0.0000   0.0000  0.0000  1.000  + SGLANG_MLX_FUSE_DECODE_LINEARS=1
+all       1.6538 0.0757  5.227  0.622   0.0091   0.0022  0.0011  0.975  + all three
+noradix   1.6608 0.0758  5.263  0.621   0.0071   0.0020  0.0006  0.967  + --disable-radix-cache
+
+hook lines per arm:
+base:  tracebacks 0
+fused: fused MoE router enabled: patched 40 blocks; tracebacks 0
+front: fused GatedDeltaNet front enabled: patched 30 layers; tracebacks 0
+lin: grouped decode linears enabled: hooked 1 modules; tracebacks 0
+all: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules; tracebacks 0
+noradix:  tracebacks 0

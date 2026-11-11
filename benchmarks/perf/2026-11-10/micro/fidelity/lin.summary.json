@@ -1,0 +1,60 @@
+{
+ "tag": "lin",
+ "ref": "base.json",
+ "stride": 4,
+ "topk": 20,
+ "summary": {
+  "all": {
+   "positions": 992,
+   "nll_mean": 1.6571648043970908,
+   "ppl": 5.244420787552577,
+   "nll_se": 0.07584595624987972,
+   "top1_acc": 0.6159274193548387,
+   "kl_ref_mean": 0.0,
+   "kl_ref_median": 0.0,
+   "kl_ref_se": 0.0,
+   "argmax_agree_ref": 1
+  },
+  "prose": {
+   "positions": 496,
+   "nll_mean": 1.8519011312915432,
+   "ppl": 6.371921874940056,
+   "nll_se": 0.10404654832804014,
+   "top1_acc": 0.5524193548387096,
+   "kl_ref_mean": 0.0,
+   "kl_ref_median": 0.0,
+   "kl_ref_se": 0.0,
+   "argmax_agree_ref": 1
+  },
+  "code": {
+   "positions": 496,
+   "nll_mean": 1.4624284775026384,
+   "ppl": 4.316429161676176,
+   "nll_se": 0.10968974360822427,
+   "top1_acc": 0.6794354838709677,
+   "kl_ref_mean": 0.0,
+   "kl_ref_median": 0.0,
+   "kl_ref_se": 0.0,
+   "argmax_agree_ref": 1
+  }
+ },
+ "settings": "+ SGLANG_MLX_FUSE_DECODE_LINEARS=1",
+ "docs": [
+  {
+   "domain": "prose",
+   "positions": 248
+  },
+  {
+   "domain": "code",
+   "positions": 248
+  },
+  {
+   "domain": "prose",
+   "positions": 248
+  },
+  {
+   "domain": "code",
+   "positions": 248
+  }
+ ]
+}

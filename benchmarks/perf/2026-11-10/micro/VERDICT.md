@@ -59,7 +59,7 @@ The R9700 team's decode lane, carried over to Metal:
 | fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag, gates pass with all three on |
 | grouped decode linears (patch 032) | launches | raw: −0.2 ms more on top of 030 and 031, bit-identical; served alone −0.7 to −0.9 %, on top of 030 and 031 +3.1 / +2.3 / +1.6 % over three mirrored pairs, the three together +10.1 to +11.6 % to 30K | opt-in flag, worth it only with the other two |
 | fused GatedDeltaNet back kernel | launches | raw: 9.94 ms against 9.86 for the linear pairs on the same base | not taken |
-| fidelity of patches 030 to 032 | rounding | teacher-forced against a float32 yardstick: KL mean 0.0189 (030), 0.0206 (031), bit-identical (032), 0.0211 (all) against 0.0165 for the stock decode path and 0.0194 for the stock prefill path | pass |
+| fidelity of patches 030 to 032 | rounding | teacher-forced against a float32 yardstick: KL mean 0.0189 (030), 0.0206 (031), bit-identical (032), 0.0211 (all) against 0.0165 for the stock decode path and 0.0194 for the stock prefill path; through the server, 992 teacher-forced positions: perplexity 5.227 with all three against 5.244 stock, KL 0.0091 against 0.0071 between the stock hit and cold paths | pass |
 | prefix-hit positions (patch 033) | correctness | a radix hit numbered its new tokens from zero on mlx-vlm Qwen checkpoints; fixed, a re-prompting decode is bit-identical over 4,598 steps (23.9 divergences per 1000 before) and a follow-up hit is at KL 0.0064 from cold (0.0658 before) | retained, always on |
 | layer RMSNorm and residual-add fold | launches | raw knock-out of all 80 layer norms: 0.07 to 0.19 ms on the stock graph, −0.05 to 0.08 ms with patches 030 to 032 installed | not built, nothing to recover |
 | further launch folding on qwen36 | launches | with 030 to 032 a raw step is 10.15 ms and 1,850 primitives against 7.9 to 8.2 ms of weight and state traffic at 220 GB/s; no family holds more than 1 ms above its reads | lane closed on this checkpoint |
@@ -464,6 +464,33 @@ move individual steps (their kernels accumulate in float32 and round once)
 but sit in the band the two stock paths already span. Patches 030 and 031
 pass.
 
+### Prefill path through the server
+
+`scripts/eval/quant_fidelity.py --docs 4` (`fidelity/`), on the tree with
+patch 033: 992 held-out positions, half prose and half code. Each position
+is a radix hit that extends the previous prefix by four tokens and scores
+the next token, so this instrument grades the multi-token forward a
+follow-up turn uses, not the single-token decode step. Every arm carries
+the buffer limit; KL and top-token agreement are against the first arm's
+dump.
+
+| arm | NLL | perplexity | KL mean | KL median | top token agrees |
+|---|---|---|---|---|---|
+| stock kernels | 1.6572 | 5.244 | | | |
+| fused router (030) | 1.6538 | 5.227 | 0.0091 | 0.0022 | 97.5 % |
+| fused front (031) | 1.6572 | 5.244 | 0 | 0 | 100 % |
+| grouped linears (032) | 1.6572 | 5.244 | 0 | 0 | 100 % |
+| all three | 1.6538 | 5.227 | 0.0091 | 0.0022 | 97.5 % |
+| for scale: stock kernels, radix off | 1.6608 | 5.263 | 0.0071 | 0.0020 | 96.7 % |
+
+The standard error of the NLL is 0.076 in every arm, twenty times the
+largest difference between arms. Patches 031 and 032 engage on the
+single-token step only and leave this path bit-identical. Patch 030 runs
+on every forward; its distance from the stock kernels is the distance
+between the stock hit path and the stock cold path, which is what the
+radix-off arm measures (the same prefixes prefilled cold, position by
+position). No arm moves perplexity.
+
 ## Served decode-fidelity arms
 
 `scripts/eval/decode_fidelity.py` (`serve-dfid/`): the arm decodes the 24
@@ -658,5 +685,6 @@ request in every arm, read 24.4 to 24.6 GB with and without the fusions
 | `precision/` | float32-yardstick summaries for the stock and fused decode paths, raw prefix-tail probe with the position state kept and cleared |
 | `serve-dfid/` | served decode-fidelity arms: summaries and per-document divergence counts, `-p033` files on the tree with patch 033 |
 | `followup/` | chat-shaped follow-up hits against cold prefills, with and without patch 033, pooled in `pooled.txt` |
+| `fidelity/` | teacher-forced NLL and KL through the server for each fusion and a radix-off arm, summaries and `pooled.txt` |
 | `gates/` | capability, radix-repeat, multi-turn hit and finish-state resume gates for the stock, buffer-limit and all-flags arms |
 | `recall/` | depth recall at the 215,040 label |
