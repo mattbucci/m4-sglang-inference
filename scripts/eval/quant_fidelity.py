@@ -21,6 +21,7 @@ import json
 import math
 import os
 import random
+import re
 import statistics
 import sys
 import time
@@ -42,7 +43,9 @@ def corpus(seed, n_docs, max_tokens, tok):
     try:
         import datasets
         ds = datasets.load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")
-        prose = [t for t in ds["text"] if len(t) > 2500]
+        # One document per article: the split has a single paragraph over
+        # 2,500 characters, so paragraphs would repeat one passage.
+        prose = [t for t in re.split(r"\n = (?=[^=])", "".join(ds["text"])) if len(t) > 6000]
     except Exception as e:
         print(f"[corpus] wikitext unavailable ({e!r}); prose from repo markdown", file=sys.stderr)
         for f in glob.glob(os.path.join(REPO, "*.md")) + glob.glob(os.path.join(REPO, "patches", "*.md")):

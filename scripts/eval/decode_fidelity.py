@@ -13,7 +13,10 @@ compared step by step. Two arms that fed the same tokens see the same input at
 every step up to and including the first one where they choose differently, so
 on that stretch the distributions differ only by arithmetic. After a divergence
 the prompt is extended with the reference's tokens and decoding resumes, so
-every reference step is compared against a step with the same input. Reported:
+every reference step is compared against a step with the same input.
+`--restart-every K` re-prompts on a schedule as well, which measures a restart
+by itself: the arm resumes from a prefill (or a radix hit) of tokens the
+reference decoded one by one. Reported:
 KL(ref || arm) over the shared top-k (both renormalized), the shift of the
 reference's top-1 logprob, how often the arms choose the same token, and the
 reference's top-1 to top-2 margin at each divergence. A divergence at a margin
@@ -72,28 +75,41 @@ def compare(ref_step, step):
     return row
 
 
-def against_reference(port, prefix, ref_steps, topk, split, max_resyncs):
-    rows, pos, resyncs = [], 0, 0
+def against_reference(port, prefix, ref_steps, topk, split, max_resyncs, restart_every=0):
+    """Rows for every reference step, plus the number of re-prompts.
+
+    `seg` on a row counts the re-prompts before it (0 = the first request),
+    `since` the steps since that request started.
+    """
+    rows, pos, restarts, diverged = [], 0, 0, 0
     while pos < len(ref_steps):
+        want = len(ref_steps) - pos
+        if restart_every:
+            want = min(want, restart_every)
         fed = prefix + [s["tid"] for s in ref_steps[:pos]]
-        steps = decode(port, fed, len(ref_steps) - pos, topk, split if pos == 0 else 0)
+        steps = decode(port, fed, want, topk, split if pos == 0 else 0)
         if not steps:
             break
         advanced = len(steps)
         for j, step in enumerate(steps):
             row = compare(ref_steps[pos + j], step)
-            row["s"] = pos + j
-            row["seg"] = resyncs
+            row.update({"s": pos + j, "seg": restarts, "since": j})
             rows.append(row)
             if not row["same"]:
+                row["arm_top"] = step["top"][:3]
                 advanced = j + 1
                 break
         pos += advanced
-        if pos < len(ref_steps):
-            if resyncs >= max_resyncs or advanced == len(steps) and rows[-1]["same"]:
-                break  # resync budget spent, or the arm stopped early on the same tokens
-            resyncs += 1
-    return rows, resyncs
+        if pos >= len(ref_steps):
+            break
+        if rows[-1]["same"] and advanced < want:
+            break  # the arm stopped early on the same tokens
+        if not rows[-1]["same"]:
+            diverged += 1
+            if diverged > max_resyncs:
+                break
+        restarts += 1
+    return rows, restarts
 
 
 def summarize(results):
@@ -124,7 +140,14 @@ def summarize(results):
             s.update({"first_segment_steps": len(first), "first_segment_kl_mean": statistics.mean(first_kl),
                       "first_segment_kl_max": max(first_kl),
                       "first_segment_dlp_top1_max": max((r["dlp_top1"] for r in first if "dlp_top1" in r), default=None)})
+        later = [r["kl"] for r in rows if r.get("seg") and "kl" in r]
+        if later:
+            s.update({"restarts": sum(d["resyncs"] for d in results["docs"] if domain in ("all", d["domain"])),
+                      "after_restart_kl_mean": statistics.mean(later),
+                      "after_restart_kl_mean_first_8": statistics.mean(
+                          [r["kl"] for r in rows if r.get("seg") and "kl" in r and r["since"] < 8] or [0.0])})
         if margins:
+            s.update({"wide_margin_divergences": sum(m > 1.0 for m in margins)})
             s.update({"margin_median": statistics.median(margins), "margin_max": margins[-1],
                       "margins": [round(m, 4) for m in margins]})
         out[domain] = s
@@ -143,7 +166,8 @@ def main() -> int:
     ap.add_argument("--new-tokens", type=int, default=192)
     ap.add_argument("--topk", type=int, default=20)
     ap.add_argument("--split-prefill", type=int, default=0, help="prefill all but the last N prefix tokens first")
-    ap.add_argument("--max-resyncs", type=int, default=24, help="reference mode: re-prompts per document")
+    ap.add_argument("--max-resyncs", type=int, default=24, help="reference mode: re-prompts after a divergence, per document")
+    ap.add_argument("--restart-every", type=int, default=0, help="reference mode: also re-prompt every N steps")
     ap.add_argument("--seed", type=int, default=17)
     a = ap.parse_args()
 
@@ -153,14 +177,15 @@ def main() -> int:
     else:
         from transformers import AutoTokenizer
         docs = corpus(a.seed, a.docs, a.prefix, AutoTokenizer.from_pretrained(a.tokenizer))
-    results = {"tag": a.tag, "ref": a.ref_dump, "topk": a.topk, "split_prefill": a.split_prefill, "docs": []}
+    results = {"tag": a.tag, "ref": a.ref_dump, "topk": a.topk, "split_prefill": a.split_prefill,
+               "restart_every": a.restart_every, "docs": []}
     t0 = time.time()
     for di, d in enumerate(docs):
         entry = {"domain": d["domain"], "ids": d["ids"], "source": d["source"]}
         if ref:
             ref_steps = ref["docs"][di]["steps"]
             entry["rows"], entry["resyncs"] = against_reference(
-                a.port, d["ids"], ref_steps, a.topk, a.split_prefill, a.max_resyncs)
+                a.port, d["ids"], ref_steps, a.topk, a.split_prefill, a.max_resyncs, a.restart_every)
             entry["ref_steps"] = len(ref_steps)
             note = f"{len(entry['rows'])}/{len(ref_steps)} steps, {sum(not r['same'] for r in entry['rows'])} divergences"
         else:
