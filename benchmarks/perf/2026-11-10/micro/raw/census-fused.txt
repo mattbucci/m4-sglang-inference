@@ -1,0 +1,34 @@
+scripts/bench/mlx_decode_census.py with patches 030 to 032 installed on the loaded model (router, front, linears), stock buffer limits, no server.
+fusions installed: {'router': 40, 'front': 30, 'linears': 1}
+loaded ~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46 in 5.0s vlm=True layers=40 active=19.00 GB
+
+== depth 24: prefill 0.1s (179 tok/s) active 19.08 GB
+  sync       12.75 ms  (build 2.00 + eval 10.75)  78.4 tok/s
+  pipelined  10.15 ms  98.56 tok/s
+  trunk only 10.12 ms  (head 0.03 ms)
+  fused head 10.41 ms  96.02 tok/s
+  graph      1850 primitives/step   GPU busy 39.5% (step 10.43 ms while sampled)
+  -linear_attn (DeltaNet)               3.74 ms ( 36.9%)  build 0.75 ms  n=30
+  -mlp (whole block)                    4.01 ms ( 39.6%)  build 0.90 ms  n=40
+  -norms (layer RMSNorm x2)            -0.05 ms ( -0.5%)  build 0.04 ms  n=80
+  -mlp.switch_mlp (routed experts)      3.02 ms ( 29.8%)  build 0.11 ms  n=40
+  -mlp.shared_expert                    0.12 ms (  1.2%)  build 0.32 ms  n=40
+  -self_attn (attention)                0.95 ms (  9.4%)  build 0.28 ms  n=10
+  floor (embed + final norm + head + loop) 1.29 ms  build 0.07 ms
+  pipelined recheck 10.43 ms
+
+== depth 8192: prefill 9.2s (895 tok/s) active 20.2 GB
+  sync       13.94 ms  (build 2.02 + eval 11.92)  71.72 tok/s
+  pipelined  11.25 ms  88.89 tok/s
+  trunk only 11.14 ms  (head 0.11 ms)
+  fused head 11.41 ms  87.63 tok/s
+  graph      1850 primitives/step   GPU busy 45% (step 11.54 ms while sampled)
+  -linear_attn (DeltaNet)               3.88 ms ( 34.5%)  build 0.71 ms  n=30
+  -mlp (whole block)                    4.31 ms ( 38.3%)  build 0.86 ms  n=40
+  -norms (layer RMSNorm x2)             0.08 ms (  0.7%)  build -0.03 ms  n=80
+  -mlp.switch_mlp (routed experts)      3.29 ms ( 29.2%)  build 0.03 ms  n=40
+  -mlp.shared_expert                    0.30 ms (  2.7%)  build 0.27 ms  n=40
+  -self_attn (attention)                2.14 ms ( 19.1%)  build 0.28 ms  n=10
+  floor (embed + final norm + head + loop) 1.29 ms  build 0.07 ms
+  pipelined recheck 11.46 ms
+wrote <scratch>/perf/census-fused/all.json

@@ -1,0 +1,257 @@
+{
+  "model": "~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46",
+  "vlm": true,
+  "layers": 40,
+  "mlx": "0.32.4",
+  "steps": 96,
+  "warmup": 16,
+  "chunk": 2048,
+  "cache_limit_gb": 4.0,
+  "load_s": 5.0,
+  "depths": [
+    {
+      "depth": 24,
+      "prefill_s": 0.13,
+      "prefill_tok_s": 178.6,
+      "prefill_chunk_tok_s_first_last": [
+        183.9,
+        183.9
+      ],
+      "active_gb_after_prefill": 19.08,
+      "graph_primitives": {
+        "Reshape": 441,
+        "QuantizedMatmul": 201,
+        "CustomKernel": 160,
+        "RMSNorm": 131,
+        "Split": 130,
+        "Arange": 121,
+        "GatherQMM": 120,
+        "Add": 82,
+        "Broadcast": 81,
+        "CompiledSigmoidBroadcastBroadcastMultiplyBroadcastBroadcastMultiply": 80,
+        "Squeeze": 45,
+        "ExpandDims": 41,
+        "Sigmoid": 40,
+        "Transpose": 40,
+        "CompiledAsTypeExpNegativeBroadcastBroadcastAddBroadcastBroadcastLogAddExpAsTypeBroadcastBroadcastMultiplyExp": 30,
+        "CompiledAsTypeSigmoidBroadcastBroadcastMultiplyAsTypeBroadcastBroadcastMultiplyAsType": 30,
+        "SliceUpdate": 20,
+        "Slice": 20,
+        "CustomTransforms": 10,
+        "ScaledDotProductAttention": 10,
+        "Multiply": 10,
+        "Gather": 3,
+        "AsType": 2,
+        "Quantize": 1,
+        "ArgReduce": 1
+      },
+      "graph_primitive_total": 1850,
+      "sync": {
+        "median_ms": 12.754,
+        "p10_ms": 12.55,
+        "p90_ms": 13.942,
+        "tok_s": 78.4,
+        "build_median_ms": 2.004,
+        "eval_median_ms": 10.75
+      },
+      "pipelined": {
+        "median_ms": 10.146,
+        "p10_ms": 9.898,
+        "p90_ms": 11.368,
+        "tok_s": 98.56
+      },
+      "gpu_busy_pct_pipelined": 39.5,
+      "pipelined_while_sampled_ms": 10.427,
+      "trunk_only": {
+        "median_ms": 10.121,
+        "p10_ms": 9.824,
+        "p90_ms": 11.124,
+        "tok_s": 98.81
+      },
+      "head_cost_ms": 0.025,
+      "fused_greedy": {
+        "median_ms": 10.415,
+        "p10_ms": 10.104,
+        "p90_ms": 11.584,
+        "tok_s": 96.02
+      },
+      "floor_embed_head_loop": {
+        "step_ms": 1.293,
+        "build_ms": 0.068
+      },
+      "pipelined_recheck": {
+        "median_ms": 10.426,
+        "p10_ms": 10.151,
+        "p90_ms": 11.411,
+        "tok_s": 95.91
+      },
+      "knockouts": {
+        "linear_attn (DeltaNet)": {
+          "modules": 30,
+          "step_ms_without": 6.407,
+          "cost_ms": 3.739,
+          "cost_pct": 36.9,
+          "build_cost_ms": 0.754
+        },
+        "mlp (whole block)": {
+          "modules": 40,
+          "step_ms_without": 6.131,
+          "cost_ms": 4.015,
+          "cost_pct": 39.6,
+          "build_cost_ms": 0.9
+        },
+        "norms (layer RMSNorm x2)": {
+          "modules": 80,
+          "step_ms_without": 10.194,
+          "cost_ms": -0.048,
+          "cost_pct": -0.5,
+          "build_cost_ms": 0.044
+        },
+        "mlp.switch_mlp (routed experts)": {
+          "modules": 40,
+          "step_ms_without": 7.126,
+          "cost_ms": 3.02,
+          "cost_pct": 29.8,
+          "build_cost_ms": 0.111
+        },
+        "mlp.shared_expert": {
+          "modules": 40,
+          "step_ms_without": 10.027,
+          "cost_ms": 0.119,
+          "cost_pct": 1.2,
+          "build_cost_ms": 0.318
+        },
+        "self_attn (attention)": {
+          "modules": 10,
+          "step_ms_without": 9.192,
+          "cost_ms": 0.954,
+          "cost_pct": 9.4,
+          "build_cost_ms": 0.282
+        }
+      },
+      "peak_gb": 19.73
+    },
+    {
+      "depth": 8192,
+      "prefill_s": 9.16,
+      "prefill_tok_s": 894.6,
+      "prefill_chunk_tok_s_first_last": [
+        1006.9,
+        812.3
+      ],
+      "active_gb_after_prefill": 20.2,
+      "graph_primitives": {
+        "Reshape": 441,
+        "QuantizedMatmul": 201,
+        "CustomKernel": 160,
+        "RMSNorm": 131,
+        "Split": 130,
+        "Arange": 121,
+        "GatherQMM": 120,
+        "Add": 82,
+        "Broadcast": 81,
+        "CompiledSigmoidBroadcastBroadcastMultiplyBroadcastBroadcastMultiply": 80,
+        "Squeeze": 45,
+        "ExpandDims": 41,
+        "Sigmoid": 40,
+        "Transpose": 40,
+        "CompiledAsTypeExpNegativeBroadcastBroadcastAddBroadcastBroadcastLogAddExpAsTypeBroadcastBroadcastMultiplyExp": 30,
+        "CompiledAsTypeSigmoidBroadcastBroadcastMultiplyAsTypeBroadcastBroadcastMultiplyAsType": 30,
+        "SliceUpdate": 20,
+        "Slice": 20,
+        "CustomTransforms": 10,
+        "ScaledDotProductAttention": 10,
+        "Multiply": 10,
+        "Gather": 3,
+        "AsType": 2,
+        "Quantize": 1,
+        "ArgReduce": 1
+      },
+      "graph_primitive_total": 1850,
+      "sync": {
+        "median_ms": 13.943,
+        "p10_ms": 13.655,
+        "p90_ms": 15.011,
+        "tok_s": 71.72,
+        "build_median_ms": 2.023,
+        "eval_median_ms": 11.92
+      },
+      "pipelined": {
+        "median_ms": 11.25,
+        "p10_ms": 10.937,
+        "p90_ms": 12.182,
+        "tok_s": 88.89
+      },
+      "gpu_busy_pct_pipelined": 45,
+      "pipelined_while_sampled_ms": 11.539,
+      "trunk_only": {
+        "median_ms": 11.137,
+        "p10_ms": 10.893,
+        "p90_ms": 12.241,
+        "tok_s": 89.79
+      },
+      "head_cost_ms": 0.113,
+      "fused_greedy": {
+        "median_ms": 11.412,
+        "p10_ms": 11.108,
+        "p90_ms": 12.573,
+        "tok_s": 87.63
+      },
+      "floor_embed_head_loop": {
+        "step_ms": 1.294,
+        "build_ms": 0.074
+      },
+      "pipelined_recheck": {
+        "median_ms": 11.46,
+        "p10_ms": 11.138,
+        "p90_ms": 12.678,
+        "tok_s": 87.26
+      },
+      "knockouts": {
+        "linear_attn (DeltaNet)": {
+          "modules": 30,
+          "step_ms_without": 7.367,
+          "cost_ms": 3.883,
+          "cost_pct": 34.5,
+          "build_cost_ms": 0.713
+        },
+        "mlp (whole block)": {
+          "modules": 40,
+          "step_ms_without": 6.943,
+          "cost_ms": 4.307,
+          "cost_pct": 38.3,
+          "build_cost_ms": 0.861
+        },
+        "norms (layer RMSNorm x2)": {
+          "modules": 80,
+          "step_ms_without": 11.173,
+          "cost_ms": 0.077,
+          "cost_pct": 0.7,
+          "build_cost_ms": -0.034
+        },
+        "mlp.switch_mlp (routed experts)": {
+          "modules": 40,
+          "step_ms_without": 7.963,
+          "cost_ms": 3.287,
+          "cost_pct": 29.2,
+          "build_cost_ms": 0.031
+        },
+        "mlp.shared_expert": {
+          "modules": 40,
+          "step_ms_without": 10.948,
+          "cost_ms": 0.302,
+          "cost_pct": 2.7,
+          "build_cost_ms": 0.27
+        },
+        "self_attn (attention)": {
+          "modules": 10,
+          "step_ms_without": 9.106,
+          "cost_ms": 2.144,
+          "cost_pct": 19.1,
+          "build_cost_ms": 0.28
+        }
+      },
+      "peak_gb": 22.2
+    }
+  ]
+}

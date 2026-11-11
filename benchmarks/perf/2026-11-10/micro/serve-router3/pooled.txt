@@ -1,0 +1,40 @@
+Grouped decode linears (patch 032) on top of the fused router and GatedDeltaNet front (patches 030, 031), qwen36, tree with patch 033.
+scripts/bench/decode_ab.py: 3 runs per depth, 256 generated tokens, greedy, ignore_eos; every arm has MLX_MAX_MB_PER_BUFFER=200.
+arm order: all-1 ff-1 ff-2 all-2 all-3 ff-3
+ff = SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1, all = ff + SGLANG_MLX_FUSE_DECODE_LINEARS=1
+
+hook lines per arm (server log):
+hooks all-1: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks ff-1: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers; tracebacks 0
+hooks ff-2: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers; tracebacks 0
+hooks all-2: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks all-3: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks ff-3: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers; tracebacks 0
+
+median ms per token per arm, then groups pooled over runs (gain = ff / group - 1):
+arm                 948        7583       30391
+all-1            10.202      10.870      13.280
+ff-1             10.552      11.204      13.346
+ff-2             10.492      11.177      13.418
+all-2            10.115      10.932      13.147
+all-3            10.288      10.950      13.230
+ff-3             10.569      11.113      13.463
+all arms: 948: mean 10.370 sd 0.177 (1.71%) range 10.11-10.57 (4.38%)  7583: mean 11.041 sd 0.129 (1.17%) range 10.87-11.20 (3.02%)  30391: mean 13.314 sd 0.108 (0.81%) range 13.15-13.46 (2.37%)
+ff            10.536 ms  +0.0%   11.154 ms  +0.0%   13.434 ms  +0.0%   tok/s 94.9 89.7 74.4
+all           10.223 ms  +3.1%   10.902 ms  +2.3%   13.227 ms  +1.6%   tok/s 97.8 91.7 75.6
+
+wired GB after each arm:
+wired_gb 24.4	[18:45:58] all-1 done
+wired_gb 24.4	[18:47:51] ff-1 done
+wired_gb 24.5	[18:49:44] ff-2 done
+wired_gb 24.4	[18:51:37] all-2 done
+wired_gb 24.5	[18:53:29] all-3 done
+wired_gb 24.5	[18:55:23] ff-3 done
+
+text hashes per depth (cold run first, then the repeats, which are full prefix hits):
+all-1    [(948, ['c6f093a3', 'c6f093a3', 'c6f093a3']), (7583, ['04ca7e87', 'e69c12a8', 'e69c12a8']), (30391, ['fab1f769', 'd3e5112e', 'd3e5112e'])]
+ff-1     [(948, ['c6f093a3', 'c6f093a3', 'c6f093a3']), (7583, ['04ca7e87', 'e69c12a8', 'e69c12a8']), (30391, ['fab1f769', 'd3e5112e', 'd3e5112e'])]
+ff-2     [(948, ['c6f093a3', 'c6f093a3', 'c6f093a3']), (7583, ['04ca7e87', 'e69c12a8', 'e69c12a8']), (30391, ['fab1f769', 'd3e5112e', 'd3e5112e'])]
+all-2    [(948, ['c6f093a3', 'c6f093a3', 'c6f093a3']), (7583, ['04ca7e87', 'e69c12a8', 'e69c12a8']), (30391, ['fab1f769', 'd3e5112e', 'd3e5112e'])]
+all-3    [(948, ['c6f093a3', 'c6f093a3', 'c6f093a3']), (7583, ['04ca7e87', 'e69c12a8', 'e69c12a8']), (30391, ['fab1f769', 'd3e5112e', 'd3e5112e'])]
+ff-3     [(948, ['c6f093a3', 'c6f093a3', 'c6f093a3']), (7583, ['04ca7e87', 'e69c12a8', 'e69c12a8']), (30391, ['fab1f769', 'd3e5112e', 'd3e5112e'])]

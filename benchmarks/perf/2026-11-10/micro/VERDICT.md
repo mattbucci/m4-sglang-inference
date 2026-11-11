@@ -57,10 +57,12 @@ The R9700 team's decode lane, carried over to Metal:
 | int8 keys and values | attention | raw: 34 to 68 % slower than the stock kernel to 131K; KL 0.004 to 0.005 at 32K | closed, the kernel is compute-bound once it dequantizes |
 | fused MoE router and combine (patch 030) | launches | raw: 2,780 → 2,340 primitives, −0.5 to −0.7 ms; served +5.0 to +5.4 % to 30K | opt-in flag |
 | fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag |
-| grouped decode linears (patch 032) | launches | raw: −0.2 ms more on top of 030 and 031, bit-identical; served alone −0.7 to −0.9 %, the three together +10.1 to +11.6 % to 30K | opt-in flag |
+| grouped decode linears (patch 032) | launches | raw: −0.2 ms more on top of 030 and 031, bit-identical; served alone −0.7 to −0.9 %, on top of 030 and 031 +3.1 / +2.3 / +1.6 % over three mirrored pairs, the three together +10.1 to +11.6 % to 30K | opt-in flag, worth it only with the other two |
 | fused GatedDeltaNet back kernel | launches | raw: 9.94 ms against 9.86 for the linear pairs on the same base | not taken |
 | fidelity of patches 030 to 032 | rounding | teacher-forced against a float32 yardstick: KL mean 0.0189 (030), 0.0206 (031), bit-identical (032), 0.0211 (all) against 0.0165 for the stock decode path and 0.0194 for the stock prefill path | pass |
 | prefix-hit positions (patch 033) | correctness | a radix hit numbered its new tokens from zero on mlx-vlm Qwen checkpoints; fixed, a re-prompting decode is bit-identical over 4,598 steps (23.9 divergences per 1000 before) and a follow-up hit is at KL 0.0064 from cold (0.0658 before) | retained, always on |
+| layer RMSNorm and residual-add fold | launches | raw knock-out of all 80 layer norms: 0.07 to 0.19 ms on the stock graph, −0.05 to 0.08 ms with patches 030 to 032 installed | not built, nothing to recover |
+| further launch folding on qwen36 | launches | with 030 to 032 a raw step is 10.15 ms and 1,850 primitives against 7.9 to 8.2 ms of weight and state traffic at 220 GB/s; no family holds more than 1 ms above its reads | lane closed on this checkpoint |
 | block-max top-k for the sampled tail | sampling | raw: 242 µs against 387 µs for the full argsort | open candidate, about 1 % of a sampled step |
 
 ## Where a step goes
@@ -343,6 +345,74 @@ grouped-linears and ladder arms and differs in the fused-router,
 fused-front and all-three arms, each of which reproduces itself across
 its two arms.
 
+`serve-router3/` isolates the grouped linears where they are meant to run:
+three mirrored pairs on the tree with patch 033, `ff` = fused router and
+front, `all` = `ff` plus the grouped linears, every arm with its hook
+lines.
+
+| group | 948 | 7,583 | 30,391 | gain over `ff` | tok/s |
+|---|---|---|---|---|---|
+| `ff` (030 + 031) | 10.536 | 11.154 | 13.434 | | 94.9 / 89.7 / 74.4 |
+| `all` (030 + 031 + 032) | 10.223 | 10.902 | 13.227 | +3.1 / +2.3 / +1.6 % | 97.8 / 91.7 / 75.6 |
+
+Every `all` arm is faster than every `ff` arm at each depth (10.12 to
+10.29 against 10.49 to 10.57 ms at 948, 13.15 to 13.28 against 13.35 to
+13.46 at 30,391), a fixed 0.21 to 0.31 ms per step. The six arms produce
+the same text at every depth and run, which is the served form of the
+bit-identity the fidelity probe shows. Patch 032 pays only next to the
+fused MoE block and front; alone it is neutral to slightly slow.
+
+One thing these chains carry that the tables do not show: the bench
+builds each depth's prompt from one seeded sentence stream, so the 7,583
+prompt extends the 948 prompt and the 30,391 prompt extends the 7,583
+one. The first request at the two deeper depths is therefore a prefix hit
+with 896 and 7,552 cached tokens, and its time to first token covers the
+uncached tail only. Before patch 033 those tails were numbered from zero,
+which is why the first-run hashes at 7,583 and 30,391 differ between
+`serve-router/` and `serve-router3/` while the cold 948 hash of the
+all-three arm is the same in both. With the patch the repeat runs at 948 (full prefix hits)
+reproduce the cold run's text in all six arms; in all eleven arms of
+`serve-router/` they did not. Step timings are unaffected, a hit does the
+same work either way. The deep single-request arms (122K, 251K) are true
+cold prefills.
+
+## What is left of a step
+
+`raw/census-fused.json` is the step census of `../census-qwen36.json`
+rerun with patches 030 to 032 installed: the full model outside the
+server, pipelined, stock buffer limits. A knock-out replaces one module
+family with a pass-through and reports how much faster the step gets.
+The run drifts by 0.2 to 0.3 ms between its first and last pipelined
+measurement, so read differences under that as zero.
+
+| | stock, depth 24 / 8,192 | patches 030 to 032, depth 24 / 8,192 |
+|---|---|---|
+| primitives per step | 2,780 | 1,850 |
+| pipelined step, ms | 11.15 / 12.15 | 10.15 / 11.25 |
+| host graph build (overlapped), ms | 1.69 / 1.66 | 2.00 / 2.02 |
+
+| family | knock-out, stock | knock-out, folded | bytes moved per token | at 220 GB/s | left above the reads |
+|---|---|---|---|---|---|
+| GatedDeltaNet, 30 layers | 3.93 / 4.04 ms | 3.74 / 3.88 ms | 570 MB weights + 63 to 126 MB of recurrent state read and written | 2.9 to 3.2 ms | 0.6 to 0.9 ms |
+| MoE block, 40 layers | 4.68 / 4.86 ms | 4.01 / 4.31 ms | 659 MB | 3.0 ms | 1.0 ms |
+| of which the routed experts | 2.65 / 2.79 ms | 3.02 / 3.29 ms | 566 MB | 2.6 ms | 0.5 ms |
+| attention, 10 layers | 1.08 / 1.98 ms | 0.95 / 2.14 ms | 153 MB + keys and values | 0.7 ms + KV | 0.25 ms at depth 24 |
+| layer RMSNorm, 80 | 0.07 / 0.19 ms | −0.05 / 0.08 ms | none | | nothing |
+| embedding, final norm, head, loop | 1.28 / 1.30 ms | 1.29 / 1.29 ms | 286 MB | 1.3 ms | nothing |
+
+Knock-outs are marginal costs in a pipelined loop and do not add up
+exactly (the routed experts cost more to remove after folding than
+before, while the block that contains them costs less). The shape is
+still clear. The folded step is 10.15 ms against 7.9 to 8.2 ms of bytes
+that must cross the memory bus at the rate the dense presets hold. The 2
+ms that remain are spread over 80 module instances at 20 to 30 µs each,
+and no family holds more than 1 ms. The head sits on its read. The 80
+layer norms are free, so folding them into the residual add recovers
+nothing. Another launch-folding kernel on this checkpoint would be
+chasing 2 to 3 % per family. The lane is closed here: what moves qwen36
+further at short context is fewer bytes per token, which is a
+quantization decision with a quality cost, not a decode-loop change.
+
 ## Decode fidelity: a float32 yardstick
 
 A served A/B of a decode-only kernel cannot grade fidelity: the arms part
@@ -529,7 +599,7 @@ multi-request hazard outside the single-user target.
 
 | directory | contents |
 |---|---|
-| `raw/` | kernel and launch microbenches, attention layout probe, router probe arms, int8 fidelity, traversal-width sweep, patch gates and unit-test output for 029 to 033 |
+| `raw/` | kernel and launch microbenches, attention layout probe, router probe arms, int8 fidelity, traversal-width sweep, the step census with patches 030 to 032 installed, patch gates and unit-test output for 029 to 033 |
 | `slack/`, `knob-sweep-raw.jsonl`, `compile-probe-raw.jsonl` | raw setting sweeps |
 | `serve-census-base.jsonl`, `serve-graph/`, `serve-profile/` | step census, primitive counts, graph-build profile |
 | `serve-knobs/`, `serve-flags/`, `serve-sampled/`, `serve-prefill/` | serving A/B chains to 30K |
@@ -537,6 +607,7 @@ multi-request hazard outside the single-user target.
 | `serve-ladder/` | threshold-crossing trace |
 | `serve-clear/` | cache-clear traces at 122K with memory lines |
 | `serve-router/` | launch-folding serving A/B, eleven arms with hook lines, wired memory and text hashes in `pooled.txt` |
+| `serve-router3/` | grouped linears on top of the fused router and front, three mirrored pairs on the tree with patch 033 |
 | `serve-router-null/` | eleven arms of one build (launch-folding flags set, hooks not installed): the A/B design's noise floor |
 | `precision/` | float32-yardstick summaries for the stock and fused decode paths, raw prefix-tail probe with the position state kept and cleared |
 | `serve-dfid/` | served decode-fidelity arms: summaries and per-document divergence counts, `-p033` files on the tree with patch 033 |
