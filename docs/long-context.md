@@ -30,6 +30,17 @@ the levers that move memory are the four above plus `--max-total-tokens`, `MAX_R
 request `max_tokens`. Models with native context below the requested `CTX` get linear RoPE
 interpolation (logged at boot).
 
+**Decode flags at depth (opt-in).** Put `MLX_MAX_MB_PER_BUFFER=200
+SGLANG_MLX_SDPA_BLOCK_LADDER=1 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1
+SGLANG_MLX_FUSE_DECODE_LINEARS=1 SGLANG_MLX_CLEAR_CACHE_STEPS=0` in front of the launch line:
+35.8 ms per token at 251,474 prompt tokens against 40.8 with none of them, cold prefill 1,430 s
+against 1,529 s, wired peak 29.4 GB. The buffer limit commits launches in larger command
+buffers, the ladder repartitions the attention kernel past 196,608 keys (patch 029), the three
+fusion flags cut the launches per step (patches 030 to 032), and with the buffer-cache cap in
+place the periodic cache clear only stalls a deep decode (93 to 186 ms every 256 steps), so it
+is switched off. Depth recall is 6/6 with the first five set, and the last leaves the output
+identical. Receipts: `benchmarks/perf/2026-11-10/micro/VERDICT.md`.
+
 ## Memory budget at 256K
 
 | Model class | Weights | KV @256K (bf16) | Fits? |

@@ -146,7 +146,9 @@ Several streams on the Qwen3.5/3.6 presets: `SGLANG_MLX_BATCH_MROPE_DECODE=1` (p
 `qwen35` default) decodes a step of several requests as one forward. Aggregate tok/s at
 1 / 2 / 4 / 8 streams with `MAX_RUNNING=8`: qwen36 80 / 117 / 152 / 190 (81 / 98 / 106 / 76 with
 one forward per request), qwen36-27b 14 / 26 / 36 / 37 (14 / 14 / 15 / 14); a single stream
-does not move. Receipts: `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`.
+does not move. With the flag a greedy request's text depends on which of its steps had
+company (one row and several rows round differently in MLX); `=0` keeps solo text under load.
+Receipts: `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`.
 
 ## Quick start
 

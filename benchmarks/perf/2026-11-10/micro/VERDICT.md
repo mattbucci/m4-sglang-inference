@@ -64,6 +64,7 @@ The R9700 team's decode lane, carried over to Metal:
 | layer RMSNorm and residual-add fold | launches | raw knock-out of all 80 layer norms: 0.07 to 0.19 ms on the stock graph, −0.05 to 0.08 ms with patches 030 to 032 installed | not built, nothing to recover |
 | further launch folding on qwen36 | launches | with 030 to 032 a raw step is 10.15 ms and 1,850 primitives against 7.9 to 8.2 ms of weight and state traffic at 220 GB/s; no family holds more than 1 ms above its reads | lane closed on this checkpoint |
 | block-max top-k for the sampled tail | sampling | raw: 242 µs against 387 µs for the full argsort | open candidate, about 1 % of a sampled step |
+| several streams at once: rows per forward, a multi-row 4-bit kernel, the per-request position delta (patch 034), batched mRoPE decode (patch 035) | weight reads, correctness | single stream unchanged; qwen36 aggregate 117 / 152 / 190 tok/s at 2 / 4 / 8 streams against 98 / 106 / 76 serial | own verdict: `../concurrent/VERDICT.md` |
 
 ## Where a step goes
 
