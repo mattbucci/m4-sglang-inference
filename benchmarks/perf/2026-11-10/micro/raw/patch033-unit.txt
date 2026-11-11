@@ -1,0 +1,17 @@
+module: components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+PASS cold: prefix then tail on one cache equals the whole prompt (max abs diff 3.81e-06 of 7.58)
+PASS hit: seeded tail is bit-equal to the cold two-call tail
+PASS hit: decode steps after a seeded tail are bit-equal
+PASS hit: a tail split in two (tracked-state split) ends on the same logits (max abs diff 3.10e-06)
+PASS hit: no position tensor is stored by a seeded hit
+PASS control: reset without the seed moves the tail logits (max abs diff 8.74e-01 of 7.58)
+PASS control: the decode steps after an unseeded tail move too (max abs diff 6.18e-01)
+PASS reset: both position fields are cleared
+PASS seed: the delta a cold text prefill leaves (shape, dtype, value) (seed ((1, 1), mlx.core.int32) cold ((1, 1), mlx.core.int32))
+PASS seed: the previous request's positions are not reused
+PASS seed: a language model without the field is left alone
+PASS seed: a model without a language_model is left alone
+PASS call site: seeded last on the pool-backed prefix path, after the full-prompt fallback
+PASS call site: the reset still runs before the prefix decision
+
+ALL PASS

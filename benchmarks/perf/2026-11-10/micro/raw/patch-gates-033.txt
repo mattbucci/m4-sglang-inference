@@ -1,0 +1,5 @@
+== 3-gate patch test: 23 patches from patches vs v0.5.23 ==
+gate (a): 23/23 apply clean on pristine v0.5.23
+gate (b): live tree byte-identical to pristine+patches
+gate (c): 23/23 correctly fail on the patched tree
+== ALL GATES PASS ==

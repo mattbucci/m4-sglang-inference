@@ -1,0 +1,38 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index a1729543a9..ad5d37dba6 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1149,6 +1149,24 @@ class MlxModelRunner:
+                 if hasattr(t, attr) and getattr(t, attr) is not None:
+                     setattr(t, attr, None)
+ 
++    def _seed_mlx_vlm_prefix_positions(self) -> None:
++        """Number the new tokens of a prefix hit from the prefix length.
++
++        mlx_vlm's Qwen-family language models read positions off the cache
++        offset only while ``_rope_deltas`` is set. Cleared (the reset above),
++        they rebuild positions from the forwarded ids alone, so the tokens
++        that follow a cached prefix would be rotated as positions 0..K-1 in
++        every attention layer: wrong against the prefix they attend to, and
++        stored that way for every later token. A prefix hit forwards text
++        only (image-bearing prefills take the full-prompt path) and text has
++        a zero delta, which is the state a cold prefill of the same prompt
++        leaves behind. ``_position_ids`` stays cleared, so nothing of the
++        previous request is reused.
++        """
++        lm = getattr(self.model, "language_model", None)
++        if lm is not None and hasattr(lm, "_rope_deltas"):
++            lm._rope_deltas = mx.zeros((1, 1), dtype=mx.int32)
++
+     def extend(
+         self,
+         req_id: str,
+@@ -1429,6 +1447,8 @@ class MlxModelRunner:
+                     synced_offset=prefix_len + len(new_slot_ids),
+                     lazy_logprobs=lazy_logprobs,
+                 )
++            if self.is_vlm:
++                self._seed_mlx_vlm_prefix_positions()
+         else:
+             cache = self._acquire_cache(required_len)
+             pool_backed_attention = False

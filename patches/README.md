@@ -1,6 +1,6 @@
 # Patches — SGLang v0.5.23 on Apple Silicon
 
-Twenty-two patches on top of the `v0.5.23` pin (commit `297e54f`), applied in
+Twenty-three patches on top of the `v0.5.23` pin (commit `297e54f`), applied in
 numeric order by `scripts/setup.sh`. Numbering is sparse; retired numbers are
 not reused. 002–007 and 014 form the text/processor stack; 008 adds the VLM /
 hybrid (DeltaNet/Mamba2) path; 015 removes the deep-prefill growth ladder; 018
@@ -18,7 +18,8 @@ decode loop for hybrid presets under the radix cache; 029 makes the decode
 attention block count follow the context depth; 030 runs the MoE router and
 combine as two launches per layer; 031 runs the GatedDeltaNet decode front as
 one launch per layer; 032 folds decode linears that share an input into one
-quantized matmul (029 through 032 are opt-in flags).
+quantized matmul (029 through 032 are opt-in flags); 033 numbers the new
+tokens of a prefix hit from the prefix length on mlx-vlm Qwen checkpoints.
 
 Sampling is upstream: `--mlx-enable-sampling` (set by every `launch.sh`
 preset) turns on per-request temperature/top-p/top-k/min-p, logit_bias,
@@ -53,6 +54,7 @@ applied.
 | 030 | mlx-fused-moe-router | `environ.py`, `hardware_backend/mlx/moe/fused_router.py`, `hardware_backend/mlx/model_runner.py` | At short context a decode step on a small-active MoE is launch-bound: a qwen36 step is ~2,780 primitives, and each removed small launch is worth ~2 µs (`scripts/bench/mlx_launch_microbench.py`). The MoE block's bookkeeping is ten of those per layer: the router (softmax, argpartition, take_along_axis, sum, divide) and the combine (multiply, sum, sigmoid, multiply, add). **`SGLANG_MLX_FUSE_MOE_ROUTER=1`** (off unless set) swaps the class of each sparse MoE block (mlx-vlm `Qwen3_5MoeSparseMoeBlock` with its shared expert, mlx-lm `Qwen3MoeSparseMoeBlock`) for a subclass that runs two custom Metal kernels: `sglang_moe_route` ranks the experts and renormalises the top-k scores in one launch (ties go to the lower index), `sglang_moe_combine` does the score-weighted sum plus the gated shared expert in one launch. Unsupported shapes and the target-verify call keep the stock chain. Both kernels accumulate in float32 and round once, where stock rounds to the model dtype after every primitive, so outputs differ from stock at bf16 rounding scale and greedy text can diverge from the stock arm. Raw-MLX probe on qwen36 in both arm orders (`scripts/bench/mlx_decode_router_probe.py`): 2,780 → 2,340 primitives per step, −0.5 to −0.7 ms of a 10.9–11.9 ms step at depths 24 and 8,192. Served, both arm orders: +5.0 / +5.4 / +5.1 % decode at 1K / 7.6K / 30K. Unit test: `scripts/eval/test_fused_moe_router_unit.py`. |
 | 031 | mlx-fused-gdn-front | `environ.py`, `hardware_backend/mlx/gated_delta_front.py`, `hardware_backend/mlx/model_runner.py` | The other launch-bound family in a hybrid decode step is the front of each GatedDeltaNet layer: between the four input projections and the recurrent update, mlx-vlm's block shifts the conv state, runs the depthwise conv over the kept taps plus the new input, applies SiLU, splits q/k/v and RMS-normalises the q and k heads, 19 graph primitives per layer (570 of a qwen36 step over its 30 DeltaNet layers). **`SGLANG_MLX_FUSE_GDN_FRONT=1`** (off unless set) swaps the class of each mlx-vlm `Qwen3_5GatedDeltaNet` (qwen36, qwen36-27b, qwen35, qwen35-9b-8bit, Qwen3.8-27B) for a subclass that runs that span as one custom Metal kernel, `sglang_gdn_front`, on a single-token decode step: one threadgroup per key head, with the conv, SiLU and head norms accumulated in float32 and rounded once. Prefill, masked or length-tracked batches, the target-verify call and training keep the stock call. The conv state it writes is bit-identical to stock; q/k/v differ at bf16 rounding scale, so greedy text can diverge from the stock arm. Raw-MLX probe on qwen36 in both arm orders, on top of patch 030 (`scripts/bench/mlx_decode_router_probe.py`): 2,340 → 1,770 primitives per step, 10.35 → 10.03 ms at depth 24 and 11.33 → 11.03 ms at 8,192 (stock 11.03 and 11.84). Served alone, both arm orders: +3.5 / +3.3 / +3.4 % decode at 1K / 7.6K / 30K. Unit test: `scripts/eval/test_gdn_front_unit.py`. |
 | 032 | mlx-fused-decode-linears | `environ.py`, `hardware_backend/mlx/fused_linears.py`, `hardware_backend/mlx/moe/fused_router.py`, `hardware_backend/mlx/model_runner.py` | On a single-token decode step mlx-vlm folds quantized linears that share an input into one `quantized_matmul`, but only a set of exactly four with equal bits (the GatedDeltaNet input projections). The other shared-input sets of a qwen36 step run one launch per linear: attention q/k/v, the shared expert's `gate_proj`/`up_proj`, and the MoE router gate with the shared-expert gate (both 8-bit in the mlx-community 4-bit build, so they never match the 4-bit linears around them). **`SGLANG_MLX_FUSE_DECODE_LINEARS=1`** (off unless set) installs a second fold behind mlx-vlm's own (`fused_linears.py`): any two or more bias-free quantized linears on one input fold, per (bits, group size, mode) group, into one launch over concatenated weights that are built once and cached on the group's first member; the fused MoE block of patch 030 folds its two gates through the same helper. The result is bit-identical to separate calls. A group folds only while its packed weights fit in 16 MB, which leaves the large projections of the dense 27B and 9B presets on separate calls and bounds the extra resident copy on qwen36 at about 0.15 GB. On qwen36 it removes about 100 launches per step. Raw-MLX probe of the two-linear pairs on top of patches 030 and 031, both arm orders (`scripts/bench/mlx_decode_router_probe.py`): 10.03 → 9.86 ms at depth 24 and 11.03 → 10.83 ms at 8,192, tokens equal to the arm it rides on. Served alone it sits at the noise floor (−0.7 to −0.9 %); its gain comes on top of patches 030 and 031, and the three flags together serve 95.9 / 90.0 / 75.1 tok/s at 1K / 7.6K / 30K against 85.9 / 81.1 / 68.2. Unit test: `scripts/eval/test_fused_decode_linears_unit.py`. |
+| 033 | mlx-vlm-prefix-hit-positions | `hardware_backend/mlx/model_runner.py` | mlx-vlm's Qwen-family language models (qwen36, qwen36-27b, qwen35, qwen35-9b-8bit, Qwen3.8-27B) read positions off the cache offset only while their saved `_rope_deltas` is set; cleared, they rebuild positions from the forwarded ids alone, starting at zero. The runner clears that state at the start of every prefill (patch 008: one request's image positions must not reach the next). A radix prefix hit forwards only the tokens after the cached prefix, so unseeded those tokens are rotated as positions 0..K−1 in every attention layer: wrong against the prefix they attend to, and stored that way in the KV cache for every later token. `_seed_mlx_vlm_prefix_positions` runs at the end of the prefix-hit branch of `prefill_start` and sets the text-only zero delta, the state a cold prefill of the same prompt leaves behind (a hit forwards text only; image-bearing prefills take the full-prompt path). `_position_ids` stays cleared, so nothing of the previous request is reused. Always on, no flag. Cold prefills, chunk continuation and decode steps do not depend on it; mlx-lm-loaded presets and devstral carry no such state. Measured on qwen36: a served greedy decode that re-prompts through a radix hit every 48 tokens is bit-identical to the uninterrupted decode over 4,598 steps (23.9 divergences per 1000 steps with the seed removed), and a chat-shaped follow-up served from a hit sits at KL 0.004–0.009 from a cold prefill of the same prompt, the class of two cold prefills on different chunk sizes (0.04–0.09 with the seed removed, greedy text parting after 5–20 tokens). The capability gates send single-turn cold requests and never reach this path; `scripts/eval/probe_followup_fidelity.py` is the gate for it (hit against cold, top-20 distributions), and `scripts/bench/mlx_prefix_tail_probe.py` isolates it in raw MLX. CPU test: `scripts/eval/test_prefix_hit_positions_unit.py` (tiny random Qwen3.5 language model, with a control arm that drops the seed). Receipts: `benchmarks/perf/2026-11-10/micro/` (`serve-dfid/`, `followup/`, `precision/`). |
 
 The MLX buffer-cache cap is upstream (`SGLANG_MLX_CACHE_LIMIT_GB`, applied
 before model load) but off unless set; `scripts/common.sh` exports it at 4 GB.
@@ -140,10 +142,18 @@ chunk 2048 versus 1024, median top-1 shift 0.016–0.048 nats in every arm,
 with every mismatch at a position where the cold top token sits below 0.75
 probability (`benchmarks/flint/2026-10-31/prefix-cache/RESULTS.md`).
 On the three-turn conversations Flint's text is identical at 3K and 6.9K
-tokens and diverges in reasoning prose at 13.4K; qwen36's is identical at
-3.2K and 14.4K and drops a trailing list item at 7.4K — near-ties either
-way, the top token's logprob moving ≤ 0.01 nats. Branched suffixes
-(eager-COW path) answer correctly.
+tokens and diverges in reasoning prose at 13.4K, a near-tie with the top
+token's logprob moving ≤ 0.01 nats. On qwen36 the same comparison is made on
+distributions (`scripts/eval/probe_followup_fidelity.py`: 24 follow-up turns
+on 1K and 6K histories with 32 to 3,000 new tokens, 64 greedy tokens each,
+top-20 logprobs): a hit against a cold prefill of the same prompt has KL
+mean 0.0064 and first-step median 0.0011, 9 of 24 token-identical; two cold
+prefills at chunk 4096 and 2048 have KL mean 0.0056 over the prompts long
+enough to be chunked differently, and a hit against the other chunk size's
+cold run 0.0057 on those. That equality holds on the mlx-vlm Qwen presets
+because patch 033 numbers the hit's new tokens from the prefix length;
+positions restarted at zero put a hit at KL 0.066 from cold. Branched
+suffixes (eager-COW path) answer correctly.
 
 **Probe matrix (radix on):**
 
@@ -179,5 +189,5 @@ patches 030–032 take a further 1.2–1.35 ms off each step on qwen36 (95.9 /
 
 ```bash
 cd components/sglang && git checkout v0.5.23
-for p in ../../patches/0[0-9][0-9]-*.patch; do git apply "$p"; done   # 22 patches, all clean
+for p in ../../patches/0[0-9][0-9]-*.patch; do git apply "$p"; done   # 23 patches, all clean
 ```
