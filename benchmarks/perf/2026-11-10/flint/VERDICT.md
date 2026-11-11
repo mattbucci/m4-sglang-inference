@@ -80,8 +80,8 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | `sglu`: the tree's fused routed-expert kernel | launches | 11.67 to 12.81 ms, KL up to 0.17, argmax 62 of 64 at 8K | rejected: slower and not bit-identical |
 | routing knock-out (`route_const`, `route_replay`) | launches | 9.02 to 9.09 ms with `comb` against 9.89 to 9.96 for `comb+gatek`; replaying real routes costs what constant routes cost | not a candidate; it prices the two routing launches per block at 0.85 ms a step, independent of which experts are read. One routing kernel per block is the open follow-up |
 | radix cache off | host | 82.5 against 74.9 tok/s greedy before patch 036, 92.4 against 91.0 with both patches; a repeat of a 30K prompt answers in 51.5 s against 0.21 s | radix stays on: patch 036 removed the reason to turn it off |
-| command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired | not a preset default: a trade, decode for cold prefill. The three settings tie in decode and 200 MB costs the least prefill and memory. Patch 038 takes three quarters of the same gain for free, so the limit stays an opt-in for decode-heavy work |
-| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset |
+| command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired; on top of patch 038, six mirrored arms: 100 / 150 MB +2.2 / +1.7 % greedy at 1K for 3.8 / 4.9 % of the cold prefill at 8K | not a preset default: a trade, decode for cold prefill. The three settings tie in decode and 200 MB costs the least prefill and memory. Patch 038 takes three quarters of the same gain for free, so the limit stays an opt-in for decode-heavy work |
+| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone; qwen36, four mirrored arms: five parts +4.4 % greedy, +3.4 % sampled, +5.0 / +5.0 / +1.5 % cold decode at 1K / 8K / 32K, prefill and memory equal, same greedy text | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset. Clears the criterion on qwen36; open there: a mirrored pair at 64K and 128K and the capability gates, then the preset default |
 | attention parts (knock-out census) | launches | at 1K attention costs 4.29 ms of the 11.47 ms raw mlx-lm step and its reads cost 3.12 ms at 200 GB/s; the query and output projections run at 218 to 243 GB/s, their read cost; head norms, the rotary embedding and a non-additive rest hold 1.17 ms | no fold carried: the folds over these operations (`qkv`, `front`, `mid`) measured inside noise. Recorded as the attention floor of this graph |
 | deep ladder through 128K | like for like | decode 98.9 tok/s at 1K to 35.5 at 128K: 78 to 84 % of rec through 32K, 94 % at 64K, 101 % at 128K, 75 to 80 % of Kapitsa at every depth; per token of context a step costs 0.140 µs here, 0.159 for rec, 0.107 for Kapitsa | measured. The fixed 2.1 ms per step is this graph's launches; the per-token term is the read rate of the shared keys and values, and a raw probe of the attention kernel at 32K to 128K is the next experiment |
 | served prefill chunk (census) | host | host time is 3 to 4 ms of a 1.1 to 1.8 s chunk; with the radix cache on the tracked snapshot evaluates its 35 layers one at a time and the chunk costs 75.5 ms more at 8K (796 against 850 tok/s) and 51 to 87 ms more at 32K (573 to 585 against 602); the decode flags do not run on prefill chunks | measured. Served prefill is not host-bound; the per-layer evaluations are the radix-on cost, and one evaluation per snapshot is the candidate |
@@ -260,6 +260,52 @@ against 102.68 for the 200 MB buffer alone. So the two levers hide the same
 host slack, the patch hides three quarters of it at no cost, and the
 buffer hides the rest for 5 % of the cold prefill at 8K. The preset takes
 the patch with five parts and keeps the stock limits.
+
+Middle buffer limits on top of the preset (`buffers/`, six arms in mirrored
+order, patches 036 to 038 with five parts in every arm, pooled per limit,
+wired memory as the peak of one-second samples):
+
+| limit | arms | sampled tok/s | greedy tok/s | greedy ms/token | greedy against stock | wired GB |
+|---|--:|--:|--:|--:|--:|--:|
+| stock, 50 MB | 2 | 96.21 | 98.64 | 10.14 | | 32.6 |
+| 100 MB | 2 | 98.33 | 100.86 | 9.91 | +2.2 % | 32.8 |
+| 150 MB | 2 | 98.48 | 100.33 | 9.97 | +1.7 % | 32.9 |
+
+| limit | decode 1K / 8K / 32K | prefill 1K / 8K / 32K | repeat TTFT 1K / 8K / 32K |
+|---|--:|--:|--:|
+| stock, 50 MB | 96.03 / 88.28 / 68.06 | 880.7 / 796.6 / 548.4 | 0.157 / 0.171 / 0.212 s |
+| 100 MB | 98.19 / 89.22 / 69.20 | 897.2 / 766.1 / 545.6 | 0.167 / 0.180 / 0.210 s |
+| 150 MB | 98.91 / 90.22 / 69.78 | 898.7 / 758.0 / 531.9 | 0.174 / 0.187 / 0.215 s |
+
+Greedy run ranges: stock 97.80 to 99.22, 100 MB 100.23 to 101.21, 150 MB
+99.75 to 101.22. The middle limits keep the shape of the large ones: about
+2 % of decode for 3.8 to 4.9 % of the cold prefill at 8K, in both arms of each
+pair (760 and 772 tok/s at 100 MB, 760 and 756 at 150 MB, against 805 and 788
+on stock limits). The raw probe, where 100 MB with four early submissions hid
+2 ms of host work and raw prefill did not move, does not carry to serving.
+The greedy text is the same in every arm. The stock limits stay.
+
+Decode submission in parts on qwen36 (`submit/`, four arms in mirrored
+order, the `qwen36` preset as shipped; the five-part arms log "4 of 40
+layers submit early"):
+
+| setting | arms | sampled tok/s | greedy tok/s | greedy ms/token | greedy against one submission | wired GB |
+|---|--:|--:|--:|--:|--:|--:|
+| one submission | 2 | 78.89 | 80.22 | 12.47 | | 31.5 |
+| 5 parts | 2 | 81.58 | 83.73 | 11.94 | +4.4 % | 31.5 |
+
+| setting | decode 1K / 8K / 32K | prefill 1K / 8K / 32K | repeat TTFT 1K / 8K / 32K |
+|---|--:|--:|--:|
+| one submission | 78.26 / 73.96 / 64.36 | 827.0 / 775.2 / 543.1 | 0.176 / 0.171 / 0.162 s |
+| 5 parts | 82.13 / 77.62 / 65.34 | 844.5 / 774.2 / 543.5 | 0.186 / 0.184 / 0.149 s |
+
+Greedy per arm: 80.09 and 80.35 for one submission, 83.72 and 83.75 for five
+parts (runs 79.82 to 80.40 and 83.60 to 83.97). Five parts take 0.53 ms off
+the qwen36 step: +4.4 % greedy, +3.4 % sampled, +5.0 / +5.0 / +1.5 % cold
+decode at 1K / 8K / 32K. Prefill per arm is 842 and 812 tok/s at 1K for one
+submission against 830 and 859 for five parts, so it does not move, and
+neither does wired memory. The greedy text is the same in all four arms. The
+host slack the patch hides is a property of the serving loop, not of Flint.
 
 ## Fidelity
 
@@ -636,8 +682,8 @@ weight reads.
 | `raw/` | decode census, attention census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
 | `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes; the per-chunk prefill census of five arms with its report and driver log |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
-| `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log |
-| `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log |
+| `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log; the six middle-limit arms on top of the preset with wired samples and their driver log |
+| `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log; the four qwen36 arms |
 | `gates/` | validator, thinking probe and codegen probe on int4 and oQ8e with the preset's flags, and the driver log |
 | `preset/` | the shipped preset on int4, oQ6e and oQ8e, oQ8e with one decode submission, and one-second wired memory samples of each arm |
 | `deep/` | the published context sweep through 128K on int4 with radix off and one slot, shipping flags against base flags, and the per-chunk prefill rates of both |
