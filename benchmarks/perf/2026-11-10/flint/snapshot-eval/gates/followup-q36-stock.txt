@@ -1,0 +1,15 @@
+depth 1024 tail 32 seed 0: prompt 1164, cached 1024, forwarded 140; hit vs cold: agree 3/34 KL first 4.71e-04 mean 2.06e-02 max 6.62e-02
+depth 1024 tail 32 seed 1: prompt 1166, cached 1024, forwarded 142; hit vs cold: agree 25/35 KL first 7.54e-04 mean 2.20e-03 max 1.59e-02
+depth 1024 tail 1024 seed 0: prompt 2166, cached 1024, forwarded 1142; hit vs cold: agree 47/64 KL first 1.90e-03 mean 2.08e-02 max 5.06e-01
+depth 1024 tail 1024 seed 1: prompt 2172, cached 1024, forwarded 1148; hit vs cold: agree 7/61 KL first 1.46e-03 mean 2.68e-03 max 1.40e-02
+depth 6144 tail 32 seed 0: prompt 6172, cached 6016, forwarded 156; hit vs cold: agree 14/60 KL first 1.13e-03 mean 7.16e-03 max 2.97e-02
+depth 6144 tail 32 seed 1: prompt 2377, cached 2240, forwarded 137; hit vs cold: agree 7/53 KL first 8.02e-04 mean 9.27e-03 max 3.20e-02
+depth 6144 tail 1024 seed 0: prompt 6574, cached 5440, forwarded 1134; hit vs cold: agree 30/54 KL first 3.68e-04 mean 5.75e-03 max 9.78e-02
+depth 6144 tail 1024 seed 1: prompt 3067, cached 1920, forwarded 1147; hit vs cold: agree 64/64 KL first 9.80e-04 mean 6.56e-03 max 8.85e-02
+
+hit_vs_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 7.78e-04 mean 7.89e-04, KL mean 9.81e-03, max 6.62e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 37.0, KL first median 1.22e-03 mean 1.18e-03, KL mean 8.96e-03, max 5.06e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 1.04e-03 mean 1.02e-03, KL mean 6.91e-03, max 3.14e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 22.5, KL first median 2.86e-03 mean 3.33e-03, KL mean 3.44e-03, max 4.56e-02

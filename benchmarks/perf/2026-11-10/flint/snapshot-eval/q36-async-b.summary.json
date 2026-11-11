@@ -1,0 +1,64 @@
+{
+  "requests": [
+    {
+      "chunks": 2,
+      "tokens": 7601,
+      "wall_s": 8.708,
+      "tok_s": 872.9,
+      "chunk_ms": 4353.91,
+      "eval_ms": 8103.16,
+      "host_ms": -3749.25,
+      "host_share": -0.8611,
+      "evals_per_chunk": 0.0,
+      "per_chunk_ms": {
+        "gap": 0.77,
+        "launch": 4333.6,
+        "trunk": 0.0,
+        "pool_sync": 0.14,
+        "track": 3754.51,
+        "async_eval": 4329.11,
+        "wait": 19.54
+      },
+      "last_chunk": {
+        "gap": 1.535,
+        "launch": 3970.471,
+        "trunk": 0.001,
+        "pool_sync": 0.117,
+        "track": 3675.432,
+        "async_eval": 3964.559,
+        "wait": 25.489,
+        "tokens": 3505
+      }
+    },
+    {
+      "chunks": 8,
+      "tokens": 30408,
+      "wall_s": 47.783,
+      "tok_s": 636.4,
+      "chunk_ms": 5972.83,
+      "eval_ms": 10973.1,
+      "host_ms": -5000.26,
+      "host_share": -0.8372,
+      "evals_per_chunk": 0.0,
+      "per_chunk_ms": {
+        "gap": 1.23,
+        "launch": 5950.98,
+        "trunk": 0.0,
+        "pool_sync": 0.15,
+        "track": 5004.88,
+        "async_eval": 5947.59,
+        "wait": 20.63
+      },
+      "last_chunk": {
+        "gap": 1.952,
+        "launch": 3086.992,
+        "trunk": 0.001,
+        "pool_sync": 0.117,
+        "track": 2875.211,
+        "async_eval": 3081.157,
+        "wait": 20.268,
+        "tokens": 1736
+      }
+    }
+  ]
+}

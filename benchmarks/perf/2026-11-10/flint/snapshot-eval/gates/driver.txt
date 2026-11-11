@@ -1,0 +1,74 @@
+stock tree async snapshot lines: 0; new tree: 1
+## fidelity flint-stock 14:04:22
+up
+FID flint-stock rc=0 tracebacks 0
+hit_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01
+## fidelity flint-async 14:06:11
+up
+FID flint-async rc=0 tracebacks 0
+hit_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01
+cold_vs_ref_cold
+  tail    32: cases 4, identical tokens 4, agree steps 64.0, KL first median 0.00e+00 mean 0.00e+00, KL mean 0.00e+00, max 0.00e+00
+  tail  1024: cases 4, identical tokens 4, agree steps 64.0, KL first median 0.00e+00 mean 0.00e+00, KL mean 0.00e+00, max 0.00e+00
+hit_vs_ref_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01
+## gates flint (preset default checkpoint), new tree 14:08:01
+up
+PGATE flint validate rc=0
+PGATE flint thinking rc=0
+PGATE flint codegen rc=0
+PGATE flint tracebacks 0 flags: 
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+## fidelity q36-stock 14:09:00
+up
+FID q36-stock rc=0 tracebacks 0
+hit_vs_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 7.78e-04 mean 7.89e-04, KL mean 9.81e-03, max 6.62e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 37.0, KL first median 1.22e-03 mean 1.18e-03, KL mean 8.96e-03, max 5.06e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 1.04e-03 mean 1.02e-03, KL mean 6.91e-03, max 3.14e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 22.5, KL first median 2.86e-03 mean 3.33e-03, KL mean 3.44e-03, max 4.56e-02
+## fidelity q36-async 14:10:56
+up
+FID q36-async rc=0 tracebacks 0
+hit_vs_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 7.78e-04 mean 7.89e-04, KL mean 9.81e-03, max 6.62e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 37.0, KL first median 1.22e-03 mean 1.18e-03, KL mean 8.96e-03, max 5.06e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 1.04e-03 mean 1.02e-03, KL mean 6.91e-03, max 3.14e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 22.5, KL first median 2.86e-03 mean 3.33e-03, KL mean 3.44e-03, max 4.56e-02
+cold_vs_ref_cold
+  tail    32: cases 4, identical tokens 4, agree steps 48.2, KL first median 0.00e+00 mean 0.00e+00, KL mean 0.00e+00, max 0.00e+00
+  tail  1024: cases 4, identical tokens 4, agree steps 60.8, KL first median 0.00e+00 mean 0.00e+00, KL mean 0.00e+00, max 0.00e+00
+hit_vs_ref_cold
+  tail    32: cases 4, identical tokens 0, agree steps 12.2, KL first median 7.78e-04 mean 7.89e-04, KL mean 9.81e-03, max 6.62e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 37.0, KL first median 1.22e-03 mean 1.18e-03, KL mean 8.96e-03, max 5.06e-01
+## gates qwen36, new tree 14:12:49
+up
+PGATE qwen36 validate rc=0
+PGATE qwen36 thinking rc=0
+PGATE qwen36 vision rc=0
+PGATE qwen36 codegen rc=0
+PGATE qwen36 tracebacks 0 flags: 
+PGATE qwen36 video rc=0
+-- gates-039-flint validate: --- 3/3 passed in 7.1s ---
+-- gates-039-flint thinking: THINKING VERIFIED
+-- gates-039-flint codegen: VERDICT: STRONG
+-- gates-039-q36 validate: --- 3/3 passed in 17.9s ---
+-- gates-039-q36 thinking: THINKING VERIFIED
+-- gates-039-q36 vision: VERDICT: STRONG
+-- gates-039-q36 codegen: VERDICT: STRONG
+-- gates-039-q36 video: VERDICT: STRONG
+GATES_039_DONE 14:13:51

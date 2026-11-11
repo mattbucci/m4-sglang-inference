@@ -1,0 +1,90 @@
+{
+  "tag": "p39-one-a",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.0717,
+        "total_s": 9.7888,
+        "text_sha": "f4dcc99d58d00125",
+        "tpot_ms": 11.3813,
+        "decode_tok_s": 87.86
+      },
+      "prefill_tok_s": 837.9
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 52.4841,
+        "total_s": 53.4129,
+        "text_sha": "6a3983f65ea58df2",
+        "tpot_ms": 14.7432,
+        "decode_tok_s": 67.83
+      },
+      "prefill_tok_s": 579.6
+    }
+  ],
+  "runs": [],
+  "followup": [
+    {
+      "target": 4096,
+      "first": {
+        "prompt_tokens": 3813,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 4.5294,
+        "finish": "length",
+        "reasoning_chars": 274,
+        "decode_tok_s": 94.67,
+        "content_chars": 0
+      },
+      "second": {
+        "prompt_tokens": 3823,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 0.1649,
+        "finish": "length",
+        "reasoning_chars": 307,
+        "decode_tok_s": 93.28,
+        "content_chars": 0
+      },
+      "fresh_tokens": 3823
+    },
+    {
+      "target": 16384,
+      "first": {
+        "prompt_tokens": 15228,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 21.2017,
+        "finish": "length",
+        "reasoning_chars": 304,
+        "decode_tok_s": 81.65,
+        "content_chars": 0
+      },
+      "second": {
+        "prompt_tokens": 15238,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 0.32,
+        "finish": "length",
+        "reasoning_chars": 285,
+        "decode_tok_s": 81.07,
+        "content_chars": 0
+      },
+      "fresh_tokens": 15238
+    }
+  ]
+}

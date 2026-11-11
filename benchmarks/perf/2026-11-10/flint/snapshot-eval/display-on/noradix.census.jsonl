@@ -1,0 +1,77 @@
+{"t": 1794428932.5111208, "pid": 56895, "tokens": 1, "reqs": 1, "gap_ms": null, "launch_ms": 131.488, "evals": 0, "async_eval_ms": 128.755, "wait_ms": 21.027}
+{"t": 1794428933.481714, "pid": 56895, "tokens": 9, "reqs": 1, "gap_ms": 896.715, "launch_ms": 52.685, "evals": 0, "async_eval_ms": 48.224, "wait_ms": 2.324}
+{"t": 1794428934.877221, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 403.013, "launch_ms": 990.023, "evals": 0, "trunk_ms": 2.006, "async_eval_ms": 987.862, "wait_ms": 49.778}
+{"t": 1794428935.9989529, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1.4, "launch_ms": 1070.388, "evals": 0, "trunk_ms": 1.929, "async_eval_ms": 1068.262, "wait_ms": 50.144}
+{"t": 1794428937.149098, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.748, "launch_ms": 1099.067, "evals": 0, "trunk_ms": 2.009, "async_eval_ms": 1096.933, "wait_ms": 56.248}
+{"t": 1794428938.342734, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.761, "launch_ms": 1136.436, "evals": 0, "trunk_ms": 1.991, "async_eval_ms": 1134.237, "wait_ms": 56.107}
+{"t": 1794428939.575307, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.749, "launch_ms": 1175.533, "evals": 0, "trunk_ms": 1.957, "async_eval_ms": 1173.463, "wait_ms": 60.96}
+{"t": 1794428940.8499022, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.72, "launch_ms": 1212.739, "evals": 0, "trunk_ms": 1.897, "async_eval_ms": 1210.731, "wait_ms": 61.686}
+{"t": 1794428942.157575, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.799, "launch_ms": 1245.0, "evals": 0, "trunk_ms": 2.419, "async_eval_ms": 1242.338, "wait_ms": 65.455}
+{"t": 1794428942.818916, "pid": 56895, "tokens": 433, "reqs": 1, "gap_ms": 0.831, "launch_ms": 594.827, "evals": 0, "async_eval_ms": 590.365, "wait_ms": 11.089}
+{"t": 1794428944.7205398, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 892.699, "launch_ms": 997.656, "evals": 0, "trunk_ms": 2.054, "async_eval_ms": 995.45, "wait_ms": 47.073}
+{"t": 1794428945.833793, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.765, "launch_ms": 1065.262, "evals": 0, "trunk_ms": 2.123, "async_eval_ms": 1063.029, "wait_ms": 51.255}
+{"t": 1794428946.992024, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.739, "launch_ms": 1106.056, "evals": 0, "trunk_ms": 1.921, "async_eval_ms": 1103.926, "wait_ms": 51.368}
+{"t": 1794428948.1782348, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.788, "launch_ms": 1133.865, "evals": 0, "trunk_ms": 1.946, "async_eval_ms": 1131.8, "wait_ms": 54.166}
+{"t": 1794428949.411766, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.775, "launch_ms": 1178.405, "evals": 0, "trunk_ms": 2.054, "async_eval_ms": 1176.238, "wait_ms": 56.651}
+{"t": 1794428950.6818528, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.891, "launch_ms": 1212.359, "evals": 0, "trunk_ms": 2.027, "async_eval_ms": 1210.208, "wait_ms": 60.29}
+{"t": 1794428951.9842381, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.778, "launch_ms": 1241.051, "evals": 0, "trunk_ms": 1.965, "async_eval_ms": 1238.968, "wait_ms": 61.273}
+{"t": 1794428953.33325, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.797, "launch_ms": 1286.762, "evals": 0, "trunk_ms": 2.184, "async_eval_ms": 1284.349, "wait_ms": 65.029}
+{"t": 1794428954.721795, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.781, "launch_ms": 1322.542, "evals": 0, "trunk_ms": 2.001, "async_eval_ms": 1320.434, "wait_ms": 68.757}
+{"t": 1794428956.173005, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.771, "launch_ms": 1381.493, "evals": 0, "trunk_ms": 1.939, "async_eval_ms": 1379.432, "wait_ms": 71.931}
+{"t": 1794428957.678751, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.776, "launch_ms": 1432.835, "evals": 0, "trunk_ms": 2.003, "async_eval_ms": 1430.611, "wait_ms": 76.482}
+{"t": 1794428959.215172, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.781, "launch_ms": 1458.976, "evals": 0, "trunk_ms": 1.951, "async_eval_ms": 1456.898, "wait_ms": 81.391}
+{"t": 1794428960.8015869, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.903, "launch_ms": 1503.887, "evals": 0, "trunk_ms": 1.894, "async_eval_ms": 1501.879, "wait_ms": 81.013}
+{"t": 1794428962.4395351, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.805, "launch_ms": 1555.948, "evals": 0, "trunk_ms": 2.067, "async_eval_ms": 1553.77, "wait_ms": 87.138}
+{"t": 1794428964.127228, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.767, "launch_ms": 1599.604, "evals": 0, "trunk_ms": 1.918, "async_eval_ms": 1597.57, "wait_ms": 88.39}
+{"t": 1794428965.85696, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.902, "launch_ms": 1640.244, "evals": 0, "trunk_ms": 1.907, "async_eval_ms": 1638.218, "wait_ms": 92.768}
+{"t": 1794428967.6273391, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.78, "launch_ms": 1676.368, "evals": 0, "trunk_ms": 1.987, "async_eval_ms": 1674.26, "wait_ms": 94.609}
+{"t": 1794428969.446126, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.797, "launch_ms": 1723.092, "evals": 0, "trunk_ms": 1.982, "async_eval_ms": 1720.994, "wait_ms": 96.593}
+{"t": 1794428971.313052, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.739, "launch_ms": 1769.41, "evals": 0, "trunk_ms": 1.915, "async_eval_ms": 1767.266, "wait_ms": 97.656}
+{"t": 1794428973.2154398, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.739, "launch_ms": 1803.815, "evals": 0, "trunk_ms": 1.943, "async_eval_ms": 1801.755, "wait_ms": 104.405}
+{"t": 1794428975.173921, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.762, "launch_ms": 1853.115, "evals": 0, "trunk_ms": 1.915, "async_eval_ms": 1851.076, "wait_ms": 108.766}
+{"t": 1794428977.175193, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 3.106, "launch_ms": 1889.073, "evals": 0, "trunk_ms": 6.742, "async_eval_ms": 1882.017, "wait_ms": 108.643}
+{"t": 1794428979.2288792, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 3.404, "launch_ms": 1941.333, "evals": 0, "trunk_ms": 7.314, "async_eval_ms": 1933.64, "wait_ms": 117.116}
+{"t": 1794428981.314093, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.796, "launch_ms": 1967.119, "evals": 0, "trunk_ms": 1.925, "async_eval_ms": 1965.086, "wait_ms": 117.439}
+{"t": 1794428983.4856691, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1.029, "launch_ms": 2052.932, "evals": 0, "trunk_ms": 1.992, "async_eval_ms": 2050.826, "wait_ms": 155.268}
+{"t": 1794428985.94611, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.805, "launch_ms": 2304.182, "evals": 0, "trunk_ms": 1.99, "async_eval_ms": 2302.076, "wait_ms": 123.053}
+{"t": 1794428988.153408, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.813, "launch_ms": 2083.247, "evals": 0, "trunk_ms": 1.905, "async_eval_ms": 2081.136, "wait_ms": 125.837}
+{"t": 1794428990.395415, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.937, "launch_ms": 2115.048, "evals": 0, "trunk_ms": 2.031, "async_eval_ms": 2112.898, "wait_ms": 127.299}
+{"t": 1794428992.667098, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.989, "launch_ms": 2143.22, "evals": 0, "trunk_ms": 2.085, "async_eval_ms": 2141.012, "wait_ms": 129.976}
+{"t": 1794428994.400458, "pid": 56895, "tokens": 726, "reqs": 1, "gap_ms": 0.772, "launch_ms": 1602.418, "evals": 0, "async_eval_ms": 1596.37, "wait_ms": 12.527}
+{"t": 1794428995.4765818, "pid": 56895, "tokens": 9, "reqs": 1, "gap_ms": 1021.698, "launch_ms": 41.718, "evals": 0, "async_eval_ms": 37.441, "wait_ms": 2.338}
+{"t": 1794428996.892593, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 395.97, "launch_ms": 1017.546, "evals": 0, "trunk_ms": 1.802, "async_eval_ms": 1015.606, "wait_ms": 52.479}
+{"t": 1794428998.056305, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.75, "launch_ms": 1110.322, "evals": 0, "trunk_ms": 1.952, "async_eval_ms": 1108.148, "wait_ms": 53.85}
+{"t": 1794428999.254286, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.759, "launch_ms": 1143.175, "evals": 0, "trunk_ms": 1.913, "async_eval_ms": 1141.054, "wait_ms": 57.91}
+{"t": 1794429000.1813052, "pid": 56895, "tokens": 727, "reqs": 1, "gap_ms": 0.761, "launch_ms": 868.156, "evals": 0, "async_eval_ms": 862.981, "wait_ms": 10.996}
+{"t": 1794429002.29504, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1031.968, "launch_ms": 1070.585, "evals": 0, "trunk_ms": 1.921, "async_eval_ms": 1068.393, "wait_ms": 51.634}
+{"t": 1794429003.4502258, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.801, "launch_ms": 1102.594, "evals": 0, "trunk_ms": 1.873, "async_eval_ms": 1100.615, "wait_ms": 54.056}
+{"t": 1794429004.6434062, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.791, "launch_ms": 1138.133, "evals": 0, "trunk_ms": 1.879, "async_eval_ms": 1136.15, "wait_ms": 54.899}
+{"t": 1794429005.560711, "pid": 56895, "tokens": 727, "reqs": 1, "gap_ms": 0.778, "launch_ms": 861.446, "evals": 0, "async_eval_ms": 855.88, "wait_ms": 11.298}
+{"t": 1794429007.596278, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1018.36, "launch_ms": 1005.724, "evals": 0, "trunk_ms": 1.681, "async_eval_ms": 1003.913, "wait_ms": 50.958}
+{"t": 1794429008.751953, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.772, "launch_ms": 1103.782, "evals": 0, "trunk_ms": 1.88, "async_eval_ms": 1101.723, "wait_ms": 51.679}
+{"t": 1794429009.936942, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.726, "launch_ms": 1132.395, "evals": 0, "trunk_ms": 1.91, "async_eval_ms": 1130.363, "wait_ms": 56.379}
+{"t": 1794429010.8519979, "pid": 56895, "tokens": 727, "reqs": 1, "gap_ms": 0.758, "launch_ms": 857.703, "evals": 0, "async_eval_ms": 852.591, "wait_ms": 12.347}
+{"t": 1794429013.00208, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1141.833, "launch_ms": 995.72, "evals": 0, "trunk_ms": 1.717, "async_eval_ms": 993.845, "wait_ms": 49.143}
+{"t": 1794429014.138968, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.736, "launch_ms": 1086.855, "evals": 0, "trunk_ms": 1.877, "async_eval_ms": 1084.866, "wait_ms": 51.518}
+{"t": 1794429015.324245, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.752, "launch_ms": 1132.808, "evals": 0, "trunk_ms": 1.897, "async_eval_ms": 1130.648, "wait_ms": 55.409}
+{"t": 1794429016.544367, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.794, "launch_ms": 1163.733, "evals": 0, "trunk_ms": 1.95, "async_eval_ms": 1161.662, "wait_ms": 58.086}
+{"t": 1794429017.805902, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.793, "launch_ms": 1202.477, "evals": 0, "trunk_ms": 1.887, "async_eval_ms": 1200.473, "wait_ms": 60.262}
+{"t": 1794429019.101116, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.745, "launch_ms": 1234.008, "evals": 0, "trunk_ms": 1.908, "async_eval_ms": 1231.996, "wait_ms": 63.053}
+{"t": 1794429020.430345, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.8, "launch_ms": 1265.028, "evals": 0, "trunk_ms": 1.901, "async_eval_ms": 1263.016, "wait_ms": 68.539}
+{"t": 1794429021.099296, "pid": 56895, "tokens": 431, "reqs": 1, "gap_ms": 0.76, "launch_ms": 599.466, "evals": 0, "async_eval_ms": 595.401, "wait_ms": 12.823}
+{"t": 1794429023.165344, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1060.956, "launch_ms": 992.087, "evals": 0, "trunk_ms": 1.728, "async_eval_ms": 990.237, "wait_ms": 48.777}
+{"t": 1794429024.2987351, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.778, "launch_ms": 1083.671, "evals": 0, "trunk_ms": 1.973, "async_eval_ms": 1081.586, "wait_ms": 51.461}
+{"t": 1794429025.4750102, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.806, "launch_ms": 1123.82, "evals": 0, "trunk_ms": 1.969, "async_eval_ms": 1121.607, "wait_ms": 56.093}
+{"t": 1794429026.692003, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1.047, "launch_ms": 1159.605, "evals": 0, "trunk_ms": 2.251, "async_eval_ms": 1157.212, "wait_ms": 58.928}
+{"t": 1794429027.942752, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.764, "launch_ms": 1190.871, "evals": 0, "trunk_ms": 1.873, "async_eval_ms": 1188.888, "wait_ms": 60.232}
+{"t": 1794429029.2247722, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.755, "launch_ms": 1220.842, "evals": 0, "trunk_ms": 2.027, "async_eval_ms": 1218.695, "wait_ms": 63.209}
+{"t": 1794429030.546855, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.911, "launch_ms": 1257.752, "evals": 0, "trunk_ms": 2.15, "async_eval_ms": 1255.486, "wait_ms": 65.103}
+{"t": 1794429031.2071, "pid": 56895, "tokens": 431, "reqs": 1, "gap_ms": 0.747, "launch_ms": 594.197, "evals": 0, "async_eval_ms": 590.087, "wait_ms": 13.966}
+{"t": 1794429033.278074, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 1067.587, "launch_ms": 989.248, "evals": 0, "trunk_ms": 1.72, "async_eval_ms": 987.402, "wait_ms": 50.132}
+{"t": 1794429034.401942, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.767, "launch_ms": 1072.816, "evals": 0, "trunk_ms": 1.854, "async_eval_ms": 1070.852, "wait_ms": 55.261}
+{"t": 1794429035.574291, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.753, "launch_ms": 1116.141, "evals": 0, "trunk_ms": 1.882, "async_eval_ms": 1114.141, "wait_ms": 53.93}
+{"t": 1794429036.787956, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.976, "launch_ms": 1158.329, "evals": 0, "trunk_ms": 2.894, "async_eval_ms": 1155.296, "wait_ms": 57.102}
+{"t": 1794429038.042476, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.774, "launch_ms": 1196.451, "evals": 0, "trunk_ms": 1.906, "async_eval_ms": 1194.435, "wait_ms": 60.508}
+{"t": 1794429039.3287108, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.775, "launch_ms": 1224.761, "evals": 0, "trunk_ms": 1.913, "async_eval_ms": 1222.74, "wait_ms": 61.894}
+{"t": 1794429040.652659, "pid": 56895, "tokens": 1024, "reqs": 1, "gap_ms": 0.788, "launch_ms": 1261.072, "evals": 0, "trunk_ms": 2.096, "async_eval_ms": 1258.871, "wait_ms": 65.536}
+{"t": 1794429041.310422, "pid": 56895, "tokens": 431, "reqs": 1, "gap_ms": 0.749, "launch_ms": 591.281, "evals": 0, "async_eval_ms": 587.182, "wait_ms": 12.535}

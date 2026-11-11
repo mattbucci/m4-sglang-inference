@@ -1,0 +1,27 @@
+============================================================
+PROBE: red circle moving right
+finish=stop  usage={'prompt_tokens': 445, 'total_tokens': 447, 'completion_tokens': 2, 'prompt_tokens_details': {'cached_tokens': 0, 'image_tokens': 384}, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+--- response (first 400 chars) ---
+right
+
+classification: CORRECT
+
+============================================================
+PROBE: red circle moving down
+finish=stop  usage={'prompt_tokens': 445, 'total_tokens': 447, 'completion_tokens': 2, 'prompt_tokens_details': {'cached_tokens': 0, 'image_tokens': 384}, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+--- response (first 400 chars) ---
+down
+
+classification: CORRECT
+
+============================================================
+  horizontal: CORRECT
+  vertical:   CORRECT
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = both direction probes (right + down) correctly identified.
+- PARTIAL = one direction correct, the other mentions motion.
+- DEGRADED = both mention motion but wrong direction (hallucination from priors).
+- FAIL = at least one probe lacks any motion language (image-token misroute).

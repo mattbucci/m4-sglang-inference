@@ -1,0 +1,26 @@
+## flint
+| metric | stock-c | async-a | one-c | async-b | stock-d | async vs stock | one vs stock |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| cold 7601 ttft s | 8.9618 | 8.6400 | 8.6769 | 8.6565 | 8.9669 | -3.5 % clean | -3.2 % clean |
+| cold 30422 ttft s | 49.2647 | 47.7694 | 47.6470 | 47.4043 | 49.8386 | -4.0 % clean | -3.8 % clean |
+| follow-up first 3813 ttft s | 4.2027 | 4.2718 | 4.2229 | 4.2032 | 4.3470 | -0.9 % overlap | -1.2 % overlap |
+| follow-up second 3813 ttft s | 0.1628 | 0.1571 | 0.1572 | 0.1570 | 0.1624 | -3.4 % clean | -3.3 % clean |
+| follow-up first 15228 ttft s | 20.5768 | 19.9743 | 19.8798 | 19.8036 | 20.8423 | -4.0 % clean | -4.0 % clean |
+| follow-up second 15228 ttft s | 0.3176 | 0.3017 | 0.3064 | 0.3002 | 0.3163 | -5.0 % clean | -3.3 % clean |
+| extend 3799 ttft s | 4.2033 | 4.1015 | 4.0831 | 4.0753 | 4.1668 | -2.3 % clean | -2.4 % clean |
+| repeat 3799 ttft s | 0.1139 | 0.1116 | 0.1100 | 0.1113 | 0.1154 | -2.8 % clean | -4.1 % clean |
+| decode 3799 ms | 9.7700 | 9.7300 | 9.6600 | 9.7600 | 9.8300 | -0.6 % clean | -1.4 % clean |
+| extend 7599 ttft s | 4.8693 | 4.6736 | 4.6957 | 4.6545 | 4.8517 | -4.0 % clean | -3.4 % clean |
+| repeat 7599 ttft s | 0.1816 | 0.1764 | 0.1764 | 0.1769 | 0.1820 | -2.8 % clean | -3.0 % clean |
+| decode 7599 ms | 10.2900 | 10.2100 | 10.1700 | 10.1800 | 10.2800 | -0.9 % clean | -1.1 % clean |
+## qwen36
+| metric | q36-stock-c | q36-async-a | q36-one-c | q36-one-d | q36-async-b | q36-stock-d | q36-async vs q36-stock | q36-one vs q36-stock |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| cold 7601 ttft s | 8.8183 | 8.7339 | 8.7921 | 8.8275 | 8.7186 | 8.7855 | -0.9 % clean | +0.1 % overlap |
+| cold 30408 ttft s | 49.4874 | 49.5010 | 48.4985 | 48.6144 | 47.8133 | 48.3929 | -0.6 % overlap | -0.8 % overlap |
+| extend 3799 ttft s | 4.0572 | 4.0412 | 4.0269 | 3.9793 | 3.9634 | 4.0376 | -1.1 % overlap | -1.1 % clean |
+| repeat 3799 ttft s | 0.1222 | 0.1146 | 0.1159 | 0.1181 | 0.1154 | 0.1217 | -5.7 % clean | -4.1 % clean |
+| decode 3799 ms | 11.8900 | 11.6300 | 11.5900 | 11.5300 | 11.5400 | 11.7400 | -1.9 % clean | -2.2 % clean |
+| extend 7583 ttft s | 4.4986 | 4.4925 | 4.4961 | 4.4583 | 4.4121 | 4.4474 | -0.5 % overlap | +0.1 % overlap |
+| repeat 7583 ttft s | 0.1416 | 0.1376 | 0.1366 | 0.1381 | 0.1373 | 0.1416 | -2.9 % clean | -3.0 % clean |
+| decode 7583 ms | 12.1200 | 12.1200 | 12.2500 | 12.0700 | 12.1700 | 12.0800 | +0.4 % overlap | +0.5 % overlap |

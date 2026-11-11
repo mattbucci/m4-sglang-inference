@@ -1,0 +1,41 @@
+{
+  "tag": "p39b-q36-async-a",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 8.7339,
+        "total_s": 9.5191,
+        "text_sha": "7ea440cec6063fdf",
+        "tpot_ms": 12.4641,
+        "decode_tok_s": 80.23
+      },
+      "prefill_tok_s": 870.3
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30408,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 49.501,
+        "total_s": 50.4145,
+        "text_sha": "e36c7d8fdc59e5ee",
+        "tpot_ms": 14.4998,
+        "decode_tok_s": 68.97
+      },
+      "prefill_tok_s": 614.3
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

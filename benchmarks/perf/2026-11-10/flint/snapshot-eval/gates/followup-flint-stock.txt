@@ -1,0 +1,17 @@
+[transformers] You are using a model of type `flint` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+[transformers] The tokenizer you are loading from '~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+depth 1024 tail 32 seed 0: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 64/64 KL first 5.03e-09 mean 1.91e-03 max 1.88e-02
+depth 1024 tail 32 seed 1: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 64/64 KL first 4.28e-08 mean 9.27e-04 max 2.68e-02
+depth 1024 tail 1024 seed 0: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 52/64 KL first 7.71e-08 mean 4.36e-03 max 5.80e-02
+depth 1024 tail 1024 seed 1: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 64/64 KL first 4.74e-08 mean 4.58e-03 max 6.70e-02
+depth 6144 tail 32 seed 0: prompt 5958, cached 5901, forwarded 57; hit vs cold: agree 64/64 KL first 9.54e-09 mean 8.79e-04 max 7.81e-03
+depth 6144 tail 32 seed 1: prompt 2199, cached 2142, forwarded 57; hit vs cold: agree 1/64 KL first 2.52e-08 mean 2.09e-02 max 4.18e-02
+depth 6144 tail 1024 seed 0: prompt 6365, cached 5316, forwarded 1049; hit vs cold: agree 32/64 KL first 1.23e-08 mean 1.78e-03 max 2.95e-02
+depth 6144 tail 1024 seed 1: prompt 3001, cached 1952, forwarded 1049; hit vs cold: agree 59/64 KL first 6.13e-08 mean 6.84e-03 max 1.84e-01
+
+hit_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 48.2, KL first median 1.74e-08 mean 2.07e-08, KL mean 6.16e-03, max 4.18e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 51.8, KL first median 5.44e-08 mean 4.95e-08, KL mean 4.39e-03, max 1.84e-01

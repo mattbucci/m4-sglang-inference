@@ -1,0 +1,232 @@
+## arm stock-a (tree wt040, flint MODEL=RecursiveSI/flint-int4) 12:23:57
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[p39-stock-a] cold    7601 tok: cached None, ttft 9.4226 s, prefill 806.7 tok/s, decode 88.18 tok/s
+[p39-stock-a] cold   30422 tok: cached None, ttft 51.46 s, prefill 591.2 tok/s, decode 67.48 tok/s
+[p39-stock-a] followup    3813 tok: first ttft 4.5301 s (64 tok, finish length); second ttft 0.1673 s, None of 3823 cached, 3823 fresh
+[p39-stock-a] followup   15228 tok: first ttft 22.1177 s (64 tok, finish length); second ttft 0.3281 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/p39-stock-a.json
+census rows: 61
+   7601 tokens in 8 chunks: 807.7 tok/s served, 1176.31 ms per chunk, 1172.68 in evaluations, 3.64 host (0.31 %)
+        per chunk ms: gap 0.97, launch 1162.97 (trunk 1.93, pool 0.13, track 1096.25, async_eval 64.06), wait 12.37; 35.0 synchronous evals
+  30422 tokens in 30 chunks: 591.6 tok/s served, 1714.1 ms per chunk, 1710.44 in evaluations, 3.66 host (0.21 %)
+        per chunk ms: gap 1.27, launch 1696.17 (trunk 1.98, pool 0.13, track 1608.7, async_eval 85.09), wait 16.66; 35.0 synchronous evals
+  [p39-stock-a] ctx 3799 run 0: ttft 4.5046s tpot 10.4127 ms 96.04 tok/s sha b4916e4f4904848f
+  [p39-stock-a] ctx 3799 run 1: ttft 0.122s tpot 10.4166 ms 96.0 tok/s sha b4916e4f4904848f
+  [p39-stock-a] ctx 3799 run 2: ttft 0.1165s tpot 10.3708 ms 96.42 tok/s sha b4916e4f4904848f
+  [p39-stock-a] ctx 7599 run 0: ttft 5.2441s tpot 10.9268 ms 91.52 tok/s sha aaad2413be5e84d1
+  [p39-stock-a] ctx 7599 run 1: ttft 0.1883s tpot 10.9026 ms 91.72 tok/s sha 5c38361dec99a15d
+  [p39-stock-a] ctx 7599 run 2: ttft 0.1889s tpot 10.8445 ms 92.21 tok/s sha 5c38361dec99a15d
+[p39-stock-a]    3799 tok: 10.41 ms/step 96.0 tok/s (min 10.37 max 10.42) ttft cold 4.5046s repeat 0.1192s shas 1
+[p39-stock-a]    7599 tok: 10.90 ms/step 91.7 tok/s (min 10.84 max 10.93) ttft cold 5.2441s repeat 0.1886s shas 2
+wrote <scratch>/flint/p39-stock-a.hashes.json
+wired 31.2 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm one-a (tree wt041, flint MODEL=RecursiveSI/flint-int4) 12:26:09
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[p39-one-a] cold    7601 tok: cached None, ttft 9.0717 s, prefill 837.9 tok/s, decode 87.86 tok/s
+[p39-one-a] cold   30422 tok: cached None, ttft 52.4841 s, prefill 579.6 tok/s, decode 67.83 tok/s
+[p39-one-a] followup    3813 tok: first ttft 4.5294 s (64 tok, finish length); second ttft 0.1649 s, None of 3823 cached, 3823 fresh
+[p39-one-a] followup   15228 tok: first ttft 21.2017 s (64 tok, finish length); second ttft 0.32 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/p39-one-a.json
+census rows: 61
+   7601 tokens in 8 chunks: 839.1 tok/s served, 1132.36 ms per chunk, 1128.39 in evaluations, 3.97 host (0.35 %)
+        per chunk ms: gap 1.02, launch 1124.35 (trunk 2.08, pool 0.14, track 1058.93, async_eval 62.47), wait 6.99; 1.0 synchronous evals
+  30422 tokens in 30 chunks: 580.1 tok/s served, 1748.19 ms per chunk, 1744.27 in evaluations, 3.92 host (0.22 %)
+        per chunk ms: gap 1.31, launch 1736.39 (trunk 2.1, pool 0.2, track 1641.15, async_eval 92.63), wait 10.49; 1.0 synchronous evals
+  [p39-one-a] ctx 3799 run 0: ttft 4.3537s tpot 10.58 ms 94.52 tok/s sha b4916e4f4904848f
+  [p39-one-a] ctx 3799 run 1: ttft 0.1223s tpot 10.34 ms 96.71 tok/s sha b4916e4f4904848f
+  [p39-one-a] ctx 3799 run 2: ttft 0.1129s tpot 10.4614 ms 95.59 tok/s sha b4916e4f4904848f
+  [p39-one-a] ctx 7599 run 0: ttft 4.9895s tpot 11.1072 ms 90.03 tok/s sha aaad2413be5e84d1
+  [p39-one-a] ctx 7599 run 1: ttft 0.1885s tpot 10.8477 ms 92.19 tok/s sha 5c38361dec99a15d
+  [p39-one-a] ctx 7599 run 2: ttft 0.1861s tpot 10.9618 ms 91.23 tok/s sha 5c38361dec99a15d
+[p39-one-a]    3799 tok: 10.46 ms/step 95.6 tok/s (min 10.34 max 10.58) ttft cold 4.3537s repeat 0.1176s shas 1
+[p39-one-a]    7599 tok: 10.96 ms/step 91.2 tok/s (min 10.85 max 11.11) ttft cold 4.9895s repeat 0.1873s shas 2
+wrote <scratch>/flint/p39-one-a.hashes.json
+wired 31.3 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm noradix (tree wt040, flint MODEL=RecursiveSI/flint-int4 EXTRA_ARGS=--disable-radix-cache) 12:28:27
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[p39-noradix] cold    7601 tok: cached None, ttft 8.9533 s, prefill 849.0 tok/s, decode 89.29 tok/s
+[p39-noradix] cold   30422 tok: cached None, ttft 50.7223 s, prefill 599.8 tok/s, decode 66.55 tok/s
+wrote <scratch>/flint/p39-noradix.json
+census rows: 40
+   7601 tokens in 8 chunks: 850.1 tok/s served, 1117.69 ms per chunk, 1114.46 in evaluations, 3.23 host (0.29 %)
+        per chunk ms: gap 0.75, launch 1065.5 (trunk 1.78, pool 0.0, track 0.0, async_eval 1063.02), wait 51.43; 0.0 synchronous evals
+  30422 tokens in 30 chunks: 600.2 tok/s served, 1689.47 ms per chunk, 1685.91 in evaluations, 3.55 host (0.21 %)
+        per chunk ms: gap 0.95, launch 1601.38 (trunk 2.26, pool 0.0, track 0.0, async_eval 1598.77), wait 87.14; 0.0 synchronous evals
+  [p39-noradix] ctx 3799 run 0: ttft 4.3455s tpot 10.4703 ms 95.51 tok/s sha 71ed5c5f4523158f
+  [p39-noradix] ctx 3799 run 1: ttft 4.3842s tpot 10.4242 ms 95.93 tok/s sha 71ed5c5f4523158f
+  [p39-noradix] ctx 3799 run 2: ttft 4.3005s tpot 10.3981 ms 96.17 tok/s sha 71ed5c5f4523158f
+  [p39-noradix] ctx 7599 run 0: ttft 9.137s tpot 10.8408 ms 92.24 tok/s sha eb7fe81bdffceaa1
+  [p39-noradix] ctx 7599 run 1: ttft 9.0775s tpot 10.9194 ms 91.58 tok/s sha eb7fe81bdffceaa1
+  [p39-noradix] ctx 7599 run 2: ttft 9.0643s tpot 10.8992 ms 91.75 tok/s sha eb7fe81bdffceaa1
+[p39-noradix]    3799 tok: 10.42 ms/step 95.9 tok/s (min 10.40 max 10.47) ttft cold 4.3455s repeat 4.3423s shas 1
+[p39-noradix]    7599 tok: 10.90 ms/step 91.8 tok/s (min 10.84 max 10.92) ttft cold 9.137s repeat 9.0709s shas 1
+wrote <scratch>/flint/p39-noradix.hashes.json
+wired 26.9 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm one-b (tree wt041, flint MODEL=RecursiveSI/flint-int4) 12:30:42
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[p39-one-b] cold    7601 tok: cached None, ttft 9.1028 s, prefill 835.0 tok/s, decode 86.87 tok/s
+[p39-one-b] cold   30422 tok: cached None, ttft 49.6716 s, prefill 612.5 tok/s, decode 67.97 tok/s
+[p39-one-b] followup    3813 tok: first ttft 4.4027 s (64 tok, finish length); second ttft 0.1654 s, None of 3823 cached, 3823 fresh
+[p39-one-b] followup   15228 tok: first ttft 20.7643 s (64 tok, finish length); second ttft 0.3209 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/p39-one-b.json
+census rows: 61
+   7601 tokens in 8 chunks: 836.1 tok/s served, 1136.33 ms per chunk, 1132.43 in evaluations, 3.9 host (0.34 %)
+        per chunk ms: gap 0.97, launch 1127.44 (trunk 2.04, pool 0.15, track 1060.36, async_eval 64.15), wait 7.92; 1.0 synchronous evals
+  30422 tokens in 30 chunks: 612.9 tok/s served, 1654.44 ms per chunk, 1650.7 in evaluations, 3.74 host (0.23 %)
+        per chunk ms: gap 1.29, launch 1643.8 (trunk 2.02, pool 0.15, track 1553.9, async_eval 87.44), wait 9.35; 1.0 synchronous evals
+  [p39-one-b] ctx 3799 run 0: ttft 4.2358s tpot 10.2924 ms 97.16 tok/s sha b4916e4f4904848f
+  [p39-one-b] ctx 3799 run 1: ttft 0.1197s tpot 10.2446 ms 97.61 tok/s sha b4916e4f4904848f
+  [p39-one-b] ctx 3799 run 2: ttft 0.113s tpot 10.2419 ms 97.64 tok/s sha b4916e4f4904848f
+  [p39-one-b] ctx 7599 run 0: ttft 4.8592s tpot 10.8922 ms 91.81 tok/s sha aaad2413be5e84d1
+  [p39-one-b] ctx 7599 run 1: ttft 0.1813s tpot 10.7664 ms 92.88 tok/s sha 5c38361dec99a15d
+  [p39-one-b] ctx 7599 run 2: ttft 0.182s tpot 10.7625 ms 92.92 tok/s sha 5c38361dec99a15d
+[p39-one-b]    3799 tok: 10.24 ms/step 97.6 tok/s (min 10.24 max 10.29) ttft cold 4.2358s repeat 0.1164s shas 1
+[p39-one-b]    7599 tok: 10.77 ms/step 92.9 tok/s (min 10.76 max 10.89) ttft cold 4.8592s repeat 0.1816s shas 2
+wrote <scratch>/flint/p39-one-b.hashes.json
+wired 31.2 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm stock-b (tree wt040, flint MODEL=RecursiveSI/flint-int4) 12:32:53
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[p39-stock-b] cold    7601 tok: cached None, ttft 9.3624 s, prefill 811.9 tok/s, decode 88.87 tok/s
+[p39-stock-b] cold   30422 tok: cached None, ttft 52.3979 s, prefill 580.6 tok/s, decode 68.74 tok/s
+[p39-stock-b] followup    3813 tok: first ttft 4.5123 s (64 tok, finish length); second ttft 0.1673 s, None of 3823 cached, 3823 fresh
+[p39-stock-b] followup   15228 tok: first ttft 21.6184 s (64 tok, finish length); second ttft 0.3267 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/p39-stock-b.json
+census rows: 61
+   7601 tokens in 8 chunks: 812.9 tok/s served, 1168.76 ms per chunk, 1165.02 in evaluations, 3.74 host (0.32 %)
+        per chunk ms: gap 0.98, launch 1155.84 (trunk 1.92, pool 0.13, track 1088.72, async_eval 64.37), wait 11.94; 35.0 synchronous evals
+  30422 tokens in 30 chunks: 581.0 tok/s served, 1745.35 ms per chunk, 1741.65 in evaluations, 3.7 host (0.21 %)
+        per chunk ms: gap 1.29, launch 1729.06 (trunk 1.98, pool 0.15, track 1640.6, async_eval 86.05), wait 15.0; 35.0 synchronous evals
+  [p39-stock-b] ctx 3799 run 0: ttft 4.309s tpot 10.3312 ms 96.79 tok/s sha b4916e4f4904848f
+  [p39-stock-b] ctx 3799 run 1: ttft 0.1227s tpot 10.3826 ms 96.31 tok/s sha b4916e4f4904848f
+  [p39-stock-b] ctx 3799 run 2: ttft 0.1176s tpot 10.2619 ms 97.45 tok/s sha b4916e4f4904848f
+  [p39-stock-b] ctx 7599 run 0: ttft 5.1574s tpot 10.8912 ms 91.82 tok/s sha aaad2413be5e84d1
+  [p39-stock-b] ctx 7599 run 1: ttft 0.1888s tpot 10.8166 ms 92.45 tok/s sha 5c38361dec99a15d
+  [p39-stock-b] ctx 7599 run 2: ttft 0.188s tpot 10.8426 ms 92.23 tok/s sha 5c38361dec99a15d
+[p39-stock-b]    3799 tok: 10.33 ms/step 96.8 tok/s (min 10.26 max 10.38) ttft cold 4.309s repeat 0.1202s shas 1
+[p39-stock-b]    7599 tok: 10.84 ms/step 92.2 tok/s (min 10.82 max 10.89) ttft cold 5.1574s repeat 0.1884s shas 2
+wrote <scratch>/flint/p39-stock-b.hashes.json
+wired 31.2 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## flint hashes
+| depth | p39-stock-a ms / tok/s | p39-one-a ms / tok/s | p39-one-b ms / tok/s | p39-stock-b ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|---|---|
+| 3799 | 10.41 / 96.0 | 10.46 / 95.6 | 10.24 / 97.6 | 10.33 / 96.8 | -0.5%, +1.6%, +0.8% | yes, yes, yes |
+| 7599 | 10.90 / 91.7 | 10.96 / 91.2 | 10.77 / 92.9 | 10.84 / 92.2 | -0.5%, +1.3%, +0.6% | yes, yes, yes |
+## arm q36-stock-a (tree wt040, qwen36 ) 12:35:09
+up
+MLX buffer cache limit set to 4.0 GB
+[p39-q36-stock-a] cold    7601 tok: cached None, ttft 9.1271 s, prefill 832.8 tok/s, decode 75.0 tok/s
+[p39-q36-stock-a] cold   30408 tok: cached None, ttft 50.1752 s, prefill 606.0 tok/s, decode 66.31 tok/s
+wrote <scratch>/flint/p39-q36-stock-a.json
+census rows: 12
+   7601 tokens in 2 chunks: 833.8 tok/s served, 4557.92 ms per chunk, 4553.01 in evaluations, 4.91 host (0.11 %)
+        per chunk ms: gap 0.95, launch 4530.07 (trunk 0.0, pool 0.13, track 3997.55, async_eval 528.57), wait 26.9; 30.0 synchronous evals
+  30408 tokens in 8 chunks: 606.8 tok/s served, 6264.0 ms per chunk, 6259.83 in evaluations, 4.17 host (0.07 %)
+        per chunk ms: gap 1.23, launch 6233.05 (trunk 0.0, pool 0.21, track 5326.88, async_eval 903.23), wait 29.72; 30.0 synchronous evals
+  [p39-q36-stock-a] ctx 3799 run 0: ttft 4.1872s tpot 12.6725 ms 78.91 tok/s sha 78e984f459221aba
+  [p39-q36-stock-a] ctx 3799 run 1: ttft 0.129s tpot 12.6195 ms 79.24 tok/s sha 78e984f459221aba
+  [p39-q36-stock-a] ctx 3799 run 2: ttft 0.1244s tpot 12.6272 ms 79.19 tok/s sha 78e984f459221aba
+  [p39-q36-stock-a] ctx 7583 run 0: ttft 4.606s tpot 13.0525 ms 76.61 tok/s sha e9b7f09cd745c29e
+  [p39-q36-stock-a] ctx 7583 run 1: ttft 0.15s tpot 12.9477 ms 77.23 tok/s sha af1817e88e271d0e
+  [p39-q36-stock-a] ctx 7583 run 2: ttft 0.1472s tpot 13.1273 ms 76.18 tok/s sha af1817e88e271d0e
+[p39-q36-stock-a]    3799 tok: 12.63 ms/step 79.2 tok/s (min 12.62 max 12.67) ttft cold 4.1872s repeat 0.1267s shas 1
+[p39-q36-stock-a]    7583 tok: 13.05 ms/step 76.6 tok/s (min 12.95 max 13.13) ttft cold 4.606s repeat 0.1486s shas 2
+wrote <scratch>/flint/p39-q36-stock-a.hashes.json
+wired 27.9 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm q36-one-a (tree wt041, qwen36 ) 12:36:56
+up
+MLX buffer cache limit set to 4.0 GB
+[p39-q36-one-a] cold    7601 tok: cached None, ttft 9.0745 s, prefill 837.6 tok/s, decode 74.42 tok/s
+[p39-q36-one-a] cold   30408 tok: cached None, ttft 51.2727 s, prefill 593.1 tok/s, decode 66.78 tok/s
+wrote <scratch>/flint/p39-q36-one-a.json
+census rows: 12
+   7601 tokens in 2 chunks: 838.6 tok/s served, 4532.0 ms per chunk, 4526.83 in evaluations, 5.18 host (0.11 %)
+        per chunk ms: gap 1.08, launch 4507.84 (trunk 0.0, pool 0.15, track 3974.84, async_eval 528.91), wait 23.08; 1.0 synchronous evals
+  30408 tokens in 8 chunks: 593.8 tok/s served, 6401.35 ms per chunk, 6393.43 in evaluations, 7.92 host (0.12 %)
+        per chunk ms: gap 1.23, launch 6379.37 (trunk 0.0, pool 4.1, track 5443.47, async_eval 929.21), wait 20.75; 1.0 synchronous evals
+  [p39-q36-one-a] ctx 3799 run 0: ttft 4.1711s tpot 12.6762 ms 78.89 tok/s sha 78e984f459221aba
+  [p39-q36-one-a] ctx 3799 run 1: ttft 0.1304s tpot 12.3345 ms 81.07 tok/s sha 78e984f459221aba
+  [p39-q36-one-a] ctx 3799 run 2: ttft 0.1161s tpot 12.419 ms 80.52 tok/s sha 78e984f459221aba
+  [p39-q36-one-a] ctx 7583 run 0: ttft 4.6583s tpot 13.1046 ms 76.31 tok/s sha e9b7f09cd745c29e
+  [p39-q36-one-a] ctx 7583 run 1: ttft 0.1455s tpot 12.8881 ms 77.59 tok/s sha af1817e88e271d0e
+  [p39-q36-one-a] ctx 7583 run 2: ttft 0.1434s tpot 13.0299 ms 76.75 tok/s sha af1817e88e271d0e
+[p39-q36-one-a]    3799 tok: 12.42 ms/step 80.5 tok/s (min 12.33 max 12.68) ttft cold 4.1711s repeat 0.1232s shas 1
+[p39-q36-one-a]    7583 tok: 13.03 ms/step 76.8 tok/s (min 12.89 max 13.10) ttft cold 4.6583s repeat 0.1444s shas 2
+wrote <scratch>/flint/p39-q36-one-a.hashes.json
+wired 28.1 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm q36-one-b (tree wt041, qwen36 ) 12:38:43
+up
+MLX buffer cache limit set to 4.0 GB
+[p39-q36-one-b] cold    7601 tok: cached None, ttft 9.0986 s, prefill 835.4 tok/s, decode 74.66 tok/s
+[p39-q36-one-b] cold   30408 tok: cached None, ttft 51.6236 s, prefill 589.0 tok/s, decode 64.96 tok/s
+wrote <scratch>/flint/p39-q36-one-b.json
+census rows: 12
+   7601 tokens in 2 chunks: 836.4 tok/s served, 4543.97 ms per chunk, 4537.27 in evaluations, 6.7 host (0.15 %)
+        per chunk ms: gap 0.6, launch 4520.92 (trunk 0.0, pool 0.15, track 3995.76, async_eval 519.06), wait 22.46; 1.0 synchronous evals
+  30408 tokens in 8 chunks: 589.4 tok/s served, 6448.92 ms per chunk, 6441.69 in evaluations, 7.22 host (0.11 %)
+        per chunk ms: gap 1.2, launch 6423.89 (trunk 0.0, pool 3.34, track 5468.56, async_eval 949.31), wait 23.83; 1.0 synchronous evals
+  [p39-q36-one-b] ctx 3799 run 0: ttft 4.1852s tpot 12.5527 ms 79.66 tok/s sha 78e984f459221aba
+  [p39-q36-one-b] ctx 3799 run 1: ttft 0.1281s tpot 12.3945 ms 80.68 tok/s sha 78e984f459221aba
+  [p39-q36-one-b] ctx 3799 run 2: ttft 0.1172s tpot 12.252 ms 81.62 tok/s sha 78e984f459221aba
+  [p39-q36-one-b] ctx 7583 run 0: ttft 4.6883s tpot 12.9228 ms 77.38 tok/s sha e9b7f09cd745c29e
+  [p39-q36-one-b] ctx 7583 run 1: ttft 0.1436s tpot 12.9401 ms 77.28 tok/s sha af1817e88e271d0e
+  [p39-q36-one-b] ctx 7583 run 2: ttft 0.1428s tpot 12.8718 ms 77.69 tok/s sha af1817e88e271d0e
+[p39-q36-one-b]    3799 tok: 12.39 ms/step 80.7 tok/s (min 12.25 max 12.55) ttft cold 4.1852s repeat 0.1226s shas 1
+[p39-q36-one-b]    7583 tok: 12.92 ms/step 77.4 tok/s (min 12.87 max 12.94) ttft cold 4.6883s repeat 0.1432s shas 2
+wrote <scratch>/flint/p39-q36-one-b.hashes.json
+wired 28.1 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm q36-stock-b (tree wt040, qwen36 ) 12:40:29
+up
+MLX buffer cache limit set to 4.0 GB
+[p39-q36-stock-b] cold    7601 tok: cached None, ttft 9.0934 s, prefill 835.9 tok/s, decode 73.83 tok/s
+[p39-q36-stock-b] cold   30408 tok: cached None, ttft 51.269 s, prefill 593.1 tok/s, decode 66.39 tok/s
+wrote <scratch>/flint/p39-q36-stock-b.json
+census rows: 12
+   7601 tokens in 2 chunks: 836.9 tok/s served, 4541.16 ms per chunk, 4536.15 in evaluations, 5.01 host (0.11 %)
+        per chunk ms: gap 0.61, launch 4516.76 (trunk 0.0, pool 0.15, track 3997.62, async_eval 514.75), wait 23.79; 30.0 synchronous evals
+  30408 tokens in 8 chunks: 593.8 tok/s served, 6400.86 ms per chunk, 6396.78 in evaluations, 4.08 host (0.06 %)
+        per chunk ms: gap 1.2, launch 6375.87 (trunk 0.0, pool 0.22, track 5442.52, async_eval 930.47), wait 23.79; 30.0 synchronous evals
+  [p39-q36-stock-b] ctx 3799 run 0: ttft 4.182s tpot 12.5059 ms 79.96 tok/s sha 78e984f459221aba
+  [p39-q36-stock-b] ctx 3799 run 1: ttft 0.1296s tpot 12.5877 ms 79.44 tok/s sha 78e984f459221aba
+  [p39-q36-stock-b] ctx 3799 run 2: ttft 0.1248s tpot 12.4033 ms 80.62 tok/s sha 78e984f459221aba
+  [p39-q36-stock-b] ctx 7583 run 0: ttft 4.6188s tpot 13.0556 ms 76.6 tok/s sha e9b7f09cd745c29e
+  [p39-q36-stock-b] ctx 7583 run 1: ttft 0.1467s tpot 13.0068 ms 76.88 tok/s sha af1817e88e271d0e
+  [p39-q36-stock-b] ctx 7583 run 2: ttft 0.1477s tpot 12.9704 ms 77.1 tok/s sha af1817e88e271d0e
+[p39-q36-stock-b]    3799 tok: 12.51 ms/step 80.0 tok/s (min 12.40 max 12.59) ttft cold 4.182s repeat 0.1272s shas 1
+[p39-q36-stock-b]    7583 tok: 13.01 ms/step 76.9 tok/s (min 12.97 max 13.06) ttft cold 4.6188s repeat 0.1472s shas 2
+wrote <scratch>/flint/p39-q36-stock-b.hashes.json
+wired 28.1 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## qwen36 hashes
+| depth | p39-q36-stock-a ms / tok/s | p39-q36-one-a ms / tok/s | p39-q36-one-b ms / tok/s | p39-q36-stock-b ms / tok/s | delta vs first | same text |
+|---|---|---|---|---|---|---|
+| 3799 | 12.63 / 79.2 | 12.42 / 80.5 | 12.39 / 80.7 | 12.51 / 80.0 | +1.7%, +1.9%, +1.0% | yes, yes, yes |
+| 7583 | 13.05 / 76.6 | 13.03 / 76.8 | 12.92 / 77.4 | 13.01 / 76.9 | +0.2%, +1.0%, +0.4% | yes, yes, yes |
+P039_DONE 12:42:21

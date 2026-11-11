@@ -1,0 +1,41 @@
+{
+  "tag": "p39-q36-one-a",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.0745,
+        "total_s": 9.9211,
+        "text_sha": "c327936dad7c3668",
+        "tpot_ms": 13.4364,
+        "decode_tok_s": 74.42
+      },
+      "prefill_tok_s": 837.6
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30408,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 51.2727,
+        "total_s": 52.2161,
+        "text_sha": "b411084f970a6c8b",
+        "tpot_ms": 14.9735,
+        "decode_tok_s": 66.78
+      },
+      "prefill_tok_s": 593.1
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

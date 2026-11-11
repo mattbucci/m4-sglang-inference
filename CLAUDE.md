@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.23 + 28 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.23 + 29 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint`
@@ -22,12 +22,12 @@ do — chunk-grid bf16 noise); patch 028 keeps the overlap decode loop on.
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support; known issues are GitHub issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (28 patches on top of SGLang v0.5.23) |
+| [patches/README.md](patches/README.md) | Per-patch notes (29 patches on top of SGLang v0.5.23) |
 | `docs/` | flint.md, quality.md (evals + checkpoint audits), long-context.md |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 28 patches
+scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 29 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
 scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
@@ -56,7 +56,7 @@ PRESETS="nemotron-30b" bash scripts/eval/probe_all.sh         # single-preset sw
 python scripts/eval/check_mlx_quant_scales.py    <repo>       # per-layer scale corruption scan
 python scripts/eval/audit_mlx_quant_metadata.py               # recipe-level hazards across M4 set
 python scripts/eval/validate_chat_template.py    --model <path>
-for t in scripts/eval/test_*_unit.py scripts/eval/test_incremental_tokenizer.py; do python $t; done   # per-patch CPU tests (021-038), no server
+for t in scripts/eval/test_*_unit.py scripts/eval/test_incremental_tokenizer.py; do python $t; done   # per-patch CPU tests (021-039), no server
 python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
 python scripts/eval/quant_fidelity.py --port 23334 --tokenizer <path> --tag <arm> [--ref-dump <8bit-dump.json>] --out <json>   # teacher-forced NLL/PPL, KL to a reference dump
 python3 evals/swebench/audit_rollouts.py                       # answer-leak audit of archived SWE-bench sessions (web/network/git-history); the harness itself is sealed

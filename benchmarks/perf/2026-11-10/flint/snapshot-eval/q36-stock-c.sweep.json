@@ -1,0 +1,41 @@
+{
+  "tag": "p39b-q36-stock-c",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 8.8183,
+        "total_s": 9.581,
+        "text_sha": "f11ecab0f53e00d1",
+        "tpot_ms": 12.1023,
+        "decode_tok_s": 82.63
+      },
+      "prefill_tok_s": 862.0
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30408,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 49.4874,
+        "total_s": 50.4115,
+        "text_sha": "2444e7bb0531a0ad",
+        "tpot_ms": 14.6644,
+        "decode_tok_s": 68.19
+      },
+      "prefill_tok_s": 614.5
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

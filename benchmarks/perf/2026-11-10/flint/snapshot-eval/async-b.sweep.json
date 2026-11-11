@@ -1,0 +1,90 @@
+{
+  "tag": "p39b-async-b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 8.6565,
+        "total_s": 9.3365,
+        "text_sha": "6f9174fb5c183ed0",
+        "tpot_ms": 10.7926,
+        "decode_tok_s": 92.66
+      },
+      "prefill_tok_s": 878.1
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 47.4043,
+        "total_s": 48.2842,
+        "text_sha": "887b0ebdf1bab06a",
+        "tpot_ms": 13.9675,
+        "decode_tok_s": 71.59
+      },
+      "prefill_tok_s": 641.8
+    }
+  ],
+  "runs": [],
+  "followup": [
+    {
+      "target": 4096,
+      "first": {
+        "prompt_tokens": 3813,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 4.2032,
+        "finish": "length",
+        "reasoning_chars": 265,
+        "decode_tok_s": 100.32,
+        "content_chars": 0
+      },
+      "second": {
+        "prompt_tokens": 3823,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 0.157,
+        "finish": "length",
+        "reasoning_chars": 270,
+        "decode_tok_s": 98.75,
+        "content_chars": 0
+      },
+      "fresh_tokens": 3823
+    },
+    {
+      "target": 16384,
+      "first": {
+        "prompt_tokens": 15228,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 19.8036,
+        "finish": "length",
+        "reasoning_chars": 273,
+        "decode_tok_s": 86.92,
+        "content_chars": 0
+      },
+      "second": {
+        "prompt_tokens": 15238,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 0.3002,
+        "finish": "length",
+        "reasoning_chars": 320,
+        "decode_tok_s": 85.87,
+        "content_chars": 0
+      },
+      "fresh_tokens": 15238
+    }
+  ]
+}

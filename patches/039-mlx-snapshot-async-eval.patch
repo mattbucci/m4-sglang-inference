@@ -1,0 +1,15 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+index a479316603..78e9bac6ae 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+@@ -88,7 +88,9 @@ def _snapshot_cache(cache: Any) -> _CacheSnapshot:
+     }
+     arrays = _arrays_in_tree((state, meta_state, attrs))
+     if arrays:
+-        mx.eval(*arrays)
++        # Scheduled, not awaited: a wait per layer idles the GPU while the
++        # host encodes the next layer of the forward that feeds the state.
++        mx.async_eval(*arrays)
+     return _CacheSnapshot(state=state, meta_state=meta_state, attrs=attrs)
+ 
+ 

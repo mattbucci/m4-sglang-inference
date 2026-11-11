@@ -1,0 +1,26 @@
+## flint
+| metric | stock-a | one-a | one-b | stock-b | one vs stock |
+|---|--:|--:|--:|--:|--:|
+| cold 7601 ttft s | 9.4226 | 9.0717 | 9.1028 | 9.3624 | -3.2 % clean |
+| cold 30422 ttft s | 51.4600 | 52.4841 | 49.6716 | 52.3979 | -1.6 % overlap |
+| follow-up first 3813 ttft s | 4.5301 | 4.5294 | 4.4027 | 4.5123 | -1.2 % overlap |
+| follow-up second 3813 ttft s | 0.1673 | 0.1649 | 0.1654 | 0.1673 | -1.3 % clean |
+| follow-up first 15228 ttft s | 22.1177 | 21.2017 | 20.7643 | 21.6184 | -4.0 % clean |
+| follow-up second 15228 ttft s | 0.3281 | 0.3200 | 0.3209 | 0.3267 | -2.1 % clean |
+| extend 3799 ttft s | 4.5046 | 4.3537 | 4.2358 | 4.3090 | -2.5 % overlap |
+| repeat 3799 ttft s | 0.1192 | 0.1176 | 0.1164 | 0.1202 | -2.3 % clean |
+| decode 3799 ms | 10.4100 | 10.4600 | 10.2400 | 10.3300 | -0.2 % overlap |
+| extend 7599 ttft s | 5.2441 | 4.9895 | 4.8592 | 5.1574 | -5.3 % clean |
+| repeat 7599 ttft s | 0.1886 | 0.1873 | 0.1816 | 0.1884 | -2.1 % clean |
+| decode 7599 ms | 10.9000 | 10.9600 | 10.7700 | 10.8400 | -0.0 % overlap |
+## qwen36
+| metric | q36-stock-a | q36-one-a | q36-one-b | q36-stock-b | q36-one vs q36-stock |
+|---|--:|--:|--:|--:|--:|
+| cold 7601 ttft s | 9.1271 | 9.0745 | 9.0986 | 9.0934 | -0.3 % overlap |
+| cold 30408 ttft s | 50.1752 | 51.2727 | 51.6236 | 51.2690 | +1.4 % clean |
+| extend 3799 ttft s | 4.1872 | 4.1711 | 4.1852 | 4.1820 | -0.2 % overlap |
+| repeat 3799 ttft s | 0.1267 | 0.1232 | 0.1226 | 0.1272 | -3.2 % clean |
+| decode 3799 ms | 12.6300 | 12.4200 | 12.3900 | 12.5100 | -1.3 % clean |
+| extend 7583 ttft s | 4.6060 | 4.6583 | 4.6883 | 4.6188 | +1.3 % clean |
+| repeat 7583 ttft s | 0.1486 | 0.1444 | 0.1432 | 0.1472 | -2.8 % clean |
+| decode 7583 ms | 13.0500 | 13.0300 | 12.9200 | 13.0100 | -0.4 % overlap |
