@@ -1,0 +1,15 @@
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/awq/awq.py:53: UserWarning: Only CUDA, HIP and XPU support AWQ currently.
+  warnings.warn(f"Only CUDA, HIP and XPU support AWQ currently.")
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/gguf.py:76: UserWarning: Only CUDA, MUSA and NPU support GGUF quantization currently.
+  warnings.warn(f"Only CUDA, MUSA and NPU support GGUF quantization currently.")
+35 layers, window 513, 400 steps, median ms per step
+  pass 0 none  0.839
+  pass 0 view  1.198
+  pass 0 ints  0.845
+  pass 0 view  1.197
+  pass 0 none  0.845
+  pass 1 none  0.840
+  pass 1 view  1.197
+  pass 1 ints  0.845
+  pass 1 view  1.197
+  pass 1 none  0.843

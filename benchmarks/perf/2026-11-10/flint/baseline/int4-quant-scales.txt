@@ -1,0 +1,7 @@
+Scanning: ~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0
+  5 safetensor file(s)
+  max-mag threshold: 1000.0
+
+
+======================================================================
+OK: all 486 quantized layers (weight+scales+biases) healthy

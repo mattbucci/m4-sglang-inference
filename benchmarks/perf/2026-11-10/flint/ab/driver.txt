@@ -1,0 +1,275 @@
+## ab base-1 (live tree, flag 0) 07:49:56
+up
+[base-1] cold     959 tok: cached None, ttft 1.0793 s, prefill 888.5 tok/s, decode 74.61 tok/s; repeat cached None, ttft 0.1834 s, decode 75.29 tok/s
+[base-1] cold    7601 tok: cached None, ttft 9.3726 s, prefill 811.0 tok/s, decode 69.3 tok/s; repeat cached None, ttft 0.1712 s, decode 69.41 tok/s
+[base-1] cold   30422 tok: cached None, ttft 56.2393 s, prefill 540.9 tok/s, decode 56.5 tok/s; repeat cached None, ttft 0.2133 s, decode 56.55 tok/s
+[base-1] runs 1024:512:5:sampled: prompt 963, decode mean 72.85 median 72.91 tok/s (72.64 to 73.06)
+[base-1] runs 1024:512:5:greedy: prompt 963, decode mean 74.17 median 74.16 tok/s (73.96 to 74.44)
+[base-1] followup    3813 tok: first ttft 5.3059 s (256 tok, finish length); second ttft 0.1974 s, None of 3836 cached, 3836 fresh
+wrote <scratch>/flint/ab-base-1.json
+wired 31.2 GB
+tracebacks in the log: 0
+[transformers] You are using a model of type `flint` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`)
+[transformers] The tokenizer you are loading from '~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0/' with an incorrect regex pattern: https://huggingface.co/mistralai
+depth 1024 tail 32 seed 0: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 12/64 KL first 5.61e-08 mean 4.00e-03 max 4.69e-02
+depth 1024 tail 32 seed 1: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 64/64 KL first 1.31e-09 mean 2.01e-03 max 2.55e-02
+depth 1024 tail 1024 seed 0: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 64/64 KL first 1.13e-08 mean 1.85e-03 max 4.23e-02
+depth 1024 tail 1024 seed 1: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 12/64 KL first 7.05e-08 mean 1.29e-02 max 1.31e-01
+depth 6144 tail 32 seed 0: prompt 5958, cached 5901, forwarded 57; hit vs cold: agree 64/64 KL first 4.39e-08 mean 1.16e-03 max 2.48e-02
+depth 6144 tail 32 seed 1: prompt 2199, cached 2142, forwarded 57; hit vs cold: agree 64/64 KL first 4.55e-08 mean 5.82e-03 max 4.07e-02
+depth 6144 tail 1024 seed 0: prompt 6362, cached 5316, forwarded 1046; hit vs cold: agree 9/64 KL first 1.23e-08 mean 2.80e-03 max 1.15e-02
+depth 6144 tail 1024 seed 1: prompt 3001, cached 1952, forwarded 1049; hit vs cold: agree 12/64 KL first 3.03e-08 mean 2.55e-02 max 2.78e-01
+
+hit_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 51.0, KL first median 4.47e-08 mean 3.67e-08, KL mean 3.25e-03, max 4.69e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 24.2, KL first median 2.13e-08 mean 3.11e-08, KL mean 1.08e-02, max 2.78e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 51.0, KL first median 4.47e-08 mean 3.67e-08, KL mean 3.25e-03, max 4.69e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 24.2, KL first median 2.13e-08 mean 3.11e-08, KL mean 1.08e-02, max 2.78e-01
+## ab view-1 (wt tree, flag 0) 07:54:49
+up
+[view-1] cold     959 tok: cached None, ttft 1.1052 s, prefill 867.7 tok/s, decode 78.36 tok/s; repeat cached None, ttft 0.1863 s, decode 79.46 tok/s
+[view-1] cold    7601 tok: cached None, ttft 9.5705 s, prefill 794.2 tok/s, decode 72.94 tok/s; repeat cached None, ttft 0.1728 s, decode 73.35 tok/s
+[view-1] cold   30422 tok: cached None, ttft 54.4213 s, prefill 559.0 tok/s, decode 60.94 tok/s; repeat cached None, ttft 0.2106 s, decode 60.96 tok/s
+[view-1] runs 1024:512:5:sampled: prompt 963, decode mean 79.54 median 79.54 tok/s (79.21 to 80.05)
+[view-1] runs 1024:512:5:greedy: prompt 963, decode mean 80.34 median 80.25 tok/s (79.94 to 80.86)
+[view-1] followup    3813 tok: first ttft 5.1077 s (256 tok, finish length); second ttft 0.1781 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-view-1.json
+wired 31.2 GB
+tracebacks in the log: 0
+[transformers] You are using a model of type `flint` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`)
+[transformers] The tokenizer you are loading from '~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0/' with an incorrect regex pattern: https://huggingface.co/mistralai
+depth 1024 tail 32 seed 0: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 12/64 KL first 5.61e-08 mean 4.00e-03 max 4.69e-02
+depth 1024 tail 32 seed 1: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 64/64 KL first 1.31e-09 mean 2.01e-03 max 2.55e-02
+depth 1024 tail 1024 seed 0: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 64/64 KL first 1.13e-08 mean 1.85e-03 max 4.23e-02
+depth 1024 tail 1024 seed 1: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 12/64 KL first 7.05e-08 mean 1.29e-02 max 1.31e-01
+depth 6144 tail 32 seed 0: prompt 5958, cached 5901, forwarded 57; hit vs cold: agree 64/64 KL first 4.39e-08 mean 1.16e-03 max 2.48e-02
+depth 6144 tail 32 seed 1: prompt 2199, cached 2142, forwarded 57; hit vs cold: agree 64/64 KL first 4.55e-08 mean 5.82e-03 max 4.07e-02
+depth 6144 tail 1024 seed 0: prompt 6362, cached 5316, forwarded 1046; hit vs cold: agree 9/64 KL first 1.23e-08 mean 2.80e-03 max 1.15e-02
+depth 6144 tail 1024 seed 1: prompt 3001, cached 1952, forwarded 1049; hit vs cold: agree 12/64 KL first 3.03e-08 mean 2.55e-02 max 2.78e-01
+
+hit_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 51.0, KL first median 4.47e-08 mean 3.67e-08, KL mean 3.25e-03, max 4.69e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 24.2, KL first median 2.13e-08 mean 3.11e-08, KL mean 1.08e-02, max 2.78e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 51.0, KL first median 4.47e-08 mean 3.67e-08, KL mean 3.25e-03, max 4.69e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 24.2, KL first median 2.13e-08 mean 3.11e-08, KL mean 1.08e-02, max 2.78e-01
+## ab both-1 (wt tree, flag 1) 07:59:39
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-1] cold     959 tok: cached None, ttft 1.0942 s, prefill 876.4 tok/s, decode 88.54 tok/s; repeat cached None, ttft 0.16 s, decode 89.32 tok/s
+[both-1] cold    7601 tok: cached None, ttft 9.4379 s, prefill 805.4 tok/s, decode 82.47 tok/s; repeat cached None, ttft 0.1736 s, decode 82.72 tok/s
+[both-1] cold   30422 tok: cached None, ttft 53.6148 s, prefill 567.4 tok/s, decode 66.14 tok/s; repeat cached None, ttft 0.2132 s, decode 65.85 tok/s
+[both-1] runs 1024:512:5:sampled: prompt 963, decode mean 88.94 median 88.99 tok/s (88.58 to 89.2)
+[both-1] runs 1024:512:5:greedy: prompt 963, decode mean 90.95 median 90.95 tok/s (90.64 to 91.2)
+[both-1] followup    3813 tok: first ttft 4.6107 s (256 tok, finish length); second ttft 0.1708 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-1.json
+wired 31.1 GB
+tracebacks in the log: 0
+[transformers] You are using a model of type `flint` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`)
+[transformers] The tokenizer you are loading from '~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0/' with an incorrect regex pattern: https://huggingface.co/mistralai
+depth 1024 tail 32 seed 0: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 12/64 KL first 5.61e-08 mean 4.00e-03 max 4.69e-02
+depth 1024 tail 32 seed 1: prompt 1158, cached 1101, forwarded 57; hit vs cold: agree 64/64 KL first 1.31e-09 mean 2.01e-03 max 2.55e-02
+depth 1024 tail 1024 seed 0: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 64/64 KL first 1.13e-08 mean 1.85e-03 max 4.23e-02
+depth 1024 tail 1024 seed 1: prompt 2150, cached 1101, forwarded 1049; hit vs cold: agree 12/64 KL first 7.05e-08 mean 1.29e-02 max 1.31e-01
+depth 6144 tail 32 seed 0: prompt 5958, cached 5901, forwarded 57; hit vs cold: agree 64/64 KL first 4.39e-08 mean 1.16e-03 max 2.48e-02
+depth 6144 tail 32 seed 1: prompt 2199, cached 2142, forwarded 57; hit vs cold: agree 64/64 KL first 4.55e-08 mean 5.82e-03 max 4.07e-02
+depth 6144 tail 1024 seed 0: prompt 6362, cached 5316, forwarded 1046; hit vs cold: agree 9/64 KL first 1.23e-08 mean 2.80e-03 max 1.15e-02
+depth 6144 tail 1024 seed 1: prompt 3001, cached 1952, forwarded 1049; hit vs cold: agree 12/64 KL first 3.03e-08 mean 2.55e-02 max 2.78e-01
+
+hit_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 51.0, KL first median 4.47e-08 mean 3.67e-08, KL mean 3.25e-03, max 4.69e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 24.2, KL first median 2.13e-08 mean 3.11e-08, KL mean 1.08e-02, max 2.78e-01
+repeat_vs_cold
+  tail    32: cases 4, identical tokens 3, agree steps 51.0, KL first median 4.47e-08 mean 3.67e-08, KL mean 3.25e-03, max 4.69e-02
+  tail  1024: cases 4, identical tokens 1, agree steps 24.2, KL first median 2.13e-08 mean 3.11e-08, KL mean 1.08e-02, max 2.78e-01
+validate rc=0
+=== M4 capability validator — http://localhost:23334  model=flint ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (329 tok, finish=stop)
+--- 3/3 passed in 5.4s ---
+## ab both-2 (wt tree, flag 1) 08:04:17
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-2] cold     959 tok: cached None, ttft 1.0911 s, prefill 878.9 tok/s, decode 89.06 tok/s; repeat cached None, ttft 0.1536 s, decode 88.67 tok/s
+[both-2] cold    7601 tok: cached None, ttft 9.4443 s, prefill 804.8 tok/s, decode 81.57 tok/s; repeat cached None, ttft 0.1757 s, decode 81.88 tok/s
+[both-2] cold   30422 tok: cached None, ttft 54.3583 s, prefill 559.7 tok/s, decode 66.32 tok/s; repeat cached None, ttft 0.209 s, decode 66.37 tok/s
+[both-2] runs 1024:512:5:sampled: prompt 963, decode mean 89.4 median 89.37 tok/s (88.72 to 89.95)
+[both-2] runs 1024:512:5:greedy: prompt 963, decode mean 91.06 median 91.21 tok/s (90.57 to 91.41)
+[both-2] followup    3813 tok: first ttft 4.5898 s (256 tok, finish length); second ttft 0.1854 s, None of 3835 cached, 3835 fresh
+wrote <scratch>/flint/ab-both-2.json
+wired 31.2 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 63.20 tok/s aggregate 126.41 tpot 15.82 ms ttft 0.46 s window 3.14 s (397 tokens) first-to-last 60.56 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 43.95 tok/s aggregate 175.78 tpot 22.76 ms ttft 0.99 s window 4.51 s (793 tokens) first-to-last 42.25 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             93.45            93.45    10.70    0.31
+      2             63.28           126.56    15.80    0.46
+      4             44.04           176.17    22.71    0.99
+wrote <scratch>/flint/ab-both-2.streams.json
+## ab view-2 (wt tree, flag 0) 08:07:44
+up
+[view-2] cold     959 tok: cached None, ttft 1.1064 s, prefill 866.8 tok/s, decode 79.92 tok/s; repeat cached None, ttft 0.1573 s, decode 79.73 tok/s
+[view-2] cold    7601 tok: cached None, ttft 9.489 s, prefill 801.0 tok/s, decode 73.94 tok/s; repeat cached None, ttft 0.1759 s, decode 73.97 tok/s
+[view-2] cold   30422 tok: cached None, ttft 55.1138 s, prefill 552.0 tok/s, decode 60.71 tok/s; repeat cached None, ttft 0.2121 s, decode 60.28 tok/s
+[view-2] runs 1024:512:5:sampled: prompt 963, decode mean 79.73 median 79.72 tok/s (79.25 to 80.14)
+[view-2] runs 1024:512:5:greedy: prompt 963, decode mean 81.16 median 81.19 tok/s (80.97 to 81.34)
+[view-2] followup    3813 tok: first ttft 5.0043 s (256 tok, finish length); second ttft 0.1826 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-view-2.json
+wired 31.2 GB
+tracebacks in the log: 0
+## ab base-2 (live tree, flag 0) 08:10:54
+up
+[base-2] cold     959 tok: cached None, ttft 1.0766 s, prefill 890.8 tok/s, decode 74.62 tok/s; repeat cached None, ttft 0.1571 s, decode 74.29 tok/s
+[base-2] cold    7601 tok: cached None, ttft 9.8537 s, prefill 771.4 tok/s, decode 69.16 tok/s; repeat cached None, ttft 0.1739 s, decode 69.24 tok/s
+[base-2] cold   30422 tok: cached None, ttft 56.3015 s, prefill 540.3 tok/s, decode 56.91 tok/s; repeat cached None, ttft 0.2109 s, decode 57.11 tok/s
+[base-2] runs 1024:512:5:sampled: prompt 963, decode mean 74.03 median 73.91 tok/s (73.73 to 74.51)
+[base-2] runs 1024:512:5:greedy: prompt 963, decode mean 75.64 median 75.63 tok/s (75.45 to 75.82)
+[base-2] followup    3813 tok: first ttft 5.1041 s (256 tok, finish length); second ttft 0.1757 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-base-2.json
+wired 31.2 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 55.80 tok/s aggregate 111.60 tpot 17.92 ms ttft 0.48 s window 3.56 s (397 tokens) first-to-last 53.65 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 36.85 tok/s aggregate 147.39 tpot 27.14 ms ttft 1.03 s window 5.38 s (793 tokens) first-to-last 35.59 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             76.75            76.75    13.03    0.33
+      2             55.80           111.59    17.92    0.48
+      4             36.98           147.91    27.04    1.04
+wrote <scratch>/flint/ab-base-2.streams.json
+## ab noradix-off-1 (wt tree, flag 0) 08:14:51
+up
+[noradix-off-1] cold     959 tok: cached None, ttft 0.9749 s, prefill 983.7 tok/s, decode 79.57 tok/s; repeat cached None, ttft 1.0084 s, decode 80.16 tok/s
+[noradix-off-1] cold    7601 tok: cached None, ttft 9.0973 s, prefill 835.5 tok/s, decode 73.76 tok/s; repeat cached None, ttft 9.5107 s, decode 73.73 tok/s
+[noradix-off-1] cold   30422 tok: cached None, ttft 53.7294 s, prefill 566.2 tok/s, decode 61.01 tok/s; repeat cached None, ttft 52.1075 s, decode 60.75 tok/s
+[noradix-off-1] runs 1024:512:5:sampled: prompt 963, decode mean 80.46 median 80.38 tok/s (79.95 to 81.01)
+[noradix-off-1] runs 1024:512:5:greedy: prompt 963, decode mean 81.51 median 81.48 tok/s (81.42 to 81.64)
+[noradix-off-1] followup    3813 tok: first ttft 4.4002 s (256 tok, finish length); second ttft 4.5335 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-noradix-off-1.json
+wired 27.0 GB
+tracebacks in the log: 0
+## ab noradix-moe-1 (wt tree, flag 1) 08:19:15
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[noradix-moe-1] cold     959 tok: cached None, ttft 0.997 s, prefill 961.9 tok/s, decode 89.97 tok/s; repeat cached None, ttft 0.9715 s, decode 89.54 tok/s
+[noradix-moe-1] cold    7601 tok: cached None, ttft 9.6353 s, prefill 788.9 tok/s, decode 82.82 tok/s; repeat cached None, ttft 10.4406 s, decode 81.62 tok/s
+[noradix-moe-1] cold   30422 tok: cached None, ttft 55.602 s, prefill 547.1 tok/s, decode 66.31 tok/s; repeat cached None, ttft 53.0858 s, decode 66.26 tok/s
+[noradix-moe-1] runs 1024:512:5:sampled: prompt 963, decode mean 88.96 median 89.06 tok/s (88.5 to 89.24)
+[noradix-moe-1] runs 1024:512:5:greedy: prompt 963, decode mean 91.13 median 90.87 tok/s (90.46 to 92.75)
+[noradix-moe-1] followup    3813 tok: first ttft 4.377 s (256 tok, finish length); second ttft 4.446 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-noradix-moe-1.json
+wired 27.0 GB
+tracebacks in the log: 0
+## ab noradix-moe-2 (wt tree, flag 1) 08:23:30
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[noradix-moe-2] cold     959 tok: cached None, ttft 0.9809 s, prefill 977.7 tok/s, decode 91.66 tok/s; repeat cached None, ttft 0.9846 s, decode 92.76 tok/s
+[noradix-moe-2] cold    7601 tok: cached None, ttft 8.963 s, prefill 848.0 tok/s, decode 84.82 tok/s; repeat cached None, ttft 9.292 s, decode 83.97 tok/s
+[noradix-moe-2] cold   30422 tok: cached None, ttft 52.8319 s, prefill 575.8 tok/s, decode 68.19 tok/s; repeat cached None, ttft 49.9955 s, decode 67.68 tok/s
+[noradix-moe-2] runs 1024:512:5:sampled: prompt 963, decode mean 91.43 median 91.49 tok/s (91.01 to 91.78)
+[noradix-moe-2] runs 1024:512:5:greedy: prompt 963, decode mean 93.74 median 93.78 tok/s (93.25 to 94.0)
+[noradix-moe-2] followup    3813 tok: first ttft 4.2025 s (256 tok, finish length); second ttft 4.3566 s, None of 3874 cached, 3874 fresh
+wrote <scratch>/flint/ab-noradix-moe-2.json
+wired 27.0 GB
+tracebacks in the log: 0
+## ab noradix-off-2 (wt tree, flag 0) 08:27:35
+up
+[noradix-off-2] cold     959 tok: cached None, ttft 0.9885 s, prefill 970.2 tok/s, decode 81.49 tok/s; repeat cached None, ttft 0.9595 s, decode 80.61 tok/s
+[noradix-off-2] cold    7601 tok: cached None, ttft 8.9778 s, prefill 846.6 tok/s, decode 75.05 tok/s; repeat cached None, ttft 9.4219 s, decode 74.94 tok/s
+[noradix-off-2] cold   30422 tok: cached None, ttft 52.9399 s, prefill 574.7 tok/s, decode 61.6 tok/s; repeat cached None, ttft 50.8503 s, decode 62.0 tok/s
+[noradix-off-2] runs 1024:512:5:sampled: prompt 963, decode mean 81.99 median 82.08 tok/s (81.76 to 82.15)
+[noradix-off-2] runs 1024:512:5:greedy: prompt 963, decode mean 83.47 median 83.49 tok/s (83.34 to 83.57)
+[noradix-off-2] followup    3813 tok: first ttft 4.2021 s (256 tok, finish length); second ttft 4.373 s, None of 3860 cached, 3860 fresh
+wrote <scratch>/flint/ab-noradix-off-2.json
+wired 26.9 GB
+tracebacks in the log: 0
+## ab both-buf200 (wt tree, flag 1) 08:31:51
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-buf200] cold     959 tok: cached None, ttft 1.0552 s, prefill 908.8 tok/s, decode 101.03 tok/s; repeat cached None, ttft 0.1735 s, decode 100.81 tok/s
+[both-buf200] cold    7601 tok: cached None, ttft 10.0339 s, prefill 757.5 tok/s, decode 92.04 tok/s; repeat cached None, ttft 0.1844 s, decode 91.85 tok/s
+[both-buf200] cold   30422 tok: cached None, ttft 56.8358 s, prefill 535.3 tok/s, decode 71.44 tok/s; repeat cached None, ttft 0.2108 s, decode 71.54 tok/s
+[both-buf200] runs 1024:512:5:sampled: prompt 963, decode mean 101.2 median 101.32 tok/s (100.61 to 101.43)
+[both-buf200] runs 1024:512:5:greedy: prompt 963, decode mean 103.33 median 103.33 tok/s (103.27 to 103.41)
+[both-buf200] followup    3813 tok: first ttft 4.7393 s (256 tok, finish length); second ttft 0.1845 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-buf200.json
+wired 31.5 GB
+tracebacks in the log: 0
+## served census, both changes, radix on 08:34:41
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[scen-both] cold     959 tok: cached None, ttft 1.0828 s, prefill 885.7 tok/s, decode 92.56 tok/s
+[scen-both] cold    7601 tok: cached None, ttft 9.53 s, prefill 797.6 tok/s, decode 83.26 tok/s
+[scen-both] runs 1024:512:5:greedy: prompt 963, decode mean 93.86 median 93.87 tok/s (93.77 to 93.96)
+[scen-both] runs 1024:512:5:sampled: prompt 963, decode mean 91.83 median 91.7 tok/s (91.55 to 92.32)
+wrote <scratch>/flint/scen-both.json
+| group | steps | wall | host_phase | graph_build | fwd | select | build_other | async_eval | launch_other | token_wait | finalize_host | stream_output | decode_other | process_other | job_other | ingest | loop_other | host_total |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 256 | 10.723 | 2.118 | 1.744 | 1.674 | 0.055 | 0.016 | 8.604 | 0.008 | 0.026 | 0.039 | 0.097 | 0.058 | 0.028 | 0.006 | 0.077 | 0.034 | 10.697 |
+| 1 | 5376 | 10.779 | 2.108 | 1.745 | 1.697 | 0.031 | 0.017 | 8.672 | 0.011 | 0.012 | 0.039 | 0.100 | 0.060 | 0.027 | 0.006 | 0.078 | 0.031 | 10.768 |
+## default checkpoint (flint-oQ8e)
+## ab oq8e-base (live tree, flag 0) 08:36:28
+up
+[oq8e-base] cold     959 tok: cached None, ttft 1.1852 s, prefill 809.1 tok/s, decode 54.76 tok/s; repeat cached None, ttft 0.1993 s, decode 54.52 tok/s
+[oq8e-base] cold    7601 tok: cached None, ttft 10.4441 s, prefill 727.8 tok/s, decode 52.06 tok/s; repeat cached None, ttft 0.2034 s, decode 52.09 tok/s
+[oq8e-base] runs 1024:512:5:sampled: prompt 963, decode mean 54.38 median 54.47 tok/s (54.16 to 54.58)
+[oq8e-base] runs 1024:512:5:greedy: prompt 963, decode mean 55.04 median 54.99 tok/s (54.77 to 55.4)
+[oq8e-base] followup    3813 tok: first ttft 5.3422 s (256 tok, finish length); second ttft 0.2234 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-oq8e-base.json
+wired 50.3 GB
+tracebacks in the log: 0
+## ab oq8e-both (wt tree, flag 1) 08:39:28
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[oq8e-both] cold     959 tok: cached None, ttft 1.1353 s, prefill 844.7 tok/s, decode 61.34 tok/s; repeat cached None, ttft 0.2306 s, decode 62.13 tok/s
+[oq8e-both] cold    7601 tok: cached None, ttft 10.5515 s, prefill 720.4 tok/s, decode 58.25 tok/s; repeat cached None, ttft 0.2059 s, decode 58.49 tok/s
+[oq8e-both] runs 1024:512:5:sampled: prompt 963, decode mean 61.82 median 61.78 tok/s (61.69 to 62.03)
+[oq8e-both] runs 1024:512:5:greedy: prompt 963, decode mean 62.8 median 62.79 tok/s (62.75 to 62.85)
+[oq8e-both] followup    3813 tok: first ttft 5.51 s (256 tok, finish length); second ttft 0.2199 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-oq8e-both.json
+wired 50.2 GB
+tracebacks in the log: 0
+## follow-up fidelity across arms (base-1 is the reference)
+ab-view-1.followup.json hit: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-view-1.followup.json cold: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-view-1.followup.json cached tokens differ in 0 cases []
+ab-both-1.followup.json hit: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-both-1.followup.json cold: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-both-1.followup.json cached tokens differ in 0 cases []
+## greedy text of the decode-only runs, per arm
+base-1 1024:512:5:sampled 72.85 
+base-1 1024:512:5:greedy 74.17 ['155684ab780a41c8']
+view-1 1024:512:5:sampled 79.54 
+view-1 1024:512:5:greedy 80.34 ['155684ab780a41c8']
+both-1 1024:512:5:sampled 88.94 
+both-1 1024:512:5:greedy 90.95 ['155684ab780a41c8']
+both-2 1024:512:5:sampled 89.4 
+both-2 1024:512:5:greedy 91.06 ['155684ab780a41c8']
+view-2 1024:512:5:sampled 79.73 
+view-2 1024:512:5:greedy 81.16 ['155684ab780a41c8']
+base-2 1024:512:5:sampled 74.03 
+base-2 1024:512:5:greedy 75.64 ['155684ab780a41c8']
+noradix-off-1 1024:512:5:sampled 80.46 
+noradix-off-1 1024:512:5:greedy 81.51 ['155684ab780a41c8']
+noradix-moe-1 1024:512:5:sampled 88.96 
+noradix-moe-1 1024:512:5:greedy 91.13 ['155684ab780a41c8']
+noradix-moe-2 1024:512:5:sampled 91.43 
+noradix-moe-2 1024:512:5:greedy 93.74 ['155684ab780a41c8']
+noradix-off-2 1024:512:5:sampled 81.99 
+noradix-off-2 1024:512:5:greedy 83.47 ['155684ab780a41c8']
+both-buf200 1024:512:5:sampled 101.2 
+both-buf200 1024:512:5:greedy 103.33 ['155684ab780a41c8']
+oq8e-base 1024:512:5:sampled 54.38 
+oq8e-base 1024:512:5:greedy 55.04 ['5165ea1975c35024']
+oq8e-both 1024:512:5:sampled 61.82 
+oq8e-both 1024:512:5:greedy 62.8 ['5165ea1975c35024']
+FLINT_AB_DONE

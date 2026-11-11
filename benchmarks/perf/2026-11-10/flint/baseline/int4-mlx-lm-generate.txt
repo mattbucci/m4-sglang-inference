@@ -1,0 +1,77 @@
+[transformers] You are using a model of type `flint` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+[transformers] The tokenizer you are loading from '~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+==========
+<think>We need to write a Python module that implements an LRU cache with TTL, and include tests.
+
+We should design a class, maybe `TTLLRUCache` or `LRUCache` with TTL. It should support get, put, delete, maybe size limits.
+
+Key features:
+- LRU eviction: when capacity exceeded, evict least recently used item.
+- TTL: each entry has an expiration time; when get or put, check if expired; if expired, treat as not present and possibly evict.
+
+We can implement using OrderedDict (Python 3.7+ maintains insertion order, but we can use move_to_end for LRU). Or use dict + doubly linked list for O(1) operations.
+
+Simpler: use OrderedDict with move_to_end on access.
+
+TTL: store expiry timestamp (time.monotonic or time.time). On get, check if key exists and not expired; if expired, delete and return None.
+
+On put, set expiry = now + ttl.
+
+Capacity: max number of items.
+
+We should handle time source injection for testing.
+
+Let's design:
+
+```python
+import time
+from collections import OrderedDict
+
+class TTLLRUCache:
+    def __init__(self, capacity: int, ttl: float):
+        self.capacity = capacity
+        self.ttl = ttl
+        self.cache = OrderedDict()
+
+    def get(self, key):
+        if key not in self.cache:
+            return None
+        # check expiry
+        value, expiry = self.cache[key]
+        if time.monotonic() > expiry:
+            # expired, remove
+            del self.cache[key]
+            return None
+        # move to end (most recently used)
+        self.cache.move_to_end(key)
+        return value
+
+    def put(self, key, value):
+        if self.capacity <= 0:
+            return
+        # if key exists, update and move to end
+        if key in self.cache:
+            del self.cache[key]
+        self.cache[key] = (value, time.monotonic() + self.ttl)
+        self.cache.move_to_end(key)
+        if len(self.cache) > self.capacity:
+            # pop least recently used (first item)
+            self.cache.popitem(last=False)
+
+    def delete(self, key):
+        if key in self.cache:
+            del self.cache[key]
+
+    def clear(self):
+        self.cache.clear()
+
+    def __len__(self):
+        # maybe clean up expired? Not necessary but could.
+        return len(self.cache)
+```
+
+But we need to handle TTL properly:
+==========
+Prompt: 18 tokens, 156.502 tokens-per-sec
+Generation: 512 tokens, 87.517 tokens-per-sec
+Peak memory: 22.689 GB

@@ -1,0 +1,5 @@
+=== M4 capability validator — http://localhost:23334  model=flint ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (329 tok, finish=stop)
+--- 3/3 passed in 5.4s ---

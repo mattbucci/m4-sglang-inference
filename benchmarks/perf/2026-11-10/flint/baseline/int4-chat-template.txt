@@ -1,0 +1,9 @@
+[transformers] You are using a model of type `flint` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+[transformers] The tokenizer you are loading from '~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0/' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+Validating chat template: ~/.cache/huggingface/hub/models--RecursiveSI--flint-int4/snapshots/3b93f9053b530488405ae9fca51d4900d6ce21f0/
+  [OK  ] has chat_template: template length: 2328 chars
+  [OK  ] no doubled BOS: no leading BOS
+  [SKIP] thinking toggle: template ignores enable_thinking and has no thinking markers — not a thinking model
+  [OK  ] vision content: vision content rendered (placeholder present: False)
+
+PASS: chat template is ready for launch

@@ -1,0 +1,10 @@
+follow-up fidelity (scripts/eval/probe_followup_fidelity.py), reference base-1.followup.json
+ab-view-1.followup.json hit: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-view-1.followup.json cold: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-view-1.followup.json cached tokens differ in 0 cases []
+ab-both-1.followup.json hit: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-both-1.followup.json cold: 8 of 8 cases with equal tokens, 512 of 512 steps with equal top-k logprobs, largest logprob difference 0
+ab-both-1.followup.json cached tokens differ in 0 cases []
+base-1: sha256 of the token and top-k rows 106e81f1304a81e7, 8 cases
+view-1: sha256 of the token and top-k rows 106e81f1304a81e7, 8 cases
+both-1: sha256 of the token and top-k rows 106e81f1304a81e7, 8 cases

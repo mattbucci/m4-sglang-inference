@@ -1,0 +1,215 @@
+{
+ "tag": "both-2",
+ "model": "flint",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "both-2",
+  "out": "<scratch>/flint/ab-both-2.streams.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 93.45,
+   "aggregate_tok_s": 93.45,
+   "tpot_ms": 10.7,
+   "ttft_s": 0.31
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 63.28,
+   "aggregate_tok_s": 126.56,
+   "tpot_ms": 15.8,
+   "ttft_s": 0.46
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.04,
+   "aggregate_tok_s": 176.17,
+   "tpot_ms": 22.71,
+   "ttft_s": 0.99
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 93.301244193079,
+   "aggregate_tok_s": 93.301244193079,
+   "tpot_ms": 10.71797068354828,
+   "ttft_s": 0.3146580419270322,
+   "window_s": 2.132876166026108,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 93.301244193079,
+   "wall_tok_s": 81.71489466831964,
+   "prompt_tokens": [
+    199
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "dbf3d26c7363"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 63.36003280694268,
+   "aggregate_tok_s": 126.72006561388535,
+   "tpot_ms": 15.78282011069958,
+   "ttft_s": 0.4597700414597057,
+   "window_s": 3.1328897919738665,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 60.67984466448715,
+   "wall_tok_s": 106.76506491034512,
+   "prompt_tokens": [
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "773d062d995e",
+    "b2917f3e8fed"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.13916904012054,
+   "aggregate_tok_s": 176.55667616048217,
+   "tpot_ms": 22.655614542517654,
+   "ttft_s": 0.9936610937293153,
+   "window_s": 4.491475583054125,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 42.41901371493625,
+   "wall_tok_s": 139.9618252591622,
+   "prompt_tokens": [
+    199,
+    199,
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "7a4c80966e4c",
+    "e48c71afc3d8",
+    "1cc7be0814bf",
+    "145f922d4f79"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 93.60399363327379,
+   "aggregate_tok_s": 93.60399363327379,
+   "tpot_ms": 10.68330485895557,
+   "ttft_s": 0.30579729098826647,
+   "window_s": 2.125977666932158,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 93.60399363327379,
+   "wall_tok_s": 82.24445249285466,
+   "prompt_tokens": [
+    199
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "aa588eaac70c"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 63.20413019012888,
+   "aggregate_tok_s": 126.40826038025776,
+   "tpot_ms": 15.821750841152758,
+   "ttft_s": 0.45572341652587056,
+   "window_s": 3.1406175419688225,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 60.5645097201767,
+   "wall_tok_s": 106.70721540920589,
+   "prompt_tokens": [
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "e678b8adf444",
+    "4cce3cc5b00c"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 43.94560771798457,
+   "aggregate_tok_s": 175.7824308719383,
+   "tpot_ms": 22.7554026881907,
+   "ttft_s": 0.9910673752892762,
+   "window_s": 4.511258582933806,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 42.24635826593979,
+   "wall_tok_s": 139.56529088429744,
+   "prompt_tokens": [
+    199,
+    199,
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "2f077a587947",
+    "6e0d084f53dc",
+    "34db92923ac3",
+    "116e7fdd6748"
+   ]
+  }
+ ]
+}
