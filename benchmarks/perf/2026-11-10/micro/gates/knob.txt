@@ -1,0 +1,153 @@
+qwen36 capability and cache gates, arm knob, tree with patches 001-033
+settings: MLX_MAX_MB_PER_BUFFER=200
+hook lines: 
+tracebacks in server log: 0
+
+===== validate
+=== M4 capability validator — http://localhost:23334  model=qwen36 ===
+  [PASS] basic     finish=stop answer='\n\nparis'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (1343 tok, finish=stop)
+--- 3/3 passed in 18.2s ---
+
+===== thinking
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 63, 'total_tokens': 758, 'completion_tokens': 695, 'prompt_tokens_details': None, 'reasoning_tokens': 566, 'completion_tokens_details': {'reasoning_tokens': 566}}
+
+--- reasoning_content ---
+'Here\'s a thinking process:\n\n1.  **Analyze User Input:**\n   - Initial amount: 17 apples\n   - Give 5 to sister: 17 - 5 = 12\n   - Eat 2: 12 - 2 = 10\n   - Buy 12 more: 10 + 12 = 22\n   - Give half of what I have to brother: 22 / 2 = 11 given away\n   - Remaining: 22 - 11 = 11\n\n2.  **Verify Steps:**\n   - Start: 17\n   - After giving 5: 17 - 5 = 12\n   - After eating 2: 12 - 2 = 10\n   - After buying 12: 10 + 12 = 22\n   - Give half to brother: 22 / 2 = 11\n   - Left: 11\n\n   All steps are straightforward arithmetic. No tricks or hidden meanings detected.\n\n   Check for potential misinterpretations:\n   - "give half of what I have to my brother" -> clearly means half of the current total (22), so 11 given, 11 left.\n   - Order of operations: sequential as stated.\n   - Numbers: 17, 5, 2, 12. All integers.\n   - Result: 11.\n\n3.  **Formulate Response:**\n   - State the steps clearly as requested ("Think step by step before answering").\n   - Show the math at each step.\n   - State the final answer clearly.\n   - Keep it concise.\n\n   Draft:\n   Let\'s track the number of apples step by step:\n   1. Start with 17 apples.\n   2. Give 5 to your sister: 17 - 5 = 12 apples left.\n   3. Eat 2: 12 - 2 = 10 apples left.\n   4. Buy 12 more: 10 + 12 = 22 apples.\n   5. Give half to your brother: Half of 22 is 11, so you give away 11 and keep 11.\n   You have 11 apples left.\n\n4.  **Final Check:**\n   - Matches user prompt exactly.\n   - Step-by-step reasoning included.\n   - M
+
+--- content ---
+"\n\nLet's track the number of apples step by step:\n\n1. **Start:** 17 apples\n2. **Give 5 to your sister:** 17 - 5 = 12 apples\n3. **Eat 2:** 12 - 2 = 10 apples\n4. **Buy 12 more:** 10 + 12 = 22 apples\n5. **Give half to your brother:** Half of 22 is 11, so you give away 11 and keep the other half.\n\n**You have 11 apples left.**"
+
+correct answer (11) appears   : True
+intermediate step (22) appears: True
+reasoning channel marker      : False
+reasoning_content non-empty   : True
+content non-empty             : True
+
+THINKING VERIFIED
+
+===== vision
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 84, 'total_tokens': 226, 'completion_tokens': 142, 'prompt_tokens_details': {'cached_tokens': 0, 'image_tokens': 64}, 'reasoning_tokens': 126, 'completion_tokens_details': {'reasoning_tokens': 126}}
+
+--- content ---
+'\n\nA red circle with a black outline is centered on a white background.'
+
+--- reasoning_content ---
+'The user wants a short description of the image.\n\n1.  **Identify the main subject:** It\'s a circle.\n2.  **Identify the color:** It\'s red.\n3.  **Identify the outline:** It has a black outline.\n4.  **Identify the background:** It\'s white.\n5.  **Synthesize:** A red circle with a black outline on a white background.\n\nRefining for brevity: "A red circle with a black outline." or "A simple red circle."\n\nLet\'s go with a descriptive but concise sentence.\n'
+
+=== content checks ===
+color hit (red/crimson/...)    : True
+shape hit (circle/round/...)   : True
+degradation keywords found     : none
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = real content recognition.
+- DEGRADED = keyword grep passes but content reads 'pixels/scatter/
+  gradient' style (Gemma 4 calibration-side issue on Ampere).
+- FAIL = vision tower not engaging or model emits unrelated text.
+
+===== codegen
+============================================================
+PROBE: is_balanced (parens)
+finish=stop  usage={'prompt_tokens': 66, 'total_tokens': 136, 'completion_tokens': 70, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def is_balanced(s):
+    count = 0
+    for char in s:
+        if char == '(':
+            count += 1
+        elif char == ')':
+            count -= 1
+        if count < 0:
+            return False
+    return count == 0
+```
+
+  is_balanced('()') = True  expected True  OK
+  is_balanced('(())') = True  expected True  OK
+  is_balanced('(()') = False  expected False  OK
+  is_balanced(')(') = False  expected False  OK
+  is_balanced('') = True  expected True  OK
+
+============================================================
+PROBE: merge_intervals
+finish=stop  usage={'prompt_tokens': 85, 'total_tokens': 198, 'completion_tokens': 113, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+    
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_intervals[0]]
+    
+    for current in sorted_intervals[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:
+            last[1] = max(last[1], current[1])
+        else:
+            merged.append(current)
+    
+    return
+
+  merge_intervals([[1, 6], [2, 6], [8, 10], [15, 18]]) = [[1, 6], [8, 10], [15, 18]]  expected [[1, 6], [8, 10], [15, 18]]  OK
+  merge_intervals([[1, 5], [4, 5]]) = [[1, 5]]  expected [[1, 5]]  OK
+  merge_intervals([[1, 4]]) = [[1, 4]]  expected [[1, 4]]  OK
+
+============================================================
+  is_balanced (parens): 5/5
+  merge_intervals: 3/3
+OVERALL: 8/8
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = all 8 algorithmic test cases pass.
+- PARTIAL = some tests fail (algorithm mostly right, edge cases broken).
+- FAIL = no working code returned.
+
+===== repeat
+=== radix cache repeat-prompt test ===
+  prompt: 'What is the capital of Japan? Answer in one word.'
+  expect: 'tokyo'  iters: 4
+  [OK  ] iter  1: tok=173 finish=stop content='Tokyo'
+  [OK  ] iter  2: tok=173 finish=stop content='Tokyo'
+  [OK  ] iter  3: tok=173 finish=stop content='Tokyo'
+  [OK  ] iter  4: tok=173 finish=stop content='Tokyo'
+
+PASS: all 4 iterations returned consistent correct answer.
+
+===== multiturn
+depth 8192: follow-up 8272 tok, cached hit1=None hit2=None cold=None; hit-vs-hit diverge@28; hit-vs-cold identical over 96 tokens
+depth 24576: follow-up 24682 tok, cached hit1=None hit2=None cold=None; hit-vs-hit identical; hit-vs-cold identical over 96 tokens
+
+===== resume
+gen   2 length: cached 1501 (leaf 1501) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   2 stop  : cached 1501 (leaf 1501) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   3 length: cached 1502 (leaf 1502) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   3 stop  : cached 1502 (leaf 1502) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   4 length: cached 1503 (leaf 1503) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   4 stop  : cached 1503 (leaf 1503) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   5 length: cached 1504 (leaf 1504) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   5 stop  : skipped (no usable stop token at this length)
+gen   9 length: cached 1508 (leaf 1508) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen   9 stop  : skipped (no usable stop token at this length)
+gen  17 length: cached 1516 (leaf 1516) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen  17 stop  : skipped (no usable stop token at this length)
+gen  33 length: cached 1532 (leaf 1532) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen  33 stop  : skipped (no usable stop token at this length)
+gen  64 length: cached 1563 (leaf 1563) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen  64 stop  : skipped (no usable stop token at this length)
+gen  65 length: cached 1564 (leaf 1564) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+gen  46 stop  : cached 1545 (leaf 1545) same text, logprob delta first 0.0000 max 0.0000 over 48, vs ref ids equal lp 0.00e+00 PASS
+FINISH STATE RESUME: PASS

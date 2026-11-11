@@ -1,0 +1,153 @@
+qwen36 capability and cache gates, arm all, tree with patches 001-033
+settings: MLX_MAX_MB_PER_BUFFER=200 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1
+hook lines: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules;
+tracebacks in server log: 0
+
+===== validate
+=== M4 capability validator — http://localhost:23334  model=qwen36 ===
+  [PASS] basic     finish=stop answer='\n\nparis'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (1321 tok, finish=stop)
+--- 3/3 passed in 15.5s ---
+
+===== thinking
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 63, 'total_tokens': 1064, 'completion_tokens': 1001, 'prompt_tokens_details': None, 'reasoning_tokens': 874, 'completion_tokens_details': {'reasoning_tokens': 874}}
+
+--- reasoning_content ---
+'Here\'s a thinking process:\n\n1.  **Analyze User Input:**\n   - Initial amount: 17 apples\n   - Give 5 to sister: 17 - 5 = 12\n   - Eat 2: 12 - 2 = 10\n   - Buy 12 more: 10 + 12 = 22\n   - Give half of what I have to brother: 22 / 2 = 11\n   - Question: How many apples do I have left?\n\n2.  **Step-by-Step Calculation:**\n   - Start: 17\n   - After giving 5 to sister: 17 - 5 = 12\n   - After eating 2: 12 - 2 = 10\n   - After buying 12 more: 10 + 12 = 22\n   - After giving half to brother: 22 / 2 = 11\n   - Remaining: 11\n\n3.  **Check for Traps/Wordplay:**\n   - "give half of what I have to my brother" -> implies giving 11, leaving 11.\n   - No tricky wording detected. Straightforward arithmetic.\n   - All steps are clear.\n\n4.  **Formulate Response:**\n   - State the steps clearly as requested ("Think step by step before answering").\n   - Show the math.\n   - Give the final answer.\n\n   Draft:\n   Let\'s go through the steps:\n   1. Start with 17 apples.\n   2. Give 5 to your sister: 17 - 5 = 12 apples.\n   3. Eat 2: 12 - 2 = 10 apples.\n   4. Buy 12 more: 10 + 12 = 22 apples.\n   5. Give half to your brother: 22 / 2 = 11 apples given away, leaving you with 11 apples.\n   You have 11 apples left.\n\n5.  **Final Verification:**\n   - 17 - 5 = 12\n   - 12 - 2 = 10\n   - 10 + 12 = 22\n   - 22 / 2 = 11\n   - Matches. Ready.✅\n   - Output matches response.✅\n   - Proceed. \n   - Note: I\'ll make sure the formatting matches the request. All good. \n   - Output generation. \n 
+
+--- content ---
+"\n\nLet's break it down step by step:\n\n1. **Start:** 17 apples\n2. **Give 5 to your sister:** 17 - 5 = 12 apples\n3. **Eat 2:** 12 - 2 = 10 apples\n4. **Buy 12 more:** 10 + 12 = 22 apples\n5. **Give half to your brother:** 22 ÷ 2 = 11 apples given away, leaving you with 11 apples.\n\nYou have **11** apples left."
+
+correct answer (11) appears   : True
+intermediate step (22) appears: True
+reasoning channel marker      : False
+reasoning_content non-empty   : True
+content non-empty             : True
+
+THINKING VERIFIED
+
+===== vision
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 84, 'total_tokens': 241, 'completion_tokens': 157, 'prompt_tokens_details': {'cached_tokens': 0, 'image_tokens': 64}, 'reasoning_tokens': 141, 'completion_tokens_details': {'reasoning_tokens': 141}}
+
+--- content ---
+'\n\nA red circle with a black outline is centered on a white background.'
+
+--- reasoning_content ---
+'The user wants a short description of the image.\n\n1.  **Identify the main subject:** It\'s a circle.\n2.  **Identify the color:** It\'s red.\n3.  **Identify the outline:** It has a black outline.\n4.  **Identify the background:** It\'s white.\n5.  **Synthesize:** A red circle with a black outline on a white background.\n\nRefining for brevity: "A red circle with a black outline." or "A simple red circle."\n\nLet\'s go with a descriptive but concise sentence.\n"A red circle with a black outline is centered on a white background."\n'
+
+=== content checks ===
+color hit (red/crimson/...)    : True
+shape hit (circle/round/...)   : True
+degradation keywords found     : none
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = real content recognition.
+- DEGRADED = keyword grep passes but content reads 'pixels/scatter/
+  gradient' style (Gemma 4 calibration-side issue on Ampere).
+- FAIL = vision tower not engaging or model emits unrelated text.
+
+===== codegen
+============================================================
+PROBE: is_balanced (parens)
+finish=stop  usage={'prompt_tokens': 66, 'total_tokens': 136, 'completion_tokens': 70, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def is_balanced(s):
+    count = 0
+    for char in s:
+        if char == '(':
+            count += 1
+        elif char == ')':
+            count -= 1
+        if count < 0:
+            return False
+    return count == 0
+```
+
+  is_balanced('()') = True  expected True  OK
+  is_balanced('(())') = True  expected True  OK
+  is_balanced('(()') = False  expected False  OK
+  is_balanced(')(') = False  expected False  OK
+  is_balanced('') = True  expected True  OK
+
+============================================================
+PROBE: merge_intervals
+finish=stop  usage={'prompt_tokens': 85, 'total_tokens': 198, 'completion_tokens': 113, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- response (first 400 chars) ---
+```python
+def merge_intervals(intervals):
+    if not intervals:
+        return []
+    
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_intervals[0]]
+    
+    for current in sorted_intervals[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:
+            last[1] = max(last[1], current[1])
+        else:
+            merged.append(current)
+    
+    return
+
+  merge_intervals([[1, 6], [2, 6], [8, 10], [15, 18]]) = [[1, 6], [8, 10], [15, 18]]  expected [[1, 6], [8, 10], [15, 18]]  OK
+  merge_intervals([[1, 5], [4, 5]]) = [[1, 5]]  expected [[1, 5]]  OK
+  merge_intervals([[1, 4]]) = [[1, 4]]  expected [[1, 4]]  OK
+
+============================================================
+  is_balanced (parens): 5/5
+  merge_intervals: 3/3
+OVERALL: 8/8
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = all 8 algorithmic test cases pass.
+- PARTIAL = some tests fail (algorithm mostly right, edge cases broken).
+- FAIL = no working code returned.
+
+===== repeat
+=== radix cache repeat-prompt test ===
+  prompt: 'What is the capital of Japan? Answer in one word.'
+  expect: 'tokyo'  iters: 4
+  [OK  ] iter  1: tok=155 finish=stop content='Tokyo'
+  [OK  ] iter  2: tok=155 finish=stop content='Tokyo'
+  [OK  ] iter  3: tok=155 finish=stop content='Tokyo'
+  [OK  ] iter  4: tok=155 finish=stop content='Tokyo'
+
+PASS: all 4 iterations returned consistent correct answer.
+
+===== multiturn
+depth 8192: follow-up 8272 tok, cached hit1=None hit2=None cold=None; hit-vs-hit identical; hit-vs-cold identical over 96 tokens
+depth 24576: follow-up 24682 tok, cached hit1=None hit2=None cold=None; hit-vs-hit identical; hit-vs-cold identical over 96 tokens
+
+===== resume
+gen   2 length: cached 1501 (leaf 1501) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   2 stop  : cached 1501 (leaf 1501) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   3 length: cached 1502 (leaf 1502) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   3 stop  : cached 1502 (leaf 1502) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   4 length: cached 1503 (leaf 1503) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   4 stop  : cached 1503 (leaf 1503) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   5 length: cached 1504 (leaf 1504) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   5 stop  : skipped (no usable stop token at this length)
+gen   9 length: cached 1508 (leaf 1508) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen   9 stop  : skipped (no usable stop token at this length)
+gen  17 length: cached 1516 (leaf 1516) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen  17 stop  : skipped (no usable stop token at this length)
+gen  33 length: cached 1532 (leaf 1532) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen  14 stop  : cached 1513 (leaf 1513) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen  64 length: cached 1563 (leaf 1563) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen  64 stop  : skipped (no usable stop token at this length)
+gen  65 length: cached 1564 (leaf 1564) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+gen  17 stop  : cached 1516 (leaf 1516) same text, logprob delta first 0.0000 max 0.0000 over 48 PASS
+FINISH STATE RESUME: PASS

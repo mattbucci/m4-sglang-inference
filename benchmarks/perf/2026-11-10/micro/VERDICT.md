@@ -43,7 +43,7 @@ The R9700 team's decode lane, carried over to Metal:
 
 | experiment | family | measured | disposition |
 |---|---|---|---|
-| `MLX_MAX_MB_PER_BUFFER=200` | launch commit | +4.2 to +6.1 % decode to 30K, +1.4 % at 122K, cold prefill −2 % at 122K and −5 to −7 % at 251K | retained |
+| `MLX_MAX_MB_PER_BUFFER=200` | launch commit | +4.2 to +6.1 % decode to 30K, +1.4 % at 122K, cold prefill −2 % at 122K and −5 to −7 % at 251K; capability and cache gates pass, token ids and logprobs equal to stock on the resume probe | retained |
 | `MLX_MAX_MB_PER_BUFFER` 400 / 1000 | launch commit | equal to 200 within noise; 400 adds 0.3 GB of wired peak at 122K | 200 is enough |
 | `MLX_MAX_OPS_PER_BUFFER` 100 (stock 50) | launch commit | 0.1 to 1.7 points over the buffer limit alone | not taken: small, and 200 already loses at 30K |
 | `MLX_MAX_OPS_PER_BUFFER` 200 | launch commit | −17.1 % at 30K | rejected |
@@ -55,8 +55,8 @@ The R9700 team's decode lane, carried over to Metal:
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
 | SDPA block ladder (patch 029) | attention | 251K: 37.3 against 40.1 to 40.8 ms per token, recall 6/6; stock kept through 196,608 keys | retained, opt-in flag |
 | int8 keys and values | attention | raw: 34 to 68 % slower than the stock kernel to 131K; KL 0.004 to 0.005 at 32K | closed, the kernel is compute-bound once it dequantizes |
-| fused MoE router and combine (patch 030) | launches | raw: 2,780 → 2,340 primitives, −0.5 to −0.7 ms; served +5.0 to +5.4 % to 30K | opt-in flag |
-| fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag |
+| fused MoE router and combine (patch 030) | launches | raw: 2,780 → 2,340 primitives, −0.5 to −0.7 ms; served +5.0 to +5.4 % to 30K | opt-in flag, gates pass with all three on |
+| fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag, gates pass with all three on |
 | grouped decode linears (patch 032) | launches | raw: −0.2 ms more on top of 030 and 031, bit-identical; served alone −0.7 to −0.9 %, on top of 030 and 031 +3.1 / +2.3 / +1.6 % over three mirrored pairs, the three together +10.1 to +11.6 % to 30K | opt-in flag, worth it only with the other two |
 | fused GatedDeltaNet back kernel | launches | raw: 9.94 ms against 9.86 for the linear pairs on the same base | not taken |
 | fidelity of patches 030 to 032 | rounding | teacher-forced against a float32 yardstick: KL mean 0.0189 (030), 0.0206 (031), bit-identical (032), 0.0211 (all) against 0.0165 for the stock decode path and 0.0194 for the stock prefill path | pass |
@@ -578,6 +578,52 @@ is the measurement of what that cost. The position state lives on the model obje
 request and a text request decoding at once could still cross; that is a
 multi-request hazard outside the single-user target.
 
+## Capability and cache gates
+
+`gates/`. Three restarts of qwen36 on the tree with patch 033: stock
+settings, the buffer limit, and the buffer limit with patches 030 to 032
+on (the three hook lines are in that arm's server log). Each arm runs the
+capability validator, the thinking, vision and codegen probes, the
+2,048-token radix repeat test, the multi-turn hit probe at 8,192 and
+24,576 tokens, and the finish-state resume probe over nine generation
+lengths.
+
+| gate | stock | buffer limit | buffer limit + 030 to 032 |
+|---|---|---|---|
+| `validate_capabilities.py` | 3/3 | 3/3 | 3/3 |
+| `probe_thinking.py` | VERIFIED | VERIFIED | VERIFIED |
+| `probe_vision.py` | STRONG | STRONG | STRONG |
+| `probe_codegen.py` | STRONG, 8 of 8 tests | STRONG, 8 of 8 tests | STRONG, 8 of 8 tests |
+| radix repeat, 4 iterations | consistent | consistent | consistent |
+| follow-up hit against its cold twin, 96 tokens | identical at both depths | identical at both depths | identical at both depths |
+| two follow-up hits against each other | differ from token 28 at 8,192, identical at 24,576 | differ from token 28 at 8,192, identical at 24,576 | identical at both depths |
+| finish-state resume | pass | pass, token ids and logprobs equal to the stock arm | pass |
+| tracebacks in the server log | 0 | 0 | 0 |
+| wired memory after the last gate | 28.4 GB | 28.9 GB | 30.4 GB |
+
+Every capability gate passes in every arm. The buffer limit does not
+touch numerics: its resume probe returns the stock arm's token ids with a
+logprob difference of zero at every generation length.
+
+The multi-turn probe exits non-zero on the stock and buffer-limit arms
+because its two hits at 8,192 differ. They are not the same computation.
+The first hit resumes from the 8,192-token checkpoint and prefills 80
+tokens. That prefill writes a later 64-token-grid checkpoint, so the
+second hit resumes from 8,256 and prefills 16 (`#cached-token` in the
+server log, the same pair in all three arms). Two chunk grids give two
+bf16 roundings, the same noise two cold prefills on different chunk sizes
+show, and whether 96 greedy tokens survive it is a coin the fused arm
+happened to win. At 24,576 both hits resume from the same checkpoint and
+agree in every arm. The row that carries the gate is the hit against its
+cold twin: identical over 96 tokens at both depths in all three arms,
+where the tree without patch 033 diverged at token 24 and token 55
+(`../qwen36-hybrid-overlap/VERDICT.md`).
+
+The wired reading is taken once after the last gate, with whatever the
+4 GB buffer cache then holds. The serving A/B arms, which end on the same
+request in every arm, read 24.4 to 24.6 GB with and without the fusions
+(`serve-router/pooled.txt`, `serve-router3/pooled.txt`).
+
 ## Closed
 
 - **int8 KV.** `raw/sdpa-kv.jsonl`, `raw/kv-int8-fidelity.jsonl`. int8
@@ -612,4 +658,5 @@ multi-request hazard outside the single-user target.
 | `precision/` | float32-yardstick summaries for the stock and fused decode paths, raw prefix-tail probe with the position state kept and cleared |
 | `serve-dfid/` | served decode-fidelity arms: summaries and per-document divergence counts, `-p033` files on the tree with patch 033 |
 | `followup/` | chat-shaped follow-up hits against cold prefills, with and without patch 033, pooled in `pooled.txt` |
+| `gates/` | capability, radix-repeat, multi-turn hit and finish-state resume gates for the stock, buffer-limit and all-flags arms |
 | `recall/` | depth recall at the 215,040 label |
