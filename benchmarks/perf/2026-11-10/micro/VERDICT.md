@@ -53,7 +53,7 @@ The R9700 team's decode lane, carried over to Metal:
 | `SGLANG_MLX_FUSE_SWIGLU=1` | launches | never installed on qwen36 (read on the mlx-lm load path, and it matches mlx-lm's `SwitchGLU` class only); the −0.3 to +0.6 % was noise | not measured on qwen36, coder-30b arm queued |
 | `mx.compile` around the MoE and DeltaNet blocks | graph build | raw: build 1.72 → 0.87 ms, step time equal | rejected, the build already overlaps the GPU |
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
-| SDPA block ladder (patch 029) | attention | 251K: 37.3 against 40.1 to 40.8 ms per token, recall 6/6; stock kept through 196,608 keys | retained, opt-in flag |
+| SDPA block ladder (patch 029) | attention | 251K: 37.3 against 40.1 to 40.8 ms per token, recall 6/6; stock kept through 196,608 keys; with patches 030 to 032 on, 36.8 ms and recall 6/6 | retained, opt-in flag |
 | int8 keys and values | attention | raw: 34 to 68 % slower than the stock kernel to 131K; KL 0.004 to 0.005 at 32K | closed, the kernel is compute-bound once it dequantizes |
 | fused MoE router and combine (patch 030) | launches | raw: 2,780 → 2,340 primitives, −0.5 to −0.7 ms; served +5.0 to +5.4 % to 30K | opt-in flag, gates pass with all three on |
 | fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag, gates pass with all three on |
@@ -226,6 +226,7 @@ per-layer shape: stock through 196,608 keys, then
 | 200 MB, ladder flag set but hook not reached | 40.71 | 24.6 | 1451.0 | 29.47 | d60f0a38 |
 | 200 MB, `MLX_SDPA_BLOCKS=2048` pinned | 36.89 | 27.1 | 1434.5 | 29.68 | f0e76c51 |
 | 200 MB, ladder flag | 37.28 | 26.8 | 1426.0 | 29.44 | f0e76c51 |
+| 200 MB, ladder flag, patches 030 to 032 | 36.77 | 27.2 | 1410.6 | 29.73 | 85e8ca8a |
 
 The ladder arm logs `SDPA block ladder: 251475 keys -> 2048 blocks` and
 produces the pinned arm's text. Against the no-settings base it is −8.7 %
@@ -237,6 +238,15 @@ that differ at bf16 rounding scale.
 Depth recall with the ladder engaged (`scripts/eval/probe_depth_recall.py
 --labels 215040`, `recall/`): 6/6 at 245,656 prompt tokens, the same as the
 buffer-only arm.
+
+The last row is the whole retained set at this depth (`deep256-all`): the
+three fusion hooks log their "enabled" lines, the ladder logs 2048 blocks,
+recall is 6/6 at 245,656 prompt tokens, 0 tracebacks. Its 0.5 ms under the
+ladder arm is inside the 0.65 ms the two buffer-only samples differ by, so
+at this depth the fusions are free and no more: the 1.1 ms they take off a
+short-context step is launch time, and a 251K step spends 26 ms reading
+keys and values. The fused router changes rounding, so the text differs
+from the ladder arm's.
 
 Two things in `serve-256k/` and `serve-ladder/` come from earlier builds of
 the patch. The first ladder arm did nothing: the hook sat only on the
