@@ -80,7 +80,7 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | `sglu`: the tree's fused routed-expert kernel | launches | 11.67 to 12.81 ms, KL up to 0.17, argmax 62 of 64 at 8K | rejected: slower and not bit-identical |
 | routing knock-out (`route_const`, `route_replay`) | launches | 9.02 to 9.09 ms with `comb` against 9.89 to 9.96 for `comb+gatek`; replaying real routes costs what constant routes cost | not a candidate; it prices the two routing launches per block at 0.85 ms a step, independent of which experts are read. One routing kernel per block is the open follow-up |
 | radix cache off | host | 82.5 against 74.9 tok/s greedy before patch 036, 92.4 against 91.0 with both patches; a repeat of a 30K prompt answers in 51.5 s against 0.21 s | radix stays on: patch 036 removed the reason to turn it off |
-| command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; one served arm at 200 MB: 103.3 tok/s greedy at 1K | raw go; mirrored served arms decide the preset default |
+| command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired | a trade, decode for cold prefill; the three settings tie in decode and 200 MB costs the least prefill and memory. The decode-only submission arms decide what the preset takes |
 | decode submission in parts | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB | raw go on stock limits; served arms decide whether it ships |
 
 ## Baseline
@@ -178,7 +178,6 @@ token back.
 | view + fused MoE (036 + 037) | 2 | 89.17 | 91.00 | 10.99 | +21.5 % |
 | radix off, flag off | 2 | 81.22 | 82.49 | 12.12 | |
 | radix off, fused MoE | 2 | 90.19 | 92.44 | 10.82 | +12.1 % over its base |
-| view + fused MoE + 200 MB buffers | 1 | 101.20 | 103.33 | 9.68 | +37.9 % |
 | oQ8e base | 1 | 54.38 | 55.04 | 18.17 | |
 | oQ8e view + fused MoE | 1 | 61.82 | 62.80 | 15.92 | +14.1 % over its base |
 
@@ -194,7 +193,6 @@ Per depth, cold request, 256-token reply at temperature 1.0:
 | view + fused MoE | 88.80 / 82.02 / 66.23 | 877.6 / 805.1 / 563.5 | 0.157 / 0.175 / 0.211 s |
 | radix off, flag off | 80.53 / 74.41 / 61.30 | 977.0 / 841.0 / 570.5 | 0.984 / 9.466 / 51.479 s |
 | radix off, fused MoE | 90.81 / 83.82 / 67.25 | 969.8 / 818.5 / 561.5 | 0.978 / 9.866 / 51.541 s |
-| view + fused MoE + 200 MB buffers | 101.03 / 92.04 / 71.44 | 908.8 / 757.5 / 535.3 | 0.173 / 0.184 / 0.211 s |
 
 Both patches against base: +19.0 / +18.5 / +16.8 % decode at 1K / 8K / 32K,
 prefill and repeat TTFT inside noise. Several streams (`ab/*.streams.json`,
@@ -202,8 +200,33 @@ prefill and repeat TTFT inside noise. Several streams (`ab/*.streams.json`,
 147.91, both patches 93.45 / 126.56 / 176.17. The chat follow-up at 3.8K
 answers in 0.18 to 0.23 s in every arm.
 
-The 200 MB row is a single arm. Its prefill at 8K and 32K reads 5 to 6 %
-under the two-patch arms, which one arm cannot separate from noise.
+Command-buffer limits on top of both patches (`buffers/`, eight arms in
+mirrored order in one window, pooled per setting; the stock limits on this
+chip are 50 operations and 50 MB):
+
+| limits | arms | sampled tok/s | greedy tok/s | greedy ms/token | greedy against stock | wired GB |
+|---|--:|--:|--:|--:|--:|--:|
+| stock | 2 | 91.08 | 93.41 | 10.70 | | 31.1 |
+| 200 MB | 2 | 100.49 | 102.68 | 9.74 | +9.9 % | 31.6 |
+| 100 operations, 400 MB | 2 | 101.12 | 103.07 | 9.70 | +10.3 % | 31.9 |
+| 100 operations, 1,000 MB | 2 | 101.41 | 103.80 | 9.63 | +11.1 % | 32.3 |
+
+| limits | decode 1K / 8K / 32K | prefill 1K / 8K / 32K | repeat TTFT 1K / 8K / 32K | streams 1 / 2 / 4 |
+|---|--:|--:|--:|--:|
+| stock | 90.73 / 83.13 / 67.41 | 893.7 / 808.7 / 560.4 | 0.153 / 0.184 / 0.208 s | 95.42 / 129.60 / 180.29 |
+| 200 MB | 99.30 / 91.50 / 70.89 | 906.8 / 756.5 / 539.6 | 0.175 / 0.185 / 0.213 s | 107.60 / 137.78 / 185.14 |
+| 100 operations, 400 MB | 101.25 / 91.96 / 71.12 | 894.2 / 752.4 / 535.3 | 0.175 / 0.189 / 0.217 s | 106.51 / 139.30 / 185.34 |
+| 100 operations, 1,000 MB | 101.00 / 92.34 / 71.12 | 876.5 / 745.2 / 527.0 | 0.186 / 0.189 / 0.223 s | 107.48 / 138.61 / 185.27 |
+
+Greedy run ranges: stock 92.12 to 94.38, 200 MB 101.79 to 103.34, the two
+100-operation settings 102.56 to 104.91. The three settings sit within
+1.1 % of one another in decode, which is noise. All of them buy decode
+with cold prefill: +9 to +12 % decode at 1K and 8K and +5 % at 32K, against
+prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K. The gain
+shrinks with company: +12 % for one stream, +6 to +7 % for two, +3 % for
+four. The greedy text is the same in every arm. The stock arm of this
+window reads 2.6 % above the two-patch arms of the first window, so
+settings are compared inside a window only.
 
 ## Fidelity
 
@@ -274,16 +297,16 @@ operations and 400 MB, 9.97 to 9.98 at 200 operations and 1,000 MB.
 | raw two-kernel step, 100 operations and 400 MB buffers | 9.4 | 106 |
 | raw two-kernel step, stock limits | 9.9 to 10.0 | 100 to 101 |
 | raw mlx-lm step | 11.3 to 11.5 | 87 to 88 |
-| served, both patches, 200 MB buffers (one arm) | 9.68 | 103.3 |
+| served, both patches, 200 MB buffers | 9.74 | 102.7 |
 | served, both patches | 10.99 | 91.0 |
 | served, view only | 12.38 | 80.8 |
 | served, base | 13.35 | 74.9 |
 
 Served decode moved from 57 % of the published rate to 69 % with the two
-patches. The buffer limit, if the mirrored arms hold, brings the served step
-to the raw step and the rate to 78 %. What is left is about 1.8 ms inside
-the graph itself: the routing launches (0.85 ms), and attention and the
-routed experts above their weight reads.
+patches. The buffer limit brings the served step to the raw step and the
+rate to 78 %, and pays for it in cold prefill. What is left is about
+1.8 ms inside the graph itself: the routing launches (0.85 ms), and
+attention and the routed experts above their weight reads.
 
 ## Receipts
 
@@ -293,4 +316,4 @@ routed experts above their weight reads.
 | `raw/` | decode census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
 | `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
-| `buffers/` | host slack and the two-kernel fold under each command-buffer limit |
+| `buffers/` | host slack and the two-kernel fold under each command-buffer limit; the eight served arms, their streams and the driver log |

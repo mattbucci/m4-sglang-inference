@@ -1,0 +1,158 @@
+## raw stock 08:53:59
+slack exit 0
+fold exit 0
+## raw mb200 08:55:34
+slack exit 0
+fold exit 0
+## raw mb400 08:57:05
+slack exit 0
+fold exit 0
+## raw mb1000 08:58:35
+slack exit 0
+fold exit 0
+## raw o100m400 09:00:05
+slack exit 0
+fold exit 0
+## raw o100m1000 09:01:34
+slack exit 0
+fold exit 0
+## raw o200m1000 09:03:04
+slack exit 0
+fold exit 0
+## buf both-3 09:04:36
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-3] cold     959 tok: cached None, ttft 1.0926 s, prefill 877.7 tok/s, decode 90.84 tok/s; repeat cached None, ttft 0.1548 s, decode 90.36 tok/s
+[both-3] cold    7601 tok: cached None, ttft 9.4913 s, prefill 800.8 tok/s, decode 82.77 tok/s; repeat cached None, ttft 0.1732 s, decode 83.11 tok/s
+[both-3] cold   30422 tok: cached None, ttft 54.501 s, prefill 558.2 tok/s, decode 67.11 tok/s; repeat cached None, ttft 0.2084 s, decode 67.02 tok/s
+[both-3] runs 1024:512:5:sampled: prompt 963, decode mean 90.15 median 90.17 tok/s (89.86 to 90.42)
+[both-3] runs 1024:512:5:greedy: prompt 963, decode mean 92.56 median 92.72 tok/s (92.12 to 92.83)
+[both-3] followup    3813 tok: first ttft 4.4051 s (256 tok, finish length); second ttft 0.2647 s, None of 3854 cached, 3854 fresh
+wrote <scratch>/flint/ab-both-3.json
+wired 31.1 GB
+tracebacks in the log: 0
+## buf both-buf200-2 09:07:30
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-buf200-2] cold     959 tok: cached None, ttft 1.0549 s, prefill 909.1 tok/s, decode 99.08 tok/s; repeat cached None, ttft 0.1743 s, decode 99.76 tok/s
+[both-buf200-2] cold    7601 tok: cached None, ttft 10.3176 s, prefill 736.7 tok/s, decode 91.81 tok/s; repeat cached None, ttft 0.1868 s, decode 91.18 tok/s
+[both-buf200-2] cold   30422 tok: cached None, ttft 58.1093 s, prefill 523.5 tok/s, decode 70.33 tok/s; repeat cached None, ttft 0.2141 s, decode 69.57 tok/s
+[both-buf200-2] runs 1024:512:5:sampled: prompt 963, decode mean 99.83 median 99.81 tok/s (99.58 to 100.05)
+[both-buf200-2] runs 1024:512:5:greedy: prompt 963, decode mean 102.1 median 102.05 tok/s (101.79 to 102.53)
+[both-buf200-2] followup    3813 tok: first ttft 4.914 s (256 tok, finish length); second ttft 0.1878 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-buf200-2.json
+wired 31.6 GB
+tracebacks in the log: 0
+## buf both-o100m400-1 09:10:25
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-o100m400-1] cold     959 tok: cached None, ttft 1.0902 s, prefill 879.7 tok/s, decode 101.57 tok/s; repeat cached None, ttft 0.1742 s, decode 100.65 tok/s
+[both-o100m400-1] cold    7601 tok: cached None, ttft 10.2234 s, prefill 743.5 tok/s, decode 91.78 tok/s; repeat cached None, ttft 0.189 s, decode 91.82 tok/s
+[both-o100m400-1] cold   30422 tok: cached None, ttft 56.9197 s, prefill 534.5 tok/s, decode 70.77 tok/s; repeat cached None, ttft 0.2186 s, decode 70.89 tok/s
+[both-o100m400-1] runs 1024:512:5:sampled: prompt 963, decode mean 100.53 median 100.68 tok/s (99.94 to 100.91)
+[both-o100m400-1] runs 1024:512:5:greedy: prompt 963, decode mean 102.78 median 102.79 tok/s (102.56 to 102.92)
+[both-o100m400-1] followup    3813 tok: first ttft 4.5144 s (220 tok, finish stop); second ttft 0.3381 s, None of 3884 cached, 3884 fresh
+wrote <scratch>/flint/ab-both-o100m400-1.json
+wired 31.6 GB
+tracebacks in the log: 0
+## buf both-o100m1000-1 09:13:18
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-o100m1000-1] cold     959 tok: cached None, ttft 1.1112 s, prefill 863.0 tok/s, decode 100.81 tok/s; repeat cached None, ttft 0.1782 s, decode 100.67 tok/s
+[both-o100m1000-1] cold    7601 tok: cached None, ttft 10.2479 s, prefill 741.7 tok/s, decode 92.12 tok/s; repeat cached None, ttft 0.1908 s, decode 92.14 tok/s
+[both-o100m1000-1] cold   30422 tok: cached None, ttft 57.9921 s, prefill 524.6 tok/s, decode 71.36 tok/s; repeat cached None, ttft 0.2242 s, decode 70.93 tok/s
+[both-o100m1000-1] runs 1024:512:5:sampled: prompt 963, decode mean 102.28 median 102.28 tok/s (102.06 to 102.47)
+[both-o100m1000-1] runs 1024:512:5:greedy: prompt 963, decode mean 104.62 median 104.6 tok/s (104.19 to 104.91)
+[both-o100m1000-1] followup    3813 tok: first ttft 4.9745 s (256 tok, finish length); second ttft 0.1903 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-o100m1000-1.json
+wired 32.3 GB
+tracebacks in the log: 0
+## buf both-o100m1000-2 09:16:11
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-o100m1000-2] cold     959 tok: cached None, ttft 1.0775 s, prefill 890.0 tok/s, decode 101.18 tok/s; repeat cached None, ttft 0.1943 s, decode 101.35 tok/s
+[both-o100m1000-2] cold    7601 tok: cached None, ttft 10.1538 s, prefill 748.6 tok/s, decode 92.55 tok/s; repeat cached None, ttft 0.1866 s, decode 92.52 tok/s
+[both-o100m1000-2] cold   30422 tok: cached None, ttft 57.4799 s, prefill 529.3 tok/s, decode 70.88 tok/s; repeat cached None, ttft 0.2213 s, decode 71.08 tok/s
+[both-o100m1000-2] runs 1024:512:5:sampled: prompt 963, decode mean 100.55 median 100.6 tok/s (100.11 to 100.81)
+[both-o100m1000-2] runs 1024:512:5:greedy: prompt 963, decode mean 102.98 median 103.01 tok/s (102.67 to 103.36)
+[both-o100m1000-2] followup    3813 tok: first ttft 4.7011 s (256 tok, finish length); second ttft 0.1887 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-o100m1000-2.json
+wired 32.3 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 69.55 tok/s aggregate 139.10 tpot 14.38 ms ttft 0.47 s window 2.85 s (397 tokens) first-to-last 66.38 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 46.07 tok/s aggregate 184.29 tpot 21.71 ms ttft 1.00 s window 4.30 s (793 tokens) first-to-last 44.20 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1            107.48           107.48     9.30    0.31
+      2             69.31           138.61    14.43    0.47
+      4             46.32           185.27    21.59    0.99
+wrote <scratch>/flint/ab-both-o100m1000-2.streams.json
+## buf both-o100m400-2 09:19:38
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-o100m400-2] cold     959 tok: cached None, ttft 1.0552 s, prefill 908.8 tok/s, decode 100.92 tok/s; repeat cached None, ttft 0.1753 s, decode 100.65 tok/s
+[both-o100m400-2] cold    7601 tok: cached None, ttft 9.985 s, prefill 761.2 tok/s, decode 92.14 tok/s; repeat cached None, ttft 0.1881 s, decode 92.16 tok/s
+[both-o100m400-2] cold   30422 tok: cached None, ttft 56.742 s, prefill 536.1 tok/s, decode 71.47 tok/s; repeat cached None, ttft 0.2163 s, decode 71.19 tok/s
+[both-o100m400-2] runs 1024:512:5:sampled: prompt 963, decode mean 101.7 median 101.64 tok/s (101.39 to 102.11)
+[both-o100m400-2] runs 1024:512:5:greedy: prompt 963, decode mean 103.36 median 103.03 tok/s (102.72 to 104.19)
+[both-o100m400-2] followup    3813 tok: first ttft 4.6718 s (256 tok, finish length); second ttft 0.1897 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-o100m400-2.json
+wired 32.2 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 69.79 tok/s aggregate 139.57 tpot 14.33 ms ttft 0.47 s window 2.84 s (397 tokens) first-to-last 66.59 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 46.17 tok/s aggregate 184.69 tpot 21.66 ms ttft 0.99 s window 4.29 s (793 tokens) first-to-last 44.31 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1            106.51           106.51     9.39    0.31
+      2             69.65           139.30    14.36    0.47
+      4             46.33           185.34    21.58    0.99
+wrote <scratch>/flint/ab-both-o100m400-2.streams.json
+## buf both-buf200-3 09:22:59
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-buf200-3] cold     959 tok: cached None, ttft 1.0603 s, prefill 904.5 tok/s, decode 99.52 tok/s; repeat cached None, ttft 0.1749 s, decode 99.35 tok/s
+[both-buf200-3] cold    7601 tok: cached None, ttft 9.791 s, prefill 776.3 tok/s, decode 91.2 tok/s; repeat cached None, ttft 0.1837 s, decode 91.39 tok/s
+[both-buf200-3] cold   30422 tok: cached None, ttft 54.741 s, prefill 555.7 tok/s, decode 71.45 tok/s; repeat cached None, ttft 0.212 s, decode 71.54 tok/s
+[both-buf200-3] runs 1024:512:5:sampled: prompt 963, decode mean 101.15 median 101.25 tok/s (100.94 to 101.3)
+[both-buf200-3] runs 1024:512:5:greedy: prompt 963, decode mean 103.26 median 103.3 tok/s (103.16 to 103.34)
+[both-buf200-3] followup    3813 tok: first ttft 4.4619 s (256 tok, finish length); second ttft 0.1834 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-buf200-3.json
+wired 31.5 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 69.17 tok/s aggregate 138.34 tpot 14.46 ms ttft 0.46 s window 2.87 s (397 tokens) first-to-last 66.07 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 46.10 tok/s aggregate 184.40 tpot 21.69 ms ttft 0.97 s window 4.30 s (793 tokens) first-to-last 44.27 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1            107.60           107.60     9.29    0.30
+      2             68.89           137.78    14.52    0.46
+      4             46.29           185.14    21.61    0.97
+wrote <scratch>/flint/ab-both-buf200-3.streams.json
+## buf both-4 09:26:19
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[both-4] cold     959 tok: cached None, ttft 1.0543 s, prefill 909.6 tok/s, decode 90.63 tok/s; repeat cached None, ttft 0.1514 s, decode 91.65 tok/s
+[both-4] cold    7601 tok: cached None, ttft 9.3084 s, prefill 816.6 tok/s, decode 83.5 tok/s; repeat cached None, ttft 0.1941 s, decode 84.7 tok/s
+[both-4] cold   30422 tok: cached None, ttft 54.0842 s, prefill 562.5 tok/s, decode 67.71 tok/s; repeat cached None, ttft 0.2069 s, decode 68.22 tok/s
+[both-4] runs 1024:512:5:sampled: prompt 963, decode mean 92.01 median 91.85 tok/s (91.71 to 92.42)
+[both-4] runs 1024:512:5:greedy: prompt 963, decode mean 94.27 median 94.36 tok/s (94.04 to 94.38)
+[both-4] followup    3813 tok: first ttft 4.4447 s (256 tok, finish length); second ttft 0.1681 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-both-4.json
+wired 31.1 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 64.84 tok/s aggregate 129.68 tpot 15.42 ms ttft 0.45 s window 3.06 s (397 tokens) first-to-last 62.09 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 44.69 tok/s aggregate 178.77 tpot 22.38 ms ttft 0.99 s window 4.44 s (793 tokens) first-to-last 42.94 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             95.42            95.42    10.48    0.30
+      2             64.80           129.60    15.43    0.45
+      4             45.07           180.29    22.19    0.98
+wrote <scratch>/flint/ab-both-4.streams.json
+BUF_AB_DONE 09:29:52

@@ -1,0 +1,245 @@
+{
+  "tag": "both-4",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 1024,
+      "cold": {
+        "prompt_tokens": 959,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 1.0543,
+        "total_s": 3.8679,
+        "text_sha": "1faea8ca6530aa86",
+        "tpot_ms": 11.0334,
+        "decode_tok_s": 90.63
+      },
+      "prefill_tok_s": 909.6,
+      "repeat": {
+        "prompt_tokens": 959,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 0.1514,
+        "total_s": 2.9338,
+        "text_sha": "f33efb713fe6a7d7",
+        "tpot_ms": 10.9114,
+        "decode_tok_s": 91.65
+      }
+    },
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 9.3084,
+        "total_s": 12.3624,
+        "text_sha": "1c0f853a6c4e0054",
+        "tpot_ms": 11.9763,
+        "decode_tok_s": 83.5
+      },
+      "prefill_tok_s": 816.6,
+      "repeat": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 0.1941,
+        "total_s": 3.2049,
+        "text_sha": "b716bda178eec6ca",
+        "tpot_ms": 11.8069,
+        "decode_tok_s": 84.7
+      }
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 54.0842,
+        "total_s": 57.8504,
+        "text_sha": "d132e5cda61c527c",
+        "tpot_ms": 14.769,
+        "decode_tok_s": 67.71
+      },
+      "prefill_tok_s": 562.5,
+      "repeat": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 0.2069,
+        "total_s": 3.9448,
+        "text_sha": "0fcaa04cabc4d6df",
+        "tpot_ms": 14.6582,
+        "decode_tok_s": 68.22
+      }
+    }
+  ],
+  "runs": [
+    {
+      "spec": "1024:512:5:sampled",
+      "prompt_tokens": 963,
+      "mode": "sampled",
+      "tokens": 512,
+      "decode_tok_s": [
+        91.71,
+        91.85,
+        92.42,
+        92.28,
+        91.78
+      ],
+      "decode_tok_s_mean": 92.01,
+      "decode_tok_s_median": 91.85,
+      "requests": [
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0437,
+          "total_s": 5.6154,
+          "text_sha": "f665defc8f988fee",
+          "tpot_ms": 10.9034,
+          "decode_tok_s": 91.71
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0432,
+          "total_s": 5.6064,
+          "text_sha": "da4becc8253531ee",
+          "tpot_ms": 10.8868,
+          "decode_tok_s": 91.85
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0635,
+          "total_s": 5.5925,
+          "text_sha": "2498038822ecbdb3",
+          "tpot_ms": 10.8198,
+          "decode_tok_s": 92.42
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0676,
+          "total_s": 5.6054,
+          "text_sha": "44966248077e67ef",
+          "tpot_ms": 10.837,
+          "decode_tok_s": 92.28
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0427,
+          "total_s": 5.6107,
+          "text_sha": "49271da742d5b70c",
+          "tpot_ms": 10.8961,
+          "decode_tok_s": 91.78
+        }
+      ]
+    },
+    {
+      "spec": "1024:512:5:greedy",
+      "prompt_tokens": 963,
+      "mode": "greedy",
+      "tokens": 512,
+      "decode_tok_s": [
+        94.37,
+        94.2,
+        94.38,
+        94.36,
+        94.04
+      ],
+      "decode_tok_s_mean": 94.27,
+      "decode_tok_s_median": 94.36,
+      "requests": [
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0624,
+          "total_s": 5.4774,
+          "text_sha": "155684ab780a41c8",
+          "tpot_ms": 10.5969,
+          "decode_tok_s": 94.37
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0633,
+          "total_s": 5.4881,
+          "text_sha": "155684ab780a41c8",
+          "tpot_ms": 10.6161,
+          "decode_tok_s": 94.2
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0637,
+          "total_s": 5.4778,
+          "text_sha": "155684ab780a41c8",
+          "tpot_ms": 10.595,
+          "decode_tok_s": 94.38
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0638,
+          "total_s": 5.4795,
+          "text_sha": "155684ab780a41c8",
+          "tpot_ms": 10.5981,
+          "decode_tok_s": 94.36
+        },
+        {
+          "prompt_tokens": 963,
+          "cached_tokens": null,
+          "completion_tokens": 512,
+          "ttft_s": 0.0638,
+          "total_s": 5.4979,
+          "text_sha": "155684ab780a41c8",
+          "tpot_ms": 10.634,
+          "decode_tok_s": 94.04
+        }
+      ]
+    }
+  ],
+  "followup": [
+    {
+      "target": 4096,
+      "first": {
+        "prompt_tokens": 3813,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 4.4447,
+        "finish": "length",
+        "reasoning_chars": 1054,
+        "decode_tok_s": 89.01,
+        "content_chars": 0
+      },
+      "second": {
+        "prompt_tokens": 3823,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 0.1681,
+        "finish": "length",
+        "reasoning_chars": 306,
+        "decode_tok_s": 90.43,
+        "content_chars": 0
+      },
+      "fresh_tokens": 3823
+    }
+  ]
+}

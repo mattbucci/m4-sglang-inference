@@ -7,7 +7,8 @@ time that saves next to the bytes the part reads.
 
   q_proj, kv_proj           the projection returns an output captured from one
                             real call, so its launch and its reads leave
-  o_proj                    passes its input through (same width in and out)
+  o_proj                    returns the leading columns of its input at its
+                            output width, so its launch and its reads leave
   head_norms                q_norm and k_norm pass their input through
   rope                      the rotary embedding passes its input through
   cache_write               update_and_fetch returns the captured buffers: no
@@ -55,6 +56,19 @@ class Captured:
         return getattr(self._inner, name)
 
 
+class Narrowed:
+    """Returns the leading columns of its input at the module's output width."""
+
+    def __init__(self, inner):
+        self._inner, self._width = inner, inner.weight.shape[0]
+
+    def __call__(self, x, *a, **k):
+        return x[..., : self._width]
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 def shadow(targets):
     """Shadow (owner, attr, replacement) triples; returns the undo call."""
     for owner, attr, fn in targets:
@@ -77,7 +91,7 @@ def module_arms(c, attns):
     return {
         "q_proj": over(["q_proj"], Captured),
         "kv_proj": over(["k_proj", "v_proj"], Captured),
-        "o_proj": over(["o_proj"], c.PassThrough),
+        "o_proj": over(["o_proj"], Narrowed),
         "head_norms": over(["q_norm", "k_norm"], c.PassThrough),
         "rope": over(["rope"], c.PassThrough),
     }
