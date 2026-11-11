@@ -54,9 +54,9 @@ The R9700 team's decode lane, carried over to Metal:
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
 | SDPA block ladder (patch 029) | attention | 251K: 37.3 against 40.1 to 40.8 ms per token, recall 6/6; stock kept through 196,608 keys | retained, opt-in flag |
 | int8 keys and values | attention | raw: 34 to 68 % slower than the stock kernel to 131K; KL 0.004 to 0.005 at 32K | closed, the kernel is compute-bound once it dequantizes |
-| fused MoE router and combine (patch 030) | launches | raw: 2,780 → 2,340 primitives, −0.5 to −0.7 ms | opt-in flag |
-| fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more | opt-in flag |
-| grouped decode linears (patch 032) | launches | raw: −0.2 ms more, bit-identical | opt-in flag |
+| fused MoE router and combine (patch 030) | launches | raw: 2,780 → 2,340 primitives, −0.5 to −0.7 ms; served +5.0 to +5.4 % to 30K | opt-in flag |
+| fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag |
+| grouped decode linears (patch 032) | launches | raw: −0.2 ms more on top of 030 and 031, bit-identical; served alone −0.7 to −0.9 %, the three together +10.1 to +11.6 % to 30K | opt-in flag |
 | fused GatedDeltaNet back kernel | launches | raw: 9.94 ms against 9.86 for the linear pairs on the same base | not taken |
 | block-max top-k for the sampled tail | sampling | raw: 242 µs against 387 µs for the full argsort | open candidate, about 1 % of a sampled step |
 
@@ -312,6 +312,34 @@ mlx-community 4-bit build keeps `mlp.gate` and `mlp.shared_expert_gate` at
 8 bits, so they never match the 4-bit linears beside them. Patch 032
 groups by bit width instead.
 
+## Launch folding, served
+
+`serve-router/`: eleven arms in mirrored order on one tree, every arm with
+`MLX_MAX_MB_PER_BUFFER=200`, each flagged arm's server log carrying its
+hook line (40 MoE blocks patched, 30 GatedDeltaNet layers patched, grouped
+linears hooked). Median ms per token pooled over both arms of a group; the
+null run puts the noise floor of this design at 1 %.
+
+| group | 948 | 7,583 | 30,391 | gain over base | tok/s |
+|---|---|---|---|---|---|
+| base | 11.637 | 12.325 | 14.666 | | 85.9 / 81.1 / 68.2 |
+| block ladder (inert at these depths) | 11.763 | 12.306 | 14.727 | −1.1 / +0.2 / −0.4 % | 85.0 / 81.3 / 67.9 |
+| fused router (030) | 11.087 | 11.689 | 13.959 | +5.0 / +5.4 / +5.1 % | 90.2 / 85.6 / 71.6 |
+| fused front (031) | 11.244 | 11.929 | 14.183 | +3.5 / +3.3 / +3.4 % | 88.9 / 83.8 / 70.5 |
+| grouped linears (032) alone | 11.722 | 12.439 | 14.789 | −0.7 / −0.9 / −0.8 % | 85.3 / 80.4 / 67.6 |
+| all three | 10.430 | 11.105 | 13.320 | +11.6 / +11.0 / +10.1 % | 95.9 / 90.0 / 75.1 |
+
+The served gain matches the raw probe: 1.2 to 1.35 ms off a step at every
+depth, so the saving is a fixed launch cost and its share shrinks as the
+attention kernels grow. The two arms of each group agree within 0.14 ms.
+Wired memory is 24.4 to 24.6 GB in every arm. The grouped linears alone
+sit at the noise floor on the slow side; their raw gain was measured on
+top of the other two patches, where the fused MoE block folds its two
+gates through the same helper. Generated text is identical to base in the
+grouped-linears and ladder arms and differs in the fused-router,
+fused-front and all-three arms, each of which reproduces itself across
+its two arms.
+
 ## Closed
 
 - **int8 KV.** `raw/sdpa-kv.jsonl`, `raw/kv-int8-fidelity.jsonl`. int8
@@ -340,5 +368,6 @@ groups by bit width instead.
 | `serve-128k/`, `serve-256k/` | deep arms with memory lines |
 | `serve-ladder/` | threshold-crossing trace |
 | `serve-clear/` | cache-clear traces at 122K with memory lines |
+| `serve-router/` | launch-folding serving A/B, eleven arms with hook lines, wired memory and text hashes in `pooled.txt` |
 | `serve-router-null/` | eleven arms of one build (launch-folding flags set, hooks not installed): the A/B design's noise floor |
 | `recall/` | depth recall at the 215,040 label |

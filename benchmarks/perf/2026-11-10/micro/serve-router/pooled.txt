@@ -1,0 +1,64 @@
+Launch-folding serving A/B on qwen36 (patches 030, 031, 032), hooks installed on the mlx-vlm load path.
+scripts/bench/decode_ab.py: 3 runs per depth, 256 generated tokens, greedy, ignore_eos; every arm has MLX_MAX_MB_PER_BUFFER=200.
+arm order: base-1 fused-1 front-1 lin-1 all-1 ladder all-2 lin-2 front-2 fused-2 base-2
+fused = SGLANG_MLX_FUSE_MOE_ROUTER=1, front = SGLANG_MLX_FUSE_GDN_FRONT=1, lin = SGLANG_MLX_FUSE_DECODE_LINEARS=1, all = the three, ladder = SGLANG_MLX_SDPA_BLOCK_LADDER=1 (inert below 196,608 keys)
+
+hook lines per arm (server log):
+hooks base-1:  tracebacks 0
+hooks fused-1: fused MoE router enabled: patched 40 blocks; tracebacks 0
+hooks front-1: fused GatedDeltaNet front enabled: patched 30 layers; tracebacks 0
+hooks lin-1: grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks all-1: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks ladder:  tracebacks 0
+hooks all-2: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks lin-2: grouped decode linears enabled: hooked 1 modules; tracebacks 0
+hooks front-2: fused GatedDeltaNet front enabled: patched 30 layers; tracebacks 0
+hooks fused-2: fused MoE router enabled: patched 40 blocks; tracebacks 0
+hooks base-2:  tracebacks 0
+
+median ms per token per arm, then groups pooled over runs (gain = base / group - 1):
+arm                 948        7583       30391
+base-1           11.658      12.306      14.699
+fused-1          11.116      11.696      13.905
+front-1          11.224      11.885      14.178
+lin-1            11.729      12.445      14.809
+all-1            10.501      11.157      13.318
+ladder           11.696      12.306      14.704
+all-2            10.367      11.057      13.259
+lin-2            11.703      12.426      14.754
+front-2          11.268      11.981      14.193
+fused-2          11.072      11.655      13.980
+base-2           11.657      12.328      14.651
+all arms: 948: mean 11.272 sd 0.463 (4.10%) range 10.37-11.73 (12.09%)  7583: mean 11.931 sd 0.472 (3.95%) range 11.06-12.45 (11.64%)  30391: mean 14.223 sd 0.537 (3.78%) range 13.26-14.81 (10.90%)
+base          11.637 ms  +0.0%   12.325 ms  +0.0%   14.666 ms  +0.0%   tok/s 85.9 81.1 68.2
+ladder        11.763 ms  -1.1%   12.306 ms  +0.2%   14.727 ms  -0.4%   tok/s 85.0 81.3 67.9
+fused         11.087 ms  +5.0%   11.689 ms  +5.4%   13.959 ms  +5.1%   tok/s 90.2 85.6 71.6
+front         11.244 ms  +3.5%   11.929 ms  +3.3%   14.183 ms  +3.4%   tok/s 88.9 83.8 70.5
+lin           11.722 ms  -0.7%   12.439 ms  -0.9%   14.789 ms  -0.8%   tok/s 85.3 80.4 67.6
+all           10.430 ms +11.6%   11.105 ms +11.0%   13.320 ms +10.1%   tok/s 95.9 90.0 75.1
+
+wired GB after each arm:
+wired_gb 24.4	[15:51:38] base-1 done
+wired_gb 24.4	[15:53:35] fused-1 done
+wired_gb 24.4	[15:55:33] front-1 done
+wired_gb 24.6	[15:57:31] lin-1 done
+wired_gb 24.5	[15:59:29] all-1 done
+wired_gb 24.5	[16:01:28] ladder done
+wired_gb 24.6	[16:03:21] all-2 done
+wired_gb 24.6	[16:05:19] lin-2 done
+wired_gb 24.6	[16:07:16] front-2 done
+wired_gb 24.4	[16:09:14] fused-2 done
+wired_gb 24.6	[16:11:12] base-2 done
+
+text hashes per depth (first run of each arm):
+base-1   [(948, ['38b932a2', 'f7a26d99']), (7583, ['071ee017', '6fabebbb']), (30391, ['0ddbb684', 'd35af42a'])]
+fused-1  [(948, ['af724506', 'b16c2212']), (7583, ['2de0ddba', 'd51e84ea']), (30391, ['3bb599cc', 'eaccfb0d'])]
+front-1  [(948, ['b8b39f8b', 'f7a26d99']), (7583, ['85d94d2f', '8d75f375']), (30391, ['067caee4', '3983fdeb'])]
+lin-1    [(948, ['38b932a2', 'f7a26d99']), (7583, ['071ee017', '6fabebbb']), (30391, ['0ddbb684', 'd35af42a'])]
+all-1    [(948, ['c6f093a3', 'dec65e12']), (7583, ['17b25ef2', '919efd4c']), (30391, ['37497ff0', 'a3794c89'])]
+ladder   [(948, ['38b932a2', 'f7a26d99']), (7583, ['071ee017', '6fabebbb']), (30391, ['0ddbb684', 'd35af42a'])]
+all-2    [(948, ['c6f093a3', 'dec65e12']), (7583, ['17b25ef2', '919efd4c']), (30391, ['37497ff0', 'a3794c89'])]
+lin-2    [(948, ['38b932a2', 'f7a26d99']), (7583, ['071ee017', '6fabebbb']), (30391, ['0ddbb684', 'd35af42a'])]
+front-2  [(948, ['b8b39f8b', 'f7a26d99']), (7583, ['85d94d2f', '8d75f375']), (30391, ['067caee4', '3983fdeb'])]
+fused-2  [(948, ['af724506', 'b16c2212']), (7583, ['2de0ddba', 'd51e84ea']), (30391, ['3bb599cc', 'eaccfb0d'])]
+base-2   [(948, ['38b932a2', 'f7a26d99']), (7583, ['071ee017', '6fabebbb']), (30391, ['0ddbb684', 'd35af42a'])]
