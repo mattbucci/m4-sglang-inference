@@ -61,6 +61,10 @@ ATTR_CHECKS = {
         ("lookahead_view", lambda m: m.lookahead_view),                # 036
         ("WindowedLookaheadView", lambda m: m.WindowedLookaheadView),  # 036
     ],
+    "sglang.srt.hardware_backend.mlx.decode_submit": [
+        ("patch_decode_submit_layers", lambda m: m.patch_decode_submit_layers),  # 038
+        ("submit_layer_indices", lambda m: m.submit_layer_indices),      # 038
+    ],
     "sglang.srt.hardware_backend.mlx.moe.fused_flint_block": [
         ("patch_flint_moe_blocks", lambda m: m.patch_flint_moe_blocks),  # 037
     ],
@@ -175,7 +179,7 @@ SKIPS = {}
 
 def patched_modules():
     mods = set()
-    for patch in sorted(glob.glob(os.path.join(PATCH_DIR, "0[012][0-9]-*.patch"))):
+    for patch in sorted(glob.glob(os.path.join(PATCH_DIR, "0[0-9][0-9]-*.patch"))):
         with open(patch) as f:
             for line in f:
                 m = re.match(r"\+\+\+ b/python/(sglang/\S+)\.py$", line)

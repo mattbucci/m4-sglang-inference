@@ -1,0 +1,215 @@
+{
+ "tag": "sub5-o100m400-b",
+ "model": "flint",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "sub5-o100m400-b",
+  "out": "<scratch>/flint/ab-sub5-o100m400-b.streams.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 107.4,
+   "aggregate_tok_s": 107.4,
+   "tpot_ms": 9.31,
+   "ttft_s": 0.31
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 69.94,
+   "aggregate_tok_s": 139.88,
+   "tpot_ms": 14.3,
+   "ttft_s": 0.47
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 46.44,
+   "aggregate_tok_s": 185.77,
+   "tpot_ms": 21.53,
+   "ttft_s": 0.97
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 107.85821385131791,
+   "aggregate_tok_s": 107.85821385131791,
+   "tpot_ms": 9.271431115839686,
+   "ttft_s": 0.30744708294514567,
+   "window_s": 1.8450147920520976,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 107.85821385131791,
+   "wall_tok_s": 92.91686060653508,
+   "prompt_tokens": [
+    199
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "dbf3d26c7363"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 69.84335880579032,
+   "aggregate_tok_s": 139.68671761158063,
+   "tpot_ms": 14.317753571683836,
+   "ttft_s": 0.46788204147014767,
+   "window_s": 2.8420740839792415,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 66.7297751199196,
+   "wall_tok_s": 115.6942825250151,
+   "prompt_tokens": [
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "773d062d995e",
+    "b2917f3e8fed"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 46.53620365244244,
+   "aggregate_tok_s": 186.14481460976975,
+   "tpot_ms": 21.48864586094176,
+   "ttft_s": 0.9603957084764261,
+   "window_s": 4.260124041931704,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 44.70401363843007,
+   "wall_tok_s": 147.00945329611574,
+   "prompt_tokens": [
+    199,
+    199,
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "7a4c80966e4c",
+    "e48c71afc3d8",
+    "1cc7be0814bf",
+    "145f922d4f79"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 106.94520428695361,
+   "aggregate_tok_s": 106.94520428695361,
+   "tpot_ms": 9.350582914562644,
+   "ttft_s": 0.30346433294471353,
+   "window_s": 1.860765999997966,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 106.94520428695361,
+   "wall_tok_s": 92.41160562058211,
+   "prompt_tokens": [
+    199
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "aa588eaac70c"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 70.03837748261027,
+   "aggregate_tok_s": 140.07675496522054,
+   "tpot_ms": 14.27788643802162,
+   "ttft_s": 0.4685500420164317,
+   "window_s": 2.8341604579472914,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 66.83725106812324,
+   "wall_tok_s": 115.82029319967265,
+   "prompt_tokens": [
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "e678b8adf444",
+    "4cce3cc5b00c"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 46.348484611716444,
+   "aggregate_tok_s": 185.39393844686577,
+   "tpot_ms": 21.575678436468444,
+   "ttft_s": 0.975683552242117,
+   "window_s": 4.277378250029869,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 44.49662316811816,
+   "wall_tok_s": 146.01485865285224,
+   "prompt_tokens": [
+    199,
+    199,
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "2f077a587947",
+    "6e0d084f53dc",
+    "34db92923ac3",
+    "116e7fdd6748"
+   ]
+  }
+ ]
+}

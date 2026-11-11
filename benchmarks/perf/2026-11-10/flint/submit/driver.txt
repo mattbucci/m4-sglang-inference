@@ -1,0 +1,159 @@
+## attention census 09:30:01
+exit 1
+## sub sub1-a 09:30:17
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[sub1-a] cold     959 tok: cached None, ttft 1.0874 s, prefill 881.9 tok/s, decode 88.69 tok/s; repeat cached None, ttft 0.1591 s, decode 89.71 tok/s
+[sub1-a] cold    7601 tok: cached None, ttft 9.5541 s, prefill 795.6 tok/s, decode 81.3 tok/s; repeat cached None, ttft 0.1735 s, decode 81.73 tok/s
+[sub1-a] cold   30422 tok: cached None, ttft 59.0241 s, prefill 515.4 tok/s, decode 66.57 tok/s; repeat cached None, ttft 0.209 s, decode 66.8 tok/s
+[sub1-a] runs 1024:512:5:sampled: prompt 963, decode mean 90.45 median 91.41 tok/s (86.36 to 92.23)
+[sub1-a] runs 1024:512:5:greedy: prompt 963, decode mean 93.13 median 92.54 tok/s (92.23 to 94.48)
+[sub1-a] followup    3813 tok: first ttft 5.0285 s (256 tok, finish length); second ttft 0.1707 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub1-a.json
+wired 31.1 GB
+tracebacks in the log: 0
+## sub sub5-a 09:33:18
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[sub5-a] cold     959 tok: cached None, ttft 1.089 s, prefill 880.6 tok/s, decode 97.06 tok/s; repeat cached None, ttft 0.1757 s, decode 97.0 tok/s
+[sub5-a] cold    7601 tok: cached None, ttft 9.7805 s, prefill 777.2 tok/s, decode 89.0 tok/s; repeat cached None, ttft 0.1727 s, decode 88.38 tok/s
+[sub5-a] cold   30422 tok: cached None, ttft 55.1983 s, prefill 551.1 tok/s, decode 68.1 tok/s; repeat cached None, ttft 0.2126 s, decode 68.2 tok/s
+[sub5-a] runs 1024:512:5:sampled: prompt 963, decode mean 97.79 median 97.77 tok/s (97.62 to 98.11)
+[sub5-a] runs 1024:512:5:greedy: prompt 963, decode mean 99.97 median 99.98 tok/s (99.92 to 100.01)
+[sub5-a] followup    3813 tok: first ttft 4.5088 s (256 tok, finish length); second ttft 0.1673 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub5-a.json
+wired 31.1 GB
+tracebacks in the log: 0
+## sub sub9-a 09:36:10
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 8 of 49 layers submit early
+[sub9-a] cold     959 tok: cached None, ttft 1.0888 s, prefill 880.8 tok/s, decode 97.35 tok/s; repeat cached None, ttft 0.1767 s, decode 98.53 tok/s
+[sub9-a] cold    7601 tok: cached None, ttft 9.7508 s, prefill 779.5 tok/s, decode 89.86 tok/s; repeat cached None, ttft 0.1741 s, decode 89.74 tok/s
+[sub9-a] cold   30422 tok: cached None, ttft 56.1694 s, prefill 541.6 tok/s, decode 69.01 tok/s; repeat cached None, ttft 0.2146 s, decode 68.67 tok/s
+[sub9-a] runs 1024:512:5:sampled: prompt 963, decode mean 98.21 median 98.22 tok/s (97.82 to 98.62)
+[sub9-a] runs 1024:512:5:greedy: prompt 963, decode mean 100.5 median 100.47 tok/s (100.31 to 100.72)
+[sub9-a] followup    3813 tok: first ttft 4.6972 s (256 tok, finish length); second ttft 0.1694 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub9-a.json
+wired 31.1 GB
+tracebacks in the log: 0
+## sub sub5-buf200-a 09:39:03
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[sub5-buf200-a] cold     959 tok: cached None, ttft 1.0684 s, prefill 897.6 tok/s, decode 100.8 tok/s; repeat cached None, ttft 0.1745 s, decode 99.85 tok/s
+[sub5-buf200-a] cold    7601 tok: cached None, ttft 10.1397 s, prefill 749.6 tok/s, decode 91.45 tok/s; repeat cached None, ttft 0.1838 s, decode 91.43 tok/s
+[sub5-buf200-a] cold   30422 tok: cached None, ttft 57.0341 s, prefill 533.4 tok/s, decode 71.88 tok/s; repeat cached None, ttft 0.2239 s, decode 71.54 tok/s
+[sub5-buf200-a] runs 1024:512:5:sampled: prompt 963, decode mean 100.39 median 100.39 tok/s (100.15 to 100.61)
+[sub5-buf200-a] runs 1024:512:5:greedy: prompt 963, decode mean 102.63 median 102.66 tok/s (102.47 to 102.8)
+[sub5-buf200-a] followup    3813 tok: first ttft 4.4535 s (237 tok, finish stop); second ttft 0.3424 s, None of 3890 cached, 3890 fresh
+wrote <scratch>/flint/ab-sub5-buf200-a.json
+wired 31.4 GB
+tracebacks in the log: 0
+## sub sub5-o100m400-a 09:41:55
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[sub5-o100m400-a] cold     959 tok: cached None, ttft 1.0638 s, prefill 901.5 tok/s, decode 100.71 tok/s; repeat cached None, ttft 0.192 s, decode 100.96 tok/s
+[sub5-o100m400-a] cold    7601 tok: cached None, ttft 9.9357 s, prefill 765.0 tok/s, decode 92.85 tok/s; repeat cached None, ttft 0.1885 s, decode 93.38 tok/s
+[sub5-o100m400-a] cold   30422 tok: cached None, ttft 58.0356 s, prefill 524.2 tok/s, decode 71.54 tok/s; repeat cached None, ttft 0.2255 s, decode 71.19 tok/s
+[sub5-o100m400-a] runs 1024:512:5:sampled: prompt 963, decode mean 101.87 median 101.89 tok/s (101.76 to 101.94)
+[sub5-o100m400-a] runs 1024:512:5:greedy: prompt 963, decode mean 104.12 median 104.08 tok/s (104.01 to 104.26)
+[sub5-o100m400-a] followup    3813 tok: first ttft 4.8211 s (256 tok, finish length); second ttft 0.1855 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub5-o100m400-a.json
+wired 32.0 GB
+tracebacks in the log: 0
+## sub sub5-o100m400-b 09:44:48
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[sub5-o100m400-b] cold     959 tok: cached None, ttft 1.0748 s, prefill 892.3 tok/s, decode 100.52 tok/s; repeat cached None, ttft 0.1759 s, decode 100.31 tok/s
+[sub5-o100m400-b] cold    7601 tok: cached None, ttft 10.0593 s, prefill 755.6 tok/s, decode 92.33 tok/s; repeat cached None, ttft 0.1877 s, decode 92.25 tok/s
+[sub5-o100m400-b] cold   30422 tok: cached None, ttft 56.9918 s, prefill 533.8 tok/s, decode 71.48 tok/s; repeat cached None, ttft 0.2246 s, decode 71.46 tok/s
+[sub5-o100m400-b] runs 1024:512:5:sampled: prompt 963, decode mean 100.68 median 100.64 tok/s (100.56 to 100.86)
+[sub5-o100m400-b] runs 1024:512:5:greedy: prompt 963, decode mean 102.99 median 102.98 tok/s (102.91 to 103.1)
+[sub5-o100m400-b] followup    3813 tok: first ttft 4.5556 s (256 tok, finish length); second ttft 0.1855 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub5-o100m400-b.json
+wired 32.0 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 70.04 tok/s aggregate 140.08 tpot 14.28 ms ttft 0.47 s window 2.83 s (397 tokens) first-to-last 66.84 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 46.35 tok/s aggregate 185.39 tpot 21.58 ms ttft 0.98 s window 4.28 s (793 tokens) first-to-last 44.50 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1            107.40           107.40     9.31    0.31
+      2             69.94           139.88    14.30    0.47
+      4             46.44           185.77    21.53    0.97
+wrote <scratch>/flint/ab-sub5-o100m400-b.streams.json
+## sub sub5-buf200-b 09:48:11
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[sub5-buf200-b] cold     959 tok: cached None, ttft 1.059 s, prefill 905.6 tok/s, decode 99.81 tok/s; repeat cached None, ttft 0.1761 s, decode 100.08 tok/s
+[sub5-buf200-b] cold    7601 tok: cached None, ttft 9.6803 s, prefill 785.2 tok/s, decode 91.54 tok/s; repeat cached None, ttft 0.1846 s, decode 91.7 tok/s
+[sub5-buf200-b] cold   30422 tok: cached None, ttft 55.866 s, prefill 544.6 tok/s, decode 71.16 tok/s; repeat cached None, ttft 0.2205 s, decode 71.1 tok/s
+[sub5-buf200-b] runs 1024:512:5:sampled: prompt 963, decode mean 100.81 median 100.81 tok/s (100.69 to 100.91)
+[sub5-buf200-b] runs 1024:512:5:greedy: prompt 963, decode mean 102.48 median 102.38 tok/s (102.24 to 102.79)
+[sub5-buf200-b] followup    3813 tok: first ttft 4.5931 s (256 tok, finish length); second ttft 0.1856 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub5-buf200-b.json
+wired 31.4 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 68.69 tok/s aggregate 137.37 tpot 14.56 ms ttft 0.47 s window 2.89 s (397 tokens) first-to-last 65.61 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 45.98 tok/s aggregate 183.92 tpot 21.75 ms ttft 0.98 s window 4.31 s (793 tokens) first-to-last 44.15 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1            106.48           106.48     9.39    0.31
+      2             68.76           137.52    14.54    0.47
+      4             46.06           184.22    21.71    0.98
+wrote <scratch>/flint/ab-sub5-buf200-b.streams.json
+## sub sub5-b 09:51:32
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[sub5-b] cold     959 tok: cached None, ttft 1.0907 s, prefill 879.3 tok/s, decode 97.71 tok/s; repeat cached None, ttft 0.1562 s, decode 97.34 tok/s
+[sub5-b] cold    7601 tok: cached None, ttft 9.4101 s, prefill 807.7 tok/s, decode 89.56 tok/s; repeat cached None, ttft 0.1687 s, decode 90.22 tok/s
+[sub5-b] cold   30422 tok: cached None, ttft 54.2521 s, prefill 560.8 tok/s, decode 69.03 tok/s; repeat cached None, ttft 0.2078 s, decode 69.05 tok/s
+[sub5-b] runs 1024:512:5:sampled: prompt 963, decode mean 97.88 median 97.69 tok/s (97.49 to 98.73)
+[sub5-b] runs 1024:512:5:greedy: prompt 963, decode mean 99.87 median 99.84 tok/s (99.61 to 100.13)
+[sub5-b] followup    3813 tok: first ttft 4.5365 s (256 tok, finish length); second ttft 0.1654 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub5-b.json
+wired 31.1 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 67.87 tok/s aggregate 135.74 tpot 14.73 ms ttft 0.45 s window 2.92 s (397 tokens) first-to-last 64.86 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 45.35 tok/s aggregate 181.41 tpot 22.05 ms ttft 0.98 s window 4.37 s (793 tokens) first-to-last 43.57 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1            102.98           102.98     9.71    0.31
+      2             67.86           135.72    14.74    0.45
+      4             45.47           181.88    21.99    0.98
+wrote <scratch>/flint/ab-sub5-b.streams.json
+## sub sub1-b 09:54:53
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[sub1-b] cold     959 tok: cached None, ttft 1.0851 s, prefill 883.8 tok/s, decode 91.24 tok/s; repeat cached None, ttft 0.1558 s, decode 91.41 tok/s
+[sub1-b] cold    7601 tok: cached None, ttft 9.3441 s, prefill 813.5 tok/s, decode 82.61 tok/s; repeat cached None, ttft 0.1694 s, decode 83.22 tok/s
+[sub1-b] cold   30422 tok: cached None, ttft 54.5448 s, prefill 557.7 tok/s, decode 66.99 tok/s; repeat cached None, ttft 0.2102 s, decode 67.17 tok/s
+[sub1-b] runs 1024:512:5:sampled: prompt 963, decode mean 90.98 median 91.03 tok/s (90.62 to 91.29)
+[sub1-b] runs 1024:512:5:greedy: prompt 963, decode mean 92.77 median 92.71 tok/s (92.59 to 93.1)
+[sub1-b] followup    3813 tok: first ttft 4.4245 s (256 tok, finish length); second ttft 0.1685 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-sub1-b.json
+wired 31.1 GB
+tracebacks in the log: 0
+streams 2 rep 1: per-stream 63.99 tok/s aggregate 127.98 tpot 15.63 ms ttft 0.45 s window 3.10 s (397 tokens) first-to-last 61.32 tok/s prompt 199 out 200
+streams 4 rep 1: per-stream 44.34 tok/s aggregate 177.35 tpot 22.55 ms ttft 0.98 s window 4.47 s (793 tokens) first-to-last 42.62 tok/s prompt 199 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             94.61            94.61    10.57    0.30
+      2             64.05           128.09    15.61    0.45
+      4             44.53           178.11    22.46    0.98
+wrote <scratch>/flint/ab-sub1-b.streams.json
+AFTER_BUF_DONE 09:58:26

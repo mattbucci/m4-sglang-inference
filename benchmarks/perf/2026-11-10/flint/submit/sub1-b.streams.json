@@ -1,0 +1,215 @@
+{
+ "tag": "sub1-b",
+ "model": "flint",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "sub1-b",
+  "out": "<scratch>/flint/ab-sub1-b.streams.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 94.61,
+   "aggregate_tok_s": 94.61,
+   "tpot_ms": 10.57,
+   "ttft_s": 0.3
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 64.05,
+   "aggregate_tok_s": 128.09,
+   "tpot_ms": 15.61,
+   "ttft_s": 0.45
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.53,
+   "aggregate_tok_s": 178.11,
+   "tpot_ms": 22.46,
+   "ttft_s": 0.98
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 94.83834369886358,
+   "aggregate_tok_s": 94.83834369886358,
+   "tpot_ms": 10.544258376920418,
+   "ttft_s": 0.30619429191574454,
+   "window_s": 2.098307417007163,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 94.83834369886358,
+   "wall_tok_s": 83.17731663812776,
+   "prompt_tokens": [
+    199
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "dbf3d26c7363"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 64.1012194180698,
+   "aggregate_tok_s": 128.2024388361396,
+   "tpot_ms": 15.600327249283266,
+   "ttft_s": 0.44823050004197285,
+   "window_s": 3.0966649589827284,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 61.407551769688624,
+   "wall_tok_s": 108.22615994681071,
+   "prompt_tokens": [
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "773d062d995e",
+    "b2917f3e8fed"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.71575678561401,
+   "aggregate_tok_s": 178.86302714245605,
+   "tpot_ms": 22.36348150819446,
+   "ttft_s": 0.9743376040423755,
+   "window_s": 4.433560208999552,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 42.98736398754409,
+   "wall_tok_s": 142.004348622692,
+   "prompt_tokens": [
+    199,
+    199,
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "7a4c80966e4c",
+    "e48c71afc3d8",
+    "1cc7be0814bf",
+    "145f922d4f79"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 94.37683415591081,
+   "aggregate_tok_s": 94.37683415591081,
+   "tpot_ms": 10.595820562787654,
+   "ttft_s": 0.3000010419636965,
+   "window_s": 2.108568291994743,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 94.37683415591081,
+   "wall_tok_s": 83.03684564118554,
+   "prompt_tokens": [
+    199
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "aa588eaac70c"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 63.98930610870175,
+   "aggregate_tok_s": 127.9786122174035,
+   "tpot_ms": 15.627611249624294,
+   "ttft_s": 0.45011729147518054,
+   "window_s": 3.1020808330504224,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 61.31983431122245,
+   "wall_tok_s": 108.03737282802275,
+   "prompt_tokens": [
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "e678b8adf444",
+    "4cce3cc5b00c"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.33797159618288,
+   "aggregate_tok_s": 177.35188638473153,
+   "tpot_ms": 22.554031318972008,
+   "ttft_s": 0.9815089585026726,
+   "window_s": 4.4713367089862,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 42.624275374883794,
+   "wall_tok_s": 140.83376094932962,
+   "prompt_tokens": [
+    199,
+    199,
+    199,
+    199
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "2f077a587947",
+    "6e0d084f53dc",
+    "34db92923ac3",
+    "116e7fdd6748"
+   ]
+  }
+ ]
+}

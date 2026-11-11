@@ -1,7 +1,7 @@
-# Flint against the published M4 Pro engines: windowed lookahead view (patch 036), fused MoE block (patch 037)
+# Flint against the published M4 Pro engines: windowed lookahead view (patch 036), fused MoE block (patch 037), decode submission in parts (patch 038)
 
-Run dates 2026-11-10 and 2026-11-11. Stack: SGLang v0.5.23 + patches 001-037
-(036 and 037 come out of this run), MLX 0.32.4, mlx-lm 0.32.3.dev17,
+Run dates 2026-11-10 and 2026-11-11. Stack: SGLang v0.5.23 + patches 001-038
+(036, 037 and 038 come out of this run), MLX 0.32.4, mlx-lm 0.32.3.dev17,
 mlx-vlm 0.6.5, M4 Pro 64 GB with the 20-core GPU. Models:
 `RecursiveSI/flint-int4` (the official 4-bit MLX checkpoint every published
 number uses: 4.54 bits per weight, 22.6 GB) and `mlx-community/flint-oQ8e`
@@ -80,8 +80,8 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | `sglu`: the tree's fused routed-expert kernel | launches | 11.67 to 12.81 ms, KL up to 0.17, argmax 62 of 64 at 8K | rejected: slower and not bit-identical |
 | routing knock-out (`route_const`, `route_replay`) | launches | 9.02 to 9.09 ms with `comb` against 9.89 to 9.96 for `comb+gatek`; replaying real routes costs what constant routes cost | not a candidate; it prices the two routing launches per block at 0.85 ms a step, independent of which experts are read. One routing kernel per block is the open follow-up |
 | radix cache off | host | 82.5 against 74.9 tok/s greedy before patch 036, 92.4 against 91.0 with both patches; a repeat of a 30K prompt answers in 51.5 s against 0.21 s | radix stays on: patch 036 removed the reason to turn it off |
-| command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired | a trade, decode for cold prefill; the three settings tie in decode and 200 MB costs the least prefill and memory. The decode-only submission arms decide what the preset takes |
-| decode submission in parts | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB | raw go on stock limits; served arms decide whether it ships |
+| command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired | not a preset default: a trade, decode for cold prefill. The three settings tie in decode and 200 MB costs the least prefill and memory. Patch 038 takes three quarters of the same gain for free, so the limit stays an opt-in for decode-heavy work |
+| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset |
 
 ## Baseline
 
@@ -228,6 +228,36 @@ four. The greedy text is the same in every arm. The stock arm of this
 window reads 2.6 % above the two-patch arms of the first window, so
 settings are compared inside a window only.
 
+Decode submission in parts on top of both patches (`submit/`, nine arms in
+mirrored order, pooled per setting, a tree with patches 001-038):
+
+| setting | arms | sampled tok/s | greedy tok/s | greedy ms/token | greedy against one submission | wired GB |
+|---|--:|--:|--:|--:|--:|--:|
+| one submission, stock limits | 2 | 90.72 | 92.95 | 10.76 | | 31.1 |
+| 5 parts | 2 | 97.84 | 99.92 | 10.01 | +7.5 % | 31.1 |
+| 9 parts | 1 | 98.21 | 100.50 | 9.95 | +8.1 % | 31.1 |
+| 5 parts, 200 MB buffers | 2 | 100.60 | 102.56 | 9.75 | +10.3 % | 31.4 |
+| 5 parts, 100 operations and 400 MB | 2 | 101.28 | 103.56 | 9.66 | +11.4 % | 32.0 |
+
+| setting | decode 1K / 8K / 32K | prefill 1K / 8K / 32K | repeat TTFT 1K / 8K / 32K | streams 1 / 2 / 4 |
+|---|--:|--:|--:|--:|
+| one submission, stock limits | 89.97 / 81.95 / 66.78 | 882.8 / 804.5 / 536.5 | 0.157 / 0.171 / 0.210 s | 94.61 / 128.09 / 178.11 |
+| 5 parts | 97.38 / 89.28 / 68.56 | 880.0 / 792.5 / 556.0 | 0.166 / 0.171 / 0.210 s | 102.98 / 135.72 / 181.88 |
+| 9 parts | 97.35 / 89.86 / 69.01 | 880.8 / 779.5 / 541.6 | 0.177 / 0.174 / 0.215 s | |
+| 5 parts, 200 MB buffers | 100.31 / 91.50 / 71.52 | 901.6 / 767.4 / 539.0 | 0.175 / 0.184 / 0.222 s | 106.48 / 137.52 / 184.22 |
+| 5 parts, 100 operations and 400 MB | 100.61 / 92.59 / 71.51 | 896.9 / 760.3 / 529.0 | 0.184 / 0.188 / 0.225 s | 107.40 / 139.88 / 185.77 |
+
+Greedy run ranges: one submission 92.23 to 94.48, five parts 99.61 to
+100.13, nine parts 100.31 to 100.72. Five parts on stock limits take 0.75 ms
+off the step and leave prefill alone: a prefill chunk keeps its single
+submission, and the 8K prefill of the two five-part arms (777 and 808
+tok/s) straddles the two one-submission arms (796 and 814). Nine parts are
+not separable from five. With a larger buffer the parts add nothing: 102.56
+against 102.68 for the 200 MB buffer alone. So the two levers hide the same
+host slack, the patch hides three quarters of it at no cost, and the
+buffer hides the rest for 5 % of the cold prefill at 8K. The preset takes
+the patch with five parts and keeps the stock limits.
+
 ## Fidelity
 
 - Greedy text: one hash (`155684ab780a41c8`) for every int4 arm, base
@@ -297,16 +327,18 @@ operations and 400 MB, 9.97 to 9.98 at 200 operations and 1,000 MB.
 | raw two-kernel step, 100 operations and 400 MB buffers | 9.4 | 106 |
 | raw two-kernel step, stock limits | 9.9 to 10.0 | 100 to 101 |
 | raw mlx-lm step | 11.3 to 11.5 | 87 to 88 |
-| served, both patches, 200 MB buffers | 9.74 | 102.7 |
-| served, both patches | 10.99 | 91.0 |
+| served, three patches, 200 MB buffers | 9.75 | 102.6 |
+| served, three patches (the preset) | 10.01 | 99.9 |
+| served, patches 036 and 037 | 10.99 | 91.0 |
 | served, view only | 12.38 | 80.8 |
 | served, base | 13.35 | 74.9 |
 
-Served decode moved from 57 % of the published rate to 69 % with the two
-patches. The buffer limit brings the served step to the raw step and the
-rate to 78 %, and pays for it in cold prefill. What is left is about
-1.8 ms inside the graph itself: the routing launches (0.85 ms), and
-attention and the routed experts above their weight reads.
+Served decode moved from 57 % of the published rate to 69 % with patches
+036 and 037 and to 76 % with patch 038, which puts the served step on the
+raw step. A larger buffer adds two points and pays for them in cold
+prefill. What is left is about 1.8 ms inside the graph itself: the routing
+launches (0.85 ms), and attention and the routed experts above their
+weight reads.
 
 ## Receipts
 
@@ -317,3 +349,4 @@ attention and the routed experts above their weight reads.
 | `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
 | `buffers/` | host slack and the two-kernel fold under each command-buffer limit; the eight served arms, their streams and the driver log |
+| `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log |

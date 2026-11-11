@@ -1,0 +1,113 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index cf340a2a7a..11fb186b09 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1122,6 +1122,9 @@ class Envs:
+     # One-launch router logits and expert combine for Flint's MoE block
+     # (moe/fused_flint_block.py), bit-equal to the stock ops.
+     SGLANG_MLX_FUSE_FLINT_MOE = EnvBool(False)
++    # Submit a decode step to the GPU in this many parts (decode_submit.py):
++    # the GPU runs the front of a step while the host builds the rest.
++    SGLANG_MLX_DECODE_SUBMIT_PARTS = EnvInt(1)
+     # Number of decode steps between periodic mx.clear_cache() calls.
+     # Set to 0 to disable cache clearing entirely.
+     SGLANG_MLX_CLEAR_CACHE_STEPS = EnvInt(256)
+diff --git a/python/sglang/srt/hardware_backend/mlx/decode_submit.py b/python/sglang/srt/hardware_backend/mlx/decode_submit.py
+new file mode 100644
+index 0000000000..cbe777f059
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/decode_submit.py
+@@ -0,0 +1,63 @@
++"""Submit a decode step to the GPU in parts.
++
++The pipelined decode loop builds the graph of a step and hands it to the GPU
++with one ``mx.async_eval``. MLX returns from that call when little of the
++step is left to run, so the host work up to the next submission (scheduler
++bookkeeping, then the next graph build) lands on an idle GPU.
++
++``patch_decode_submit_layers`` marks the last layer of every part but the
++final one. A marked layer submits its output as soon as the graph reaches it,
++so the GPU runs the front of a step while the host builds the rest. The graph
++and the order of its operations stay the same: results are bit-identical.
++
++Opt-in (``SGLANG_MLX_DECODE_SUBMIT_PARTS=N``, N > 1). Only a step of one
++token per request submits early; a prefill chunk keeps its one submission.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Sequence
++
++import mlx.core as mx
++
++_submit_classes: dict[type, type] = {}
++
++
++def _call_and_submit(self, *args, **kwargs):
++    out = self._sglang_stock_call(*args, **kwargs)
++    hidden = out[0] if isinstance(out, tuple) and out else out
++    if isinstance(hidden, mx.array) and hidden.ndim == 3 and hidden.shape[1] == 1:
++        mx.async_eval(hidden)
++    return out
++
++
++def _submit_class(base: type) -> type:
++    if base not in _submit_classes:
++        _submit_classes[base] = type(
++            f"Submitting{base.__name__}",
++            (base,),
++            {"__call__": _call_and_submit, "_sglang_stock_call": base.__call__},
++        )
++    return _submit_classes[base]
++
++
++def submit_layer_indices(*, num_layers: int, parts: int) -> list[int]:
++    """Last layer of every part but the final one, for ``parts`` even parts."""
++    parts = min(parts, num_layers)
++    return [num_layers * (i + 1) // parts - 1 for i in range(parts - 1)]
++
++
++def patch_decode_submit_layers(*, layers: Sequence[Any], parts: int) -> int:
++    """Make the boundary layers of ``parts`` even parts submit their output.
++
++    Returns the number of layers that submit early. Idempotent.
++    """
++    marked = tuple(_submit_classes.values())
++    done = sum(isinstance(layer, marked) for layer in layers)
++    if done:
++        return done
++    indices = submit_layer_indices(num_layers=len(layers), parts=parts)
++    for index in indices:
++        layer = layers[index]
++        layer.__class__ = _submit_class(type(layer))
++    return len(indices)
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 8f33370322..1a5346fc88 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -43,6 +43,7 @@ from sglang.srt.hardware_backend.mlx.aot import (
+     MLX_AOT_KERNEL_REGISTRY,
+     MlxAOTKernelSet,
+ )
++from sglang.srt.hardware_backend.mlx.decode_submit import patch_decode_submit_layers
+ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     AttentionOffsetCache,
+     BatchedDecodeContext,
+@@ -345,6 +346,17 @@ class MlxModelRunner:
+             envs.SGLANG_MLX_SDPA_BLOCK_LADDER.get()
+             and not self._cache_layout.has_sliding_window_layers
+         )
++        # Optional: a decode step reaches the GPU in parts
++        # (SGLANG_MLX_DECODE_SUBMIT_PARTS, decode_submit.py).
++        submit_parts = envs.SGLANG_MLX_DECODE_SUBMIT_PARTS.get()
++        if submit_parts > 1:
++            n_patched = patch_decode_submit_layers(
++                layers=self._cache_layout.layers, parts=submit_parts
++            )
++            logger.info(
++                f"MLX decode submission in parts enabled: {n_patched} of "
++                f"{self._cache_layout.num_layers} layers submit early"
++            )
+         if self._cache_layout.has_auxiliary_state:
+             self._maybe_adapt_compact_cache_model()
+             self._model_embed, self._model_norm, self._model_lm_head = (

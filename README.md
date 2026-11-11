@@ -1,7 +1,7 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's
-native MLX backend: **SGLang v0.5.23** (`297e54f`) + 27 patches ([patches/README.md](patches/README.md)).
+native MLX backend: **SGLang v0.5.23** (`297e54f`) + 28 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
 than peak batch throughput. Known issues are
@@ -155,7 +155,7 @@ Receipts: `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`.
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 27 patches + gates
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 28 patches + gates
 source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; always before launching
 
 ./scripts/launch.sh qwen36                  # PRIMARY (any preset from the table above)
@@ -200,7 +200,7 @@ Python 3.12, ~200 GB disk for models. Reference rig: Mac mini (Mac16,11), M4 Pro
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 27 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 28 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -235,7 +235,8 @@ tracking · 027 incremental chat-prompt tokenizer + lazy multimodal decode-back
 (`SGLANG_INCREMENTAL_TOKENIZE`, from the 3090's patch 072) · 028 pipelined decode loop
 under the radix cache · 029–032 SDPA block ladder and fused decode launches (opt-in) ·
 033–035 mRoPE prefix-hit positions, per-request delta, batched decode · 036 windowed
-lookahead view · 037 fused Flint MoE block (on in `flint`).
+lookahead view · 037 fused Flint MoE block · 038 decode submission in parts (both on
+in `flint`).
 
 **Gate protocol (publish precondition):** every setup run, and any stack change before its
 numbers are published, must pass `scripts/test_patch_gates.sh` (pristine replay +

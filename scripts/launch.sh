@@ -366,6 +366,13 @@ apply_preset() {
             # RecursiveSI/flint-int4
             # (benchmarks/perf/2026-11-10/flint/VERDICT.md).
             export SGLANG_MLX_FUSE_FLINT_MOE="${SGLANG_MLX_FUSE_FLINT_MOE:-1}"
+            # Patch 038 (on by default for this preset, =1 restores the single
+            # submission): a decode step reaches the GPU in five parts, so the
+            # GPU runs the front of a step while the host builds the rest.
+            # Bit-identical; 99.9 tok/s greedy at 1K against 93.0 on
+            # RecursiveSI/flint-int4, prefill and wired memory unchanged
+            # (benchmarks/perf/2026-11-10/flint/VERDICT.md).
+            export SGLANG_MLX_DECODE_SUBMIT_PARTS="${SGLANG_MLX_DECODE_SUBMIT_PARTS:-5}"
             MODEL="${MODEL:-mlx-community/flint-oQ8e}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=1024
             SGLANG_MLX_CACHE_LIMIT_GB="${SGLANG_MLX_CACHE_LIMIT_GB:-2}"
