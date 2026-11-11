@@ -1,0 +1,36 @@
+mlx.core.float32, 40 trials: kernel against the stock chain
+  front q rope=0                            0 of 81920 values differ
+  front k rope=0                            0 of 10240 values differ
+  front q rope=1                            0 of 81920 values differ
+  front k rope=1                            0 of 10240 values differ
+  add_norm sum                              0 of 81920 values differ
+  add_norm normed                           0 of 81920 values differ
+  comb                                      0 of 81920 values differ
+  comb_add_norm sum                         0 of 81920 values differ
+  comb_add_norm normed                      0 of 81920 values differ
+  router logits (256 x 2048)                0 of 10240 values differ
+  router, float32 weight copy               0 of 10240 values differ
+  one-launch routing, indices               0 of 240 values differ
+  one-launch routing, weights               0 of 240 values differ
+mlx.core.bfloat16, 40 trials: kernel against the stock chain
+  front q rope=0                            0 of 81920 values differ
+  front k rope=0                            0 of 10240 values differ
+  front q rope=1                            0 of 81920 values differ
+  front k rope=1                            0 of 10240 values differ
+  add_norm sum                              0 of 81920 values differ
+  add_norm normed                           0 of 81920 values differ
+  comb                                      0 of 81920 values differ
+  comb_add_norm sum                         0 of 81920 values differ
+  comb_add_norm normed                      0 of 81920 values differ
+  router logits (256 x 2048)                0 of 10240 values differ
+  router, float32 weight copy               0 of 10240 values differ
+  one-launch routing, indices               0 of 240 values differ
+  one-launch routing, weights               0 of 240 values differ
+controls (each must differ)
+  rope offset 700 against 701            1414 of 2048 values differ
+  q head norm with the k scale           2039 of 2048 values differ
+  comb with reversed weights             2041 of 2048 values differ
+  comb rounded once, not twice            482 of 2048 values differ
+  normed against the plain sum           2047 of 2048 values differ
+  one-launch routing of another token        6 of 6 values differ
+SELFTEST OK

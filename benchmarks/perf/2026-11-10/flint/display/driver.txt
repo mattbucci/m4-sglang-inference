@@ -1,0 +1,59 @@
+## display A/B 13:06:24
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+## sweep warm 13:06:45
+display asleep: No; last GPU sample: 13:06:44 dev=26 rend=23 tiler=9 WindowServer[686]:134 python3.12[72532]:62 media_app_helper[1576]:31 terminal[922]:12
+[disp-warm] cold    1025 tok: cached None, ttft 1.084 s, prefill 945.6 tok/s, decode 100.96 tok/s
+[disp-warm] cold    8202 tok: cached None, ttft 9.667 s, prefill 848.5 tok/s, decode 86.71 tok/s
+wrote <scratch>/flint/disp-warm.json
+display asleep: No; last GPU sample: 13:06:59 dev=10 rend=10 tiler=7 python3.12[72532]:738 WindowServer[686]:113 media_app_helper[1576]:44 terminal[922]:14
+end warm 13:07:00
+## sweep on-a 13:07:00
+display asleep: No; last GPU sample: 13:06:59 dev=10 rend=10 tiler=7 python3.12[72532]:738 WindowServer[686]:113 media_app_helper[1576]:44 terminal[922]:14
+[disp-on-a] cold    1025 tok: cached None, ttft 1.0447 s, prefill 981.1 tok/s, decode 97.23 tok/s
+[disp-on-a] cold    2056 tok: cached None, ttft 2.1993 s, prefill 934.8 tok/s, decode 96.1 tok/s
+[disp-on-a] cold    4086 tok: cached None, ttft 4.5076 s, prefill 906.5 tok/s, decode 94.49 tok/s
+[disp-on-a] cold    8202 tok: cached None, ttft 10.2635 s, prefill 799.1 tok/s, decode 87.39 tok/s
+[disp-on-a] cold   16406 tok: cached None, ttft 24.2771 s, prefill 675.8 tok/s, decode 79.15 tok/s
+[disp-on-a] cold   32799 tok: cached None, ttft 59.6514 s, prefill 549.8 tok/s, decode 66.63 tok/s
+wrote <scratch>/flint/disp-on-a.json
+display asleep: No; last GPU sample: 13:09:00 dev=99 rend=32 tiler=8 python3.12[72532]:683 WindowServer[686]:229 media_app_helper[1576]:50 terminal[922]:33
+end on-a 13:09:03
+## sweep off-a 13:09:23
+display asleep: Yes; last GPU sample: 13:09:21 dev=5 rend=5 tiler=3 media_app_helper[1576]:36 terminal[922]:15
+[disp-off-a] cold    1025 tok: cached None, ttft 1.0053 s, prefill 1019.6 tok/s, decode 102.36 tok/s
+[disp-off-a] cold    2056 tok: cached None, ttft 2.1135 s, prefill 972.8 tok/s, decode 101.3 tok/s
+[disp-off-a] cold    4086 tok: cached None, ttft 4.3395 s, prefill 941.6 tok/s, decode 97.92 tok/s
+[disp-off-a] cold    8202 tok: cached None, ttft 9.8424 s, prefill 833.3 tok/s, decode 91.64 tok/s
+[disp-off-a] cold   16406 tok: cached None, ttft 22.9109 s, prefill 716.1 tok/s, decode 82.99 tok/s
+[disp-off-a] cold   32799 tok: cached None, ttft 54.2709 s, prefill 604.4 tok/s, decode 70.25 tok/s
+wrote <scratch>/flint/disp-off-a.json
+display asleep: Yes; last GPU sample: 13:11:16 dev=99 rend=9 tiler=2 python3.12[72532]:923 terminal[922]:49 media_app_helper[1576]:38
+end off-a 13:11:18
+## sweep on-b 13:11:43
+display asleep: No; last GPU sample: 13:11:42 dev=21 rend=21 tiler=8 WindowServer[686]:141 media_app_helper[1576]:18 terminal[922]:15
+[disp-on-b] cold    1025 tok: cached None, ttft 1.0366 s, prefill 988.8 tok/s, decode 97.91 tok/s
+[disp-on-b] cold    2056 tok: cached None, ttft 2.1831 s, prefill 941.8 tok/s, decode 97.15 tok/s
+[disp-on-b] cold    4086 tok: cached None, ttft 4.4404 s, prefill 920.2 tok/s, decode 95.93 tok/s
+[disp-on-b] cold    8202 tok: cached None, ttft 9.5452 s, prefill 859.3 tok/s, decode 89.43 tok/s
+[disp-on-b] cold   16406 tok: cached None, ttft 21.9824 s, prefill 746.3 tok/s, decode 80.89 tok/s
+[disp-on-b] cold   32799 tok: cached None, ttft 55.3864 s, prefill 592.2 tok/s, decode 68.4 tok/s
+wrote <scratch>/flint/disp-on-b.json
+display asleep: No; last GPU sample: 13:13:37 dev=0 rend=0 tiler=0 python3.12[72532]:851 WindowServer[686]:104 media_app_helper[1576]:13
+end on-b 13:13:38
+## sweep off-b 13:13:58
+display asleep: Yes; last GPU sample: 13:13:57 dev=0 rend=0 tiler=0 media_app_helper[1576]:19
+[disp-off-b] cold    1025 tok: cached None, ttft 1.0051 s, prefill 1019.8 tok/s, decode 102.42 tok/s
+[disp-off-b] cold    2056 tok: cached None, ttft 2.1132 s, prefill 972.9 tok/s, decode 101.19 tok/s
+[disp-off-b] cold    4086 tok: cached None, ttft 4.3064 s, prefill 948.8 tok/s, decode 99.44 tok/s
+[disp-off-b] cold    8202 tok: cached None, ttft 9.3242 s, prefill 879.6 tok/s, decode 93.15 tok/s
+[disp-off-b] cold   16406 tok: cached None, ttft 21.535 s, prefill 761.8 tok/s, decode 83.76 tok/s
+[disp-off-b] cold   32799 tok: cached None, ttft 53.579 s, prefill 612.2 tok/s, decode 71.17 tok/s
+wrote <scratch>/flint/disp-off-b.json
+display asleep: Yes; last GPU sample: 13:15:48 dev=85 rend=4 tiler=1 python3.12[72532]:956 media_app_helper[1576]:41
+end off-b 13:15:50
+wired 26.2 GB
+tracebacks in the log: 0
+DISPLAY_AB_DONE 13:15:57

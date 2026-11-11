@@ -1,0 +1,97 @@
+{
+  "tag": "slot-base-c",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 1103,
+      "cold": {
+        "prompt_tokens": 1025,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 1.051,
+        "total_s": 4.2385,
+        "text_sha": "6c4afc36cd96bb31",
+        "tpot_ms": 12.5001,
+        "decode_tok_s": 80.0
+      },
+      "prefill_tok_s": 975.3
+    },
+    {
+      "target": 2207,
+      "cold": {
+        "prompt_tokens": 2056,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 2.1985,
+        "total_s": 5.415,
+        "text_sha": "dbb2b4c6e2f5d1b5",
+        "tpot_ms": 12.6135,
+        "decode_tok_s": 79.28
+      },
+      "prefill_tok_s": 935.2
+    },
+    {
+      "target": 4414,
+      "cold": {
+        "prompt_tokens": 4086,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 4.4774,
+        "total_s": 7.7546,
+        "text_sha": "2b5d3910a4bccb34",
+        "tpot_ms": 12.8514,
+        "decode_tok_s": 77.81
+      },
+      "prefill_tok_s": 912.6
+    },
+    {
+      "target": 8828,
+      "cold": {
+        "prompt_tokens": 8202,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 10.2167,
+        "total_s": 13.6813,
+        "text_sha": "64ab5428d19e49fe",
+        "tpot_ms": 13.5867,
+        "decode_tok_s": 73.6
+      },
+      "prefill_tok_s": 802.8
+    },
+    {
+      "target": 17655,
+      "cold": {
+        "prompt_tokens": 16406,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 23.8065,
+        "total_s": 27.5484,
+        "text_sha": "a373d19246576418",
+        "tpot_ms": 14.6737,
+        "decode_tok_s": 68.15
+      },
+      "prefill_tok_s": 689.1
+    },
+    {
+      "target": 35310,
+      "cold": {
+        "prompt_tokens": 32799,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 56.2113,
+        "total_s": 60.5105,
+        "text_sha": "34233dbefead7ce9",
+        "tpot_ms": 16.8592,
+        "decode_tok_s": 59.31
+      },
+      "prefill_tok_s": 583.5
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

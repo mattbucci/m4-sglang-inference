@@ -30,6 +30,11 @@ Arms (combine with "+"):
   sglu         the tree's fused routed-expert kernel (moe/fused_swiglu.py):
                gate projection, SiLU and the product with the up projection
                in one launch
+  route1       the router logits and the routing in one launch: the tiles of
+               the stock matrix-vector kernel leave the logits in threadgroup
+               memory and the first SIMD group runs mlx-lm's routing on them
+               (stock here: one launch for the logits, one for the routing).
+               TG=<threads> sets the threadgroup (1024, 512 or 256)
   route_const  expert indices and weights frozen per layer (a ceiling, not a
                candidate: removes the casts, the router matmul and the routing
                kernel while the same experts are read)
@@ -68,11 +73,11 @@ from mlx_lm.models.activations import swiglu
 from mlx_lm.models.base import create_attention_mask
 
 MODE = set()
-CALLS = {"fold": 0, "front": 0, "comb": 0, "mid": 0, "tail": 0, "gate": 0, "sglu": 0}
+CALLS = {"fold": 0, "front": 0, "comb": 0, "mid": 0, "tail": 0, "gate": 0, "sglu": 0, "route1": 0}
 ALIASES = {"all": "front+mlp2+mid+tail+gatek", "all32": "front+mlp2+mid+tail+gate32"}
 DEFAULT_ARMS = ("base,qkv,mlp2,front,comb,mid,tail,gate32,gatek,sglu,all,all32,all+sglu,"
                 "route_const,all+route_const")
-_FOLD, _K, _W32, _GATE_OK, _SGLU, _CONST = {}, {}, {}, {}, {}, {}
+_FOLD, _K, _W32, _GATE_OK, _SGLU, _CONST, _ROUTE1_OK = {}, {}, {}, {}, {}, {}, {}
 _REPLAY, _REPLAY_AT, REPLAY_STEPS = {}, {}, 64
 
 # The sum over a threadgroup of TG threads in the order of mx.fast.rms_norm.
@@ -233,6 +238,94 @@ _GATE_SRC = """
     }
 """
 
+# One threadgroup: each SIMD group runs TILES tiles of the matrix-vector kernel
+# above and leaves its logits in threadgroup memory; the first SIMD group then
+# runs mlx-lm's expert_routing on them with unit multiplier and scale, no bias.
+_ROUTE1_SRC = """
+    threadgroup float lg[E];
+    uint lane = thread_index_in_simdgroup;
+    uint sg = simdgroup_index_in_threadgroup;
+    for (int t = 0; t < TILES; t++) {
+        uint row = (sg * TILES + t) * 4;
+        float result[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+        int bn = lane * 4;
+        for (int i = 0; i < D / 128; i++) {
+            float v[4];
+            for (int tn = 0; tn < 4; tn++) {
+                v[tn] = static_cast<float>(x[bn + tn]);
+            }
+            for (int tm = 0; tm < 4; tm++) {
+                for (int tn = 0; tn < 4; tn++) {
+                    result[tm] += static_cast<float>(w[size_t(row + tm) * D + bn + tn]) * v[tn];
+                }
+            }
+            bn += 128;
+        }
+        for (int tm = 0; tm < 4; tm++) {
+            for (ushort sn = 16; sn >= 1; sn >>= 1) {
+                result[tm] += simd_shuffle_down(result[tm], sn);
+            }
+        }
+        if (lane == 0) {
+            for (int tm = 0; tm < 4; tm++) {
+                lg[row + tm] = result[tm];
+            }
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (sg != 0) {
+        return;
+    }
+    constexpr int R = (E + 31) / 32;
+    float score[R];
+    float biased[R];
+    for (int i = 0; i < R; i++) {
+        int e = lane + 32 * i;
+        score[i] = 0.0f;
+        biased[i] = -INFINITY;
+        if (e < E) {
+            float v = lg[e];
+            float y = 1.0f / (1.0f + metal::precise::exp(metal::abs(v)));
+            score[i] = v < 0 ? y : 1.0f - y;
+            biased[i] = score[i];
+        }
+    }
+    float wk[K];
+    for (int k = 0; k < K; k++) {
+        float best = -INFINITY;
+        int best_e = E;
+        for (int i = 0; i < R; i++) {
+            int e = lane + 32 * i;
+            if (biased[i] > best || (biased[i] == best && e < best_e)) {
+                best = biased[i];
+                best_e = e;
+            }
+        }
+        float top = simd_max(best);
+        int winner = simd_min(best == top ? best_e : E);
+        float s = 0.0f;
+        for (int i = 0; i < R; i++) {
+            if (lane + 32 * i == winner) {
+                s = score[i];
+                biased[i] = -INFINITY;
+            }
+        }
+        wk[k] = simd_sum(s);
+        if (lane == 0) {
+            inds[k] = winner;
+        }
+    }
+    float total = 0.0f;
+    for (int k = 0; k < K; k++) {
+        total = wk[k] + total;
+    }
+    if (lane == 0) {
+        for (int k = 0; k < K; k++) {
+            weights[k] = wk[k] / total;
+        }
+    }
+"""
+
 
 def _kernel(name, ins, outs, src, header=""):
     if name not in _K:
@@ -320,6 +413,51 @@ def gate_logits(weight, x):
         output_shapes=[(1, 1, e)],
         output_dtypes=[mx.float32],
     )[0]
+
+
+def route1(weight, x, top_k):
+    """Expert indices and weights (1, 1, K) of one token in one launch."""
+    e, d = weight.shape
+    tg = int(os.environ.get("TG", "1024"))
+    return _kernel("flint_route1", ["w", "x"], ["inds", "weights"], _ROUTE1_SRC)(
+        inputs=[weight, x],
+        template=[("E", e), ("D", d), ("K", top_k), ("TILES", e // 4 // (tg // 32))],
+        grid=(tg, 1, 1),
+        threadgroup=(tg, 1, 1),
+        output_shapes=[(1, 1, top_k)] * 2,
+        output_dtypes=[mx.uint32, mx.float32],
+    )
+
+
+def stock_routing(block, x):
+    return expert_routing(
+        block.gate(x.astype(mx.float32)), block._zero_bias,
+        top_k=block.top_k, multiplier=1.0, score_eps=0.0, route_scale=1.0,
+    )
+
+
+def route1_ok(block, x, trials=8):
+    """True where the one-launch routing gives the stock indices and weights
+    bit for bit on this block (checked once on random hidden states)."""
+    ok = _ROUTE1_OK.get(id(block))
+    if ok is None:
+        gate, w = block.gate, block.gate.weight
+        tg = int(os.environ.get("TG", "1024"))
+        ok = ("bias" not in gate and w.ndim == 2 and w.shape[0] % (tg // 8) == 0
+              and w.shape[1] % 128 == 0 and x.size == w.shape[1])
+        if ok:
+            keys = mx.random.split(mx.random.key(7000 + len(_ROUTE1_OK)), trials)
+            for i in range(trials):
+                probe = (2 * mx.random.normal(x.shape, key=keys[i])).astype(x.dtype)
+                got, want = route1(w, probe, block.top_k), stock_routing(block, probe)
+                if not all(mx.array_equal(a, b).item() for a, b in zip(got, want)):
+                    ok = False
+                    break
+        if not ok and not any(v is False for v in _ROUTE1_OK.values()):
+            print(f"# one-launch routing not bit-identical for weight {tuple(w.shape)}: stock kept",
+                  file=sys.stderr, flush=True)
+        _ROUTE1_OK[id(block)] = ok
+    return ok
 
 
 def gate_kernel_ok(gate, x):
@@ -445,6 +583,9 @@ def route(block, x):
         at = _REPLAY_AT[id(block)] = (_REPLAY_AT.get(id(block), -1) + 1) % REPLAY_STEPS
         return seq[at]
     gate = block.gate
+    if "route1" in MODE and seq is None and "route_const" not in MODE and route1_ok(block, x):
+        CALLS["route1"] += 1
+        return route1(gate.weight, x, block.top_k)
     if "gatek" in MODE and gate_kernel_ok(gate, x):
         CALLS["gate"] += 1
         logits = gate_logits(gate.weight, x)
@@ -483,7 +624,8 @@ def experts(block, x, inds):
 
 
 def moe_call(self, x):
-    if (not (MODE & {"comb", "route_const", "route_replay", "gate32", "gatek", "sglu"}) or x.shape[1] != 1
+    if (not (MODE & {"comb", "route_const", "route_replay", "gate32", "gatek", "sglu", "route1"})
+            or x.shape[1] != 1
             or self.sharding_group is not None):
         return _moe_call(self, x)
     inds, wts = route(self, x)
@@ -548,7 +690,7 @@ def reset():
     """Forget every per-module cache (they are keyed by module identity, so a
     second model in the same process needs this)."""
     module = _SGLU.get("module")
-    for cache in (_FOLD, _W32, _GATE_OK, _SGLU, _CONST):
+    for cache in (_FOLD, _W32, _GATE_OK, _SGLU, _CONST, _ROUTE1_OK):
         cache.clear()
     if module is not None:
         _SGLU["module"] = module
@@ -621,6 +763,11 @@ def selftest(trials=40):
             tally.add("router logits (256 x 2048)", gate_logits(lin.weight, x), lin(x.astype(mx.float32)))
             tally.add("router, float32 weight copy", x.astype(mx.float32) @ lin.weight.astype(mx.float32).T,
                       lin(x.astype(mx.float32)))
+            want = expert_routing(lin(x.astype(mx.float32)), mx.zeros((E,)), top_k=K, multiplier=1.0,
+                                  score_eps=0.0, route_scale=1.0)
+            got = route1(lin.weight, x, K)
+            tally.add("one-launch routing, indices", got[0], want[0])
+            tally.add("one-launch routing, weights", got[1], want[1])
         print(f"{T}, {trials} trials: kernel against the stock chain")
         ok &= tally.show()
     T = mx.bfloat16
@@ -633,6 +780,7 @@ def selftest(trials=40):
     one = ((y.astype(mx.float32) * wts[..., None]).sum(axis=-2) + shared.astype(mx.float32)).astype(T)
     ctl.add("comb rounded once, not twice", one, stock)
     ctl.add("normed against the plain sum", normed, a + stock)
+    ctl.add("one-launch routing of another token", route1(lin.weight, x[..., ::-1], K)[1], want[1])
     print("controls (each must differ)")
     ok &= ctl.show(expect_equal=False)
     print("SELFTEST OK" if ok else "SELFTEST FAILED")

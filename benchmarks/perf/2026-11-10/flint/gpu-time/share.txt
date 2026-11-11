@@ -1,0 +1,37 @@
+| window | samples | server | WindowServer | other | device % | renderer % |
+|---|--:|--:|--:|--:|--:|--:|
+| on-a | 24 | 693 | 196 | 88 | 96 | 29 |
+| asleep-a | 23 | 849 | 0 | 110 | 97 | 12 |
+| on-b | 23 | 768 | 158 | 44 | 93 | 20 |
+| asleep-b | 22 | 930 | 0 | 42 | 96 | 4 |
+| quiet-ladder | 141 | 837 | 0 | 158 | 99 | 15 |
+| stock-c | 25 | 697 | 0 | 64 | 79 | 7 |
+| async-a | 26 | 752 | 0 | 40 | 81 | 3 |
+| one-c | 25 | 745 | 0 | 39 | 85 | 3 |
+| async-b | 25 | 749 | 0 | 37 | 84 | 3 |
+| stock-d | 26 | 718 | 0 | 43 | 83 | 4 |
+| q36-swap | 20 | 655 | 0 | 46 | 76 | 4 |
+| q36-stock-c | 21 | 696 | 0 | 47 | 74 | 4 |
+| q36-async-a | 20 | 684 | 0 | 49 | 56 | 4 |
+| q36-one-c | 20 | 674 | 0 | 47 | 68 | 4 |
+| q36-one-d | 20 | 695 | 0 | 49 | 73 | 4 |
+| q36-async-b | 20 | 699 | 0 | 47 | 55 | 4 |
+| q36-stock-d | 21 | 676 | 0 | 46 | 74 | 4 |
+
+on-a: media_app_helper 63, terminal 25, game_launcher_helper 0
+asleep-a: media_app_helper 66, terminal 43, loginwindow 1
+on-b: media_app_helper 40, terminal 4
+asleep-b: media_app_helper 42, loginwindow 1, game_launcher_helper 0
+quiet-ladder: media_app_helper 156, loginwindow 1, game_launcher_helper 1
+stock-c: media_app_helper 41, terminal 22, loginwindow 1, game_launcher_helper 0
+async-a: media_app_helper 36, terminal 2, loginwindow 1, game_launcher_helper 0
+one-c: media_app_helper 38, loginwindow 1
+async-b: media_app_helper 36, loginwindow 1, game_launcher_helper 0
+stock-d: media_app_helper 42, loginwindow 1
+q36-swap: media_app_helper 45, loginwindow 1
+q36-stock-c: media_app_helper 46, loginwindow 1
+q36-async-a: media_app_helper 48, loginwindow 1
+q36-one-c: media_app_helper 46, loginwindow 1, game_launcher_helper 0
+q36-one-d: media_app_helper 47, loginwindow 2, game_launcher_helper 0
+q36-async-b: media_app_helper 46, loginwindow 1
+q36-stock-d: media_app_helper 45, loginwindow 1

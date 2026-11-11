@@ -1,0 +1,41 @@
+{
+  "tag": "quiet-warm",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 1103,
+      "cold": {
+        "prompt_tokens": 1025,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 1.0045,
+        "total_s": 1.624,
+        "text_sha": "fea886233aa128e7",
+        "tpot_ms": 9.8319,
+        "decode_tok_s": 101.71
+      },
+      "prefill_tok_s": 1020.4
+    },
+    {
+      "target": 8828,
+      "cold": {
+        "prompt_tokens": 8202,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.3134,
+        "total_s": 10.0016,
+        "text_sha": "c02ab73d41294292",
+        "tpot_ms": 10.9229,
+        "decode_tok_s": 91.55
+      },
+      "prefill_tok_s": 880.7
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

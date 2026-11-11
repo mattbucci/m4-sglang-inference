@@ -1,0 +1,41 @@
+{
+  "tag": "disp-warm",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 1103,
+      "cold": {
+        "prompt_tokens": 1025,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 1.084,
+        "total_s": 1.7081,
+        "text_sha": "de9dcceea73406b1",
+        "tpot_ms": 9.9054,
+        "decode_tok_s": 100.96
+      },
+      "prefill_tok_s": 945.6
+    },
+    {
+      "target": 8828,
+      "cold": {
+        "prompt_tokens": 8202,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.667,
+        "total_s": 10.3937,
+        "text_sha": "f132d5954ac7dfef",
+        "tpot_ms": 11.5323,
+        "decode_tok_s": 86.71
+      },
+      "prefill_tok_s": 848.5
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

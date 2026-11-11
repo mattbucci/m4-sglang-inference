@@ -1,0 +1,114 @@
+## part 1: flags against position 12:42:28
+## deep base-a (SGLANG_MLX_FUSE_FLINT_MOE=0 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 12:42:28
+up
+[slot-base-a] cold    1025 tok: cached None, ttft 1.0385 s, prefill 987.0 tok/s, decode 80.8 tok/s
+[slot-base-a] cold    2056 tok: cached None, ttft 2.1888 s, prefill 939.3 tok/s, decode 79.55 tok/s
+[slot-base-a] cold    4086 tok: cached None, ttft 4.4611 s, prefill 915.9 tok/s, decode 78.72 tok/s
+[slot-base-a] cold    8202 tok: cached None, ttft 9.6516 s, prefill 849.8 tok/s, decode 73.91 tok/s
+[slot-base-a] cold   16406 tok: cached None, ttft 23.3028 s, prefill 704.0 tok/s, decode 68.69 tok/s
+[slot-base-a] cold   32799 tok: cached None, ttft 58.3714 s, prefill 561.9 tok/s, decode 59.76 tok/s
+wrote <scratch>/flint/slot-base-a.json
+wired 27.2 GB
+tracebacks in the log: 0
+## deep both-a (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 12:44:53
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[slot-both-a] cold    1025 tok: cached None, ttft 1.042 s, prefill 983.7 tok/s, decode 97.19 tok/s
+[slot-both-a] cold    2056 tok: cached None, ttft 2.2099 s, prefill 930.4 tok/s, decode 97.44 tok/s
+[slot-both-a] cold    4086 tok: cached None, ttft 4.4363 s, prefill 921.0 tok/s, decode 94.29 tok/s
+[slot-both-a] cold    8202 tok: cached None, ttft 10.076 s, prefill 814.0 tok/s, decode 88.14 tok/s
+[slot-both-a] cold   16406 tok: cached None, ttft 24.0957 s, prefill 680.9 tok/s, decode 79.28 tok/s
+[slot-both-a] cold   32799 tok: cached None, ttft 57.5528 s, prefill 569.9 tok/s, decode 66.4 tok/s
+wrote <scratch>/flint/slot-both-a.json
+wired 27.2 GB
+tracebacks in the log: 0
+## deep base-b (SGLANG_MLX_FUSE_FLINT_MOE=0 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 12:47:14
+up
+[slot-base-b] cold    1025 tok: cached None, ttft 1.0802 s, prefill 948.9 tok/s, decode 81.17 tok/s
+[slot-base-b] cold    2056 tok: cached None, ttft 2.2041 s, prefill 932.8 tok/s, decode 80.42 tok/s
+[slot-base-b] cold    4086 tok: cached None, ttft 4.4934 s, prefill 909.3 tok/s, decode 79.67 tok/s
+[slot-base-b] cold    8202 tok: cached None, ttft 9.6464 s, prefill 850.3 tok/s, decode 73.66 tok/s
+[slot-base-b] cold   16406 tok: cached None, ttft 22.3544 s, prefill 733.9 tok/s, decode 68.49 tok/s
+[slot-base-b] cold   32799 tok: cached None, ttft 55.8381 s, prefill 587.4 tok/s, decode 59.51 tok/s
+wrote <scratch>/flint/slot-base-b.json
+wired 27.2 GB
+tracebacks in the log: 0
+## deep both-b (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 12:49:34
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[slot-both-b] cold    1025 tok: cached None, ttft 1.0435 s, prefill 982.3 tok/s, decode 97.13 tok/s
+[slot-both-b] cold    2056 tok: cached None, ttft 2.1813 s, prefill 942.6 tok/s, decode 96.41 tok/s
+[slot-both-b] cold    4086 tok: cached None, ttft 4.4447 s, prefill 919.3 tok/s, decode 93.31 tok/s
+[slot-both-b] cold    8202 tok: cached None, ttft 9.6808 s, prefill 847.2 tok/s, decode 88.19 tok/s
+[slot-both-b] cold   16406 tok: cached None, ttft 22.0768 s, prefill 743.1 tok/s, decode 79.92 tok/s
+[slot-both-b] cold   32799 tok: cached None, ttft 56.5019 s, prefill 580.5 tok/s, decode 67.39 tok/s
+wrote <scratch>/flint/slot-both-b.json
+wired 27.2 GB
+tracebacks in the log: 0
+## qwen36 server between arms 12:51:52
+up
+[slot-swap] cold    8202 tok: cached None, ttft 10.6901 s, prefill 767.3 tok/s, decode 74.72 tok/s
+wrote <scratch>/flint/slot-swap.json
+## deep both-c (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 12:52:33
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[slot-both-c] cold    1025 tok: cached None, ttft 1.0433 s, prefill 982.5 tok/s, decode 97.11 tok/s
+[slot-both-c] cold    2056 tok: cached None, ttft 2.2194 s, prefill 926.4 tok/s, decode 96.74 tok/s
+[slot-both-c] cold    4086 tok: cached None, ttft 4.4824 s, prefill 911.6 tok/s, decode 93.92 tok/s
+[slot-both-c] cold    8202 tok: cached None, ttft 9.8321 s, prefill 834.2 tok/s, decode 87.55 tok/s
+[slot-both-c] cold   16406 tok: cached None, ttft 23.7645 s, prefill 690.4 tok/s, decode 79.3 tok/s
+[slot-both-c] cold   32799 tok: cached None, ttft 60.2928 s, prefill 544.0 tok/s, decode 67.53 tok/s
+wrote <scratch>/flint/slot-both-c.json
+wired 27.2 GB
+tracebacks in the log: 0
+## deep base-c (SGLANG_MLX_FUSE_FLINT_MOE=0 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 12:55:02
+up
+[slot-base-c] cold    1025 tok: cached None, ttft 1.051 s, prefill 975.3 tok/s, decode 80.0 tok/s
+[slot-base-c] cold    2056 tok: cached None, ttft 2.1985 s, prefill 935.2 tok/s, decode 79.28 tok/s
+[slot-base-c] cold    4086 tok: cached None, ttft 4.4774 s, prefill 912.6 tok/s, decode 77.81 tok/s
+[slot-base-c] cold    8202 tok: cached None, ttft 10.2167 s, prefill 802.8 tok/s, decode 73.6 tok/s
+[slot-base-c] cold   16406 tok: cached None, ttft 23.8065 s, prefill 689.1 tok/s, decode 68.15 tok/s
+[slot-base-c] cold   32799 tok: cached None, ttft 56.2113 s, prefill 583.5 tok/s, decode 59.31 tok/s
+wrote <scratch>/flint/slot-base-c.json
+wired 27.2 GB
+tracebacks in the log: 0
+slot.sh: line 60: 62294 Terminated: 15          ( while :; do
+    printf '%s ' "$(date '+%H:%M:%S')"; vm_stat | awk -F: 'NR > 1 {gsub(/[ .]/, "", $2); gsub(/^Pages /, "", $1); gsub(/[ "-]/, "_", $1); printf "%s=%s ", $1, $2}'; printf 'level=%s\n' "$(sysctl -n kern.memorystatus_level)"; /bin/sleep 5;
+done ) > $F/slot-vm.txt 2> /dev/null
+SLOT_ATTRIB_DONE 12:57:33
+## part 2: one-launch routing, raw 12:57:33
+selftest TG=1024 rc=0: SELFTEST OK
+probe TG=1024 rc=0
+{"arm": "comb+gatek", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.907, "pipelined_segs": [9.894, 9.951, 9.907], "tok_s": 100.94, "sync_ms": 11.958, "build_ms": 1.395, "primitives": 2183, "primitive_coun
+{"arm": "comb+route1", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.757, "pipelined_segs": [10.717, 10.757, 10.823], "tok_s": 92.96, "sync_ms": 12.985, "build_ms": 1.313, "primitives": 2136, "primitive_
+{"arm": "comb+route_replay", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.141, "pipelined_segs": [9.141, 9.12, 9.163], "tok_s": 109.39, "sync_ms": 11.124, "build_ms": 1.178, "primitives": 2089, "primitiv
+{"arm": "comb+route_replay", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.146, "pipelined_segs": [9.101, 9.146, 9.168], "tok_s": 109.34, "sync_ms": 11.134, "build_ms": 1.193, "primitives": 2089, "primiti
+{"arm": "comb+route1", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.814, "pipelined_segs": [10.759, 10.844, 10.814], "tok_s": 92.48, "sync_ms": 13.043, "build_ms": 1.312, "primitives": 2136, "primitive_
+{"arm": "comb+gatek", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.955, "pipelined_segs": [9.96, 9.955, 9.951], "tok_s": 100.45, "sync_ms": 11.983, "build_ms": 1.392, "primitives": 2183, "primitive_count
+{"arm": "comb+gatek", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 11.036, "pipelined_segs": [11.036, 11.032, 11.149], "tok_s": 90.61, "sync_ms": 13.106, "build_ms": 1.4, "primitives": 2183, "primitive_cou
+{"arm": "comb+route1", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 11.911, "pipelined_segs": [11.911, 11.911, 11.993], "tok_s": 83.96, "sync_ms": 14.216, "build_ms": 1.334, "primitives": 2136, "primitive_
+{"arm": "comb+route_replay", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.161, "pipelined_segs": [10.104, 10.161, 10.193], "tok_s": 98.42, "sync_ms": 12.278, "build_ms": 1.219, "primitives": 2089, "prim
+{"arm": "comb+route_replay", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.241, "pipelined_segs": [10.274, 10.186, 10.241], "tok_s": 97.65, "sync_ms": 12.192, "build_ms": 1.23, "primitives": 2089, "primi
+{"arm": "comb+route1", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 11.982, "pipelined_segs": [11.914, 11.982, 12.03], "tok_s": 83.46, "sync_ms": 14.175, "build_ms": 1.355, "primitives": 2136, "primitive_c
+{"arm": "comb+gatek", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 11.093, "pipelined_segs": [11.093, 11.045, 11.164], "tok_s": 90.15, "sync_ms": 13.026, "build_ms": 1.481, "primitives": 2183, "primitive_c
+selftest TG=256 rc=0: SELFTEST OK
+probe TG=256 rc=0
+{"arm": "comb+gatek", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.927, "pipelined_segs": [9.863, 9.927, 11.182], "tok_s": 100.74, "sync_ms": 12.296, "build_ms": 1.441, "primitives": 2183, "primitive_cou
+{"arm": "comb+route1", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.909, "pipelined_segs": [10.909, 10.842, 10.916], "tok_s": 91.66, "sync_ms": 13.068, "build_ms": 1.338, "primitives": 2136, "primitive_
+{"arm": "comb+route_replay", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.14, "pipelined_segs": [9.094, 9.14, 9.172], "tok_s": 109.41, "sync_ms": 11.114, "build_ms": 1.182, "primitives": 2089, "primitive
+{"arm": "comb+route_replay", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.155, "pipelined_segs": [9.11, 9.155, 9.188], "tok_s": 109.23, "sync_ms": 11.145, "build_ms": 1.203, "primitives": 2089, "primitiv
+{"arm": "comb+route1", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.881, "pipelined_segs": [10.881, 10.897, 10.876], "tok_s": 91.9, "sync_ms": 13.09, "build_ms": 1.316, "primitives": 2136, "primitive_co
+{"arm": "comb+gatek", "depth": 1024, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 9.927, "pipelined_segs": [9.927, 9.927, 9.954], "tok_s": 100.73, "sync_ms": 12.033, "build_ms": 1.42, "primitives": 2183, "primitive_count
+{"arm": "comb+gatek", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 11.1, "pipelined_segs": [11.067, 11.1, 11.233], "tok_s": 90.09, "sync_ms": 13.172, "build_ms": 1.433, "primitives": 2183, "primitive_count
+{"arm": "comb+route1", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 12.101, "pipelined_segs": [12.037, 12.101, 12.176], "tok_s": 82.64, "sync_ms": 14.311, "build_ms": 1.361, "primitives": 2136, "primitive_
+{"arm": "comb+route_replay", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.199, "pipelined_segs": [10.203, 10.147, 10.199], "tok_s": 98.05, "sync_ms": 12.263, "build_ms": 1.217, "primitives": 2089, "prim
+{"arm": "comb+route_replay", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 10.242, "pipelined_segs": [10.242, 10.239, 10.243], "tok_s": 97.63, "sync_ms": 12.228, "build_ms": 1.222, "primitives": 2089, "prim
+{"arm": "comb+route1", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 12.068, "pipelined_segs": [12.017, 12.068, 12.117], "tok_s": 82.87, "sync_ms": 14.333, "build_ms": 1.379, "primitives": 2136, "primitive_
+{"arm": "comb+gatek", "depth": 8192, "model": "flint-int4", "chunk": 1024, "env": {}, "pipelined_ms": 11.138, "pipelined_segs": [11.194, 11.138, 11.131], "tok_s": 89.78, "sync_ms": 13.193, "build_ms": 1.433, "primitives": 2183, "primitive_c
+SLOT_DONE 13:02:09

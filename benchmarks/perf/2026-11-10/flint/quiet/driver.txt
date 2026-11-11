@@ -1,0 +1,26 @@
+display asleep: yes; keyboard and mouse idle 447523 s
+## quiet ladder 13:19:38
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[quiet-warm] cold    1025 tok: cached None, ttft 1.0045 s, prefill 1020.4 tok/s, decode 101.71 tok/s
+[quiet-warm] cold    8202 tok: cached None, ttft 9.3134 s, prefill 880.7 tok/s, decode 91.55 tok/s
+wrote <scratch>/flint/quiet-warm.json
+[quiet-ship] cold    1025 tok: cached None, ttft 1.0024 s, prefill 1022.5 tok/s, decode 102.45 tok/s
+[quiet-ship] cold    2056 tok: cached None, ttft 2.1314 s, prefill 964.6 tok/s, decode 101.68 tok/s
+[quiet-ship] cold    4086 tok: cached None, ttft 4.2883 s, prefill 952.8 tok/s, decode 98.44 tok/s
+[quiet-ship] cold    8202 tok: cached None, ttft 9.3338 s, prefill 878.7 tok/s, decode 92.81 tok/s
+[quiet-ship] cold   16406 tok: cached None, ttft 22.227 s, prefill 738.1 tok/s, decode 83.32 tok/s
+[quiet-ship] cold   32799 tok: cached None, ttft 55.2629 s, prefill 593.5 tok/s, decode 71.4 tok/s
+[quiet-ship] cold   64958 tok: cached None, ttft 145.1081 s, prefill 447.7 tok/s, decode 55.31 tok/s
+[quiet-ship] cold  129953 tok: cached None, ttft 438.931 s, prefill 296.1 tok/s, decode 37.48 tok/s
+wrote <scratch>/flint/quiet-ship.json
+ladder window 13:20:10-13:31:58
+| quiet-ship | 141 | 837 | 0 | 158 | 99 | 15 |
+wired 27.7 GB
+tracebacks in the log: 0
+QUIET_LADDER_DONE 13:32:05
+display asleep at the end: yes
+quiet1.sh: line 29: 77339 Terminated: 15          quiet_keeper
+QUIET1_DONE 13:54:41

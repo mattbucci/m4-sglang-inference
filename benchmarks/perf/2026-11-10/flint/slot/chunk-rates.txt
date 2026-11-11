@@ -1,0 +1,24 @@
+       slot-base-a.log request 0 (3 full chunks): 0:931 1:899
+       slot-both-a.log request 0 (3 full chunks): 0:927 1:899
+       slot-base-b.log request 0 (3 full chunks): 0:931 1:898
+       slot-both-b.log request 0 (3 full chunks): 0:924 1:893
+       slot-both-c.log request 0 (3 full chunks): 0:924 1:892
+       slot-base-c.log request 0 (3 full chunks): 0:927 1:888
+       slot-base-a.log request 1 (8 full chunks): 0:921 1:894 2:867 3:839 4:818 5:792 6:767
+       slot-both-a.log request 1 (8 full chunks): 0:901 1:866 2:834 3:801 4:772 5:742 6:719
+       slot-base-b.log request 1 (8 full chunks): 0:924 1:897 2:867 3:842 4:814 5:794 6:770
+       slot-both-b.log request 1 (8 full chunks): 0:923 1:894 2:868 3:838 4:815 5:790 6:767
+       slot-both-c.log request 1 (8 full chunks): 0:922 1:895 2:859 3:824 4:793 5:763 6:736
+       slot-base-c.log request 1 (8 full chunks): 0:890 1:855 2:822 3:790 4:762 5:736 6:712
+       slot-base-a.log request 2 (16 full chunks): 0:914 1:872 2:839 3:810 4:782 5:752 6:725 8:636 12:598 14:565
+       slot-both-a.log request 2 (16 full chunks): 0:847 1:816 2:788 3:757 4:739 5:714 6:692 8:653 12:588 14:565
+       slot-base-b.log request 2 (16 full chunks): 0:927 1:890 2:864 3:836 4:806 5:777 6:752 8:705 12:631 14:594
+       slot-both-b.log request 2 (16 full chunks): 0:925 1:899 2:872 3:843 4:817 5:789 6:762 8:709 12:635 14:604
+       slot-both-c.log request 2 (16 full chunks): 0:874 1:836 2:808 3:775 4:752 5:725 6:702 8:655 12:592 14:565
+       slot-base-c.log request 2 (16 full chunks): 0:844 1:816 2:790 3:764 4:737 5:717 6:695 8:661 12:601 14:575
+       slot-base-a.log request 3 (32 full chunks): 0:849 1:823 2:794 3:771 4:746 5:724 6:699 8:663 16:547 24:455 30:405
+       slot-both-a.log request 3 (32 full chunks): 0:838 1:812 2:787 3:764 4:745 5:722 6:704 8:671 16:554 24:469 30:423
+       slot-base-b.log request 3 (32 full chunks): 0:898 1:868 2:835 3:809 4:782 5:759 6:740 8:697 16:568 24:481 30:428
+       slot-both-b.log request 3 (32 full chunks): 0:894 1:866 2:840 3:808 4:783 5:762 6:736 8:698 16:574 24:487 30:423
+       slot-both-c.log request 3 (32 full chunks): 0:853 1:819 2:794 3:769 4:746 5:725 6:702 8:665 16:507 24:403 30:393
+       slot-base-c.log request 3 (32 full chunks): 0:867 1:841 2:813 3:787 4:764 5:741 6:721 8:686 16:565 24:482 30:433

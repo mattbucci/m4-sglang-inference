@@ -1,0 +1,18 @@
+## gates qwen36, fusion flags and five parts 13:55:16
+up
+PGATE qwen36 validate rc=0
+PGATE qwen36 thinking rc=0
+PGATE qwen36 vision rc=0
+PGATE qwen36 codegen rc=0
+PGATE qwen36 tracebacks 0 flags: fused MoE router enabled: patched 40 blocks;fused GatedDeltaNet front enabled: patched 30 layers;grouped decode linears enabled: hooked 1 modules;
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+PGATE qwen36 video rc=0
+-- validate: --- 3/3 passed in 15.0s ---
+-- thinking: THINKING VERIFIED
+-- vision: VERDICT: STRONG
+-- codegen: VERDICT: STRONG
+-- video: VERDICT: STRONG

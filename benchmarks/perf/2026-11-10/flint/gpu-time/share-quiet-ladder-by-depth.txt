@@ -1,0 +1,21 @@
+| window | samples | server | WindowServer | other | device % | renderer % |
+|---|--:|--:|--:|--:|--:|--:|
+| prefill-1025 | 1 | 915 | 0 | 24 | 96 | 2 |
+| prefill-2056 | 1 | 958 | 0 | 15 | 99 | 1 |
+| prefill-4086 | 1 | 956 | 0 | 17 | 99 | 1 |
+| prefill-8202 | 2 | 961 | 0 | 24 | 99 | 2 |
+| prefill-16406 | 4 | 952 | 0 | 38 | 99 | 4 |
+| prefill-32799 | 11 | 929 | 0 | 64 | 99 | 6 |
+| prefill-64958 | 29 | 894 | 0 | 101 | 98 | 10 |
+| prefill-129953 | 88 | 790 | 0 | 206 | 99 | 20 |
+| decode-129953 | 2 | 822 | 0 | 180 | 99 | 18 |
+
+prefill-1025: media_app_helper 24
+prefill-2056: media_app_helper 15
+prefill-4086: media_app_helper 17
+prefill-8202: media_app_helper 24
+prefill-16406: media_app_helper 38
+prefill-32799: media_app_helper 64, game_launcher_helper 0
+prefill-64958: media_app_helper 100, loginwindow 1, game_launcher_helper 0
+prefill-129953: media_app_helper 203, loginwindow 2, game_launcher_helper 2
+decode-129953: media_app_helper 180

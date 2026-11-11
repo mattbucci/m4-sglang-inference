@@ -1,0 +1,27 @@
+{
+  "tag": "slot-swap",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 8828,
+      "cold": {
+        "prompt_tokens": 8202,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 10.6901,
+        "total_s": 14.103,
+        "text_sha": "eab764ab705b0da3",
+        "tpot_ms": 13.3839,
+        "decode_tok_s": 74.72
+      },
+      "prefill_tok_s": 767.3
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

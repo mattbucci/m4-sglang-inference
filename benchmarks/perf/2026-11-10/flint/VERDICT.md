@@ -1,7 +1,7 @@
-# Flint against the published M4 Pro engines: windowed lookahead view (patch 036), fused MoE block (patch 037), decode submission in parts (patch 038)
+# Flint against the published M4 Pro engines: windowed lookahead view (patch 036), fused MoE block (patch 037), decode submission in parts (patch 038), scheduled snapshot evaluation (patch 039)
 
-Run dates 2026-11-10 and 2026-11-11. Stack: SGLang v0.5.23 + patches 001-038
-(036, 037 and 038 come out of this run), MLX 0.32.4, mlx-lm 0.32.3.dev17,
+Run dates 2026-11-10 and 2026-11-11. Stack: SGLang v0.5.23 + patches 001-039
+(036 to 039 come out of this run), MLX 0.32.4, mlx-lm 0.32.3.dev17,
 mlx-vlm 0.6.5, M4 Pro 64 GB with the 20-core GPU. Models:
 `RecursiveSI/flint-int4` (the official 4-bit MLX checkpoint every published
 number uses: 4.54 bits per weight, 22.6 GB) and `mlx-community/flint-oQ8e`
@@ -64,6 +64,14 @@ retained, a disposition per experiment, a kill criterion up front), plus:
    and zero tracebacks (`ab/driver.txt`).
 5. Greedy text can be compared between arms here because every retained
    change is bit-identical; the hash of the greedy runs is the check.
+6. Timed arms run on a quiet GPU from the display A/B on. The server shares
+   the GPU with the desktop: the compositor of a lit display, a media app's
+   helper and the terminal this session draws in. Those arms run with the
+   display asleep and the session idle (one background driver per stage, no
+   tool call until it ends), and `scripts/bench/gpu_time.py` records the GPU
+   time of every process per arm. Rows measured before that carry up to 5 %
+   of decode and up to 10 % of deep prefill of desktop share, so they are
+   compared only inside their own window.
 
 ## Dispositions
 
@@ -78,13 +86,17 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | `qkv`, `mlp2`, `front`, `mid` | launches | 11.31 to 11.47, 11.19 to 11.30, 11.28 to 11.44, 11.51 to 11.80 ms: inside noise or slower | not shipped |
 | `tail`, `all` | launches | `tail+gatek` 10.01 to 10.12, `all` 9.93 to 10.02 with one run at 11.12: equal to `comb+gatek` while removing 96 to 509 more primitives | not shipped: launch count below 2,183 buys nothing here |
 | `sglu`: the tree's fused routed-expert kernel | launches | 11.67 to 12.81 ms, KL up to 0.17, argmax 62 of 64 at 8K | rejected: slower and not bit-identical |
-| routing knock-out (`route_const`, `route_replay`) | launches | 9.02 to 9.09 ms with `comb` against 9.89 to 9.96 for `comb+gatek`; replaying real routes costs what constant routes cost | not a candidate; it prices the two routing launches per block at 0.85 ms a step, independent of which experts are read. One routing kernel per block is the open follow-up |
+| routing knock-out (`route_const`, `route_replay`) | launches | 9.02 to 9.09 ms with `comb` against 9.89 to 9.96 for `comb+gatek`; replaying real routes costs what constant routes cost | not a candidate; it prices the two routing launches per block at 0.85 ms a step, independent of which experts are read. One routing kernel per block was built next and is slower (`route1`, next row) |
+| one-launch routing (`route1`) | launches | router logits and routing of a block in one Metal kernel, bit-identical: 10.76 to 10.81 against 9.91 to 9.96 ms raw at 1K and 11.91 to 11.98 against 11.04 to 11.09 at 8K, at 2,136 against 2,183 primitives; with a 256-thread group 10.88 to 10.91 and 12.07 to 12.10; the replay bound reads 9.14 to 9.16 and 10.16 to 10.24 | rejected: 8 to 10 % slower than the two launches it replaces. The 0.78 ms a step the routing launches cost at 1K (0.87 at 8K) stays unclaimed |
 | radix cache off | host | 82.5 against 74.9 tok/s greedy before patch 036, 92.4 against 91.0 with both patches; a repeat of a 30K prompt answers in 51.5 s against 0.21 s | radix stays on: patch 036 removed the reason to turn it off |
 | command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired; on top of patch 038, six mirrored arms: 100 / 150 MB +2.2 / +1.7 % greedy at 1K for 3.8 / 4.9 % of the cold prefill at 8K | not a preset default: a trade, decode for cold prefill. The three settings tie in decode and 200 MB costs the least prefill and memory. Patch 038 takes three quarters of the same gain for free, so the limit stays an opt-in for decode-heavy work |
-| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone; qwen36, four mirrored arms: five parts +4.4 % greedy, +3.4 % sampled, +5.0 / +5.0 / +1.5 % cold decode at 1K / 8K / 32K, prefill and memory equal, same greedy text | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset. Clears the criterion on qwen36; open there: a mirrored pair at 64K and 128K and the capability gates, then the preset default |
+| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone; qwen36, four mirrored arms: five parts +4.4 % greedy, +3.4 % sampled, +5.0 / +5.0 / +1.5 % cold decode at 1K / 8K / 32K, prefill and memory equal, same greedy text | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset. Clears the criterion on qwen36, and with patches 030 to 032 and five parts qwen36 passes the validator 3/3, thinking VERIFIED, vision, codegen and video STRONG (`gates/q36-fuse-sub5/`); open there: a mirrored pair at 64K and 128K, then the preset default |
 | attention parts (knock-out census) | launches | at 1K attention costs 4.29 ms of the 11.47 ms raw mlx-lm step and its reads cost 3.12 ms at 200 GB/s; the query and output projections run at 218 to 243 GB/s, their read cost; head norms, the rotary embedding and a non-additive rest hold 1.17 ms | no fold carried: the folds over these operations (`qkv`, `front`, `mid`) measured inside noise. Recorded as the attention floor of this graph |
-| deep ladder through 128K | like for like | decode 98.9 tok/s at 1K to 35.5 at 128K: 78 to 84 % of rec through 32K, 94 % at 64K, 101 % at 128K, 75 to 80 % of Kapitsa at every depth; per token of context a step costs 0.140 µs here, 0.159 for rec, 0.107 for Kapitsa | measured. The fixed 2.1 ms per step is this graph's launches; the per-token term is the read rate of the shared keys and values, and a raw probe of the attention kernel at 32K to 128K is the next experiment |
-| served prefill chunk (census) | host | host time is 3 to 4 ms of a 1.1 to 1.8 s chunk; with the radix cache on the tracked snapshot evaluates its 35 layers one at a time and the chunk costs 75.5 ms more at 8K (796 against 850 tok/s) and 51 to 87 ms more at 32K (573 to 585 against 602); the decode flags do not run on prefill chunks | measured. Served prefill is not host-bound; the per-layer evaluations are the radix-on cost, and one evaluation per snapshot is the candidate |
+| deep ladder through 128K | like for like | on a quiet GPU decode is 102.5 tok/s at 1K to 37.5 at 128K: 81 to 90 % of rec through 32K, 98 % at 64K, 106 % at 128K, 78 to 84 % of Kapitsa at every depth; prefill 1,022 to 296 tok/s, 102 to 131 % of rec and 91 to 99 % of Kapitsa past 1K; with the display on the same arm read 98.9 to 35.5 tok/s decode; per token of context a step costs 0.131 µs here, 0.159 for rec, 0.107 for Kapitsa | measured. The fixed 1.7 to 1.9 ms per step is this graph's launches; the per-token term is the read rate of the shared keys and values, and a raw probe of the attention kernel at 32K to 128K is the next experiment |
+| served prefill chunk (census) | host | host time is 3 to 4 ms of a 1.1 to 1.8 s chunk; with the radix cache on the tracked snapshot evaluates its 35 layers one at a time and the chunk costs 75.5 ms more at 8K (796 against 850 tok/s) and 51 to 87 ms more at 32K (573 to 585 against 602); the decode flags do not run on prefill chunks | measured. Served prefill is not host-bound; the per-layer evaluations are the radix-on cost, and patch 039 removes their waits |
+| scheduled snapshot evaluation (patch 039, `snapshot-eval/`) | prefill under the radix cache | the snapshot of the tracked state schedules its arrays instead of waiting for each layer: Flint cold TTFT -3.5 % at 7.6K and -4.0 % at 30.4K, follow-up TTFT -3.4 to -5.0 %, extend -2.3 to -4.0 %, repeat -2.8 %, all with the arms of the two settings apart; served prefill 879 to 881 tok/s at 7.6K and 637 to 642 at 30.4K against 849 and 611 to 618; qwen36 cold -0.9 % at 7.6K, repeat -2.9 to -5.7 %, the rest inside the arm spread; decode unchanged; greedy text equal run for run | retained, always on, no flag. Cold follow-ups equal the previous tree's at KL 0 on both models and every capability gate passes |
+| decode flags against prefill, by arm position (`slot/`) | prefill | six arms, base and shipping flags in mirrored order, six depths to 32K: prefill 983 / 933 / 917 / 832 / 705 / 565 tok/s on the shipping flags against 970 / 936 / 913 / 834 / 709 / 578 on base, with up to 9 % between two arms of one setting; decode +19 to +21 % to 8K, +16 % at 16K, +13 % at 32K | measured: the flags are prefill-neutral, and the deep prefill scatter follows neither the flags nor the position after a boot |
+| display and session GPU share (`display/`, `gpu-time/`) | instrument | the compositor of the lit display holds 160 to 200 ms of GPU time per second and this session's terminal up to 43; display asleep with the session idle in both arms reads +3.5 to +4.6 % decode at every depth and +2.1 to +3.4 % cold prefill; a foreground wait in the session costs prefill at 8K to 32K a further 6 to 10 % | adopted as the protocol: timed arms run with the display asleep and the session idle, and each arm's GPU share is recorded |
 
 ## Baseline
 
@@ -502,7 +514,9 @@ preset arms that agree within 0.2 % at 8K and 2 % at 32K. Radix off is 2 to
 that remainder is not attributed here.
 
 The candidate this prices is one evaluation for all 35 layers of a snapshot:
-the same state, stored at the same boundary, as one submission.
+the same state, stored at the same boundary, as one submission. The section
+"Scheduled snapshot evaluation" measures it against a second form, and the
+waits turn out to be worth 3 to 4 % of a cold prefill.
 
 ## Attention census
 
@@ -545,7 +559,9 @@ bound of what a step reads. The two base arms at depth 24 disagree by 1.3 ms
 radix cache off, `CTX=131136 MEM_FRAC=0.5`, 1,024-token chunks, the OOM guard
 running, one cold request per depth and a 256-token reply at temperature 1.0.
 The shipping flags are the preset's (patches 037 and 038 on); the base flags
-have both off. Patch 036 is in both.
+have both off. Patch 036 is in both. The display was on for these arms; the
+quiet rerun of the shipping arm is the section "Quiet ladder" below and is
+the row to compare with the published ones.
 
 Decode, tok/s:
 
@@ -588,16 +604,284 @@ Prefill, tok/s (prompt tokens over time to first token):
   every depth, 93 to 97 % of Kapitsa past 1K, past llama.cpp at 1K and from
   32K and 93 to 97 % of it between. It matches the raw loop (859.9 at 8.2K
   against about 870 raw, 605.8 at 32.8K against 633).
-- The shipping arm's lower prefill between 4K and 64K is a slow stretch of
-  the host, not the flags. `deep/chunk-rates.txt`
+- The shipping arm's lower prefill between 4K and 64K is not the flags.
+  `deep/chunk-rates.txt`
   (`scripts/bench/prefill_chunk_rates.py` on the two server logs) has the
   rate of each chunk: the first chunk of the 4K, 8K, 16K, 32K and 64K
   requests runs at 919, 879, 828, 850 and 895 tok/s against 934 to 936 in
   the base arm, and the 128K request, the last one, matches the base arm on
   every chunk (932 / 441 / 279 / 162 against 930 / 441 / 279 / 162 at chunks
   0, 31, 63 and 124). A cost of the fused block would be on every request.
-  The stretch is the first five minutes after the boot that followed the
-  oQ8e and oQ6e arms (52 and 43 GB wired).
+  The slot arms below rule out the position after a boot, and the display
+  A/B finds the cause: other clients of the GPU, the lit display and this
+  session's terminal among them.
+
+## Decode flags against prefill, by arm position
+
+`slot/`: six arms in one window, int4, one request slot, radix cache off,
+`CTX=131136 MEM_FRAC=0.5`, six depths to 32K, base flags and shipping flags
+in mirrored order (base, shipping, base, shipping, shipping, base) after a
+discarded warm-up arm (`swap.json`). The question: is the shipping arm's
+lower prefill in the deep ladder the flags, or the arm's place after a boot.
+Display on, wired peak 27.2 GB, no traceback.
+
+| prompt tokens | 1,025 | 2,056 | 4,086 | 8,202 | 16,406 | 32,799 |
+|---|--:|--:|--:|--:|--:|--:|
+| prefill tok/s, base flags, mean of three | 970.4 | 935.8 | 912.6 | 834.3 | 709.0 | 577.6 |
+| prefill tok/s, shipping flags, mean of three | 982.8 | 933.1 | 917.3 | 831.8 | 704.8 | 564.8 |
+| shipping against base | +1.3 % | -0.3 % | +0.5 % | -0.3 % | -0.6 % | -2.2 % |
+| spread inside the base arms | 4.0 % | 0.7 % | 0.7 % | 5.9 % | 6.5 % | 4.5 % |
+| spread inside the shipping arms | 0.1 % | 1.7 % | 1.0 % | 4.1 % | 9.1 % | 6.7 % |
+| decode tok/s, base flags | 80.66 | 79.75 | 78.73 | 73.72 | 68.44 | 59.53 |
+| decode tok/s, shipping flags | 97.14 | 96.86 | 93.84 | 87.96 | 79.50 | 67.11 |
+| shipping against base | +20.4 % | +21.5 % | +19.2 % | +19.3 % | +16.2 % | +12.7 % |
+
+The flags do not move prefill: the two means sit inside the spread of either
+setting at every depth. Decode separates by 13 to 21 % with at most 2.4 % of
+spread inside a setting. The deep prefill scatter, up to 9 % between two arms
+on the same flags, follows neither the flags nor the position: at 16K the
+slow arms are the second, fifth and sixth, at 32K all but the third and
+fourth. `slot/chunk-rates.txt` has the rate of each chunk: a slow request is
+slow from its first chunk (844 to 874 against 914 to 927 tok/s on chunk 0 of
+the 16K request), so the cause is outside the request.
+
+## Desktop and session GPU share
+
+`display/`, `gpu-time/`. The server is not the only client of the GPU.
+`ioreg` reports accumulated GPU time per process (`IOGPUDeviceUserClient`,
+`AppUsage`), and `scripts/bench/gpu_time.py` samples it every five seconds
+and reports ms of GPU time per wall second over a set of windows. While the
+slot arms ran, three other clients held GPU time: the compositor of the lit
+display (4,608 x 2,592 at 120 Hz), a media app's helper, and the terminal
+this session draws in, whose status line animates during a foreground wait.
+
+Four arms on the slot arms' server settings and shipping flags: display on
+and asleep (`pmset displaysleepnow`), each once with this session blocked in
+a foreground wait (a) and once with the session idle behind a background
+driver (b). Wired peak 26.2 GB, no traceback.
+
+| prompt tokens | 1,025 | 2,056 | 4,086 | 8,202 | 16,406 | 32,799 |
+|---|--:|--:|--:|--:|--:|--:|
+| prefill tok/s, display on, session waiting (on-a) | 981.1 | 934.8 | 906.5 | 799.1 | 675.8 | 549.8 |
+| prefill tok/s, display asleep, session waiting (asleep-a) | 1,019.6 | 972.8 | 941.6 | 833.3 | 716.1 | 604.4 |
+| prefill tok/s, display on, session idle (on-b) | 988.8 | 941.8 | 920.2 | 859.3 | 746.3 | 592.2 |
+| prefill tok/s, display asleep, session idle (asleep-b) | 1,019.8 | 972.9 | 948.8 | 879.6 | 761.8 | 612.2 |
+| asleep-b against on-b | +3.1 % | +3.3 % | +3.1 % | +2.4 % | +2.1 % | +3.4 % |
+| on-b against on-a | +0.8 % | +0.7 % | +1.5 % | +7.5 % | +10.4 % | +7.7 % |
+| decode tok/s, on-a | 97.23 | 96.10 | 94.49 | 87.39 | 79.15 | 66.63 |
+| decode tok/s, asleep-a | 102.36 | 101.30 | 97.92 | 91.64 | 82.99 | 70.25 |
+| decode tok/s, on-b | 97.91 | 97.15 | 95.93 | 89.43 | 80.89 | 68.40 |
+| decode tok/s, asleep-b | 102.42 | 101.19 | 99.44 | 93.15 | 83.76 | 71.17 |
+| asleep-b against on-b | +4.6 % | +4.2 % | +3.7 % | +4.2 % | +3.5 % | +4.0 % |
+| on-b against on-a | +0.7 % | +1.1 % | +1.5 % | +2.3 % | +2.2 % | +2.7 % |
+
+GPU time per wall second in each window, ms (`gpu-time/share.txt`):
+
+| window | server | compositor | other clients | of which |
+|---|--:|--:|--:|---|
+| on-a | 693 | 196 | 88 | media app helper 63, terminal 25 |
+| asleep-a | 849 | 0 | 110 | media app helper 66, terminal 43 |
+| on-b | 768 | 158 | 44 | media app helper 40, terminal 4 |
+| asleep-b | 930 | 0 | 42 | media app helper 42 |
+
+- With the session idle in both arms, the display asleep is worth 3.5 to
+  4.6 % of decode at every depth and 2.1 to 3.4 % of cold prefill.
+- A foreground wait in the session costs a prefill of 8K to 32K a further
+  6 to 10 % with the display on (5.6 / 6.4 / 1.3 % with it asleep) and
+  decode up to 2.7 %. That is the deep prefill scatter of the slot arms and
+  the slow stretch of the deep ladder.
+- A share is not a cost. The compositor's 16 to 20 % of GPU time costs 2 to
+  5 % of throughput: a desktop client's accounted time grows while a long
+  compute kernel runs beside it. The share says who was on the GPU; the A/B
+  prices it.
+- Protocol from here on: timed arms run with the display asleep and the
+  session idle, the share of every arm is recorded, and settings are
+  compared inside one window. The media app's helper stays; it is the
+  user's app and its cost is not priced.
+
+## Quiet ladder
+
+`quiet/ladder.json`: the deep ladder's shipping arm again under the
+protocol. Int4, the preset's flags, one request slot, radix cache off,
+`CTX=131136 MEM_FRAC=0.5`, 1,024-token chunks, the OOM guard running, one
+cold request per depth and a 256-token reply at temperature 1.0. Wired peak
+27.7 GB, no traceback. This is the row to hold against the published ones.
+
+Decode, tok/s:
+
+| prompt tokens | quiet | display on | rec | Kapitsa | llama.cpp | of rec | of Kapitsa | of llama.cpp |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1,025 | 102.45 | 98.86 | 126.5 | 124.3 | 77.5 | 81 % | 82 % | 132 % |
+| 2,056 | 101.68 | 96.94 | 123.0 | 121.3 | 75.1 | 83 % | 84 % | 135 % |
+| 4,086 | 98.44 | 93.96 | 116.5 | 119.2 | 73.4 | 84 % | 83 % | 134 % |
+| 8,202 | 92.81 | 88.07 | 107.0 | 113.2 | 69.7 | 87 % | 82 % | 133 % |
+| 16,406 | 83.32 | 79.56 | 95.2 | 106.2 | 63.7 | 88 % | 78 % | 131 % |
+| 32,799 | 71.40 | 66.39 | 79.4 | 85.9 | 53.8 | 90 % | 83 % | 133 % |
+| 64,958 | 55.31 | 52.92 | 56.5 | 66.2 | 40.5 | 98 % | 84 % | 137 % |
+| 129,953 | 37.48 | 35.46 | 35.2 | 45.7 | 23.8 | 106 % | 82 % | 157 % |
+
+Prefill, tok/s, and time to first token:
+
+| prompt tokens | quiet | TTFT | rec | Kapitsa | llama.cpp | of rec | of Kapitsa | of llama.cpp |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1,025 | 1,022.5 | 1.0 s | 781 | 858 | 927 | 131 % | 119 % | 110 % |
+| 2,056 | 964.6 | 2.1 s | 800 | 976 | 1015 | 121 % | 99 % | 95 % |
+| 4,086 | 952.8 | 4.3 s | 791 | 960 | 978 | 120 % | 99 % | 97 % |
+| 8,202 | 878.7 | 9.3 s | 760 | 907 | 910 | 116 % | 97 % | 97 % |
+| 16,406 | 738.1 | 22.2 s | 699 | 808 | 785 | 106 % | 91 % | 94 % |
+| 32,799 | 593.5 | 55.3 s | 581 | 651 | 602 | 102 % | 91 % | 99 % |
+| 64,958 | 447.7 | 145.1 s | 427 | 464 | 382 | 105 % | 96 % | 117 % |
+| 129,953 | 296.1 | 438.9 s | 262 | 300 | 199 | 113 % | 99 % | 149 % |
+
+- Decode is 3.6 to 7.5 % above the display-on ladder at every depth: 81 to
+  90 % of rec through 32K, 98 % at 64K and past it at 128K, 78 to 84 % of
+  Kapitsa throughout, 131 to 157 % of llama.cpp.
+- The step is 9.76 ms at 1K against 7.91 for rec and 8.05 for Kapitsa, a
+  fixed 1.7 to 1.9 ms. Per token of context it grows by 0.131 µs, against
+  0.159 for rec and 0.107 for Kapitsa.
+- Prefill is past rec at every depth and within 1 to 4 % of Kapitsa except
+  at 16K and 32K (91 %). A 128K prompt reaches its first token in 439 s.
+- The warm sweep before the ladder (`quiet/warm.json`) reads 1,020.4 tok/s
+  prefill and 101.71 decode at 1K, 880.7 and 91.55 at 8K.
+- One client was left on the GPU. The media app's helper holds 15 to 24 ms
+  per second through the 8K request, 38 at 16K, 64 at 32K, 101 at 64K and
+  206 during the 128K prefill (`gpu-time/share-quiet-ladder-by-depth.txt`).
+  The 16K and 32K prefill readings sit 3 % under the display A/B's quiet
+  arm (738 against 762, 594 against 612), single arms each.
+
+## One-launch routing
+
+`raw/one-launch-routing-probe.jsonl`, `raw/one-launch-routing-probe-tg256.jsonl`
+and the kernel self tests next to them. The knock-out prices the two routing
+launches of a block (the router logits, then mlx-lm's routing kernel) at
+0.8 ms a step. `route1` is the candidate that follows: one Metal kernel
+whose tiles compute the logits the way the stock matrix-vector kernel does,
+leave them in threadgroup memory, and run mlx-lm's routing on them in the
+first SIMD group. Indices and weights are bit-identical to the stock chain
+(40 trials per dtype, 64 teacher-forced steps). Pipelined ms per step, the
+arm list forward and reversed:
+
+| arm | primitives | 1K | 8K |
+|---|--:|--:|--:|
+| comb+gatek (patch 037) | 2,183 | 9.91 / 9.96 | 11.04 / 11.09 |
+| comb+route1, 1,024-thread group | 2,136 | 10.76 / 10.81 | 11.91 / 11.98 |
+| comb+route_replay (the bound) | 2,089 | 9.14 / 9.15 | 10.16 / 10.24 |
+| comb+gatek, second run | 2,183 | 9.93 / 9.93 | 11.10 / 11.14 |
+| comb+route1, 256-thread group | 2,136 | 10.91 / 10.88 | 12.10 / 12.07 |
+| comb+route_replay, second run | 2,089 | 9.14 / 9.16 | 10.20 / 10.24 |
+
+One launch is 0.85 to 0.98 ms a step slower than two at 1K and 0.87 to
+1.0 ms at 8K, with either threadgroup. The bound does not move: 0.78 ms at
+1K and 0.87 at 8K separate the shipping step from replayed routes. Rejected
+and not carried to serving. A kernel whose reduction crosses rows has to run
+in one threadgroup, which takes the logits off the many groups the stock
+kernel spreads them over; that reading is not verified. The routing cost
+stays unclaimed.
+
+## Scheduled snapshot evaluation (patch 039)
+
+`snapshot-eval/`. With the radix cache on, every prefill chunk stores the
+tracked state of the windowed and recurrent layers so that a later request
+can resume from it. The store ran one synchronous `mx.eval` per layer, and
+the first of them pulled the chunk's forward with it. The served prefill
+census counts 35 of those evaluations per chunk on Flint (30 on qwen36): the
+GPU finishes a layer, idles while the host is woken, and starts the next.
+
+Two forms of the fix, each a tree built from the same pin and patches
+001-038:
+
+- `one`: collect the arrays of all layers and evaluate them in one call.
+- `async`: keep the loop and schedule each layer's arrays with
+  `mx.async_eval`. Nothing in the chunk waits; the chunk's token is the one
+  read. The snapshot holds the same arrays, bound at the same moment.
+
+Both store the same values, and the greedy text of every run is equal across
+all arms, hash for hash, on both models.
+
+First pass, display on (`snapshot-eval/display-on/`): `one` against stock in
+mirrored order. Flint cold TTFT -3.2 % at 7.6K, the follow-up's first request
+at 15K -4.0 %, extend at 7.6K -5.3 %, each with the arms apart; cold at 30.4K
+-1.6 % with the arms overlapping. qwen36 moves inside its spread except the
+repeat (-3.2 and -2.8 %). That pass predates the quiet protocol.
+
+Second pass on the quiet GPU: three trees, int4 and qwen36, the presets'
+flags, radix cache on, arms in the order of the columns. "apart" means no arm
+of one setting reaches into the range of the other. TTFT in seconds, decode
+in ms per step; the percentage is the mean of a form against the mean of
+stock.
+
+Flint int4:
+
+| | stock | async | one | async | stock | async against stock | one against stock |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| cold, 7,601 tokens | 8.962 | 8.640 | 8.677 | 8.657 | 8.967 | -3.5 %, apart | -3.2 %, apart |
+| cold, 30,422 | 49.26 | 47.77 | 47.65 | 47.40 | 49.84 | -4.0 %, apart | -3.8 %, apart |
+| follow-up at 3,813, first request | 4.203 | 4.272 | 4.223 | 4.203 | 4.347 | -0.9 %, overlap | -1.2 %, overlap |
+| follow-up at 3,813, second | 0.1628 | 0.1571 | 0.1572 | 0.1570 | 0.1624 | -3.4 %, apart | -3.3 %, apart |
+| follow-up at 15,228, first request | 20.58 | 19.97 | 19.88 | 19.80 | 20.84 | -4.0 %, apart | -4.0 %, apart |
+| follow-up at 15,228, second | 0.3176 | 0.3017 | 0.3064 | 0.3002 | 0.3163 | -5.0 %, apart | -3.3 %, apart |
+| extend to 3,799 | 4.203 | 4.102 | 4.083 | 4.075 | 4.167 | -2.3 %, apart | -2.4 %, apart |
+| repeat at 3,799 | 0.1139 | 0.1116 | 0.1100 | 0.1113 | 0.1154 | -2.8 %, apart | -4.1 %, apart |
+| decode at 3,799, ms | 9.77 | 9.73 | 9.66 | 9.76 | 9.83 | -0.6 % | -1.4 % |
+| extend to 7,599 | 4.869 | 4.674 | 4.696 | 4.655 | 4.852 | -4.0 %, apart | -3.4 %, apart |
+| repeat at 7,599 | 0.1816 | 0.1764 | 0.1764 | 0.1769 | 0.1820 | -2.8 %, apart | -3.0 %, apart |
+| decode at 7,599, ms | 10.29 | 10.21 | 10.17 | 10.18 | 10.28 | -0.9 % | -1.1 % |
+
+qwen36:
+
+| | stock | async | one | one | async | stock | async against stock | one against stock |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| cold, 7,601 tokens | 8.818 | 8.734 | 8.792 | 8.828 | 8.719 | 8.786 | -0.9 %, apart | +0.1 %, overlap |
+| cold, 30,408 | 49.49 | 49.50 | 48.50 | 48.61 | 47.81 | 48.39 | -0.6 %, overlap | -0.8 %, overlap |
+| extend to 3,799 | 4.057 | 4.041 | 4.027 | 3.979 | 3.963 | 4.038 | -1.1 %, overlap | -1.1 %, apart |
+| repeat at 3,799 | 0.1222 | 0.1146 | 0.1159 | 0.1181 | 0.1154 | 0.1217 | -5.7 %, apart | -4.1 %, apart |
+| decode at 3,799, ms | 11.89 | 11.63 | 11.59 | 11.53 | 11.54 | 11.74 | -1.9 %, apart | -2.2 %, apart |
+| extend to 7,583 | 4.499 | 4.493 | 4.496 | 4.458 | 4.412 | 4.447 | -0.5 %, overlap | +0.1 %, overlap |
+| repeat at 7,583 | 0.1416 | 0.1376 | 0.1366 | 0.1381 | 0.1373 | 0.1416 | -2.9 %, apart | -3.0 %, apart |
+| decode at 7,583, ms | 12.12 | 12.12 | 12.25 | 12.07 | 12.17 | 12.08 | +0.4 %, overlap | +0.5 %, overlap |
+
+The prefill census of the same arms (`*.summary.json`), Flint:
+
+| | stock | async | one | async | stock |
+|---|--:|--:|--:|--:|--:|
+| synchronous evaluations per chunk | 35 | 0 | 1 | 0 | 35 |
+| ms per chunk, 7,601 tokens | 1,118.7 | 1,078.5 | 1,083.1 | 1,080.6 | 1,119.4 |
+| ms per chunk, 30,422 tokens | 1,641.0 | 1,591.1 | 1,587.0 | 1,578.9 | 1,660.1 |
+| served prefill tok/s, 7,601 | 849.3 | 881.0 | 877.2 | 879.3 | 848.8 |
+| served prefill tok/s, 30,422 | 618.0 | 637.3 | 639.0 | 642.3 | 610.9 |
+
+- A chunk loses 36 to 41 ms at 7.6K: 35 waits at about 1.1 ms each. That is
+  3.5 % of a 1,024-token chunk on Flint. qwen36 takes 30 waits per chunk of
+  4,096 tokens, 4.4 s long, so the same waits are under 1 % of its cold
+  prefill and only its cache hits show them.
+- The two forms tie: under 0.5 % apart on the Flint cold rows, and trading
+  places by 1 to 2 % on the cache-hit rows, with a single `one` arm on
+  Flint. `async` is one line, leaves no synchronous evaluation in the chunk,
+  and is the only form whose cold gain on qwen36 stands apart from stock.
+- Decode does not move on Flint. The qwen36 decode row at 3.8K (-1.9 %) is
+  not claimed: the 7.6K row overlaps.
+- GPU time per wall second (`gpu-time/share.txt`): the server holds 697 and
+  718 ms in the stock arms and 745 to 752 in the others, the media app's
+  helper 36 to 42, the display 0. The terminal shows 22 ms in the first
+  stock arm, which the last stock arm (none) agrees with to 0.1 % at 7.6K
+  and 1.2 % at 30.4K. qwen36 arms: server 674 to 699, helper 46 to 48.
+
+Decision: `async` is patch 039, always on, no flag.
+
+Fidelity and gates on the patched tree (`snapshot-eval/gates/`), radix cache
+on, both models:
+
+- `probe_followup_fidelity.py`, depths 1,024 and 6,144, tails 32 and 1,024,
+  two seeds, teacher-forced. The patched tree's cold follow-ups against the
+  previous tree's cold follow-ups: every step of all eight cases agrees and
+  the KL is 0 at every step, on Flint and on qwen36. The hit-against-cold
+  statistics are the same numbers in both trees (Flint: KL mean 6.2e-03 at
+  tail 32 and 4.4e-03 at tail 1,024; qwen36: 9.8e-03 and 9.0e-03).
+- Flint (oQ8e, the preset): validator 3/3, thinking VERIFIED, codegen STRONG.
+  qwen36: validator 3/3, thinking VERIFIED, vision, codegen and video STRONG.
+  No traceback in any server log.
+- `scripts/eval/test_snapshot_async_eval_unit.py` (CPU): 13 checks pass on
+  the patched tree; the four scheduling checks fail on the previous tree.
 
 ## Checkpoints
 
@@ -671,20 +955,26 @@ Served decode moved from 57 % of the published rate to 69 % with patches
 036 and 037 and to 76 % with patch 038, which puts the served step on the
 raw step. A larger buffer adds two points and pays for them in cold
 prefill. What is left is about 1.8 ms inside the graph itself: the routing
-launches (0.85 ms), and attention and the routed experts above their
-weight reads.
+launches (0.8 ms, which one launch per block does not recover), and
+attention and the routed experts above their weight reads. On a quiet GPU
+the preset's sampled step at 1K is 9.76 ms, 102.5 tok/s, 81 % of rec.
 
 ## Receipts
 
 | folder | contents |
 |---|---|
 | `baseline/` | published-shape sweeps of the preset before this lane (int4 radix on and off, oQ8e), the validator, the chat-template check, the scale scan, `mlx_lm.generate` |
-| `raw/` | decode census, attention census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
+| `raw/` | decode census, attention census, weight-read census per checkpoint, fold probes, route replay probe, one-launch routing probe and its kernel self tests, frozen view probe, host slack probe |
 | `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes; the per-chunk prefill census of five arms with its report and driver log |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
 | `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log; the six middle-limit arms on top of the preset with wired samples and their driver log |
 | `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log; the four qwen36 arms |
-| `gates/` | validator, thinking probe and codegen probe on int4 and oQ8e with the preset's flags, and the driver log |
+| `gates/` | validator, thinking probe and codegen probe on int4 and oQ8e with the preset's flags, and the driver log; `q36-fuse-sub5/`: the five gates on qwen36 with patches 030 to 032 and five decode parts |
 | `preset/` | the shipped preset on int4, oQ6e and oQ8e, oQ8e with one decode submission, and one-second wired memory samples of each arm |
 | `deep/` | the published context sweep through 128K on int4 with radix off and one slot, shipping flags against base flags, and the per-chunk prefill rates of both |
 | `fidelity/` | teacher-forced dumps of oQ8e (the reference), oQ6e and int4 |
+| `slot/` | six arms of base and shipping flags in mirrored order to 32K, the per-chunk prefill rates, the driver log |
+| `display/` | display on and asleep, session waiting and idle, to 32K, the driver log |
+| `gpu-time/` | five-second samples of GPU time per process over the display, quiet and snapshot windows; the share per window and per depth of the quiet ladder |
+| `quiet/` | the published context sweep through 128K with the display asleep and the session idle, its warm sweep, the driver log |
+| `snapshot-eval/` | patch 039: per arm the sweep, the prefill census and its summary, the greedy hashes; `report.txt` and the driver log; `display-on/` the first pass; `gates/` the follow-up fidelity dumps of both trees and the capability gates on the patched tree |

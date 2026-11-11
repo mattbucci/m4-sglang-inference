@@ -1,0 +1,629 @@
+13:01:57 dev=97 rend=15 tiler=8 python3.12[69916]:832 WindowServer[686]:80 media_app_helper[1576]:41 terminal[922]:12
+13:02:02 dev=99 rend=22 tiler=12 python3.12[69916]:788 WindowServer[686]:129 media_app_helper[1576]:60 terminal[922]:17
+13:02:07 dev=96 rend=10 tiler=4 python3.12[69916]:874 WindowServer[686]:59 media_app_helper[1576]:18 terminal[922]:9
+13:02:12 dev=71 rend=12 tiler=5 WindowServer[686]:122 media_app_helper[1576]:30 terminal[922]:12
+13:02:17 dev=29 rend=29 tiler=12 WindowServer[686]:178 media_app_helper[1576]:37 terminal[922]:17
+13:02:22 dev=25 rend=25 tiler=11 WindowServer[686]:159 media_app_helper[1576]:36 terminal[922]:17
+13:02:27 dev=25 rend=25 tiler=10 WindowServer[686]:153 media_app_helper[1576]:34 terminal[922]:16
+13:02:32 dev=23 rend=23 tiler=9 WindowServer[686]:148 media_app_helper[1576]:33 terminal[922]:16
+13:02:38 dev=27 rend=22 tiler=9 WindowServer[686]:137 python3.12[70887]:68 media_app_helper[1576]:30 terminal[922]:13
+13:02:43 dev=95 rend=17 tiler=9 python3.12[70887]:716 WindowServer[686]:95 media_app_helper[1576]:44 terminal[922]:11
+13:02:48 dev=96 rend=19 tiler=10 python3.12[70887]:758 WindowServer[686]:106 media_app_helper[1576]:55 terminal[922]:15
+13:02:53 dev=97 rend=16 tiler=8 python3.12[70887]:806 WindowServer[686]:81 media_app_helper[1576]:42 terminal[922]:12
+13:02:58 dev=95 rend=21 tiler=11 python3.12[70887]:758 WindowServer[686]:111 media_app_helper[1576]:52 terminal[922]:23
+13:03:03 dev=94 rend=27 tiler=12 python3.12[70887]:688 WindowServer[686]:158 media_app_helper[1576]:61 terminal[922]:26
+13:03:08 dev=96 rend=30 tiler=13 python3.12[70887]:677 WindowServer[686]:188 media_app_helper[1576]:66 terminal[922]:22
+13:03:13 dev=97 rend=33 tiler=15 python3.12[70887]:643 WindowServer[686]:207 media_app_helper[1576]:84 terminal[922]:17
+13:03:18 dev=97 rend=39 tiler=16 python3.12[70887]:591 WindowServer[686]:256 media_app_helper[1576]:76 terminal[922]:29
+13:03:23 dev=96 rend=40 tiler=16 python3.12[70887]:570 WindowServer[686]:260 media_app_helper[1576]:82 terminal[922]:31
+13:03:28 dev=97 rend=43 tiler=12 python3.12[70887]:551 WindowServer[686]:306 media_app_helper[1576]:82 terminal[922]:27
+13:03:33 dev=97 rend=48 tiler=17 python3.12[70887]:498 WindowServer[686]:346 media_app_helper[1576]:78 terminal[922]:30
+13:03:38 dev=97 rend=47 tiler=14 python3.12[70887]:511 WindowServer[686]:352 media_app_helper[1576]:74 terminal[922]:27
+13:03:43 dev=97 rend=32 tiler=11 python3.12[70887]:640 WindowServer[686]:219 media_app_helper[1576]:60 terminal[922]:11
+13:03:48 dev=95 rend=13 tiler=6 python3.12[70887]:854 WindowServer[686]:71 media_app_helper[1576]:35 terminal[922]:8
+13:03:53 dev=97 rend=18 tiler=9 python3.12[70887]:784 WindowServer[686]:92 media_app_helper[1576]:49 terminal[922]:17
+13:03:58 dev=95 rend=22 tiler=11 python3.12[70887]:734 WindowServer[686]:121 media_app_helper[1576]:55 terminal[922]:20
+13:04:03 dev=96 rend=25 tiler=13 python3.12[70887]:702 WindowServer[686]:149 media_app_helper[1576]:63 terminal[922]:19
+13:04:08 dev=93 rend=32 tiler=14 python3.12[70887]:647 WindowServer[686]:196 media_app_helper[1576]:71 terminal[922]:24
+13:04:13 dev=97 rend=13 tiler=6 python3.12[70887]:797 WindowServer[686]:74 media_app_helper[1576]:32 terminal[922]:5
+13:04:18 dev=97 rend=12 tiler=6 python3.12[70887]:867 WindowServer[686]:67 media_app_helper[1576]:37 terminal[922]:6
+13:04:23 dev=97 rend=14 tiler=7 python3.12[70887]:817 WindowServer[686]:82 media_app_helper[1576]:36 terminal[922]:14
+13:04:28 dev=97 rend=10 tiler=4 python3.12[70887]:879 WindowServer[686]:53 media_app_helper[1576]:26 terminal[922]:9
+13:04:33 dev=22 rend=22 tiler=10 WindowServer[686]:131 media_app_helper[1576]:30 terminal[922]:14
+13:04:38 dev=22 rend=22 tiler=10 WindowServer[686]:150 media_app_helper[1576]:34 terminal[922]:16
+13:04:43 dev=23 rend=23 tiler=10 WindowServer[686]:147 media_app_helper[1576]:34 terminal[922]:15
+13:04:48 dev=24 rend=24 tiler=11 WindowServer[686]:148 media_app_helper[1576]:34 terminal[922]:16
+13:04:54 dev=22 rend=20 tiler=9 WindowServer[686]:126 python3.12[71781]:54 media_app_helper[1576]:32 terminal[922]:11
+13:04:59 dev=90 rend=16 tiler=7 python3.12[71781]:406 WindowServer[686]:103 media_app_helper[1576]:39 terminal[922]:8
+13:05:04 dev=99 rend=16 tiler=9 python3.12[71781]:836 WindowServer[686]:91 media_app_helper[1576]:51 terminal[922]:13
+13:05:09 dev=99 rend=13 tiler=7 python3.12[71781]:838 WindowServer[686]:74 media_app_helper[1576]:40 terminal[922]:8
+13:05:14 dev=99 rend=16 tiler=9 python3.12[71781]:836 WindowServer[686]:93 media_app_helper[1576]:54 terminal[922]:9
+13:05:19 dev=99 rend=21 tiler=11 python3.12[71781]:786 WindowServer[686]:130 media_app_helper[1576]:60 terminal[922]:10
+13:05:24 dev=99 rend=27 tiler=14 python3.12[71781]:730 WindowServer[686]:184 media_app_helper[1576]:65 terminal[922]:13
+13:05:29 dev=99 rend=30 tiler=14 python3.12[71781]:699 WindowServer[686]:193 media_app_helper[1576]:80 terminal[922]:19
+13:05:34 dev=99 rend=35 tiler=13 python3.12[71781]:651 WindowServer[686]:232 media_app_helper[1576]:75 terminal[922]:31
+13:05:39 dev=99 rend=39 tiler=14 python3.12[71781]:603 WindowServer[686]:280 media_app_helper[1576]:85 terminal[922]:30
+13:05:44 dev=99 rend=43 tiler=13 python3.12[71781]:566 WindowServer[686]:315 media_app_helper[1576]:90 terminal[922]:23
+13:05:49 dev=99 rend=45 tiler=14 python3.12[71781]:556 WindowServer[686]:330 media_app_helper[1576]:96 terminal[922]:12
+13:05:54 dev=92 rend=46 tiler=15 WindowServer[686]:250 media_app_helper[1576]:62 terminal[922]:23
+13:05:59 dev=26 rend=26 tiler=13 WindowServer[686]:167 media_app_helper[1576]:40 terminal[922]:14
+13:06:04 dev=28 rend=28 tiler=14 WindowServer[686]:179 media_app_helper[1576]:38 terminal[922]:17
+13:06:09 dev=26 rend=26 tiler=12 WindowServer[686]:162 media_app_helper[1576]:40 terminal[922]:15
+13:06:14 dev=23 rend=23 tiler=10 WindowServer[686]:153 media_app_helper[1576]:40 terminal[922]:12
+13:06:19 dev=28 rend=28 tiler=11 WindowServer[686]:158 media_app_helper[1576]:39 terminal[922]:13
+13:06:24 dev=26 rend=26 tiler=11 WindowServer[686]:168 media_app_helper[1576]:38 terminal[922]:17
+13:06:29 dev=25 rend=25 tiler=10 WindowServer[686]:159 media_app_helper[1576]:36 terminal[922]:15
+13:06:34 dev=22 rend=22 tiler=10 WindowServer[686]:142 media_app_helper[1576]:34 terminal[922]:11
+13:06:39 dev=23 rend=23 tiler=10 WindowServer[686]:151 media_app_helper[1576]:34 terminal[922]:14
+13:06:44 dev=26 rend=23 tiler=9 WindowServer[686]:134 python3.12[72532]:62 media_app_helper[1576]:31 terminal[922]:12
+13:06:49 dev=71 rend=14 tiler=7 python3.12[72532]:472 WindowServer[686]:103 media_app_helper[1576]:34 terminal[922]:12
+13:06:54 dev=95 rend=19 tiler=9 python3.12[72532]:813 WindowServer[686]:110 media_app_helper[1576]:56 terminal[922]:18
+13:06:59 dev=10 rend=10 tiler=7 python3.12[72532]:738 WindowServer[686]:113 media_app_helper[1576]:44 terminal[922]:14
+13:07:05 dev=71 rend=10 tiler=5 python3.12[72532]:592 WindowServer[686]:81 media_app_helper[1576]:23 terminal[922]:12 game_launcher_helper[1734]:1
+13:07:10 dev=99 rend=11 tiler=5 python3.12[72532]:871 WindowServer[686]:66 media_app_helper[1576]:28 terminal[922]:10
+13:07:15 dev=99 rend=17 tiler=9 python3.12[72532]:820 WindowServer[686]:96 media_app_helper[1576]:45 terminal[922]:15
+13:07:20 dev=80 rend=11 tiler=5 python3.12[72532]:872 WindowServer[686]:61 media_app_helper[1576]:29 terminal[922]:9
+13:07:25 dev=79 rend=20 tiler=11 python3.12[72532]:806 WindowServer[686]:113 media_app_helper[1576]:58 terminal[922]:15
+13:07:30 dev=99 rend=17 tiler=8 python3.12[72532]:830 WindowServer[686]:100 media_app_helper[1576]:47 terminal[922]:13
+13:07:35 dev=99 rend=17 tiler=9 python3.12[72532]:822 WindowServer[686]:86 media_app_helper[1576]:47 terminal[922]:14
+13:07:40 dev=99 rend=23 tiler=13 python3.12[72532]:774 WindowServer[686]:131 media_app_helper[1576]:60 terminal[922]:23
+13:07:45 dev=99 rend=26 tiler=13 python3.12[72532]:747 WindowServer[686]:158 media_app_helper[1576]:66 terminal[922]:25
+13:07:50 dev=99 rend=34 tiler=15 python3.12[72532]:670 WindowServer[686]:209 media_app_helper[1576]:78 terminal[922]:41
+13:07:55 dev=99 rend=38 tiler=17 python3.12[72532]:627 WindowServer[686]:261 media_app_helper[1576]:83 terminal[922]:27
+13:08:00 dev=99 rend=11 tiler=5 python3.12[72532]:859 WindowServer[686]:61 media_app_helper[1576]:25 terminal[922]:8
+13:08:05 dev=99 rend=22 tiler=11 python3.12[72532]:790 WindowServer[686]:123 media_app_helper[1576]:59 terminal[922]:22
+13:08:10 dev=99 rend=25 tiler=13 python3.12[72532]:759 WindowServer[686]:154 media_app_helper[1576]:63 terminal[922]:18
+13:08:15 dev=99 rend=29 tiler=16 python3.12[72532]:719 WindowServer[686]:184 media_app_helper[1576]:70 terminal[922]:20
+13:08:20 dev=99 rend=35 tiler=14 python3.12[72532]:658 WindowServer[686]:232 media_app_helper[1576]:85 terminal[922]:23
+13:08:25 dev=99 rend=39 tiler=17 python3.12[72532]:614 WindowServer[686]:262 media_app_helper[1576]:86 terminal[922]:32
+13:08:30 dev=99 rend=41 tiler=17 python3.12[72532]:592 WindowServer[686]:295 media_app_helper[1576]:82 terminal[922]:30
+13:08:35 dev=99 rend=44 tiler=18 python3.12[72532]:560 WindowServer[686]:313 media_app_helper[1576]:83 terminal[922]:36
+13:08:40 dev=99 rend=46 tiler=16 python3.12[72532]:541 WindowServer[686]:335 media_app_helper[1576]:88 terminal[922]:33
+13:08:45 dev=99 rend=50 tiler=16 python3.12[72532]:503 WindowServer[686]:372 media_app_helper[1576]:84 terminal[922]:43
+13:08:50 dev=99 rend=54 tiler=16 python3.12[72532]:465 WindowServer[686]:390 media_app_helper[1576]:93 terminal[922]:44 game_launcher_helper[1734]:2
+13:08:55 dev=99 rend=55 tiler=17 python3.12[72532]:467 WindowServer[686]:395 media_app_helper[1576]:82 terminal[922]:56
+13:09:00 dev=99 rend=32 tiler=8 python3.12[72532]:683 WindowServer[686]:229 media_app_helper[1576]:50 terminal[922]:33
+13:09:05 dev=14 rend=13 tiler=5 python3.12[72532]:307 WindowServer[686]:31 media_app_helper[1576]:25 terminal[922]:12 loginwindow[689]:2
+13:09:10 dev=5 rend=5 tiler=3 media_app_helper[1576]:36 terminal[922]:15
+13:09:15 dev=5 rend=5 tiler=3 media_app_helper[1576]:36 terminal[922]:15
+13:09:21 dev=5 rend=5 tiler=3 media_app_helper[1576]:36 terminal[922]:15
+13:09:26 dev=97 rend=6 tiler=4 python3.12[72532]:248 media_app_helper[1576]:35 terminal[922]:14
+13:09:31 dev=99 rend=4 tiler=2 python3.12[72532]:941 media_app_helper[1576]:26 terminal[922]:6
+13:09:36 dev=99 rend=4 tiler=3 python3.12[72532]:934 media_app_helper[1576]:31 terminal[922]:9
+13:09:41 dev=99 rend=4 tiler=3 python3.12[72532]:934 media_app_helper[1576]:28 terminal[922]:11
+13:09:46 dev=56 rend=9 tiler=6 python3.12[72532]:910 media_app_helper[1576]:56 terminal[922]:25
+13:09:51 dev=99 rend=8 tiler=5 python3.12[72532]:921 media_app_helper[1576]:52 terminal[922]:24
+13:09:56 dev=99 rend=6 tiler=4 python3.12[72532]:921 media_app_helper[1576]:35 terminal[922]:14
+13:10:01 dev=99 rend=11 tiler=8 python3.12[72532]:899 media_app_helper[1576]:64 terminal[922]:18 loginwindow[689]:15
+13:10:06 dev=99 rend=11 tiler=7 python3.12[72532]:894 media_app_helper[1576]:69 terminal[922]:30
+13:10:11 dev=99 rend=14 tiler=8 python3.12[72532]:862 media_app_helper[1576]:84 terminal[922]:47
+13:10:16 dev=99 rend=13 tiler=7 python3.12[72532]:874 media_app_helper[1576]:78 terminal[922]:45
+13:10:21 dev=99 rend=4 tiler=2 python3.12[72532]:927 media_app_helper[1576]:26 terminal[922]:10
+13:10:26 dev=99 rend=10 tiler=6 python3.12[72532]:915 media_app_helper[1576]:57 terminal[922]:22
+13:10:31 dev=99 rend=11 tiler=7 python3.12[72532]:901 media_app_helper[1576]:68 terminal[922]:29
+13:10:36 dev=99 rend=11 tiler=7 python3.12[72532]:892 media_app_helper[1576]:67 terminal[922]:33
+13:10:41 dev=99 rend=14 tiler=7 python3.12[72532]:861 media_app_helper[1576]:82 terminal[922]:46
+13:10:46 dev=99 rend=15 tiler=7 python3.12[72532]:852 media_app_helper[1576]:87 terminal[922]:58
+13:10:51 dev=99 rend=19 tiler=7 python3.12[72532]:806 media_app_helper[1576]:93 terminal[922]:89
+13:10:56 dev=99 rend=19 tiler=8 python3.12[72532]:812 media_app_helper[1576]:99 terminal[922]:90
+13:11:01 dev=99 rend=21 tiler=9 python3.12[72532]:791 media_app_helper[1576]:116 terminal[922]:77 loginwindow[689]:14
+13:11:06 dev=99 rend=20 tiler=7 python3.12[72532]:800 media_app_helper[1576]:110 terminal[922]:88
+13:11:11 dev=99 rend=27 tiler=6 python3.12[72532]:708 terminal[922]:162 media_app_helper[1576]:114
+13:11:16 dev=99 rend=9 tiler=2 python3.12[72532]:923 terminal[922]:49 media_app_helper[1576]:38
+13:11:21 dev=5 rend=5 tiler=3 python3.12[72532]:65 media_app_helper[1576]:32 terminal[922]:15
+13:11:26 dev=25 rend=25 tiler=14 media_app_helper[1576]:39 terminal[922]:18 WindowServer[686]:15 game_launcher_helper[1734]:3
+13:11:31 dev=14 rend=14 tiler=12 WindowServer[686]:126 media_app_helper[1576]:12 terminal[922]:6
+13:11:36 dev=44 rend=43 tiler=29 WindowServer[686]:108 media_app_helper[1576]:22 terminal[922]:10 game_launcher_helper[1734]:4 peripheral_helper[1647]:1
+13:11:42 dev=21 rend=21 tiler=8 WindowServer[686]:141 media_app_helper[1576]:18 terminal[922]:15
+13:11:47 dev=95 rend=9 tiler=4 python3.12[72532]:448 WindowServer[686]:98 media_app_helper[1576]:17 terminal[922]:9
+13:11:52 dev=99 rend=8 tiler=4 python3.12[72532]:900 WindowServer[686]:54 media_app_helper[1576]:15 terminal[922]:6
+13:11:57 dev=99 rend=11 tiler=5 python3.12[72532]:865 WindowServer[686]:78 media_app_helper[1576]:24 terminal[922]:6
+13:12:02 dev=99 rend=7 tiler=3 python3.12[72532]:908 WindowServer[686]:49 media_app_helper[1576]:16 terminal[922]:1
+13:12:07 dev=99 rend=13 tiler=6 python3.12[72532]:871 WindowServer[686]:88 media_app_helper[1576]:33 terminal[922]:2
+13:12:12 dev=99 rend=10 tiler=4 python3.12[72532]:900 WindowServer[686]:74 media_app_helper[1576]:22 terminal[922]:1
+13:12:17 dev=99 rend=10 tiler=4 python3.12[72532]:874 WindowServer[686]:65 media_app_helper[1576]:26 terminal[922]:2
+13:12:22 dev=99 rend=14 tiler=7 python3.12[72532]:857 WindowServer[686]:95 media_app_helper[1576]:36 terminal[922]:4
+13:12:27 dev=99 rend=17 tiler=8 python3.12[72532]:826 WindowServer[686]:122 media_app_helper[1576]:41 terminal[922]:8
+13:12:32 dev=99 rend=20 tiler=9 python3.12[72532]:778 WindowServer[686]:165 media_app_helper[1576]:48 terminal[922]:2
+13:12:37 dev=74 rend=15 tiler=5 python3.12[72532]:844 WindowServer[686]:121 media_app_helper[1576]:29 terminal[922]:3
+13:12:42 dev=99 rend=10 tiler=5 python3.12[72532]:868 WindowServer[686]:68 media_app_helper[1576]:26 terminal[922]:2
+13:12:47 dev=99 rend=14 tiler=7 python3.12[72532]:856 WindowServer[686]:96 media_app_helper[1576]:39 terminal[922]:4
+13:12:52 dev=99 rend=20 tiler=9 python3.12[72532]:800 WindowServer[686]:153 media_app_helper[1576]:42 terminal[922]:3
+13:12:57 dev=99 rend=22 tiler=11 python3.12[72532]:773 WindowServer[686]:167 media_app_helper[1576]:47 terminal[922]:3
+13:13:02 dev=99 rend=26 tiler=11 python3.12[72532]:743 WindowServer[686]:197 media_app_helper[1576]:52 terminal[922]:7
+13:13:07 dev=99 rend=29 tiler=9 python3.12[72532]:709 WindowServer[686]:222 media_app_helper[1576]:59 terminal[922]:8
+13:13:12 dev=99 rend=34 tiler=12 python3.12[72532]:642 WindowServer[686]:293 media_app_helper[1576]:57 terminal[922]:3
+13:13:17 dev=99 rend=36 tiler=9 python3.12[72532]:629 WindowServer[686]:304 media_app_helper[1576]:60 terminal[922]:5
+13:13:22 dev=99 rend=38 tiler=7 python3.12[72532]:609 WindowServer[686]:315 media_app_helper[1576]:67 terminal[922]:9
+13:13:27 dev=99 rend=42 tiler=12 python3.12[72532]:576 WindowServer[686]:340 media_app_helper[1576]:69 terminal[922]:6
+13:13:32 dev=99 rend=45 tiler=11 python3.12[72532]:547 WindowServer[686]:375 media_app_helper[1576]:73 terminal[922]:5
+13:13:37 dev=0 rend=0 tiler=0 python3.12[72532]:851 WindowServer[686]:104 media_app_helper[1576]:13
+13:13:42 dev=5 rend=5 tiler=3 media_app_helper[1576]:17 WindowServer[686]:7
+13:13:47 dev=0 rend=0 tiler=0 media_app_helper[1576]:19
+13:13:52 dev=0 rend=0 tiler=0 media_app_helper[1576]:19
+13:13:57 dev=0 rend=0 tiler=0 media_app_helper[1576]:19
+13:14:02 dev=99 rend=2 tiler=2 python3.12[72532]:589 media_app_helper[1576]:15 loginwindow[689]:5
+13:14:08 dev=99 rend=1 tiler=1 python3.12[72532]:961 media_app_helper[1576]:14
+13:14:13 dev=99 rend=2 tiler=2 python3.12[72532]:950 media_app_helper[1576]:23
+13:14:18 dev=99 rend=1 tiler=1 python3.12[72532]:955 media_app_helper[1576]:16
+13:14:23 dev=78 rend=3 tiler=2 python3.12[72532]:969 media_app_helper[1576]:29
+13:14:28 dev=99 rend=1 tiler=1 python3.12[72532]:948 media_app_helper[1576]:18 game_launcher_helper[1734]:1
+13:14:33 dev=99 rend=3 tiler=2 python3.12[72532]:964 media_app_helper[1576]:30
+13:14:38 dev=99 rend=4 tiler=2 python3.12[72532]:957 media_app_helper[1576]:39
+13:14:43 dev=99 rend=4 tiler=3 python3.12[72532]:943 media_app_helper[1576]:42
+13:14:48 dev=99 rend=5 tiler=3 python3.12[72532]:948 media_app_helper[1576]:52
+13:14:53 dev=99 rend=1 tiler=1 python3.12[72532]:936 media_app_helper[1576]:17
+13:14:58 dev=99 rend=3 tiler=2 python3.12[72532]:967 media_app_helper[1576]:28
+13:15:03 dev=99 rend=4 tiler=3 python3.12[72532]:948 media_app_helper[1576]:38 loginwindow[689]:7
+13:15:08 dev=99 rend=5 tiler=3 python3.12[72532]:950 media_app_helper[1576]:46
+13:15:13 dev=99 rend=4 tiler=3 python3.12[72532]:948 media_app_helper[1576]:47
+13:15:18 dev=81 rend=5 tiler=3 python3.12[72532]:931 media_app_helper[1576]:56
+13:15:23 dev=84 rend=6 tiler=3 python3.12[72532]:947 media_app_helper[1576]:59
+13:15:28 dev=99 rend=7 tiler=3 python3.12[72532]:929 media_app_helper[1576]:68
+13:15:33 dev=99 rend=7 tiler=4 python3.12[72532]:917 media_app_helper[1576]:76
+13:15:38 dev=99 rend=6 tiler=3 python3.12[72532]:927 media_app_helper[1576]:67
+13:15:43 dev=99 rend=9 tiler=4 python3.12[72532]:911 media_app_helper[1576]:92
+13:15:48 dev=85 rend=4 tiler=1 python3.12[72532]:956 media_app_helper[1576]:41
+13:15:53 dev=0 rend=0 tiler=0 python3.12[72532]:164 media_app_helper[1576]:16
+13:15:58 dev=0 rend=0 tiler=0 media_app_helper[1576]:22 terminal[922]:3
+13:16:03 dev=3 rend=3 tiler=2 media_app_helper[1576]:23 terminal[922]:17 loginwindow[689]:5
+13:16:08 dev=5 rend=5 tiler=3 media_app_helper[1576]:24 terminal[922]:15
+13:16:13 dev=5 rend=5 tiler=3 media_app_helper[1576]:25 terminal[922]:19
+13:16:19 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:19
+13:16:24 dev=5 rend=5 tiler=3 media_app_helper[1576]:25 terminal[922]:21
+13:16:29 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:13
+13:16:34 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:9
+13:16:39 dev=4 rend=4 tiler=3 media_app_helper[1576]:24 terminal[922]:10 game_launcher_helper[1734]:2
+13:16:44 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:9 game_launcher_helper[1734]:2
+13:16:49 dev=4 rend=4 tiler=3 media_app_helper[1576]:25 terminal[922]:9
+13:16:54 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:11
+13:16:59 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:10
+13:17:04 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:11 loginwindow[689]:7
+13:17:09 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:11
+13:17:14 dev=4 rend=4 tiler=3 media_app_helper[1576]:25 terminal[922]:12
+13:17:19 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:11
+13:17:24 dev=4 rend=4 tiler=3 media_app_helper[1576]:24 terminal[922]:12
+13:17:29 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:11
+13:17:34 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:12
+13:17:39 dev=4 rend=4 tiler=3 media_app_helper[1576]:24 terminal[922]:13
+13:17:44 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:17
+13:17:49 dev=5 rend=5 tiler=3 media_app_helper[1576]:25 terminal[922]:21
+13:17:55 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:20
+13:18:00 dev=5 rend=5 tiler=3 media_app_helper[1576]:25 terminal[922]:20
+13:18:05 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:19 loginwindow[689]:6
+13:18:10 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:20
+13:18:15 dev=5 rend=5 tiler=3 media_app_helper[1576]:25 terminal[922]:20
+13:18:20 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:21
+13:18:25 dev=5 rend=5 tiler=3 media_app_helper[1576]:24 terminal[922]:19
+13:18:30 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:14
+13:18:35 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:12
+13:18:40 dev=4 rend=4 tiler=3 media_app_helper[1576]:24 terminal[922]:12
+13:18:45 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:11
+13:18:50 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:12
+13:18:55 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:15
+13:19:00 dev=4 rend=4 tiler=3 media_app_helper[1576]:24 terminal[922]:18 loginwindow[689]:3
+13:19:05 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:16 loginwindow[689]:3
+13:19:10 dev=5 rend=5 tiler=3 media_app_helper[1576]:24 terminal[922]:14
+13:19:15 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 terminal[922]:14
+13:19:20 dev=4 rend=4 tiler=3 media_app_helper[1576]:25 terminal[922]:14
+13:19:25 dev=0 rend=0 tiler=0 media_app_helper[1576]:24 terminal[922]:19
+13:19:31 dev=5 rend=5 tiler=3 media_app_helper[1576]:25 terminal[922]:16
+13:19:36 dev=7 rend=7 tiler=2 media_app_helper[1576]:23 terminal[922]:15
+13:19:41 dev=4 rend=4 tiler=2 media_app_helper[1576]:21 terminal[922]:16
+13:19:46 dev=0 rend=0 tiler=0 media_app_helper[1576]:19 terminal[922]:17
+13:19:51 dev=0 rend=0 tiler=0 media_app_helper[1576]:20 terminal[922]:7
+13:19:56 dev=29 rend=3 tiler=2 python3.12[77454]:61 media_app_helper[1576]:17 terminal[922]:4
+13:20:01 dev=63 rend=4 tiler=3 python3.12[77454]:575 media_app_helper[1576]:20 loginwindow[689]:9
+13:20:06 dev=83 rend=3 tiler=2 python3.12[77454]:963 media_app_helper[1576]:30 loginwindow[689]:3
+13:20:11 dev=96 rend=2 tiler=1 python3.12[77454]:915 media_app_helper[1576]:24
+13:20:16 dev=99 rend=1 tiler=1 python3.12[77454]:958 media_app_helper[1576]:15
+13:20:21 dev=99 rend=1 tiler=1 python3.12[77454]:956 media_app_helper[1576]:17
+13:20:26 dev=99 rend=2 tiler=1 python3.12[77454]:957 media_app_helper[1576]:16
+13:20:31 dev=99 rend=3 tiler=2 python3.12[77454]:965 media_app_helper[1576]:32
+13:20:36 dev=99 rend=3 tiler=2 python3.12[77454]:966 media_app_helper[1576]:29
+13:20:41 dev=99 rend=3 tiler=2 python3.12[77454]:945 media_app_helper[1576]:23
+13:20:46 dev=99 rend=4 tiler=3 python3.12[77454]:961 media_app_helper[1576]:35
+13:20:51 dev=99 rend=4 tiler=3 python3.12[77454]:952 media_app_helper[1576]:41
+13:20:56 dev=99 rend=5 tiler=3 python3.12[77454]:948 media_app_helper[1576]:51
+13:21:01 dev=99 rend=4 tiler=2 python3.12[77454]:953 media_app_helper[1576]:38 loginwindow[689]:2
+13:21:06 dev=99 rend=2 tiler=1 python3.12[77454]:942 media_app_helper[1576]:19
+13:21:11 dev=99 rend=4 tiler=3 python3.12[77454]:957 media_app_helper[1576]:39
+13:21:16 dev=99 rend=5 tiler=3 python3.12[77454]:941 media_app_helper[1576]:49
+13:21:21 dev=99 rend=5 tiler=3 python3.12[77454]:944 media_app_helper[1576]:49
+13:21:26 dev=99 rend=6 tiler=4 python3.12[77454]:935 media_app_helper[1576]:57 game_launcher_helper[1734]:1
+13:21:31 dev=99 rend=6 tiler=4 python3.12[77454]:936 media_app_helper[1576]:64
+13:21:36 dev=99 rend=7 tiler=4 python3.12[77454]:910 media_app_helper[1576]:75
+13:21:41 dev=100 rend=10 tiler=4 python3.12[77454]:927 media_app_helper[1576]:78
+13:21:47 dev=99 rend=8 tiler=4 python3.12[77454]:908 media_app_helper[1576]:85
+13:21:52 dev=99 rend=9 tiler=4 python3.12[77454]:912 media_app_helper[1576]:91
+13:21:57 dev=99 rend=9 tiler=4 python3.12[77454]:902 media_app_helper[1576]:97
+13:22:02 dev=72 rend=4 tiler=1 python3.12[77454]:956 media_app_helper[1576]:36 loginwindow[689]:2
+13:22:07 dev=99 rend=3 tiler=2 python3.12[77454]:918 media_app_helper[1576]:27
+13:22:12 dev=99 rend=4 tiler=3 python3.12[77454]:954 media_app_helper[1576]:38 game_launcher_helper[1734]:3
+13:22:17 dev=99 rend=5 tiler=3 python3.12[77454]:948 media_app_helper[1576]:49
+13:22:22 dev=99 rend=5 tiler=3 python3.12[77454]:934 media_app_helper[1576]:51
+13:22:27 dev=99 rend=6 tiler=4 python3.12[77454]:941 media_app_helper[1576]:59
+13:22:32 dev=99 rend=6 tiler=4 python3.12[77454]:925 media_app_helper[1576]:62
+13:22:37 dev=99 rend=7 tiler=4 python3.12[77454]:929 media_app_helper[1576]:73 game_launcher_helper[1734]:1
+13:22:42 dev=99 rend=7 tiler=3 python3.12[77454]:925 media_app_helper[1576]:73
+13:22:47 dev=99 rend=8 tiler=4 python3.12[77454]:914 media_app_helper[1576]:84
+13:22:52 dev=99 rend=9 tiler=4 python3.12[77454]:903 media_app_helper[1576]:94
+13:22:57 dev=99 rend=9 tiler=4 python3.12[77454]:901 media_app_helper[1576]:94
+13:23:02 dev=99 rend=11 tiler=5 python3.12[77454]:886 media_app_helper[1576]:100 loginwindow[689]:12
+13:23:07 dev=99 rend=9 tiler=4 python3.12[77454]:898 media_app_helper[1576]:99
+13:23:12 dev=99 rend=9 tiler=3 python3.12[77454]:901 media_app_helper[1576]:98
+13:23:17 dev=99 rend=12 tiler=5 python3.12[77454]:876 media_app_helper[1576]:121
+13:23:22 dev=99 rend=11 tiler=4 python3.12[77454]:884 media_app_helper[1576]:114
+13:23:27 dev=99 rend=11 tiler=4 python3.12[77454]:882 media_app_helper[1576]:114
+13:23:32 dev=99 rend=11 tiler=3 python3.12[77454]:876 media_app_helper[1576]:117
+13:23:37 dev=99 rend=13 tiler=4 python3.12[77454]:863 media_app_helper[1576]:131
+13:23:42 dev=99 rend=12 tiler=4 python3.12[77454]:876 media_app_helper[1576]:128
+13:23:47 dev=99 rend=13 tiler=3 python3.12[77454]:870 media_app_helper[1576]:129
+13:23:52 dev=99 rend=13 tiler=4 python3.12[77454]:854 media_app_helper[1576]:135
+13:23:58 dev=99 rend=12 tiler=4 python3.12[77454]:864 media_app_helper[1576]:126
+13:24:03 dev=99 rend=17 tiler=4 python3.12[77454]:814 media_app_helper[1576]:158 loginwindow[689]:20
+13:24:08 dev=99 rend=13 tiler=4 python3.12[77454]:888 media_app_helper[1576]:130
+13:24:13 dev=99 rend=14 tiler=4 python3.12[77454]:833 media_app_helper[1576]:151
+13:24:18 dev=100 rend=14 tiler=4 python3.12[77454]:862 media_app_helper[1576]:150
+13:24:23 dev=99 rend=15 tiler=4 python3.12[77454]:837 media_app_helper[1576]:161
+13:24:28 dev=99 rend=11 tiler=3 python3.12[77454]:880 media_app_helper[1576]:115
+13:24:33 dev=99 rend=1 tiler=0 python3.12[77454]:914 media_app_helper[1576]:9
+13:24:38 dev=99 rend=3 tiler=2 python3.12[77454]:968 media_app_helper[1576]:27
+13:24:43 dev=99 rend=3 tiler=2 python3.12[77454]:957 media_app_helper[1576]:38
+13:24:48 dev=99 rend=4 tiler=2 python3.12[77454]:949 media_app_helper[1576]:43
+13:24:53 dev=99 rend=5 tiler=3 python3.12[77454]:937 media_app_helper[1576]:55
+13:24:58 dev=99 rend=6 tiler=3 python3.12[77454]:941 media_app_helper[1576]:57
+13:25:03 dev=99 rend=7 tiler=4 python3.12[77454]:926 media_app_helper[1576]:60 loginwindow[689]:9
+13:25:08 dev=99 rend=6 tiler=3 python3.12[77454]:930 media_app_helper[1576]:65
+13:25:13 dev=99 rend=7 tiler=3 python3.12[77454]:927 media_app_helper[1576]:70
+13:25:18 dev=100 rend=11 tiler=4 python3.12[77454]:903 media_app_helper[1576]:88
+13:25:23 dev=99 rend=7 tiler=3 python3.12[77454]:926 media_app_helper[1576]:80
+13:25:28 dev=99 rend=9 tiler=3 python3.12[77454]:902 media_app_helper[1576]:92 game_launcher_helper[1734]:1
+13:25:33 dev=99 rend=10 tiler=4 python3.12[77454]:885 media_app_helper[1576]:103
+13:25:38 dev=99 rend=11 tiler=4 python3.12[77454]:896 media_app_helper[1576]:113
+13:25:43 dev=99 rend=10 tiler=4 python3.12[77454]:891 media_app_helper[1576]:102
+13:25:48 dev=100 rend=4 tiler=3 python3.12[77454]:899 media_app_helper[1576]:101
+13:25:53 dev=99 rend=11 tiler=4 python3.12[77454]:882 media_app_helper[1576]:114
+13:25:58 dev=99 rend=11 tiler=3 python3.12[77454]:878 media_app_helper[1576]:118
+13:26:03 dev=99 rend=13 tiler=5 python3.12[77454]:869 media_app_helper[1576]:109 loginwindow[689]:21
+13:26:08 dev=99 rend=12 tiler=4 python3.12[77454]:877 media_app_helper[1576]:121
+13:26:14 dev=99 rend=12 tiler=4 python3.12[77454]:869 media_app_helper[1576]:125
+13:26:19 dev=99 rend=12 tiler=4 python3.12[77454]:876 media_app_helper[1576]:123
+13:26:24 dev=99 rend=13 tiler=3 python3.12[77454]:871 media_app_helper[1576]:127
+13:26:29 dev=99 rend=15 tiler=4 python3.12[77454]:836 media_app_helper[1576]:161
+13:26:34 dev=99 rend=14 tiler=4 python3.12[77454]:851 media_app_helper[1576]:146 game_launcher_helper[1734]:1
+13:26:39 dev=99 rend=14 tiler=4 python3.12[77454]:851 media_app_helper[1576]:146
+13:26:44 dev=99 rend=13 tiler=4 python3.12[77454]:836 media_app_helper[1576]:141
+13:26:49 dev=99 rend=13 tiler=4 python3.12[77454]:872 media_app_helper[1576]:138
+13:26:54 dev=99 rend=14 tiler=3 python3.12[77454]:843 media_app_helper[1576]:152
+13:26:59 dev=99 rend=12 tiler=3 python3.12[77454]:864 media_app_helper[1576]:134
+13:27:04 dev=99 rend=19 tiler=4 python3.12[77454]:819 media_app_helper[1576]:174 loginwindow[689]:14
+13:27:09 dev=99 rend=17 tiler=4 python3.12[77454]:818 media_app_helper[1576]:181
+13:27:14 dev=99 rend=16 tiler=3 python3.12[77454]:820 media_app_helper[1576]:175
+13:27:19 dev=99 rend=18 tiler=3 python3.12[77454]:798 media_app_helper[1576]:182 game_launcher_helper[1734]:2
+13:27:24 dev=99 rend=18 tiler=4 python3.12[77454]:820 media_app_helper[1576]:190
+13:27:29 dev=99 rend=19 tiler=4 python3.12[77454]:788 media_app_helper[1576]:202
+13:27:34 dev=99 rend=16 tiler=3 python3.12[77454]:823 media_app_helper[1576]:179
+13:27:39 dev=99 rend=18 tiler=4 python3.12[77454]:821 media_app_helper[1576]:184
+13:27:44 dev=99 rend=17 tiler=3 python3.12[77454]:826 media_app_helper[1576]:174
+13:27:49 dev=99 rend=20 tiler=3 python3.12[77454]:779 media_app_helper[1576]:212
+13:27:54 dev=99 rend=18 tiler=3 python3.12[77454]:797 media_app_helper[1576]:205
+13:27:59 dev=99 rend=18 tiler=4 python3.12[77454]:817 media_app_helper[1576]:181
+13:28:04 dev=99 rend=23 tiler=5 python3.12[77454]:739 media_app_helper[1576]:209 loginwindow[689]:19
+13:28:09 dev=99 rend=20 tiler=4 python3.12[77454]:808 media_app_helper[1576]:206
+13:28:14 dev=99 rend=18 tiler=4 python3.12[77454]:824 media_app_helper[1576]:190
+13:28:19 dev=99 rend=20 tiler=3 python3.12[77454]:746 media_app_helper[1576]:221
+13:28:24 dev=99 rend=25 tiler=4 python3.12[77454]:758 media_app_helper[1576]:241
+13:28:30 dev=99 rend=22 tiler=4 python3.12[77454]:775 media_app_helper[1576]:228
+13:28:35 dev=99 rend=21 tiler=3 python3.12[77454]:789 media_app_helper[1576]:215
+13:28:40 dev=99 rend=21 tiler=3 python3.12[77454]:800 media_app_helper[1576]:213
+13:28:45 dev=99 rend=22 tiler=4 python3.12[77454]:751 media_app_helper[1576]:226
+13:28:50 dev=99 rend=25 tiler=3 python3.12[77454]:764 media_app_helper[1576]:256 game_launcher_helper[1734]:1
+13:28:55 dev=100 rend=19 tiler=3 python3.12[77454]:792 media_app_helper[1576]:194 game_launcher_helper[1734]:10
+13:29:00 dev=99 rend=29 tiler=4 python3.12[77454]:694 media_app_helper[1576]:226 game_launcher_helper[1734]:66 loginwindow[689]:6
+13:29:05 dev=99 rend=30 tiler=4 python3.12[77454]:704 media_app_helper[1576]:245 game_launcher_helper[1734]:40 loginwindow[689]:13
+13:29:10 dev=99 rend=25 tiler=3 python3.12[77454]:750 media_app_helper[1576]:253
+13:29:15 dev=99 rend=25 tiler=4 python3.12[77454]:704 media_app_helper[1576]:259
+13:29:20 dev=99 rend=24 tiler=4 python3.12[77454]:763 media_app_helper[1576]:244 game_launcher_helper[1734]:18
+13:29:25 dev=100 rend=39 tiler=4 python3.12[77454]:748 media_app_helper[1576]:232
+13:29:30 dev=99 rend=24 tiler=4 python3.12[77454]:774 media_app_helper[1576]:250
+13:29:35 dev=99 rend=22 tiler=4 python3.12[77454]:768 media_app_helper[1576]:227
+13:29:40 dev=99 rend=25 tiler=3 python3.12[77454]:732 media_app_helper[1576]:268
+13:29:45 dev=99 rend=26 tiler=4 python3.12[77454]:732 media_app_helper[1576]:266
+13:29:50 dev=99 rend=27 tiler=4 python3.12[77454]:681 media_app_helper[1576]:283
+13:29:55 dev=99 rend=23 tiler=4 python3.12[77454]:778 media_app_helper[1576]:232
+13:30:00 dev=99 rend=32 tiler=4 python3.12[77454]:698 media_app_helper[1576]:307 loginwindow[689]:12
+13:30:05 dev=99 rend=29 tiler=4 python3.12[77454]:695 media_app_helper[1576]:274 loginwindow[689]:12
+13:30:10 dev=99 rend=26 tiler=3 python3.12[77454]:739 media_app_helper[1576]:278
+13:30:15 dev=99 rend=22 tiler=4 python3.12[77454]:763 media_app_helper[1576]:220
+13:30:20 dev=99 rend=32 tiler=3 python3.12[77454]:673 media_app_helper[1576]:325
+13:30:25 dev=100 rend=30 tiler=4 python3.12[77454]:703 media_app_helper[1576]:300
+13:30:30 dev=100 rend=29 tiler=3 python3.12[77454]:708 media_app_helper[1576]:292
+13:30:35 dev=99 rend=29 tiler=3 python3.12[77454]:693 media_app_helper[1576]:306
+13:30:41 dev=99 rend=29 tiler=3 python3.12[77454]:698 media_app_helper[1576]:307
+13:30:46 dev=99 rend=32 tiler=4 python3.12[77454]:640 media_app_helper[1576]:327
+13:30:51 dev=99 rend=31 tiler=3 python3.12[77454]:695 media_app_helper[1576]:323
+13:30:56 dev=99 rend=34 tiler=3 python3.12[77454]:659 media_app_helper[1576]:352
+13:31:01 dev=99 rend=37 tiler=6 python3.12[77454]:621 media_app_helper[1576]:328 loginwindow[689]:34
+13:31:06 dev=99 rend=34 tiler=4 python3.12[77454]:630 media_app_helper[1576]:347 loginwindow[689]:4
+13:31:11 dev=99 rend=34 tiler=4 python3.12[77454]:658 media_app_helper[1576]:341
+13:31:16 dev=100 rend=31 tiler=3 python3.12[77454]:716 media_app_helper[1576]:312
+13:31:21 dev=99 rend=30 tiler=4 python3.12[77454]:686 media_app_helper[1576]:310
+13:31:26 dev=99 rend=32 tiler=4 python3.12[77454]:669 media_app_helper[1576]:320
+13:31:31 dev=100 rend=24 tiler=4 python3.12[77454]:723 media_app_helper[1576]:275
+13:31:36 dev=99 rend=38 tiler=3 python3.12[77454]:617 media_app_helper[1576]:387
+13:31:41 dev=99 rend=36 tiler=3 python3.12[77454]:642 media_app_helper[1576]:360
+13:31:46 dev=99 rend=36 tiler=3 python3.12[77454]:610 media_app_helper[1576]:368
+13:31:51 dev=99 rend=34 tiler=3 python3.12[77454]:655 media_app_helper[1576]:349
+13:31:56 dev=99 rend=1 tiler=0 python3.12[77454]:988 media_app_helper[1576]:11
+13:32:01 dev=0 rend=0 tiler=0 python3.12[77454]:346 media_app_helper[1576]:15 loginwindow[689]:7
+13:32:06 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:32:11 dev=0 rend=0 tiler=0 media_app_helper[1576]:21
+13:32:16 dev=0 rend=0 tiler=0 media_app_helper[1576]:19
+13:32:21 dev=0 rend=0 tiler=0 media_app_helper[1576]:20
+13:32:26 dev=38 rend=3 tiler=1 python3.12[81739]:75 media_app_helper[1576]:18
+13:32:31 dev=98 rend=3 tiler=2 python3.12[81739]:882 media_app_helper[1576]:29
+13:32:36 dev=97 rend=3 tiler=2 python3.12[81739]:926 media_app_helper[1576]:30
+13:32:41 dev=98 rend=3 tiler=2 python3.12[81739]:916 media_app_helper[1576]:28
+13:32:46 dev=96 rend=4 tiler=3 python3.12[81739]:906 media_app_helper[1576]:38
+13:32:51 dev=95 rend=5 tiler=3 python3.12[81739]:883 media_app_helper[1576]:50
+13:32:56 dev=96 rend=5 tiler=3 python3.12[81739]:892 media_app_helper[1576]:48
+13:33:02 dev=97 rend=10 tiler=3 python3.12[81739]:859 media_app_helper[1576]:58 loginwindow[689]:15 terminal[922]:10
+13:33:07 dev=97 rend=14 tiler=6 python3.12[81739]:823 media_app_helper[1576]:69 terminal[922]:56
+13:33:12 dev=97 rend=16 tiler=5 python3.12[81739]:806 terminal[922]:77 media_app_helper[1576]:73
+13:33:17 dev=97 rend=20 tiler=5 python3.12[81739]:766 terminal[922]:99 media_app_helper[1576]:84
+13:33:22 dev=97 rend=17 tiler=4 python3.12[81739]:796 terminal[922]:85 media_app_helper[1576]:80
+13:33:27 dev=96 rend=15 tiler=5 python3.12[81739]:803 terminal[922]:72 media_app_helper[1576]:69
+13:33:32 dev=98 rend=5 tiler=3 python3.12[81739]:916 media_app_helper[1576]:26 terminal[922]:16
+13:33:37 dev=98 rend=5 tiler=3 python3.12[81739]:904 media_app_helper[1576]:30 terminal[922]:16
+13:33:42 dev=96 rend=6 tiler=4 python3.12[81739]:887 media_app_helper[1576]:36 terminal[922]:20
+13:33:47 dev=96 rend=9 tiler=5 python3.12[81739]:852 media_app_helper[1576]:51 terminal[922]:24
+13:33:52 dev=96 rend=10 tiler=4 python3.12[81739]:837 media_app_helper[1576]:55 terminal[922]:37
+13:33:57 dev=97 rend=4 tiler=2 python3.12[81739]:871 media_app_helper[1576]:24 terminal[922]:13 game_launcher_helper[1734]:2
+13:34:02 dev=97 rend=3 tiler=2 python3.12[81739]:948 media_app_helper[1576]:18 terminal[922]:11 loginwindow[689]:2
+13:34:07 dev=97 rend=6 tiler=4 python3.12[81739]:889 media_app_helper[1576]:33 terminal[922]:14
+13:34:12 dev=99 rend=1 tiler=1 python3.12[81739]:776 media_app_helper[1576]:13 terminal[922]:4
+13:34:17 dev=0 rend=0 tiler=0 media_app_helper[1576]:21 terminal[922]:15
+13:34:22 dev=4 rend=4 tiler=2 media_app_helper[1576]:21 terminal[922]:14
+13:34:27 dev=0 rend=0 tiler=0 media_app_helper[1576]:19 terminal[922]:15
+13:34:32 dev=0 rend=0 tiler=0 media_app_helper[1576]:20 terminal[922]:7
+13:34:37 dev=59 rend=1 tiler=0 python3.12[82555]:97 media_app_helper[1576]:18
+13:34:42 dev=74 rend=3 tiler=2 python3.12[82555]:872 media_app_helper[1576]:26
+13:34:47 dev=99 rend=3 tiler=2 python3.12[82555]:945 media_app_helper[1576]:31
+13:34:52 dev=99 rend=3 tiler=2 python3.12[82555]:949 media_app_helper[1576]:30
+13:34:57 dev=99 rend=4 tiler=3 python3.12[82555]:946 media_app_helper[1576]:41
+13:35:02 dev=99 rend=5 tiler=4 python3.12[82555]:946 media_app_helper[1576]:39 loginwindow[689]:10
+13:35:07 dev=99 rend=5 tiler=3 python3.12[82555]:942 media_app_helper[1576]:51
+13:35:13 dev=97 rend=5 tiler=4 python3.12[82555]:934 media_app_helper[1576]:53
+13:35:18 dev=99 rend=6 tiler=4 python3.12[82555]:926 media_app_helper[1576]:67
+13:35:23 dev=99 rend=7 tiler=4 python3.12[82555]:919 media_app_helper[1576]:74
+13:35:28 dev=98 rend=7 tiler=4 python3.12[82555]:919 media_app_helper[1576]:67 game_launcher_helper[1734]:2
+13:35:33 dev=99 rend=8 tiler=4 python3.12[82555]:919 media_app_helper[1576]:76
+13:35:38 dev=99 rend=3 tiler=2 python3.12[82555]:923 media_app_helper[1576]:44
+13:35:43 dev=99 rend=3 tiler=2 python3.12[82555]:941 media_app_helper[1576]:23
+13:35:48 dev=99 rend=3 tiler=2 python3.12[82555]:956 media_app_helper[1576]:32
+13:35:53 dev=99 rend=4 tiler=3 python3.12[82555]:948 media_app_helper[1576]:41
+13:35:58 dev=99 rend=4 tiler=3 python3.12[82555]:948 media_app_helper[1576]:39
+13:36:03 dev=99 rend=5 tiler=4 python3.12[82555]:932 media_app_helper[1576]:34 loginwindow[689]:17
+13:36:08 dev=99 rend=3 tiler=2 python3.12[82555]:901 media_app_helper[1576]:24
+13:36:13 dev=99 rend=1 tiler=1 python3.12[82555]:949 media_app_helper[1576]:17
+13:36:18 dev=99 rend=2 tiler=1 python3.12[82555]:970 media_app_helper[1576]:24
+13:36:23 dev=99 rend=0 tiler=0 media_app_helper[1576]:17
+13:36:28 dev=0 rend=0 tiler=0 media_app_helper[1576]:21
+13:36:33 dev=0 rend=0 tiler=0 media_app_helper[1576]:20
+13:36:38 dev=0 rend=0 tiler=0 media_app_helper[1576]:20
+13:36:43 dev=41 rend=0 tiler=0 python3.12[83340]:74 media_app_helper[1576]:18
+13:36:48 dev=99 rend=3 tiler=2 python3.12[83340]:803 media_app_helper[1576]:28
+13:36:53 dev=99 rend=3 tiler=2 python3.12[83340]:955 media_app_helper[1576]:33
+13:36:58 dev=99 rend=3 tiler=2 python3.12[83340]:933 media_app_helper[1576]:25
+13:37:03 dev=93 rend=5 tiler=3 python3.12[83340]:944 media_app_helper[1576]:34 loginwindow[689]:13
+13:37:08 dev=100 rend=3 tiler=2 python3.12[83340]:932 media_app_helper[1576]:47
+13:37:13 dev=99 rend=5 tiler=3 python3.12[83340]:941 media_app_helper[1576]:46
+13:37:18 dev=98 rend=6 tiler=3 python3.12[83340]:927 media_app_helper[1576]:56
+13:37:24 dev=99 rend=6 tiler=3 python3.12[83340]:935 media_app_helper[1576]:61
+13:37:29 dev=99 rend=6 tiler=3 python3.12[83340]:924 media_app_helper[1576]:64
+13:37:34 dev=99 rend=8 tiler=4 python3.12[83340]:897 media_app_helper[1576]:82
+13:37:39 dev=99 rend=9 tiler=4 python3.12[83340]:916 media_app_helper[1576]:88
+13:37:44 dev=99 rend=4 tiler=2 python3.12[83340]:919 media_app_helper[1576]:45
+13:37:49 dev=99 rend=2 tiler=1 python3.12[83340]:940 media_app_helper[1576]:21
+13:37:54 dev=99 rend=3 tiler=2 python3.12[83340]:960 media_app_helper[1576]:31
+13:37:59 dev=99 rend=4 tiler=3 python3.12[83340]:939 media_app_helper[1576]:39
+13:38:04 dev=99 rend=6 tiler=4 python3.12[83340]:932 media_app_helper[1576]:45 loginwindow[689]:13
+13:38:09 dev=99 rend=4 tiler=2 python3.12[83340]:937 media_app_helper[1576]:43
+13:38:14 dev=99 rend=3 tiler=2 python3.12[83340]:905 media_app_helper[1576]:24
+13:38:19 dev=99 rend=1 tiler=1 python3.12[83340]:948 media_app_helper[1576]:17
+13:38:24 dev=99 rend=2 tiler=1 python3.12[83340]:961 media_app_helper[1576]:25
+13:38:29 dev=99 rend=0 tiler=0 media_app_helper[1576]:17
+13:38:34 dev=0 rend=0 tiler=0 media_app_helper[1576]:22
+13:38:39 dev=0 rend=0 tiler=0 media_app_helper[1576]:21
+13:38:44 dev=0 rend=0 tiler=0 media_app_helper[1576]:21
+13:38:49 dev=35 rend=1 tiler=0 python3.12[84140]:74 media_app_helper[1576]:19
+13:38:54 dev=99 rend=3 tiler=2 python3.12[84140]:790 media_app_helper[1576]:27
+13:38:59 dev=99 rend=3 tiler=2 python3.12[84140]:959 media_app_helper[1576]:32
+13:39:04 dev=99 rend=4 tiler=3 python3.12[84140]:927 media_app_helper[1576]:25 loginwindow[689]:5
+13:39:09 dev=97 rend=3 tiler=2 python3.12[84140]:958 media_app_helper[1576]:35
+13:39:14 dev=99 rend=3 tiler=3 python3.12[84140]:953 media_app_helper[1576]:37
+13:39:19 dev=98 rend=4 tiler=3 python3.12[84140]:941 media_app_helper[1576]:47
+13:39:24 dev=99 rend=5 tiler=3 python3.12[84140]:941 media_app_helper[1576]:48
+13:39:29 dev=98 rend=6 tiler=4 python3.12[84140]:924 media_app_helper[1576]:58
+13:39:35 dev=98 rend=6 tiler=3 python3.12[84140]:933 media_app_helper[1576]:64
+13:39:40 dev=99 rend=7 tiler=4 python3.12[84140]:916 media_app_helper[1576]:68
+13:39:45 dev=99 rend=7 tiler=3 python3.12[84140]:928 media_app_helper[1576]:76
+13:39:50 dev=99 rend=4 tiler=2 python3.12[84140]:928 media_app_helper[1576]:40
+13:39:55 dev=99 rend=3 tiler=2 python3.12[84140]:935 media_app_helper[1576]:26
+13:40:00 dev=99 rend=3 tiler=3 python3.12[84140]:958 media_app_helper[1576]:30 loginwindow[689]:2
+13:40:05 dev=99 rend=6 tiler=4 python3.12[84140]:941 media_app_helper[1576]:39 loginwindow[689]:11
+13:40:10 dev=99 rend=4 tiler=2 python3.12[84140]:947 media_app_helper[1576]:37
+13:40:15 dev=99 rend=0 tiler=0 python3.12[84140]:945 media_app_helper[1576]:39
+13:40:20 dev=99 rend=3 tiler=2 python3.12[84140]:901 media_app_helper[1576]:27
+13:40:25 dev=99 rend=2 tiler=1 python3.12[84140]:948 media_app_helper[1576]:19 game_launcher_helper[1734]:1
+13:40:30 dev=99 rend=2 tiler=1 python3.12[84140]:968 media_app_helper[1576]:21
+13:40:35 dev=99 rend=0 tiler=0 media_app_helper[1576]:18
+13:40:40 dev=0 rend=0 tiler=0 media_app_helper[1576]:23
+13:40:45 dev=0 rend=0 tiler=0 media_app_helper[1576]:22
+13:40:50 dev=0 rend=0 tiler=0 media_app_helper[1576]:22
+13:40:55 dev=28 rend=1 tiler=1 python3.12[84940]:60 media_app_helper[1576]:20
+13:41:00 dev=97 rend=3 tiler=2 python3.12[84940]:652 media_app_helper[1576]:26 loginwindow[689]:3
+13:41:05 dev=97 rend=5 tiler=4 python3.12[84940]:914 media_app_helper[1576]:37 loginwindow[689]:6
+13:41:10 dev=98 rend=3 tiler=2 python3.12[84940]:922 media_app_helper[1576]:25
+13:41:15 dev=97 rend=4 tiler=3 python3.12[84940]:931 media_app_helper[1576]:36
+13:41:20 dev=96 rend=5 tiler=3 python3.12[84940]:884 media_app_helper[1576]:42
+13:41:25 dev=96 rend=5 tiler=3 python3.12[84940]:880 media_app_helper[1576]:49
+13:41:30 dev=96 rend=6 tiler=3 python3.12[84940]:875 media_app_helper[1576]:60
+13:41:35 dev=97 rend=7 tiler=4 python3.12[84940]:897 media_app_helper[1576]:63
+13:41:40 dev=95 rend=7 tiler=4 python3.12[84940]:885 media_app_helper[1576]:71
+13:41:45 dev=97 rend=8 tiler=4 python3.12[84940]:868 media_app_helper[1576]:83
+13:41:51 dev=97 rend=12 tiler=6 python3.12[84940]:834 media_app_helper[1576]:106
+13:41:56 dev=97 rend=9 tiler=4 python3.12[84940]:875 media_app_helper[1576]:93
+13:42:01 dev=98 rend=4 tiler=3 python3.12[84940]:905 media_app_helper[1576]:33 loginwindow[689]:7
+13:42:06 dev=95 rend=2 tiler=2 python3.12[84940]:927 media_app_helper[1576]:22
+13:42:11 dev=97 rend=4 tiler=3 python3.12[84940]:922 media_app_helper[1576]:37
+13:42:16 dev=96 rend=4 tiler=3 python3.12[84940]:888 media_app_helper[1576]:43
+13:42:21 dev=95 rend=6 tiler=4 python3.12[84940]:859 media_app_helper[1576]:61
+13:42:26 dev=97 rend=4 tiler=2 python3.12[84940]:914 media_app_helper[1576]:38
+13:42:31 dev=96 rend=2 tiler=2 python3.12[84940]:893 media_app_helper[1576]:23
+13:42:36 dev=98 rend=2 tiler=1 python3.12[84940]:940 media_app_helper[1576]:20
+13:42:41 dev=97 rend=2 tiler=1 python3.12[84940]:943 media_app_helper[1576]:22
+13:42:46 dev=99 rend=0 tiler=0 media_app_helper[1576]:17
+13:42:51 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:42:56 dev=0 rend=0 tiler=0 media_app_helper[1576]:23
+13:43:01 dev=0 rend=0 tiler=0 media_app_helper[1576]:23 loginwindow[689]:5
+13:43:06 dev=0 rend=0 tiler=0 media_app_helper[1576]:22
+13:43:11 dev=91 rend=5 tiler=4 python3.12[85746]:244 media_app_helper[1576]:28
+13:43:16 dev=99 rend=5 tiler=3 python3.12[85746]:944 media_app_helper[1576]:51
+13:43:21 dev=82 rend=3 tiler=2 python3.12[85746]:887 media_app_helper[1576]:41
+13:43:26 dev=99 rend=5 tiler=4 python3.12[85746]:939 media_app_helper[1576]:53
+13:43:31 dev=98 rend=6 tiler=4 python3.12[85746]:932 media_app_helper[1576]:59
+13:43:36 dev=99 rend=5 tiler=4 python3.12[85746]:931 media_app_helper[1576]:55
+13:43:41 dev=99 rend=6 tiler=4 python3.12[85746]:938 media_app_helper[1576]:60
+13:43:46 dev=99 rend=6 tiler=4 python3.12[85746]:926 media_app_helper[1576]:66
+13:43:51 dev=99 rend=7 tiler=5 python3.12[85746]:919 media_app_helper[1576]:63
+13:43:56 dev=99 rend=8 tiler=4 python3.12[85746]:897 media_app_helper[1576]:81
+13:44:02 dev=98 rend=7 tiler=5 python3.12[85746]:922 media_app_helper[1576]:62 loginwindow[689]:12
+13:44:07 dev=96 rend=7 tiler=4 python3.12[85746]:888 media_app_helper[1576]:75
+13:44:12 dev=86 rend=4 tiler=3 python3.12[85746]:863 media_app_helper[1576]:39
+13:44:17 dev=80 rend=2 tiler=2 python3.12[85746]:945 media_app_helper[1576]:23
+13:44:22 dev=99 rend=4 tiler=3 python3.12[85746]:916 media_app_helper[1576]:38
+13:44:27 dev=57 rend=1 tiler=0 python3.12[85746]:806 media_app_helper[1576]:10
+13:44:32 dev=0 rend=0 tiler=0 media_app_helper[1576]:22
+13:44:37 dev=0 rend=0 tiler=0 media_app_helper[1576]:23
+13:44:42 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:44:47 dev=0 rend=0 tiler=0 media_app_helper[1576]:23
+13:44:52 dev=73 rend=1 tiler=0 python3.12[86413]:67 media_app_helper[1576]:22
+13:44:57 dev=99 rend=5 tiler=4 python3.12[86413]:933 media_app_helper[1576]:53
+13:45:02 dev=95 rend=5 tiler=4 python3.12[86413]:883 media_app_helper[1576]:41 loginwindow[689]:8
+13:45:07 dev=99 rend=5 tiler=4 python3.12[86413]:940 media_app_helper[1576]:54
+13:45:12 dev=99 rend=5 tiler=4 python3.12[86413]:938 media_app_helper[1576]:57
+13:45:17 dev=99 rend=6 tiler=4 python3.12[86413]:931 media_app_helper[1576]:63
+13:45:22 dev=99 rend=7 tiler=4 python3.12[86413]:927 media_app_helper[1576]:67
+13:45:27 dev=99 rend=7 tiler=5 python3.12[86413]:915 media_app_helper[1576]:72
+13:45:32 dev=99 rend=7 tiler=5 python3.12[86413]:931 media_app_helper[1576]:69
+13:45:37 dev=99 rend=7 tiler=4 python3.12[86413]:917 media_app_helper[1576]:72
+13:45:42 dev=99 rend=7 tiler=5 python3.12[86413]:906 media_app_helper[1576]:77
+13:45:47 dev=98 rend=8 tiler=5 python3.12[86413]:890 media_app_helper[1576]:78
+13:45:52 dev=98 rend=5 tiler=4 python3.12[86413]:914 media_app_helper[1576]:47
+13:45:57 dev=93 rend=4 tiler=3 python3.12[86413]:872 media_app_helper[1576]:44
+13:46:02 dev=65 rend=3 tiler=2 python3.12[86413]:901 media_app_helper[1576]:25 loginwindow[689]:4
+13:46:07 dev=80 rend=3 tiler=2 python3.12[86413]:948 media_app_helper[1576]:29
+13:46:13 dev=60 rend=0 tiler=0 media_app_helper[1576]:18
+13:46:18 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:46:23 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:46:28 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:46:33 dev=31 rend=1 tiler=1 media_app_helper[1576]:24 python3.12[87076]:20
+13:46:38 dev=98 rend=5 tiler=3 python3.12[87076]:762 media_app_helper[1576]:43
+13:46:43 dev=99 rend=5 tiler=3 python3.12[87076]:942 media_app_helper[1576]:47
+13:46:48 dev=91 rend=4 tiler=3 python3.12[87076]:899 media_app_helper[1576]:43
+13:46:53 dev=99 rend=5 tiler=4 python3.12[87076]:942 media_app_helper[1576]:56
+13:46:58 dev=100 rend=6 tiler=4 python3.12[87076]:934 media_app_helper[1576]:61
+13:47:03 dev=46 rend=7 tiler=6 python3.12[87076]:910 media_app_helper[1576]:55 loginwindow[689]:22
+13:47:08 dev=7 rend=7 tiler=5 python3.12[87076]:929 media_app_helper[1576]:72
+13:47:13 dev=7 rend=7 tiler=4 python3.12[87076]:914 media_app_helper[1576]:71
+13:47:18 dev=7 rend=7 tiler=4 python3.12[87076]:925 media_app_helper[1576]:72
+13:47:23 dev=33 rend=7 tiler=5 python3.12[87076]:910 media_app_helper[1576]:73
+13:47:28 dev=100 rend=8 tiler=4 python3.12[87076]:944 media_app_helper[1576]:78
+13:47:33 dev=99 rend=7 tiler=4 python3.12[87076]:923 media_app_helper[1576]:66
+13:47:38 dev=91 rend=4 tiler=3 python3.12[87076]:867 media_app_helper[1576]:44
+13:47:43 dev=61 rend=2 tiler=1 python3.12[87076]:910 media_app_helper[1576]:21
+13:47:48 dev=88 rend=4 tiler=3 python3.12[87076]:941 media_app_helper[1576]:40
+13:47:53 dev=57 rend=0 tiler=0 media_app_helper[1576]:14
+13:47:58 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:48:03 dev=3 rend=3 tiler=2 media_app_helper[1576]:25 loginwindow[689]:7
+13:48:08 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:48:13 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:48:18 dev=97 rend=5 tiler=4 python3.12[87727]:588 media_app_helper[1576]:39
+13:48:23 dev=99 rend=5 tiler=3 python3.12[87727]:938 media_app_helper[1576]:54
+13:48:28 dev=91 rend=4 tiler=3 python3.12[87727]:900 media_app_helper[1576]:39
+13:48:33 dev=99 rend=5 tiler=4 python3.12[87727]:941 media_app_helper[1576]:52
+13:48:39 dev=99 rend=5 tiler=4 python3.12[87727]:943 media_app_helper[1576]:53
+13:48:44 dev=61 rend=6 tiler=4 python3.12[87727]:933 media_app_helper[1576]:57
+13:48:49 dev=35 rend=6 tiler=4 python3.12[87727]:920 media_app_helper[1576]:61
+13:48:54 dev=100 rend=6 tiler=4 python3.12[87727]:940 media_app_helper[1576]:65
+13:48:59 dev=93 rend=7 tiler=4 python3.12[87727]:929 media_app_helper[1576]:73
+13:49:04 dev=99 rend=7 tiler=5 python3.12[87727]:911 media_app_helper[1576]:62 loginwindow[689]:9 game_launcher_helper[1734]:3
+13:49:09 dev=100 rend=8 tiler=4 python3.12[87727]:916 media_app_helper[1576]:81
+13:49:14 dev=99 rend=6 tiler=4 python3.12[87727]:916 media_app_helper[1576]:62
+13:49:19 dev=91 rend=4 tiler=3 python3.12[87727]:866 media_app_helper[1576]:43
+13:49:24 dev=55 rend=2 tiler=1 python3.12[87727]:900 media_app_helper[1576]:22
+13:49:29 dev=85 rend=4 tiler=3 python3.12[87727]:935 media_app_helper[1576]:42
+13:49:34 dev=64 rend=0 tiler=0 python3.12[87727]:478 media_app_helper[1576]:14
+13:49:39 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:49:44 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:49:49 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:49:54 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:49:59 dev=96 rend=4 tiler=3 python3.12[88380]:570 media_app_helper[1576]:37
+13:50:04 dev=100 rend=5 tiler=3 python3.12[88380]:918 media_app_helper[1576]:51 loginwindow[689]:22
+13:50:09 dev=89 rend=4 tiler=3 python3.12[88380]:891 media_app_helper[1576]:42
+13:50:14 dev=99 rend=5 tiler=3 python3.12[88380]:941 media_app_helper[1576]:52
+13:50:19 dev=99 rend=6 tiler=4 python3.12[88380]:934 media_app_helper[1576]:61
+13:50:24 dev=82 rend=6 tiler=4 python3.12[88380]:929 media_app_helper[1576]:67
+13:50:29 dev=99 rend=6 tiler=5 python3.12[88380]:915 media_app_helper[1576]:69
+13:50:34 dev=100 rend=7 tiler=5 python3.12[88380]:936 media_app_helper[1576]:73
+13:50:39 dev=99 rend=6 tiler=4 python3.12[88380]:906 media_app_helper[1576]:64 game_launcher_helper[1734]:2
+13:50:44 dev=99 rend=7 tiler=4 python3.12[88380]:940 media_app_helper[1576]:67
+13:50:49 dev=100 rend=7 tiler=4 python3.12[88380]:927 media_app_helper[1576]:72
+13:50:55 dev=99 rend=6 tiler=4 python3.12[88380]:920 media_app_helper[1576]:66
+13:51:00 dev=84 rend=4 tiler=3 python3.12[88380]:864 media_app_helper[1576]:42
+13:51:05 dev=73 rend=3 tiler=2 python3.12[88380]:899 media_app_helper[1576]:21 loginwindow[689]:8
+13:51:10 dev=86 rend=5 tiler=4 python3.12[88380]:933 media_app_helper[1576]:48
+13:51:15 dev=54 rend=0 tiler=0 python3.12[88380]:500 media_app_helper[1576]:13
+13:51:20 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:51:25 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:51:30 dev=0 rend=0 tiler=0 media_app_helper[1576]:26
+13:51:35 dev=0 rend=0 tiler=0 media_app_helper[1576]:24
+13:51:40 dev=96 rend=4 tiler=3 python3.12[89017]:565 media_app_helper[1576]:36
+13:51:45 dev=99 rend=5 tiler=3 python3.12[89017]:947 media_app_helper[1576]:49
+13:51:50 dev=90 rend=4 tiler=3 python3.12[89017]:897 media_app_helper[1576]:41
+13:51:55 dev=99 rend=5 tiler=3 python3.12[89017]:946 media_app_helper[1576]:50
+13:52:00 dev=99 rend=7 tiler=5 python3.12[89017]:921 media_app_helper[1576]:60 loginwindow[689]:11
+13:52:05 dev=59 rend=7 tiler=5 python3.12[89017]:927 media_app_helper[1576]:63 loginwindow[689]:10
+13:52:10 dev=6 rend=6 tiler=4 python3.12[89017]:931 media_app_helper[1576]:66
+13:52:15 dev=6 rend=6 tiler=4 python3.12[89017]:935 media_app_helper[1576]:65
+13:52:20 dev=7 rend=7 tiler=4 python3.12[89017]:919 media_app_helper[1576]:69
+13:52:25 dev=29 rend=8 tiler=5 python3.12[89017]:913 media_app_helper[1576]:78
+13:52:30 dev=100 rend=7 tiler=4 python3.12[89017]:923 media_app_helper[1576]:75
+13:52:35 dev=98 rend=5 tiler=3 python3.12[89017]:936 media_app_helper[1576]:51
+13:52:40 dev=98 rend=5 tiler=4 python3.12[89017]:854 media_app_helper[1576]:46
+13:52:45 dev=82 rend=2 tiler=1 python3.12[89017]:927 media_app_helper[1576]:19
+13:52:50 dev=79 rend=3 tiler=2 python3.12[89017]:945 media_app_helper[1576]:33
+13:52:55 dev=55 rend=1 tiler=0 python3.12[89017]:330 media_app_helper[1576]:16
+13:53:00 dev=0 rend=0 tiler=0 media_app_helper[1576]:26 loginwindow[689]:4
+13:53:05 dev=0 rend=0 tiler=0 media_app_helper[1576]:25 loginwindow[689]:1
+13:53:11 dev=0 rend=0 tiler=0 media_app_helper[1576]:26
+13:53:16 dev=0 rend=0 tiler=0 media_app_helper[1576]:25
+13:53:21 dev=97 rend=5 tiler=3 python3.12[89668]:532 media_app_helper[1576]:40
+13:53:26 dev=99 rend=5 tiler=4 python3.12[89668]:936 media_app_helper[1576]:56
+13:53:31 dev=93 rend=4 tiler=3 python3.12[89668]:896 media_app_helper[1576]:42
+13:53:36 dev=99 rend=5 tiler=3 python3.12[89668]:940 media_app_helper[1576]:52
+13:53:41 dev=99 rend=5 tiler=4 python3.12[89668]:929 media_app_helper[1576]:63
+13:53:46 dev=99 rend=6 tiler=4 python3.12[89668]:924 media_app_helper[1576]:66
+13:53:51 dev=99 rend=6 tiler=4 python3.12[89668]:921 media_app_helper[1576]:61
+13:53:56 dev=99 rend=6 tiler=4 python3.12[89668]:935 media_app_helper[1576]:63
+13:54:01 dev=99 rend=8 tiler=6 python3.12[89668]:923 media_app_helper[1576]:70 loginwindow[689]:12
+13:54:06 dev=99 rend=7 tiler=4 python3.12[89668]:921 media_app_helper[1576]:66 loginwindow[689]:2
+13:54:11 dev=98 rend=9 tiler=5 python3.12[89668]:892 media_app_helper[1576]:81
+13:54:16 dev=99 rend=6 tiler=4 python3.12[89668]:918 media_app_helper[1576]:60
+13:54:21 dev=96 rend=4 tiler=3 python3.12[89668]:860 media_app_helper[1576]:42
+13:54:26 dev=69 rend=2 tiler=1 python3.12[89668]:894 media_app_helper[1576]:17
+13:54:31 dev=92 rend=4 tiler=3 python3.12[89668]:939 media_app_helper[1576]:44
+13:54:36 dev=57 rend=0 tiler=0 python3.12[89668]:515 media_app_helper[1576]:14
+13:54:41 dev=0 rend=0 tiler=0 media_app_helper[1576]:26 terminal[922]:1
