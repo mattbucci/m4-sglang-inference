@@ -1,6 +1,7 @@
-# qwen36 decode micro-experiments: buffer limit, SDPA block ladder, launch folding
+# qwen36 decode micro-experiments: buffer limit, SDPA block ladder, launch folding, prefix-hit positions
 
-Run date 2026-11-10. Stack: SGLang v0.5.23 + patches 001-032, MLX 0.32.4,
+Run date 2026-11-10. Stack: SGLang v0.5.23 + patches 001-032 (033 lands in
+the prefix-hit section and later arms run with it), MLX 0.32.4,
 mlx-lm 0.32.3.dev17, mlx-vlm 0.6.5, M4 Pro 64 GB. Model
 `mlx-community/Qwen3.6-35B-A3B-4bit` (preset `qwen36`): 40 layers (30
 GatedDeltaNet, 10 attention), MoE with 256 experts and top-8 routing plus a
@@ -58,6 +59,8 @@ The R9700 team's decode lane, carried over to Metal:
 | fused GatedDeltaNet front (patch 031) | launches | raw: 2,340 → 1,770 primitives, −0.3 ms more; served +3.3 to +3.5 % to 30K | opt-in flag |
 | grouped decode linears (patch 032) | launches | raw: −0.2 ms more on top of 030 and 031, bit-identical; served alone −0.7 to −0.9 %, the three together +10.1 to +11.6 % to 30K | opt-in flag |
 | fused GatedDeltaNet back kernel | launches | raw: 9.94 ms against 9.86 for the linear pairs on the same base | not taken |
+| fidelity of patches 030 to 032 | rounding | teacher-forced against a float32 yardstick: KL mean 0.0189 (030), 0.0206 (031), bit-identical (032), 0.0211 (all) against 0.0165 for the stock decode path and 0.0194 for the stock prefill path | pass |
+| prefix-hit positions (patch 033) | correctness | a radix hit numbered its new tokens from zero on mlx-vlm Qwen checkpoints; fixed, a re-prompting decode is bit-identical over 4,598 steps (23.9 divergences per 1000 before) and a follow-up hit is at KL 0.0064 from cold (0.0658 before) | retained, always on |
 | block-max top-k for the sampled tail | sampling | raw: 242 µs against 387 µs for the full argsort | open candidate, about 1 % of a sampled step |
 
 ## Where a step goes
@@ -340,6 +343,171 @@ grouped-linears and ladder arms and differs in the fused-router,
 fused-front and all-three arms, each of which reproduces itself across
 its two arms.
 
+## Decode fidelity: a float32 yardstick
+
+A served A/B of a decode-only kernel cannot grade fidelity: the arms part
+ways at the first flipped token and text hashes then compare different
+continuations. `scripts/eval/decode_path_precision.py` is teacher-forced
+instead. It takes a served greedy dump (`serve-dfid/base.json`: 24
+documents, 12 prose and 12 code, 4,598 decoded steps) and recomputes the
+next-token distribution at every step on paths that are the same function
+in exact arithmetic. The yardstick is one batched forward with float32
+activations over the unchanged 4-bit weights. KL is taken from the
+yardstick to each path; a far step is one with KL above 0.5.
+
+`precision/stock.json`:
+
+| path | KL mean | KL median | KL p99 | far steps per 1000 | top token differs per 1000 |
+|---|---|---|---|---|---|
+| one-token steps, float32 | 1.4e-5 | 8.7e-10 | 2.2e-5 | 0 | 0.65 |
+| batched forward, bf16 (the prefill path) | 0.0194 | 5.0e-4 | 0.113 | 4.1 | 22.4 |
+| one-token steps, bf16 (the decode path) | 0.0165 | 4.8e-4 | 0.163 | 5.0 | 21.3 |
+| the served top-20 | 0.0099 | 3.9e-4 | 0.144 | 5.2 | 21.3 |
+
+The float32 step path lands on the yardstick, so the decode path computes
+the function the prefill path computes: there is no logic defect in it.
+What remains is bf16 rounding of the activations, the same size on either
+path: about 2 % of greedy steps pick a different token than the float32
+model would, and one step in a thousand picks a token the float32 model
+gives under 1 %. Every far step is in prose; the code documents have none.
+A greedy prose continuation on this checkpoint is therefore not a stable
+object, and a text hash that differs between two arms says nothing by
+itself.
+
+### Fusion fidelity gate
+
+The same probe with `--fuse`, which installs the decode fusions before the
+bf16 step path runs (`precision/router.json`, `front.json`, `linears.json`,
+`all.json`):
+
+| bf16 decode path with | KL mean | KL median | KL p99 | far steps per 1000 | top token differs per 1000 |
+|---|---|---|---|---|---|
+| stock | 0.0165 | 4.8e-4 | 0.163 | 5.0 | 21.3 |
+| fused router (030) | 0.0189 | 4.8e-4 | 0.119 | 3.5 | 16.5 |
+| fused front (031) | 0.0206 | 4.9e-4 | 0.212 | 6.3 | 23.5 |
+| grouped linears (032) | 0.0165 | 4.8e-4 | 0.163 | 5.0 | 21.3 |
+| all three | 0.0211 | 4.5e-4 | 0.133 | 3.9 | 20.7 |
+| for scale: stock prefill path | 0.0194 | 5.0e-4 | 0.113 | 4.1 | 22.4 |
+
+The grouped linears are bit-identical to stock. The fused router and front
+move individual steps (their kernels accumulate in float32 and round once)
+but sit in the band the two stock paths already span. Patches 030 and 031
+pass.
+
+## Served decode-fidelity arms
+
+`scripts/eval/decode_fidelity.py` (`serve-dfid/`): the arm decodes the 24
+reference prompts greedily; at a step where its top token differs from the
+reference it records the divergence and re-prompts with the reference
+tokens, which the radix cache serves as a prefix hit. `--restart-every 48`
+re-prompts on a schedule, `--split-prefill 37` starts the decode from a
+hit. Files without a suffix ran on patches 001-032, files ending `-p033` on
+the tree with patch 033.
+
+| arm | differs from the reference arm by | divergences per 1000 | KL mean | with 033: divergences per 1000 | with 033: KL mean |
+|---|---|---|---|---|---|
+| `rerun` | nothing | 0 | 0 | 0 | 0 |
+| `noknob` | stock buffer limit | 0 | 0 | | |
+| `sdpa4` | attention summed in 4 blocks | 0 | 0 | | |
+| `lin` | grouped linears (032) | 0 | 0 | | |
+| `restart` | re-prompt every 48 steps, radix hit | 23.9 | 0.0268 | 0 | 0 |
+| `restart-noradix` | the same schedule as cold prefills | 14.8 | 0.0077 | | |
+| `floor` | decode starts from a radix hit | 40.2 | 0.0347 | 18.1 | 0.0084 |
+| `chunk128` | cold prefill on a 128-token grid | 36.1 | 0.0278 | 19.4 | 0.0088 |
+| `fused` | fused router (030) | 37.8 | 0.0314 | | |
+| `front` | fused front (031) | 32.8 | 0.0289 | | |
+| `ff` | 030 + 031 | 38.3 | 0.0298 | | |
+| `all` | 030 + 031 + 032 | 38.3 | 0.0298 | 23.9 | 0.0119 |
+
+The buffer limit, the block count of the attention sum and the grouped
+linears are exact. The row that did not fit was `restart`: a re-prompt
+served from the radix cache drifted more than the same re-prompt prefilled
+cold, though a hit that forwards one token repeats the decode step it
+replaces. Every arm that diverges also resyncs through a hit, so the left
+columns of the lower rows carry that excess too.
+
+## Prefix-hit positions (patch 033)
+
+`scripts/bench/mlx_prefix_tail_probe.py` isolates the hit in raw MLX: run
+the one-token decode chain, restore the cache as it stood K tokens
+earlier, forward those K tokens at once, and take the KL of the last
+position against the chain (6 documents, 54 checkpoints per K). With the
+language model's position state kept, K = 1 is bit-identical and longer
+tails sit at the chunk-grid level. Cleared, as the runner clears it at
+every new prefill, K = 1 already moves (`precision/tail-keep.json`,
+`precision/tail-reset.json`):
+
+| tail tokens | state kept: KL median / mean | state cleared: KL median / mean / max |
+|---|---|---|
+| 1 | 0 / 0 | 1.4e-3 / 0.014 / 0.30 |
+| 2 | 1.8e-4 / 1.9e-3 | 2.3e-3 / 0.017 / 0.47 |
+| 4 | 1.4e-4 / 5.6e-3 | 2.3e-3 / 0.028 / 0.71 |
+| 8 | 2.0e-4 / 2.1e-3 | 1.8e-3 / 0.021 / 0.29 |
+| 16 | 3.8e-4 / 1.9e-3 | 1.8e-3 / 0.028 / 0.62 |
+| 48 | 5.1e-4 / 6.9e-3 | 2.9e-3 / 0.022 / 0.39 |
+
+The mechanism: mlx-vlm's Qwen language models (`qwen3_5`, `qwen3_5_moe`)
+add the cache offset to the positions only while `_rope_deltas` is set.
+`prefill_start` clears it for every mlx-vlm model so that one request's
+image positions cannot reach the next. On a prefix hit the forward then
+carries only the tokens after the cached prefix, the model rebuilds
+positions from those ids alone, and the tail is rotated as positions
+0..K−1 in the ten attention layers: wrong against the prefix it attends
+to, and stored that way in the KV cache for every later token. Only the
+first forward after the clear is affected. Cold prefills, chunk
+continuation and decode steps were always right, which is why every
+capability gate (single-turn cold requests) passed. Every follow-up turn
+on qwen36, qwen36-27b, qwen35, qwen35-9b-8bit and Qwen3.8-27B took the
+wrong path; mlx-lm-loaded presets (flint, coder-30b, qwen3-moe, qwen3-32b,
+nemotron-30b) and devstral carry no such state.
+
+Patch 033 seeds the text-only zero delta at the end of the prefix-hit
+branch, the state a cold prefill of the same prompt leaves. It does not
+change the work a hit does, so the timings in the sections above stand.
+
+Served, the `restart` arm is bit-identical to the uninterrupted decode
+over all 4,598 steps and 72 scheduled re-prompts, and the hit-heavy arms
+fall to within reach of the cold re-prompt arm (table above). A one-token
+hit is now exact, which a cold re-prefill is not.
+
+In chat shape (`scripts/eval/probe_followup_fidelity.py`, `followup/`):
+a rendered two-turn history of 1K or 6K tokens, a follow-up of 32 to 3,000
+new tokens, 64 greedy tokens with top-20 logprobs, the follow-up served
+once from the hit and once cold after a flush. 24 cases per arm; the hit
+resumes from a 64-token grid state, so it forwards 116 to 3,124 tokens.
+`followup/pooled.txt`:
+
+| comparison | cases | token-identical | agreeing steps of 57 | first-step KL median | KL mean | KL max |
+|---|---|---|---|---|---|---|
+| hit against cold, without 033 | 24 | 1 | 12.8 | 0.0117 | 0.0658 | 1.02 |
+| hit against cold, with 033 | 24 | 9 | 31.7 | 0.0011 | 0.0064 | 0.095 |
+| hit against cold, with 033, chunk 2048 | 24 | 13 | 38.7 | 0.0007 | 0.0041 | 0.065 |
+| cold chunk 2048 against cold chunk 4096, prompts over 2,048 tokens | 12 | 3 | 31.6 | 0.0018 | 0.0056 | 0.073 |
+| hit chunk 4096 against cold chunk 2048, the same 12 | 12 | 4 | 36.1 | 0.0016 | 0.0057 | 0.052 |
+| cold without 033 against cold with 033 | 24 | 24 | all | 0 | 0 | 0 |
+
+By tail length, hit against cold at the default chunk size:
+
+| new tokens | with 033: KL mean / agreeing steps | without 033: KL mean / agreeing steps |
+|---|---|---|
+| 32 | 0.0086 / 25.2 | 0.0856 / 5.3 |
+| 256 | 0.0054 / 34.5 | 0.0789 / 10.2 |
+| 1,024 | 0.0045 / 38.8 | 0.0386 / 20.2 |
+| 3,000 | 0.0072 / 28.2 | 0.0599 / 15.3 |
+
+With the patch a follow-up served from a hit is as close to a cold prefill
+as two cold prefills on different chunk sizes are to each other, which is
+the noise this stack already accepts. Without it the hit sat ten times
+further out and the greedy text parted from the cold run after 5 to 20
+tokens. The cold path is untouched: 24 of 24 cold runs are token-identical
+across the two trees.
+
+What this reaches beyond the probe: the archived qwen36 SWE-bench cells
+ran every follow-up turn on the wrong positions. A re-roll with patch 033
+is the measurement of what that cost. The position state lives on the model object, so an image
+request and a text request decoding at once could still cross; that is a
+multi-request hazard outside the single-user target.
+
 ## Closed
 
 - **int8 KV.** `raw/sdpa-kv.jsonl`, `raw/kv-int8-fidelity.jsonl`. int8
@@ -361,7 +529,7 @@ its two arms.
 
 | directory | contents |
 |---|---|
-| `raw/` | kernel and launch microbenches, attention layout probe, router probe arms, int8 fidelity, traversal-width sweep, patch gates and unit-test output for 029 to 032 |
+| `raw/` | kernel and launch microbenches, attention layout probe, router probe arms, int8 fidelity, traversal-width sweep, patch gates and unit-test output for 029 to 033 |
 | `slack/`, `knob-sweep-raw.jsonl`, `compile-probe-raw.jsonl` | raw setting sweeps |
 | `serve-census-base.jsonl`, `serve-graph/`, `serve-profile/` | step census, primitive counts, graph-build profile |
 | `serve-knobs/`, `serve-flags/`, `serve-sampled/`, `serve-prefill/` | serving A/B chains to 30K |
@@ -370,4 +538,7 @@ its two arms.
 | `serve-clear/` | cache-clear traces at 122K with memory lines |
 | `serve-router/` | launch-folding serving A/B, eleven arms with hook lines, wired memory and text hashes in `pooled.txt` |
 | `serve-router-null/` | eleven arms of one build (launch-folding flags set, hooks not installed): the A/B design's noise floor |
+| `precision/` | float32-yardstick summaries for the stock and fused decode paths, raw prefix-tail probe with the position state kept and cleared |
+| `serve-dfid/` | served decode-fidelity arms: summaries and per-document divergence counts, `-p033` files on the tree with patch 033 |
+| `followup/` | chat-shaped follow-up hits against cold prefills, with and without patch 033, pooled in `pooled.txt` |
 | `recall/` | depth recall at the 215,040 label |

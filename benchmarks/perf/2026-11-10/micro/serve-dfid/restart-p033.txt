@@ -1,0 +1,93 @@
+[restart] doc 0 prose 192/192 steps, 0 divergences, 4s elapsed
+[restart] doc 1 code  192/192 steps, 0 divergences, 7s elapsed
+[restart] doc 2 prose 182/182 steps, 0 divergences, 10s elapsed
+[restart] doc 3 code  192/192 steps, 0 divergences, 14s elapsed
+[restart] doc 4 prose 192/192 steps, 0 divergences, 17s elapsed
+[restart] doc 5 code  192/192 steps, 0 divergences, 21s elapsed
+[restart] doc 6 prose 192/192 steps, 0 divergences, 24s elapsed
+[restart] doc 7 code  192/192 steps, 0 divergences, 28s elapsed
+[restart] doc 8 prose 192/192 steps, 0 divergences, 31s elapsed
+[restart] doc 9 code  192/192 steps, 0 divergences, 35s elapsed
+[restart] doc 10 prose 192/192 steps, 0 divergences, 38s elapsed
+[restart] doc 11 code  192/192 steps, 0 divergences, 42s elapsed
+[restart] doc 12 prose 192/192 steps, 0 divergences, 45s elapsed
+[restart] doc 13 code  192/192 steps, 0 divergences, 49s elapsed
+[restart] doc 14 prose 192/192 steps, 0 divergences, 52s elapsed
+[restart] doc 15 code  192/192 steps, 0 divergences, 56s elapsed
+[restart] doc 16 prose 192/192 steps, 0 divergences, 59s elapsed
+[restart] doc 17 code  192/192 steps, 0 divergences, 63s elapsed
+[restart] doc 18 prose 192/192 steps, 0 divergences, 66s elapsed
+[restart] doc 19 code  192/192 steps, 0 divergences, 70s elapsed
+[restart] doc 20 prose 192/192 steps, 0 divergences, 73s elapsed
+[restart] doc 21 code  192/192 steps, 0 divergences, 77s elapsed
+[restart] doc 22 prose 192/192 steps, 0 divergences, 80s elapsed
+[restart] doc 23 code  192/192 steps, 0 divergences, 84s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 1152,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0,
+  "restarts": 72,
+  "after_restart_kl_mean": 0.0,
+  "after_restart_kl_mean_first_8": 0.0
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 576,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0,
+  "restarts": 36,
+  "after_restart_kl_mean": 0.0,
+  "after_restart_kl_mean_first_8": 0.0
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 576,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0,
+  "restarts": 36,
+  "after_restart_kl_mean": 0.0,
+  "after_restart_kl_mean_first_8": 0.0
+ }
+}
+[restart] margins at divergence (nats): []

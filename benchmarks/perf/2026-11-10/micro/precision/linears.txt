@@ -1,0 +1,54 @@
+fusions installed: {'linears': 1}
+doc 0 prose 192 steps, far steps {'step16': 0, 'served': 0}, 4s elapsed
+doc 1 code  192 steps, far steps {'step16': 0, 'served': 0}, 9s elapsed
+doc 2 prose 182 steps, far steps {'step16': 2, 'served': 2}, 13s elapsed
+doc 3 code  192 steps, far steps {'step16': 0, 'served': 0}, 18s elapsed
+doc 4 prose 192 steps, far steps {'step16': 4, 'served': 4}, 22s elapsed
+doc 5 code  192 steps, far steps {'step16': 0, 'served': 0}, 27s elapsed
+doc 6 prose 192 steps, far steps {'step16': 3, 'served': 3}, 31s elapsed
+doc 7 code  192 steps, far steps {'step16': 0, 'served': 0}, 36s elapsed
+doc 8 prose 192 steps, far steps {'step16': 2, 'served': 2}, 40s elapsed
+doc 9 code  192 steps, far steps {'step16': 0, 'served': 0}, 45s elapsed
+doc 10 prose 192 steps, far steps {'step16': 2, 'served': 3}, 49s elapsed
+doc 11 code  192 steps, far steps {'step16': 0, 'served': 0}, 54s elapsed
+doc 12 prose 192 steps, far steps {'step16': 0, 'served': 0}, 58s elapsed
+doc 13 code  192 steps, far steps {'step16': 0, 'served': 0}, 63s elapsed
+doc 14 prose 192 steps, far steps {'step16': 0, 'served': 0}, 67s elapsed
+doc 15 code  192 steps, far steps {'step16': 0, 'served': 0}, 72s elapsed
+doc 16 prose 192 steps, far steps {'step16': 2, 'served': 2}, 76s elapsed
+doc 17 code  192 steps, far steps {'step16': 0, 'served': 0}, 81s elapsed
+doc 18 prose 192 steps, far steps {'step16': 4, 'served': 4}, 85s elapsed
+doc 19 code  192 steps, far steps {'step16': 0, 'served': 0}, 89s elapsed
+doc 20 prose 192 steps, far steps {'step16': 2, 'served': 2}, 94s elapsed
+doc 21 code  192 steps, far steps {'step16': 0, 'served': 0}, 98s elapsed
+doc 22 prose 192 steps, far steps {'step16': 2, 'served': 2}, 103s elapsed
+doc 23 code  192 steps, far steps {'step16': 0, 'served': 0}, 107s elapsed
+{
+ "logit_dtypes": {
+  "batch32": "mlx.core.float32"
+ },
+ "fused": {
+  "linears": 1
+ },
+ "truth_top1_logprob_sum": -1377.489372253418,
+ "step16": {
+  "steps": 4598,
+  "kl_mean": 0.01652215572839184,
+  "kl_median": 0.000478885936900042,
+  "kl_p99": 0.16341425478458405,
+  "kl_max": 10.200800895690918,
+  "far_steps_per_1000": 5.002174858634189,
+  "argmax_differs_per_1000": 21.31361461505002,
+  "argmax_under_1pct_per_1000": 1.087429317094389
+ },
+ "served": {
+  "steps": 4598,
+  "kl_mean": 0.009941028926593645,
+  "kl_median": 0.00038857872121218664,
+  "kl_p99": 0.14390861694119453,
+  "kl_max": 2.617049332089159,
+  "far_steps_per_1000": 5.219660722053066,
+  "argmax_differs_per_1000": 21.31361461505002,
+  "argmax_under_1pct_per_1000": 1.087429317094389
+ }
+}

@@ -1,0 +1,84 @@
+[rerun] doc 0 prose 192/192 steps, 0 divergences, 3s elapsed
+[rerun] doc 1 code  192/192 steps, 0 divergences, 7s elapsed
+[rerun] doc 2 prose 182/182 steps, 0 divergences, 10s elapsed
+[rerun] doc 3 code  192/192 steps, 0 divergences, 13s elapsed
+[rerun] doc 4 prose 192/192 steps, 0 divergences, 17s elapsed
+[rerun] doc 5 code  192/192 steps, 0 divergences, 20s elapsed
+[rerun] doc 6 prose 192/192 steps, 0 divergences, 24s elapsed
+[rerun] doc 7 code  192/192 steps, 0 divergences, 27s elapsed
+[rerun] doc 8 prose 192/192 steps, 0 divergences, 31s elapsed
+[rerun] doc 9 code  192/192 steps, 0 divergences, 34s elapsed
+[rerun] doc 10 prose 192/192 steps, 0 divergences, 37s elapsed
+[rerun] doc 11 code  192/192 steps, 0 divergences, 41s elapsed
+[rerun] doc 12 prose 192/192 steps, 0 divergences, 44s elapsed
+[rerun] doc 13 code  192/192 steps, 0 divergences, 48s elapsed
+[rerun] doc 14 prose 192/192 steps, 0 divergences, 51s elapsed
+[rerun] doc 15 code  192/192 steps, 0 divergences, 55s elapsed
+[rerun] doc 16 prose 192/192 steps, 0 divergences, 58s elapsed
+[rerun] doc 17 code  192/192 steps, 0 divergences, 61s elapsed
+[rerun] doc 18 prose 192/192 steps, 0 divergences, 65s elapsed
+[rerun] doc 19 code  192/192 steps, 0 divergences, 68s elapsed
+[rerun] doc 20 prose 192/192 steps, 0 divergences, 72s elapsed
+[rerun] doc 21 code  192/192 steps, 0 divergences, 75s elapsed
+[rerun] doc 22 prose 192/192 steps, 0 divergences, 78s elapsed
+[rerun] doc 23 code  192/192 steps, 0 divergences, 82s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 4598,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 2294,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 2304,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0
+ }
+}
+[rerun] margins at divergence (nats): []

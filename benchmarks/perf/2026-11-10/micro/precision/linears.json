@@ -1,0 +1,135 @@
+{
+ "model": "~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46",
+ "ref_dump": "base.json",
+ "far_kl": 0.5,
+ "fused": {
+  "linears": 1
+ },
+ "paths": [
+  "step16"
+ ],
+ "truth_top1_logprob_sum": -1377.489372253418,
+ "logit_dtypes": {
+  "batch32": "mlx.core.float32"
+ },
+ "summary": {
+  "step16": {
+   "steps": 4598,
+   "kl_mean": 0.01652215572839184,
+   "kl_median": 0.000478885936900042,
+   "kl_p99": 0.16341425478458405,
+   "kl_max": 10.200800895690918,
+   "far_steps_per_1000": 5.002174858634189,
+   "argmax_differs_per_1000": 21.31361461505002,
+   "argmax_under_1pct_per_1000": 1.087429317094389
+  },
+  "served": {
+   "steps": 4598,
+   "kl_mean": 0.009941028926593645,
+   "kl_median": 0.00038857872121218664,
+   "kl_p99": 0.14390861694119453,
+   "kl_max": 2.617049332089159,
+   "far_steps_per_1000": 5.219660722053066,
+   "argmax_differs_per_1000": 21.31361461505002,
+   "argmax_under_1pct_per_1000": 1.087429317094389
+  }
+ },
+ "docs": [
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 182
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  },
+  {
+   "domain": "prose",
+   "steps": 192
+  },
+  {
+   "domain": "code",
+   "steps": 192
+  }
+ ]
+}

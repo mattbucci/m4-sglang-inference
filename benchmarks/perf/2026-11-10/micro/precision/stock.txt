@@ -1,0 +1,73 @@
+fusions installed: {}
+doc 0 prose 192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 14s elapsed
+doc 1 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 28s elapsed
+doc 2 prose 182 steps, far steps {'batch16': 0, 'step16': 2, 'step32': 0, 'served': 2}, 42s elapsed
+doc 3 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 56s elapsed
+doc 4 prose 192 steps, far steps {'batch16': 3, 'step16': 4, 'step32': 0, 'served': 4}, 70s elapsed
+doc 5 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 85s elapsed
+doc 6 prose 192 steps, far steps {'batch16': 2, 'step16': 3, 'step32': 0, 'served': 3}, 99s elapsed
+doc 7 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 114s elapsed
+doc 8 prose 192 steps, far steps {'batch16': 2, 'step16': 2, 'step32': 0, 'served': 2}, 129s elapsed
+doc 9 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 144s elapsed
+doc 10 prose 192 steps, far steps {'batch16': 3, 'step16': 2, 'step32': 0, 'served': 3}, 158s elapsed
+doc 11 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 173s elapsed
+doc 12 prose 192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 187s elapsed
+doc 13 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 202s elapsed
+doc 14 prose 192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 216s elapsed
+doc 15 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 231s elapsed
+doc 16 prose 192 steps, far steps {'batch16': 1, 'step16': 2, 'step32': 0, 'served': 2}, 245s elapsed
+doc 17 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 260s elapsed
+doc 18 prose 192 steps, far steps {'batch16': 2, 'step16': 4, 'step32': 0, 'served': 4}, 274s elapsed
+doc 19 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 288s elapsed
+doc 20 prose 192 steps, far steps {'batch16': 2, 'step16': 2, 'step32': 0, 'served': 2}, 303s elapsed
+doc 21 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 317s elapsed
+doc 22 prose 192 steps, far steps {'batch16': 4, 'step16': 2, 'step32': 0, 'served': 2}, 332s elapsed
+doc 23 code  192 steps, far steps {'batch16': 0, 'step16': 0, 'step32': 0, 'served': 0}, 346s elapsed
+{
+ "logit_dtypes": {
+  "batch32": "mlx.core.float32",
+  "batch16": "mlx.core.bfloat16"
+ },
+ "fused": {},
+ "truth_top1_logprob_sum": -1377.489372253418,
+ "batch16": {
+  "steps": 4598,
+  "kl_mean": 0.01936261275069172,
+  "kl_median": 0.0004990255692973733,
+  "kl_p99": 0.11328184604644775,
+  "kl_max": 19.06104278564453,
+  "far_steps_per_1000": 4.132231404958677,
+  "argmax_differs_per_1000": 22.40104393214441,
+  "argmax_under_1pct_per_1000": 1.3049151805132666
+ },
+ "step16": {
+  "steps": 4598,
+  "kl_mean": 0.01652215572839184,
+  "kl_median": 0.000478885936900042,
+  "kl_p99": 0.16341425478458405,
+  "kl_max": 10.200800895690918,
+  "far_steps_per_1000": 5.002174858634189,
+  "argmax_differs_per_1000": 21.31361461505002,
+  "argmax_under_1pct_per_1000": 1.087429317094389
+ },
+ "step32": {
+  "steps": 4598,
+  "kl_mean": 1.3571494847021369e-05,
+  "kl_median": 8.703369414053697e-10,
+  "kl_p99": 2.2288830223260447e-05,
+  "kl_max": 0.02454799972474575,
+  "far_steps_per_1000": 0.0,
+  "argmax_differs_per_1000": 0.6524575902566333,
+  "argmax_under_1pct_per_1000": 0.0
+ },
+ "served": {
+  "steps": 4598,
+  "kl_mean": 0.009941028926593645,
+  "kl_median": 0.00038857872121218664,
+  "kl_p99": 0.14390861694119453,
+  "kl_max": 2.617049332089159,
+  "far_steps_per_1000": 5.219660722053066,
+  "argmax_differs_per_1000": 21.31361461505002,
+  "argmax_under_1pct_per_1000": 1.087429317094389
+ }
+}

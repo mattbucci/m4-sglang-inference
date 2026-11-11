@@ -1,0 +1,102 @@
+[floor] doc 0 prose 192/192 steps, 7 divergences, 15s elapsed
+[floor] doc 1 code  192/192 steps, 1 divergences, 19s elapsed
+[floor] doc 2 prose 182/182 steps, 3 divergences, 25s elapsed
+[floor] doc 3 code  192/192 steps, 4 divergences, 37s elapsed
+[floor] doc 4 prose 192/192 steps, 6 divergences, 52s elapsed
+[floor] doc 5 code  192/192 steps, 5 divergences, 63s elapsed
+[floor] doc 6 prose 192/192 steps, 3 divergences, 71s elapsed
+[floor] doc 7 code  192/192 steps, 5 divergences, 83s elapsed
+[floor] doc 8 prose 192/192 steps, 3 divergences, 89s elapsed
+[floor] doc 9 code  192/192 steps, 5 divergences, 104s elapsed
+[floor] doc 10 prose 192/192 steps, 9 divergences, 122s elapsed
+[floor] doc 11 code  192/192 steps, 1 divergences, 127s elapsed
+[floor] doc 12 prose 192/192 steps, 2 divergences, 135s elapsed
+[floor] doc 13 code  192/192 steps, 5 divergences, 146s elapsed
+[floor] doc 14 prose 192/192 steps, 1 divergences, 152s elapsed
+[floor] doc 15 code  192/192 steps, 1 divergences, 158s elapsed
+[floor] doc 16 prose 192/192 steps, 4 divergences, 166s elapsed
+[floor] doc 17 code  192/192 steps, 4 divergences, 176s elapsed
+[floor] doc 18 prose 192/192 steps, 5 divergences, 187s elapsed
+[floor] doc 19 code  192/192 steps, 3 divergences, 196s elapsed
+[floor] doc 20 prose 192/192 steps, 2 divergences, 204s elapsed
+[floor] doc 21 code  192/192 steps, 2 divergences, 213s elapsed
+[floor] doc 22 prose 192/192 steps, 2 divergences, 219s elapsed
+[floor] doc 23 code  192/192 steps, 0 divergences, 223s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 0.9819486733362331,
+  "divergences": 83,
+  "divergences_per_1000": 18.051326663766854,
+  "kl_mean": 0.008360003735677857,
+  "kl_median": 0.00027404799438337157,
+  "kl_p90": 0.006201610930801845,
+  "kl_p99": 0.0825851411741799,
+  "kl_max": 3.147628081748996,
+  "dlp_top1_mean": 0.02847016905576276,
+  "dlp_top1_p99": 0.26759910583496094,
+  "dlp_top1_max": 7.785795211791992,
+  "first_segment_steps": 1144,
+  "first_segment_kl_mean": 0.005084640600561445,
+  "first_segment_kl_max": 1.6706067136777651,
+  "first_segment_dlp_top1_max": 4.136301040649414,
+  "restarts": 82,
+  "after_restart_kl_mean": 0.00944483738552533,
+  "after_restart_kl_mean_first_8": 0.01325967753298747,
+  "wide_margin_divergences": 8,
+  "margin_median": 0.125,
+  "margin_max": 10.0625
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 0.9795117698343505,
+  "divergences": 47,
+  "divergences_per_1000": 20.488230165649522,
+  "kl_mean": 0.014623416377371313,
+  "kl_median": 0.0002668574980012351,
+  "kl_p90": 0.0065073567921162135,
+  "kl_p99": 0.3003146379342096,
+  "kl_max": 3.147628081748996,
+  "dlp_top1_mean": 0.037461505094331805,
+  "dlp_top1_p99": 0.4410362243652344,
+  "dlp_top1_max": 7.785795211791992,
+  "first_segment_steps": 467,
+  "first_segment_kl_mean": 0.009743929525047355,
+  "first_segment_kl_max": 1.6706067136777651,
+  "first_segment_dlp_top1_max": 4.136301040649414,
+  "restarts": 46,
+  "after_restart_kl_mean": 0.015870663427199058,
+  "after_restart_kl_mean_first_8": 0.022068044336517722,
+  "wide_margin_divergences": 8,
+  "margin_median": 0.25,
+  "margin_max": 10.0625
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 0.984375,
+  "divergences": 36,
+  "divergences_per_1000": 15.625,
+  "kl_mean": 0.0021237760446861944,
+  "kl_median": 0.00029807803757162475,
+  "kl_p90": 0.006036128327018098,
+  "kl_p99": 0.02252671744725415,
+  "kl_max": 0.12304699683842996,
+  "dlp_top1_mean": 0.019525662892394595,
+  "dlp_top1_p99": 0.17653656005859375,
+  "dlp_top1_max": 0.5606346130371094,
+  "first_segment_steps": 677,
+  "first_segment_kl_mean": 0.001870625936255802,
+  "first_segment_kl_max": 0.0825851411741799,
+  "first_segment_dlp_top1_max": 0.44858551025390625,
+  "restarts": 36,
+  "after_restart_kl_mean": 0.0022291126294479496,
+  "after_restart_kl_mean_first_8": 0.002703085257000831,
+  "wide_margin_divergences": 0,
+  "margin_median": 0.125,
+  "margin_max": 0.25
+ }
+}
+[floor] margins at divergence (nats): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.375, 0.375, 0.375, 0.375, 0.375, 0.5, 0.5, 0.625, 0.75, 0.75, 0.875, 1.0, 1.0, 1.1875, 1.625, 3.25, 3.375, 4.125, 7.8125, 8.4375, 10.0625]

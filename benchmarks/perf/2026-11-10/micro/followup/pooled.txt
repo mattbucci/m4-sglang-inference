@@ -1,0 +1,9 @@
+tails (32, 256, 1024, 3000)
+hit vs cold, without 033 (chunk 4096)        cases 24 identical  1 agree  12.8 of 56.7 | KL first median 1.17e-02 mean 2.50e-02 | KL mean 6.58e-02 max 1.02e+00
+hit vs cold, with 033 (chunk 4096)           cases 24 identical  9 agree  31.7 of 57.6 | KL first median 1.08e-03 mean 1.81e-03 | KL mean 6.40e-03 max 9.50e-02
+hit vs cold, with 033 (chunk 2048)           cases 24 identical 13 agree  38.7 of 57.4 | KL first median 6.56e-04 mean 2.12e-03 | KL mean 4.07e-03 max 6.54e-02
+cold 2048 vs cold 4096, same prompt          cases 20 identical 11 agree  40.1 of 57.4 | KL first median 1.34e-03 mean 2.11e-03 | KL mean 3.34e-03 max 7.27e-02
+  of those, prompt over 2048 tokens          cases 12 identical  3 agree  31.6 of 60.2 | KL first median 1.76e-03 mean 3.52e-03 | KL mean 5.57e-03 max 7.27e-02
+  hit 4096 vs cold 2048, prompt over 2048    cases 12 identical  4 agree  36.1 of 58.5 | KL first median 1.63e-03 mean 3.11e-03 | KL mean 5.74e-03 max 5.23e-02
+cold without 033 vs cold with 033            cases 24 identical 24 agree  59.5 of 59.5 | KL first median 0.00e+00 mean 0.00e+00 | KL mean 0.00e+00 max 0.00e+00
+hit without 033 vs cold with 033             cases 24 identical  1 agree  12.8 of 56.7 | KL first median 1.17e-02 mean 2.50e-02 | KL mean 6.58e-02 max 1.02e+00

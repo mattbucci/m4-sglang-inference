@@ -1,0 +1,245 @@
+{
+ "tag": "restart",
+ "ref": "<scratch>/dfid2/base.json",
+ "topk": 20,
+ "split_prefill": 0,
+ "restart_every": 48,
+ "summary": {
+  "all": {
+   "steps": 4598,
+   "coverage": 1.0,
+   "same_token": 1.0,
+   "divergences": 0,
+   "divergences_per_1000": 0.0,
+   "kl_mean": 0.0,
+   "kl_median": 0.0,
+   "kl_p90": 0.0,
+   "kl_p99": 0.0,
+   "kl_max": 0.0,
+   "dlp_top1_mean": 0.0,
+   "dlp_top1_p99": 0.0,
+   "dlp_top1_max": 0.0,
+   "first_segment_steps": 1152,
+   "first_segment_kl_mean": 0.0,
+   "first_segment_kl_max": 0.0,
+   "first_segment_dlp_top1_max": 0.0,
+   "restarts": 72,
+   "after_restart_kl_mean": 0.0,
+   "after_restart_kl_mean_first_8": 0.0
+  },
+  "prose": {
+   "steps": 2294,
+   "coverage": 1.0,
+   "same_token": 1.0,
+   "divergences": 0,
+   "divergences_per_1000": 0.0,
+   "kl_mean": 0.0,
+   "kl_median": 0.0,
+   "kl_p90": 0.0,
+   "kl_p99": 0.0,
+   "kl_max": 0.0,
+   "dlp_top1_mean": 0.0,
+   "dlp_top1_p99": 0.0,
+   "dlp_top1_max": 0.0,
+   "first_segment_steps": 576,
+   "first_segment_kl_mean": 0.0,
+   "first_segment_kl_max": 0.0,
+   "first_segment_dlp_top1_max": 0.0,
+   "restarts": 36,
+   "after_restart_kl_mean": 0.0,
+   "after_restart_kl_mean_first_8": 0.0
+  },
+  "code": {
+   "steps": 2304,
+   "coverage": 1.0,
+   "same_token": 1.0,
+   "divergences": 0,
+   "divergences_per_1000": 0.0,
+   "kl_mean": 0.0,
+   "kl_median": 0.0,
+   "kl_p90": 0.0,
+   "kl_p99": 0.0,
+   "kl_max": 0.0,
+   "dlp_top1_mean": 0.0,
+   "dlp_top1_p99": 0.0,
+   "dlp_top1_max": 0.0,
+   "first_segment_steps": 576,
+   "first_segment_kl_mean": 0.0,
+   "first_segment_kl_max": 0.0,
+   "first_segment_dlp_top1_max": 0.0,
+   "restarts": 36,
+   "after_restart_kl_mean": 0.0,
+   "after_restart_kl_mean_first_8": 0.0
+  }
+ },
+ "docs": [
+  {
+   "domain": "prose",
+   "source": "Commonwealth War Graves Commission =   The Commonwealth War ",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Quantization fidelity through the ",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Second Battle of Naktong Bulge =   The Second Battle of Nakt",
+   "ref_steps": 182,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Serving decode A/B: median TPOT pe",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Clayton Kershaw =   Clayton Edward Kershaw ( born March 19 ,",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Unit test for the one-launch Gated",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Du Fu =   Du Fu ( Wade \u2013 Giles : Tu Fu ; Chinese : \u675c\u752b ; 712 ",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Does a request that resumes a fini",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Ben Amos =   Benjamin Paul \" Ben \" Amos ( born 10 April 1990",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Long-generation degeneration probe",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Come What ( ever ) May =   Come What ( ever ) May is the sec",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Unified benchmark for all SGLang M",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "New York State Route 93 =   New York State Route 93 ( NY 93 ",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "\"\"\"Content-aware code-generation probe \u2014 ported from the 309",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Head VI =   Head VI is an oil @-@ on @-@ canvas painting by ",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Decode-step census for an MLX chec",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Attalea ( palm ) =   Attalea is a large genus of palms nativ",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Unit test for grouped quantized li",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "View of the World from 9th Avenue =   View of the World from",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Chat template validator \u2014 run befo",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Military history of Gibraltar during World War II =   The mi",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"Eager-import boot-chain smoke over",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "prose",
+   "source": "Zrinski Battalion =   The Zrinski Battalion ( Croatian : Boj",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  },
+  {
+   "domain": "code",
+   "source": "#!/usr/bin/env python3 \"\"\"CPU unit test for patch 025: struc",
+   "ref_steps": 192,
+   "resyncs": 3,
+   "divergences": 0
+  }
+ ]
+}

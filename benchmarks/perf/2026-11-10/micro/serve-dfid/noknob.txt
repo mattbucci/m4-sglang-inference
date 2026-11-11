@@ -1,0 +1,84 @@
+[noknob] doc 0 prose 192/192 steps, 0 divergences, 3s elapsed
+[noknob] doc 1 code  192/192 steps, 0 divergences, 7s elapsed
+[noknob] doc 2 prose 182/182 steps, 0 divergences, 10s elapsed
+[noknob] doc 3 code  192/192 steps, 0 divergences, 13s elapsed
+[noknob] doc 4 prose 192/192 steps, 0 divergences, 17s elapsed
+[noknob] doc 5 code  192/192 steps, 0 divergences, 20s elapsed
+[noknob] doc 6 prose 192/192 steps, 0 divergences, 24s elapsed
+[noknob] doc 7 code  192/192 steps, 0 divergences, 27s elapsed
+[noknob] doc 8 prose 192/192 steps, 0 divergences, 30s elapsed
+[noknob] doc 9 code  192/192 steps, 0 divergences, 34s elapsed
+[noknob] doc 10 prose 192/192 steps, 0 divergences, 37s elapsed
+[noknob] doc 11 code  192/192 steps, 0 divergences, 41s elapsed
+[noknob] doc 12 prose 192/192 steps, 0 divergences, 44s elapsed
+[noknob] doc 13 code  192/192 steps, 0 divergences, 47s elapsed
+[noknob] doc 14 prose 192/192 steps, 0 divergences, 51s elapsed
+[noknob] doc 15 code  192/192 steps, 0 divergences, 54s elapsed
+[noknob] doc 16 prose 192/192 steps, 0 divergences, 58s elapsed
+[noknob] doc 17 code  192/192 steps, 0 divergences, 61s elapsed
+[noknob] doc 18 prose 192/192 steps, 0 divergences, 65s elapsed
+[noknob] doc 19 code  192/192 steps, 0 divergences, 68s elapsed
+[noknob] doc 20 prose 192/192 steps, 0 divergences, 71s elapsed
+[noknob] doc 21 code  192/192 steps, 0 divergences, 75s elapsed
+[noknob] doc 22 prose 192/192 steps, 0 divergences, 78s elapsed
+[noknob] doc 23 code  192/192 steps, 0 divergences, 82s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 4598,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 2294,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 1.0,
+  "divergences": 0,
+  "divergences_per_1000": 0.0,
+  "kl_mean": 0.0,
+  "kl_median": 0.0,
+  "kl_p90": 0.0,
+  "kl_p99": 0.0,
+  "kl_max": 0.0,
+  "dlp_top1_mean": 0.0,
+  "dlp_top1_p99": 0.0,
+  "dlp_top1_max": 0.0,
+  "first_segment_steps": 2304,
+  "first_segment_kl_mean": 0.0,
+  "first_segment_kl_max": 0.0,
+  "first_segment_dlp_top1_max": 0.0
+ }
+}
+[noknob] margins at divergence (nats): []

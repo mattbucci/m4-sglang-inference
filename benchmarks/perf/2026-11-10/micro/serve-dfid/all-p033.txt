@@ -1,0 +1,102 @@
+[all] doc 0 prose 192/192 steps, 4 divergences, 9s elapsed
+[all] doc 1 code  192/192 steps, 1 divergences, 14s elapsed
+[all] doc 2 prose 182/182 steps, 3 divergences, 22s elapsed
+[all] doc 3 code  192/192 steps, 1 divergences, 27s elapsed
+[all] doc 4 prose 192/192 steps, 9 divergences, 47s elapsed
+[all] doc 5 code  192/192 steps, 5 divergences, 57s elapsed
+[all] doc 6 prose 192/192 steps, 11 divergences, 76s elapsed
+[all] doc 7 code  192/192 steps, 10 divergences, 92s elapsed
+[all] doc 8 prose 192/192 steps, 5 divergences, 101s elapsed
+[all] doc 9 code  192/192 steps, 5 divergences, 113s elapsed
+[all] doc 10 prose 192/192 steps, 7 divergences, 128s elapsed
+[all] doc 11 code  192/192 steps, 3 divergences, 135s elapsed
+[all] doc 12 prose 192/192 steps, 1 divergences, 140s elapsed
+[all] doc 13 code  192/192 steps, 7 divergences, 154s elapsed
+[all] doc 14 prose 192/192 steps, 4 divergences, 164s elapsed
+[all] doc 15 code  192/192 steps, 9 divergences, 182s elapsed
+[all] doc 16 prose 192/192 steps, 4 divergences, 188s elapsed
+[all] doc 17 code  192/192 steps, 5 divergences, 198s elapsed
+[all] doc 18 prose 192/192 steps, 1 divergences, 203s elapsed
+[all] doc 19 code  192/192 steps, 3 divergences, 211s elapsed
+[all] doc 20 prose 192/192 steps, 3 divergences, 221s elapsed
+[all] doc 21 code  192/192 steps, 3 divergences, 231s elapsed
+[all] doc 22 prose 192/192 steps, 5 divergences, 240s elapsed
+[all] doc 23 code  192/192 steps, 1 divergences, 244s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 0.9760765550239234,
+  "divergences": 110,
+  "divergences_per_1000": 23.923444976076556,
+  "kl_mean": 0.011910559852839377,
+  "kl_median": 0.00051786498138311,
+  "kl_p90": 0.010272163616683197,
+  "kl_p99": 0.13963741400533364,
+  "kl_max": 7.43089481156054,
+  "dlp_top1_mean": 0.034433822606924985,
+  "dlp_top1_p99": 0.35569190979003906,
+  "dlp_top1_max": 8.685863494873047,
+  "first_segment_steps": 1047,
+  "first_segment_kl_mean": 0.007126478442872513,
+  "first_segment_kl_max": 2.2326747523084047,
+  "first_segment_dlp_top1_max": 3.2014942169189453,
+  "restarts": 109,
+  "after_restart_kl_mean": 0.01332112961804222,
+  "after_restart_kl_mean_first_8": 0.014856125952518177,
+  "wide_margin_divergences": 9,
+  "margin_median": 0.125,
+  "margin_max": 7.8125
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 0.9751525719267655,
+  "divergences": 57,
+  "divergences_per_1000": 24.847428073234525,
+  "kl_mean": 0.020353675666925856,
+  "kl_median": 0.00046473136932622414,
+  "kl_p90": 0.0121178753949147,
+  "kl_p99": 0.3419550440268778,
+  "kl_max": 7.43089481156054,
+  "dlp_top1_mean": 0.04219410700568986,
+  "dlp_top1_p99": 0.6369514465332031,
+  "dlp_top1_max": 8.685863494873047,
+  "first_segment_steps": 554,
+  "first_segment_kl_mean": 0.010652734095473355,
+  "first_segment_kl_max": 2.2326747523084047,
+  "first_segment_dlp_top1_max": 3.2014942169189453,
+  "restarts": 57,
+  "after_restart_kl_mean": 0.02344236625921591,
+  "after_restart_kl_mean_first_8": 0.024738262285689386,
+  "wide_margin_divergences": 9,
+  "margin_median": 0.125,
+  "margin_max": 7.8125
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 0.9769965277777778,
+  "divergences": 53,
+  "divergences_per_1000": 23.00347222222222,
+  "kl_mean": 0.0035040895066959774,
+  "kl_median": 0.000594332079532949,
+  "kl_p90": 0.009336977622505491,
+  "kl_p99": 0.03454461296363986,
+  "kl_max": 0.23554979389085673,
+  "dlp_top1_mean": 0.026720692714055378,
+  "dlp_top1_p99": 0.22426605224609375,
+  "dlp_top1_max": 0.7692737579345703,
+  "first_segment_steps": 493,
+  "first_segment_kl_mean": 0.0031639112389356644,
+  "first_segment_kl_max": 0.05013088904306467,
+  "first_segment_dlp_top1_max": 0.41703224182128906,
+  "restarts": 52,
+  "after_restart_kl_mean": 0.003596694634253037,
+  "after_restart_kl_mean_first_8": 0.004075613589058678,
+  "wide_margin_divergences": 0,
+  "margin_median": 0.125,
+  "margin_max": 0.625
+ }
+}
+[all] margins at divergence (nats): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.1875, 0.1875, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.5, 0.5, 0.5625, 0.625, 0.625, 0.75, 0.75, 0.75, 1.0, 1.125, 1.1875, 1.25, 1.625, 1.75, 2.25, 2.875, 3.375, 7.8125]

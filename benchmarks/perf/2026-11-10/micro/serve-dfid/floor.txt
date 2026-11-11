@@ -1,0 +1,102 @@
+[floor] doc 0 prose 192/192 steps, 14 divergences, 30s elapsed
+[floor] doc 1 code  192/192 steps, 3 divergences, 38s elapsed
+[floor] doc 2 prose 182/182 steps, 8 divergences, 54s elapsed
+[floor] doc 3 code  192/192 steps, 7 divergences, 70s elapsed
+[floor] doc 4 prose 192/192 steps, 14 divergences, 96s elapsed
+[floor] doc 5 code  192/192 steps, 7 divergences, 113s elapsed
+[floor] doc 6 prose 192/192 steps, 8 divergences, 131s elapsed
+[floor] doc 7 code  192/192 steps, 13 divergences, 158s elapsed
+[floor] doc 8 prose 192/192 steps, 5 divergences, 169s elapsed
+[floor] doc 9 code  192/192 steps, 13 divergences, 192s elapsed
+[floor] doc 10 prose 192/192 steps, 13 divergences, 213s elapsed
+[floor] doc 11 code  192/192 steps, 5 divergences, 223s elapsed
+[floor] doc 12 prose 192/192 steps, 2 divergences, 232s elapsed
+[floor] doc 13 code  192/192 steps, 13 divergences, 248s elapsed
+[floor] doc 14 prose 192/192 steps, 5 divergences, 260s elapsed
+[floor] doc 15 code  192/192 steps, 5 divergences, 275s elapsed
+[floor] doc 16 prose 192/192 steps, 6 divergences, 290s elapsed
+[floor] doc 17 code  192/192 steps, 5 divergences, 297s elapsed
+[floor] doc 18 prose 192/192 steps, 9 divergences, 314s elapsed
+[floor] doc 19 code  192/192 steps, 10 divergences, 335s elapsed
+[floor] doc 20 prose 192/192 steps, 3 divergences, 344s elapsed
+[floor] doc 21 code  192/192 steps, 6 divergences, 363s elapsed
+[floor] doc 22 prose 192/192 steps, 7 divergences, 378s elapsed
+[floor] doc 23 code  192/192 steps, 4 divergences, 390s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 0.9597651152675076,
+  "divergences": 185,
+  "divergences_per_1000": 40.23488473249239,
+  "kl_mean": 0.03474563652765207,
+  "kl_median": 0.0014078570412658599,
+  "kl_p90": 0.03835027657039286,
+  "kl_p99": 0.531025443204727,
+  "kl_max": 7.499652837484767,
+  "dlp_top1_mean": 0.06844808146646532,
+  "dlp_top1_p99": 0.7610054016113281,
+  "dlp_top1_max": 7.878204345703125,
+  "first_segment_steps": 643,
+  "first_segment_kl_mean": 0.012866686272894372,
+  "first_segment_kl_max": 0.8664750766942425,
+  "first_segment_dlp_top1_max": 1.7034568786621094,
+  "restarts": 184,
+  "after_restart_kl_mean": 0.03830359429543386,
+  "after_restart_kl_mean_first_8": 0.03534042686559068,
+  "wide_margin_divergences": 21,
+  "margin_median": 0.25,
+  "margin_max": 9.6875
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 0.9590235396687009,
+  "divergences": 94,
+  "divergences_per_1000": 40.976460331299045,
+  "kl_mean": 0.05030344379573964,
+  "kl_median": 0.001203367484909391,
+  "kl_p90": 0.04665347407720279,
+  "kl_p99": 1.069261217193924,
+  "kl_max": 7.499652837484767,
+  "dlp_top1_mean": 0.0802730301537712,
+  "dlp_top1_p99": 0.9943447113037109,
+  "dlp_top1_max": 7.878204345703125,
+  "first_segment_steps": 247,
+  "first_segment_kl_mean": 0.014420716652267131,
+  "first_segment_kl_max": 0.8664750766942425,
+  "first_segment_dlp_top1_max": 1.0190448760986328,
+  "restarts": 93,
+  "after_restart_kl_mean": 0.0546353272778695,
+  "after_restart_kl_mean_first_8": 0.040136891899401866,
+  "wide_margin_divergences": 16,
+  "margin_median": 0.375,
+  "margin_max": 9.6875
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 0.9605034722222222,
+  "divergences": 91,
+  "divergences_per_1000": 39.49652777777778,
+  "kl_mean": 0.019262106985236793,
+  "kl_median": 0.0015902745219676514,
+  "kl_p90": 0.0336626669442125,
+  "kl_p99": 0.23728415774616732,
+  "kl_max": 5.056221073126516,
+  "dlp_top1_mean": 0.05672064754698011,
+  "dlp_top1_p99": 0.5980625152587891,
+  "dlp_top1_max": 5.1303558349609375,
+  "first_segment_steps": 396,
+  "first_segment_kl_mean": 0.011897379445356312,
+  "first_segment_kl_max": 0.5535362282175199,
+  "first_segment_dlp_top1_max": 1.7034568786621094,
+  "restarts": 91,
+  "after_restart_kl_mean": 0.020790635342570477,
+  "after_restart_kl_mean_first_8": 0.030389513941603098,
+  "wide_margin_divergences": 5,
+  "margin_median": 0.25,
+  "margin_max": 6.25
+ }
+}
+[floor] margins at divergence (nats): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.1875, 0.1875, 0.1875, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.875, 0.875, 0.875, 0.875, 0.875, 0.875, 0.875, 0.9375, 1.0, 1.0, 1.0, 1.0, 1.0, 1.125, 1.125, 1.1875, 1.25, 1.25, 1.375, 1.625, 1.625, 1.625, 1.875, 2.5, 3.375, 4.125, 4.75, 4.8125, 4.9375, 5.375, 6.25, 7.375, 8.4375, 9.6875]

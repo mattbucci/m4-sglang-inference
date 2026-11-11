@@ -1,0 +1,102 @@
+[fused] doc 0 prose 192/192 steps, 11 divergences, 18s elapsed
+[fused] doc 1 code  192/192 steps, 6 divergences, 29s elapsed
+[fused] doc 2 prose 182/182 steps, 7 divergences, 44s elapsed
+[fused] doc 3 code  192/192 steps, 4 divergences, 52s elapsed
+[fused] doc 4 prose 192/192 steps, 10 divergences, 73s elapsed
+[fused] doc 5 code  192/192 steps, 10 divergences, 89s elapsed
+[fused] doc 6 prose 192/192 steps, 15 divergences, 119s elapsed
+[fused] doc 7 code  192/192 steps, 14 divergences, 147s elapsed
+[fused] doc 8 prose 192/192 steps, 5 divergences, 157s elapsed
+[fused] doc 9 code  192/192 steps, 13 divergences, 181s elapsed
+[fused] doc 10 prose 192/192 steps, 11 divergences, 197s elapsed
+[fused] doc 11 code  192/192 steps, 1 divergences, 201s elapsed
+[fused] doc 12 prose 192/192 steps, 0 divergences, 205s elapsed
+[fused] doc 13 code  192/192 steps, 12 divergences, 224s elapsed
+[fused] doc 14 prose 192/192 steps, 3 divergences, 233s elapsed
+[fused] doc 15 code  192/192 steps, 8 divergences, 247s elapsed
+[fused] doc 16 prose 192/192 steps, 11 divergences, 265s elapsed
+[fused] doc 17 code  192/192 steps, 5 divergences, 273s elapsed
+[fused] doc 18 prose 192/192 steps, 3 divergences, 281s elapsed
+[fused] doc 19 code  192/192 steps, 6 divergences, 294s elapsed
+[fused] doc 20 prose 192/192 steps, 3 divergences, 304s elapsed
+[fused] doc 21 code  192/192 steps, 4 divergences, 317s elapsed
+[fused] doc 22 prose 192/192 steps, 8 divergences, 331s elapsed
+[fused] doc 23 code  192/192 steps, 4 divergences, 336s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 0.9621574597651152,
+  "divergences": 174,
+  "divergences_per_1000": 37.84254023488473,
+  "kl_mean": 0.03141156059873518,
+  "kl_median": 0.001180569114767266,
+  "kl_p90": 0.029384616369812322,
+  "kl_p99": 0.5247060867282577,
+  "kl_max": 7.546002991046737,
+  "dlp_top1_mean": 0.05927672943241615,
+  "dlp_top1_p99": 0.7451248168945312,
+  "dlp_top1_max": 7.990598678588867,
+  "first_segment_steps": 1084,
+  "first_segment_kl_mean": 0.004067690614950553,
+  "first_segment_kl_max": 0.8419818759600682,
+  "first_segment_dlp_top1_max": 0.5608253479003906,
+  "restarts": 174,
+  "after_restart_kl_mean": 0.03984660757153612,
+  "after_restart_kl_mean_first_8": 0.03050939328588936,
+  "wide_margin_divergences": 18,
+  "margin_median": 0.25,
+  "margin_max": 6.375
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 0.9620749782040104,
+  "divergences": 87,
+  "divergences_per_1000": 37.92502179598954,
+  "kl_mean": 0.043302266938435786,
+  "kl_median": 0.001135884625476871,
+  "kl_p90": 0.03106033264298163,
+  "kl_p99": 0.7587793038695233,
+  "kl_max": 7.546002991046737,
+  "dlp_top1_mean": 0.06447316092910366,
+  "dlp_top1_p99": 0.8760700225830078,
+  "dlp_top1_max": 7.990598678588867,
+  "first_segment_steps": 465,
+  "first_segment_kl_mean": 0.005874909579068106,
+  "first_segment_kl_max": 0.8419818759600682,
+  "first_segment_dlp_top1_max": 0.5608253479003906,
+  "restarts": 87,
+  "after_restart_kl_mean": 0.05281769677556316,
+  "after_restart_kl_mean_first_8": 0.041755151601563394,
+  "wide_margin_divergences": 13,
+  "margin_median": 0.25,
+  "margin_max": 5.25
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 0.9622395833333334,
+  "divergences": 87,
+  "divergences_per_1000": 37.760416666666664,
+  "kl_mean": 0.01957246322752285,
+  "kl_median": 0.0012273764055095986,
+  "kl_p90": 0.028217461049551355,
+  "kl_p99": 0.2404359415110322,
+  "kl_max": 5.3710591374346865,
+  "dlp_top1_mean": 0.054125405848026276,
+  "dlp_top1_p99": 0.5509700775146484,
+  "dlp_top1_max": 4.757904052734375,
+  "first_segment_steps": 619,
+  "first_segment_kl_mean": 0.002710086708141728,
+  "first_segment_kl_max": 0.08445584357537404,
+  "first_segment_dlp_top1_max": 0.25803184509277344,
+  "restarts": 87,
+  "after_restart_kl_mean": 0.025767009853930514,
+  "after_restart_kl_mean_first_8": 0.020632683808645212,
+  "wide_margin_divergences": 5,
+  "margin_median": 0.125,
+  "margin_max": 6.375
+ }
+}
+[fused] margins at divergence (nats): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.1875, 0.1875, 0.1875, 0.1875, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.875, 0.875, 0.875, 0.875, 0.9375, 1.0, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.625, 1.625, 2.25, 2.25, 2.875, 3.125, 3.125, 3.375, 3.375, 4.9375, 5.25, 5.375, 6.375]

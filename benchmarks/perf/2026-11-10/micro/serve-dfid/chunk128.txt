@@ -1,0 +1,102 @@
+[chunk128] doc 0 prose 192/192 steps, 11 divergences, 20s elapsed
+[chunk128] doc 1 code  192/192 steps, 1 divergences, 24s elapsed
+[chunk128] doc 2 prose 182/182 steps, 7 divergences, 35s elapsed
+[chunk128] doc 3 code  192/192 steps, 2 divergences, 44s elapsed
+[chunk128] doc 4 prose 192/192 steps, 13 divergences, 70s elapsed
+[chunk128] doc 5 code  192/192 steps, 4 divergences, 80s elapsed
+[chunk128] doc 6 prose 192/192 steps, 10 divergences, 101s elapsed
+[chunk128] doc 7 code  192/192 steps, 10 divergences, 121s elapsed
+[chunk128] doc 8 prose 192/192 steps, 7 divergences, 135s elapsed
+[chunk128] doc 9 code  192/192 steps, 12 divergences, 158s elapsed
+[chunk128] doc 10 prose 192/192 steps, 11 divergences, 174s elapsed
+[chunk128] doc 11 code  192/192 steps, 0 divergences, 178s elapsed
+[chunk128] doc 12 prose 192/192 steps, 2 divergences, 185s elapsed
+[chunk128] doc 13 code  192/192 steps, 13 divergences, 206s elapsed
+[chunk128] doc 14 prose 192/192 steps, 5 divergences, 218s elapsed
+[chunk128] doc 15 code  192/192 steps, 9 divergences, 236s elapsed
+[chunk128] doc 16 prose 192/192 steps, 7 divergences, 251s elapsed
+[chunk128] doc 17 code  192/192 steps, 12 divergences, 269s elapsed
+[chunk128] doc 18 prose 192/192 steps, 5 divergences, 281s elapsed
+[chunk128] doc 19 code  192/192 steps, 7 divergences, 296s elapsed
+[chunk128] doc 20 prose 192/192 steps, 3 divergences, 306s elapsed
+[chunk128] doc 21 code  192/192 steps, 2 divergences, 314s elapsed
+[chunk128] doc 22 prose 192/192 steps, 9 divergences, 329s elapsed
+[chunk128] doc 23 code  192/192 steps, 4 divergences, 335s elapsed
+{
+ "all": {
+  "steps": 4598,
+  "coverage": 1.0,
+  "same_token": 0.9638973466724663,
+  "divergences": 166,
+  "divergences_per_1000": 36.10265332753371,
+  "kl_mean": 0.02778562102400231,
+  "kl_median": 0.0010130577260765814,
+  "kl_p90": 0.027769441419673545,
+  "kl_p99": 0.5013610464617861,
+  "kl_max": 5.590638713314706,
+  "dlp_top1_mean": 0.05879801680726668,
+  "dlp_top1_p99": 0.7007961273193359,
+  "dlp_top1_max": 7.131290435791016,
+  "first_segment_steps": 909,
+  "first_segment_kl_mean": 0.0028200343466241117,
+  "first_segment_kl_max": 0.15460631578222822,
+  "first_segment_dlp_top1_max": 0.32323455810546875,
+  "restarts": 164,
+  "after_restart_kl_mean": 0.03393901535419124,
+  "after_restart_kl_mean_first_8": 0.036508951887981145,
+  "wide_margin_divergences": 17,
+  "margin_median": 0.25,
+  "margin_max": 8.4375
+ },
+ "prose": {
+  "steps": 2294,
+  "coverage": 1.0,
+  "same_token": 0.960767218831735,
+  "divergences": 90,
+  "divergences_per_1000": 39.23278116826504,
+  "kl_mean": 0.03969871395996638,
+  "kl_median": 0.0010271635287940014,
+  "kl_p90": 0.03086197635422001,
+  "kl_p99": 0.8520858009875296,
+  "kl_max": 5.463713454574544,
+  "dlp_top1_mean": 0.0663836836083535,
+  "dlp_top1_p99": 1.0840492248535156,
+  "dlp_top1_max": 7.131290435791016,
+  "first_segment_steps": 264,
+  "first_segment_kl_mean": 0.0037963606004719486,
+  "first_segment_kl_max": 0.03786208192674473,
+  "first_segment_dlp_top1_max": 0.32323455810546875,
+  "restarts": 88,
+  "after_restart_kl_mean": 0.04437008965582963,
+  "after_restart_kl_mean_first_8": 0.05047912823400681,
+  "wide_margin_divergences": 15,
+  "margin_median": 0.25,
+  "margin_max": 8.4375
+ },
+ "code": {
+  "steps": 2304,
+  "coverage": 1.0,
+  "same_token": 0.9670138888888888,
+  "divergences": 76,
+  "divergences_per_1000": 32.986111111111114,
+  "kl_mean": 0.015929404833826263,
+  "kl_median": 0.0009867607720823578,
+  "kl_p90": 0.02567901547510109,
+  "kl_p99": 0.2124463266365444,
+  "kl_max": 5.590638713314706,
+  "dlp_top1_mean": 0.0512847825884819,
+  "dlp_top1_p99": 0.5410232543945312,
+  "dlp_top1_max": 5.708824157714844,
+  "first_segment_steps": 645,
+  "first_segment_kl_mean": 0.00242042174039802,
+  "first_segment_kl_max": 0.15460631578222822,
+  "first_segment_dlp_top1_max": 0.2842750549316406,
+  "restarts": 76,
+  "after_restart_kl_mean": 0.021181541117889682,
+  "after_restart_kl_mean_first_8": 0.021495815421819962,
+  "wide_margin_divergences": 2,
+  "margin_median": 0.125,
+  "margin_max": 1.625
+ }
+}
+[chunk128] margins at divergence (nats): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.1875, 0.1875, 0.1875, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.375, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5625, 0.5625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.625, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.8125, 0.875, 0.875, 0.875, 0.9375, 1.0, 1.0, 1.125, 1.125, 1.25, 1.375, 1.625, 1.625, 1.625, 2.625, 2.875, 3.125, 3.375, 3.75, 4.9375, 7.1875, 7.375, 8.125, 8.4375]
