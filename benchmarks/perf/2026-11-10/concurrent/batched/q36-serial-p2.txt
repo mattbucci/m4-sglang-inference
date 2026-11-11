@@ -1,0 +1,15 @@
+streams 1 rep 0: per-stream 81.00 tok/s aggregate 81.00 tpot 12.35 ms ttft 0.35 s window 2.46 s (199 tokens) first-to-last 81.00 tok/s prompt 220 out 200
+streams 2 rep 0: per-stream 49.13 tok/s aggregate 98.27 tpot 20.35 ms ttft 0.54 s window 4.04 s (397 tokens) first-to-last 47.19 tok/s prompt 223 out 200
+streams 4 rep 0: per-stream 26.95 tok/s aggregate 107.79 tpot 37.11 ms ttft 1.21 s window 7.36 s (793 tokens) first-to-last 26.16 tok/s prompt 213 out 200
+streams 8 rep 0: per-stream 9.43 tok/s aggregate 75.47 tpot 106.00 ms ttft 2.87 s window 21.00 s (1585 tokens) first-to-last 9.34 tok/s prompt 218 out 200
+streams 1 rep 1: per-stream 80.93 tok/s aggregate 80.93 tpot 12.36 ms ttft 0.38 s window 2.46 s (199 tokens) first-to-last 80.93 tok/s prompt 215 out 200
+streams 2 rep 1: per-stream 48.48 tok/s aggregate 96.97 tpot 20.63 ms ttft 0.59 s window 4.09 s (397 tokens) first-to-last 46.55 tok/s prompt 216 out 200
+streams 4 rep 1: per-stream 26.41 tok/s aggregate 105.63 tpot 37.87 ms ttft 1.33 s window 7.51 s (793 tokens) first-to-last 25.56 tok/s prompt 216 out 200
+streams 8 rep 1: per-stream 9.52 tok/s aggregate 76.17 tpot 105.03 ms ttft 2.80 s window 20.81 s (1585 tokens) first-to-last 9.42 tok/s prompt 221 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             80.97            80.97    12.35    0.36
+      2             48.81            97.62    20.49    0.56
+      4             26.68           106.71    37.49    1.27
+      8              9.48            75.82   105.51    2.84
+wrote <scratch>/perf/batched/q36-serial-p2.json

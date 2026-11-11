@@ -1,0 +1,52 @@
+[23:32:21] raw fidelity fid-qwen35-9b-8bit
+  rc=0
+module: ~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+position deltas: [0, -756, 0, 0]
+      0     311  batched vs solo    0.00063  0.00272    96/96     3.6222    3.6166
+      0     311  CONTROL delta -756 0.00921  0.04409    93/96     3.6222    3.6169
+      1    1527  batched vs solo    0.00061  0.01787    95/96     1.6345    1.6382
+      1    1527  CONTROL delta 0    0.00929  0.11397    90/96     1.6345    1.6297
+      2    1530  batched vs solo    0.00051  0.00350    93/96     1.3071    1.3087
+      2    1530  CONTROL delta -756 0.02863  0.76330    93/96     1.3071    1.2843
+      3    2617  batched vs solo    0.00040  0.00294    92/96     1.7761    1.7759
+      3    2617  CONTROL delta -756 0.01858  0.57084    92/96     1.7761    1.8060
+    all          solo vs prefill    0.00066  0.02001   380/384    2.0856    2.0850
+    all          batched vs prefill 0.00091  0.06669   376/384    2.0856    2.0848
+    all          batched vs solo    0.00054  0.01787   376/384    2.0850    2.0848
+[23:33:56] arm lp9b-off (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=0
+up
+  enabled lines: batched 0
+  rc=0
+model qwen35-9b-8bit  tag lp9b-off
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+solo-repeat             0             0    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+with-1                  1             1    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+PASS
+wrote <scratch>/perf/batched/landed/lp9b-off.json
+  decode batches by running requests:    4 #running-req: 0   60 #running-req: 1   30 #running-req: 2 
+  tracebacks 0
+[23:37:47] arm lp9b-on (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=1
+SERVER DID NOT COME UP
+FFmpeg version 4: Could not load this library: ~/miniforge3/envs/sglang-0523/lib/python3.12/site-packages/torchcodec/libtorchcodec_core4.dylib
+[end of libtorchcodec loading traceback].
+[2026-11-10 23:38:27] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit "HTTP/1.1 200 OK"
+[2026-11-10 23:38:41] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit "HTTP/1.1 200 OK"
+[2026-11-10 23:38:50] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-11-10 23:39:00] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-11-10 23:39:12] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-11-10 23:39:15] Could not reach the Hub (Server disconnected without sending a response.). Using cached commit hash for 'mlx-community/Qwen3.5-9B-MLX-8bit'.
+[2026-11-10 23:39:15] Could not reach the Hub (Server disconnected without sending a response.). Using cached commit hash for 'mlx-community/Qwen3.5-9B-MLX-8bit'.
+[2026-11-10 23:39:30] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[2026-11-10 23:40:16] Could not reach the Hub ([SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1011)). Using cached commit hash for 'mlx-community/Qwen3.5-9B-MLX-8bit'.
+[2026-11-10 23:40:33] HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen3.5-9B-MLX-8bit "HTTP/1.1 200 OK"
+[2026-11-10 23:40:34] Ignore import error when loading sglang.srt.models.falcon_mamba: cannot import name 'causal_conv1d_fn' from 'sglang.srt.layers.attention.mamba.mamba' (~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/attention/mamba/mamba.py)
+[2026-11-10 23:40:34] Ignore import error when loading sglang.srt.models.inkling: No module named 'cutlass'
+[2026-11-10 23:40:34] Ignore import error when loading sglang.srt.models.mamba: cannot import name 'causal_conv1d_fn' from 'sglang.srt.layers.attention.mamba.mamba' (~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/attention/mamba/mamba.py)
+[2026-11-10 23:40:34] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-11-10 23:40:34] Multimodal processor concurrency enabled with 2 isolated worker threads (auto).
+[2026-11-10 23:40:34] [072] incremental tokenizer on (33 added tokens, add_special_tokens mode ok)
+[2026-11-10 23:40:34] Using default HuggingFace chat template with detected content format: openai
+[2026-11-10 23:40:34] Auto-detected template features: reasoning_config=ReasoningToggleConfig(toggle_param='enable_thinking', default_enabled=True, special_case=None, effort_kwarg=None), reasoning_parser=qwen3, tool_call_parser=qwen3_coder
+lp9b-on FAILED TO START
+LANDED4_DONE

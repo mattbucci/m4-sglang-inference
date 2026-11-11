@@ -1,0 +1,15 @@
+  solo: 1196 tok finish=stop PASS
+  solo-repeat: 1196 tok finish=stop PASS
+  with-1: 1682 tok finish=stop PASS
+  with-3: 1682 tok finish=stop PASS
+  with-3-late: 1196 tok finish=stop PASS
+
+model qwen35-9b-8bit  tag think9b-on2
+mode          fillers  alive at end  tokens  finish  answer  chars  equal prefix  lines  unique  top line x  verdict
+solo                0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+solo-repeat         0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+with-1              1             1    1682  stop    ok       4985          1913     83      75           3  PASS
+with-3              3             3    1682  stop    ok       4985          1913     83      75           3  PASS
+with-3-late         3             3    1196  stop    ok       3479          3479     56      50           3  PASS
+PASS
+wrote <scratch>/perf/batched/landed/think9b-on2.json

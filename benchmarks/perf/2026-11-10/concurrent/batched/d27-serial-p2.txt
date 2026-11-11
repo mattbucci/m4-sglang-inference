@@ -1,0 +1,11 @@
+streams 1 rep 0: per-stream 13.95 tok/s aggregate 13.95 tpot 71.69 ms ttft 2.23 s window 4.52 s (63 tokens) first-to-last 13.95 tok/s prompt 220 out 64
+streams 2 rep 0: per-stream 7.18 tok/s aggregate 14.35 tpot 139.35 ms ttft 3.28 s window 8.71 s (125 tokens) first-to-last 6.50 tok/s prompt 223 out 64
+streams 4 rep 0: per-stream 3.71 tok/s aggregate 14.85 tpot 269.45 ms ttft 8.64 s window 16.77 s (249 tokens) first-to-last 3.76 tok/s prompt 213 out 64
+streams 8 rep 0: per-stream 1.81 tok/s aggregate 14.49 tpot 552.10 ms ttft 14.93 s window 34.30 s (497 tokens) first-to-last 1.77 tok/s prompt 218 out 64
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             13.95            13.95    71.69    2.23
+      2              7.18            14.35   139.35    3.28
+      4              3.71            14.85   269.45    8.64
+      8              1.81            14.49   552.10   14.93
+wrote <scratch>/perf/batched/d27-serial-p2.json

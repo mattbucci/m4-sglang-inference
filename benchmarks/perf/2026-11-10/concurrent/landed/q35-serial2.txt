@@ -1,0 +1,9 @@
+streams 1 rep 0: per-stream 14.05 tok/s aggregate 14.05 tpot 71.17 ms ttft 2.16 s window 4.48 s (63 tokens) first-to-last 14.05 tok/s prompt 220 out 64
+streams 2 rep 0: per-stream 7.23 tok/s aggregate 14.45 tpot 138.37 ms ttft 3.28 s window 8.65 s (125 tokens) first-to-last 6.55 tok/s prompt 223 out 64
+streams 4 rep 0: per-stream 3.70 tok/s aggregate 14.80 tpot 270.34 ms ttft 8.67 s window 16.83 s (249 tokens) first-to-last 3.74 tok/s prompt 213 out 64
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.05            14.05    71.17    2.16
+      2              7.23            14.45   138.37    3.28
+      4              3.70            14.80   270.34    8.67
+wrote <scratch>/perf/batched/landed/q35-serial2.json

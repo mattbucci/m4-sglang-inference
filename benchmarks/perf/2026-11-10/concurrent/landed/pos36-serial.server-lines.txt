@@ -1,0 +1,3 @@
+[2026-11-10 22:18:36] MLX buffer cache limit set to 4.0 GB
+decode batches by running requests:    7 #running-req: 0   34 #running-req: 1   14 #running-req: 2 
+tracebacks 0

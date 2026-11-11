@@ -1,0 +1,32 @@
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/awq/awq.py:53: UserWarning: Only CUDA, HIP and XPU support AWQ currently.
+  warnings.warn(f"Only CUDA, HIP and XPU support AWQ currently.")
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/gguf.py:76: UserWarning: Only CUDA, MUSA and NPU support GGUF quantization currently.
+  warnings.warn(f"Only CUDA, MUSA and NPU support GGUF quantization currently.")
+module: ~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+fusions installed: {}
+prefill path done 54s
+position deltas: [0, -756, 0, 0]
+solo path done 132s
+batched path done 193s
+
+request  prompt  pair               KL mean    KL max   top-1 same   NLL ref   NLL got
+      0     311  solo vs prefill    0.00077  0.00332    93/96     3.0643    3.0642
+      0     311  batched vs prefill 0.00080  0.00555    94/96     3.0643    3.0557
+      0     311  batched vs solo    0.00067  0.00461    95/96     3.0642    3.0557
+      0     311  CONTROL delta -756 0.01621  0.26541    89/96     3.0642    3.0870
+      1    1527  solo vs prefill    0.00145  0.10659    96/96     1.5556    1.5635
+      1    1527  batched vs prefill 0.00137  0.08857    96/96     1.5556    1.5609
+      1    1527  batched vs solo    0.00079  0.03500    96/96     1.5635    1.5609
+      1    1527  CONTROL delta 0    0.04009  2.48698    95/96     1.5635    1.6428
+      2    1530  solo vs prefill    0.00058  0.00663    96/96     1.0276    1.0264
+      2    1530  batched vs prefill 0.00045  0.00376    96/96     1.0276    1.0266
+      2    1530  batched vs solo    0.00043  0.00310    96/96     1.0264    1.0266
+      2    1530  CONTROL delta -756 0.02907  0.22520    88/96     1.0264    1.1068
+      3    2617  solo vs prefill    0.00061  0.00890    95/96     1.4950    1.4783
+      3    2617  batched vs prefill 0.00074  0.01230    94/96     1.4950    1.4830
+      3    2617  batched vs solo    0.00061  0.00616    95/96     1.4783    1.4830
+      3    2617  CONTROL delta -756 0.29479  16.97315    92/96     1.4783    1.4515
+    all          solo vs prefill    0.00085  0.10659   380/384    1.7856    1.7831
+    all          batched vs prefill 0.00084  0.08857   380/384    1.7856    1.7816
+    all          batched vs solo    0.00062  0.03500   382/384    1.7831    1.7816
+wrote <scratch>/perf/batched/landed/fid-qwen36-27b.json

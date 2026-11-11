@@ -1,0 +1,2 @@
+[2026-11-10 21:54:32] MLX batched mRoPE decode enabled: steps of two or more requests run as one forward
+tracebacks 0

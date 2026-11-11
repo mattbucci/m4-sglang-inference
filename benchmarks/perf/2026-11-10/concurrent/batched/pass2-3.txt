@@ -1,0 +1,96 @@
+[21:56:57] arm gates-load-p2: SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1 router 0 front 0 linears 0
+codegen rc=0
+thinking rc=0
+validate rc=0
+vision rc=0
+  -- validate:   [PASS] thinking  reasoning_seen terminated answer_ok           (1233 tok, finish=stop) --- 3/3 passed in 25.1s --- 
+  -- thinking:  THINKING VERIFIED 
+  -- vision:   gradient' style (Gemma 4 calibration-side issue on Ampere). - FAIL = vision tower not engaging or model emits unrelated text. 
+  -- codegen: - PARTIAL = some tests fail (algorithm mostly right, edge cases broken). - FAIL = no working code returned. 
+  decode batches by running requests:    2 #running-req: 0    8 #running-req: 1   27 #running-req: 2    2 #running-req: 3    4 #running-req: 4 
+  tracebacks 0
+[21:57:47] arm q36-serial-p2: 
+up
+  enabled lines: batched 0 router 0 front 0 linears 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             80.97            80.97    12.35    0.36
+      2             48.81            97.62    20.49    0.56
+      4             26.68           106.71    37.49    1.27
+      8              9.48            75.82   105.51    2.84
+  tracebacks 0
+  wired_gb 30.2
+[22:00:02] arm q36-batched-p2: SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1 router 0 front 0 linears 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             80.06            80.06    12.49    0.36
+      2             58.43           116.87    17.11    0.54
+      4             38.19           152.75    26.19    1.18
+      8             23.44           187.54    42.66    2.64
+  tracebacks 0
+  wired_gb 30.6
+[22:01:34] arm q36-serial-fused-p2: MLX_MAX_MB_PER_BUFFER=200 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1
+up
+  enabled lines: batched 0 router 1 front 1 linears 1
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             96.59            96.59    10.35    0.35
+      2             58.34           116.69    17.14    0.54
+      4             29.96           119.83    33.38    1.15
+      8             10.93            87.42    91.51    2.57
+  tracebacks 0
+  wired_gb 30.0
+[22:03:37] arm q36-batched-fused-p2: MLX_MAX_MB_PER_BUFFER=200 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1 SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1 router 1 front 1 linears 1
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             96.64            96.64    10.35    0.35
+      2             68.74           137.47    14.55    0.55
+      4             43.72           174.88    22.88    1.16
+      8             24.32           194.56    41.12    2.60
+  tracebacks 0
+  wired_gb 30.4
+[22:05:07] arm d27-serial-p2: 
+up
+  enabled lines: batched 0 router 0 front 0 linears 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             13.95            13.95    71.69    2.23
+      2              7.18            14.35   139.35    3.28
+      4              3.71            14.85   269.45    8.64
+      8              1.81            14.49   552.10   14.93
+  tracebacks 0
+  wired_gb 31.8
+[22:08:11] arm d27-batched-p2: SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1 router 0 front 0 linears 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.13            14.13    70.79    2.15
+      2             12.82            25.64    78.01    3.16
+      4              9.01            36.03   111.03    8.43
+      8              4.67            37.39   213.94   14.84
+  tracebacks 0
+  wired_gb 33.3
+[22:10:22] AB2_PASS2_DONE
+[22:10:22] arm q36-batched-p3: SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1 router 0 front 0 linears 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             80.82            80.82    12.37    0.34
+      2             58.91           117.83    16.97    0.52
+      4             37.99           151.97    26.32    1.10
+      8             23.94           191.52    41.77    2.47
+  tracebacks 0
+  wired_gb 30.6
+[22:11:52] arm q36-serial-p3: 
+up
+  enabled lines: batched 0 router 0 front 0 linears 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             80.26            80.26    12.46    0.37
+      2             48.76            97.52    20.51    0.58
+      4             26.53           106.14    37.69    1.27
+      8              9.43            75.42   106.08    2.89
+  tracebacks 0
+  wired_gb 30.0
+[22:14:14] AB2_PASS3_DONE
+AB2_ALL_DONE

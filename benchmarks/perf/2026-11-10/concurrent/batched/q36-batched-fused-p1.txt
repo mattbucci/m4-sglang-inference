@@ -1,0 +1,18 @@
+streams 1 rep 0: per-stream 96.25 tok/s (min 96.25) aggregate 96.25 tpot 10.39 ms ttft 0.35 s prompt 220 out 200
+streams 2 rep 0: per-stream 65.92 tok/s (min 62.23) aggregate 131.83 tpot 15.17 ms ttft 0.54 s prompt 223 out 200
+streams 4 rep 0: per-stream 42.39 tok/s (min 36.38) aggregate 169.55 tpot 23.59 ms ttft 1.08 s prompt 213 out 200
+streams 8 rep 0: per-stream 24.37 tok/s (min 19.22) aggregate 194.95 tpot 41.04 ms ttft 2.47 s prompt 218 out 200
+streams 1 rep 1: per-stream 96.78 tok/s (min 96.78) aggregate 96.78 tpot 10.33 ms ttft 0.35 s prompt 215 out 200
+streams 2 rep 1: per-stream 64.61 tok/s (min 61.05) aggregate 129.22 tpot 15.48 ms ttft 0.54 s prompt 216 out 200
+streams 4 rep 1: per-stream 42.13 tok/s (min 35.75) aggregate 168.51 tpot 23.74 ms ttft 1.15 s prompt 216 out 200
+streams 8 rep 1: per-stream 23.46 tok/s (min 18.40) aggregate 187.70 tpot 42.62 ms ttft 2.64 s prompt 221 out 200
+agreement streams 2: same_text 0/2 shortest common prefix 84 chars
+agreement streams 4: same_text 4/4 shortest common prefix 1167 chars
+agreement streams 8: same_text 4/8 shortest common prefix 3 chars
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             96.51            96.51    10.36    0.35
+      2             65.26           130.52    15.32    0.54
+      4             42.26           169.03    23.67    1.12
+      8             23.92           191.33    41.83    2.55
+wrote <scratch>/perf/batched/q36-batched-fused.json

@@ -1,0 +1,215 @@
+{
+ "tag": "q36-serial-6k2",
+ "model": "qwen36",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 5000,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "q36-serial-6k2",
+  "out": "<scratch>/perf/batched/landed/q36-serial-6k2.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 76.07,
+   "aggregate_tok_s": 76.07,
+   "tpot_ms": 13.15,
+   "ttft_s": 6.66
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 45.84,
+   "aggregate_tok_s": 91.69,
+   "tpot_ms": 21.81,
+   "ttft_s": 12.01
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 25.33,
+   "aggregate_tok_s": 101.32,
+   "tpot_ms": 39.48,
+   "ttft_s": 17.49
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 74.21416020882134,
+   "aggregate_tok_s": 74.21416020882134,
+   "tpot_ms": 13.47451749351112,
+   "ttft_s": 6.628779874998145,
+   "window_s": 2.6812928749714047,
+   "window_tokens": 198.989898989899,
+   "first_to_last_tok_s": 74.21792742507559,
+   "wall_tok_s": 21.482109256413075,
+   "prompt_tokens": [
+    5343
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "5a821e1a45ea"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 45.400823659634455,
+   "aggregate_tok_s": 90.80164731926891,
+   "tpot_ms": 22.026032115560334,
+   "ttft_s": 11.317974937031977,
+   "window_s": 4.372167374938726,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 36.09914662397168,
+   "wall_tok_s": 23.211354314109947,
+   "prompt_tokens": [
+    5380,
+    5359
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "ba66166262ef",
+    "6bd5e12f5188"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 25.29856130616739,
+   "aggregate_tok_s": 101.19424522466956,
+   "tpot_ms": 39.527939470463714,
+   "ttft_s": 17.772715020750184,
+   "window_s": 7.836414000019431,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 14.205166018858048,
+   "wall_tok_s": 23.12533023024266,
+   "prompt_tokens": [
+    5348,
+    5386,
+    5362,
+    5336
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "abf4e8a2f719",
+    "aafa87443b6e",
+    "620b1d0f7a19",
+    "2d269296bcd5"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 77.9234370146817,
+   "aggregate_tok_s": 77.9234370146817,
+   "tpot_ms": 12.833109502235999,
+   "ttft_s": 6.695064041996375,
+   "window_s": 2.5537887909449637,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 77.9234370146817,
+   "wall_tok_s": 21.6243034257899,
+   "prompt_tokens": [
+    5348
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "e764b47c8ad5"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 46.288427614493344,
+   "aggregate_tok_s": 92.57685522898669,
+   "tpot_ms": 21.603671836260226,
+   "ttft_s": 12.70313877047738,
+   "window_s": 4.288219750043936,
+   "window_tokens": 396.98989898989896,
+   "first_to_last_tok_s": 46.172695219304785,
+   "wall_tok_s": 23.511092245337686,
+   "prompt_tokens": [
+    5367,
+    5330
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "a64e9afad27c",
+    "afad9d74dfda"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 25.360591579779193,
+   "aggregate_tok_s": 101.44236631911677,
+   "tpot_ms": 39.431256832247236,
+   "ttft_s": 17.20061984375934,
+   "window_s": 7.8172466669930145,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 14.484245705371677,
+   "wall_tok_s": 23.85129960924125,
+   "prompt_tokens": [
+    5357,
+    5329,
+    5402,
+    5347
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "434d039b3070",
+    "afdd4e3c36f7",
+    "701b75e42f93",
+    "e178f94327f0"
+   ]
+  }
+ ]
+}

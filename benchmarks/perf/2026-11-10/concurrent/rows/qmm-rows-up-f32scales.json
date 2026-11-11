@@ -1,0 +1,68 @@
+{
+ "mlx": "0.32.4",
+ "out_dim": 17408,
+ "in_dim": 5120,
+ "matrices": 44,
+ "bits": 4,
+ "group_size": 64,
+ "lead_dim": true,
+ "dtype": "bfloat16",
+ "scale_dtype": "float32",
+ "packed_gb": 2.283,
+ "rows": {
+  "1": {
+   "sweep_ms": 10.81,
+   "gb_s": 211.2,
+   "ms_per_row": 10.81,
+   "against_one_row": 1.0
+  },
+  "2": {
+   "sweep_ms": 15.49,
+   "gb_s": 147.4,
+   "ms_per_row": 7.74,
+   "against_one_row": 1.433
+  },
+  "3": {
+   "sweep_ms": 23.21,
+   "gb_s": 98.4,
+   "ms_per_row": 7.74,
+   "against_one_row": 2.147
+  },
+  "4": {
+   "sweep_ms": 32.27,
+   "gb_s": 70.7,
+   "ms_per_row": 8.07,
+   "against_one_row": 2.985
+  },
+  "6": {
+   "sweep_ms": 49.01,
+   "gb_s": 46.6,
+   "ms_per_row": 8.17,
+   "against_one_row": 4.534
+  },
+  "8": {
+   "sweep_ms": 66.56,
+   "gb_s": 34.3,
+   "ms_per_row": 8.32,
+   "against_one_row": 6.158
+  },
+  "12": {
+   "sweep_ms": 101.83,
+   "gb_s": 22.4,
+   "ms_per_row": 8.49,
+   "against_one_row": 9.421
+  },
+  "16": {
+   "sweep_ms": 45.67,
+   "gb_s": 50.0,
+   "ms_per_row": 2.85,
+   "against_one_row": 4.226
+  },
+  "32": {
+   "sweep_ms": 48.67,
+   "gb_s": 46.9,
+   "ms_per_row": 1.52,
+   "against_one_row": 4.503
+  }
+ }
+}

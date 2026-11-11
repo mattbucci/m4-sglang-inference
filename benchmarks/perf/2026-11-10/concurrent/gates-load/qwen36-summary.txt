@@ -1,0 +1,7 @@
+codegen rc=0
+thinking rc=0
+validate rc=0
+vision rc=0
+[2026-11-10 21:57:16] MLX batched mRoPE decode enabled: steps of two or more requests run as one forward
+decode batches by running requests:    2 #running-req: 0    8 #running-req: 1   27 #running-req: 2    2 #running-req: 3    4 #running-req: 4 
+tracebacks 0

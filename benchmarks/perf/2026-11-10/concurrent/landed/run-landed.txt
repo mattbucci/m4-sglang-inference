@@ -1,0 +1,110 @@
+[22:18:18] arm pos36-serial (qwen36): EXTRA_ARGS=--disable-radix-cache
+up
+  enabled lines: batched 0
+  rc=0
+model qwen36  tag pos36-serial  expect exact
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1544          1544  yes           -
+solo repeat   image     1362          1362  yes           yes
+text-first    text      1544          1544  yes           -
+text-first    image     1362          1362  yes           yes
+image-first   image     1362          1362  yes           yes
+image-first   text      1544          1544  yes           -
+PASS
+wrote <scratch>/perf/batched/landed/pos36-serial.json
+  tracebacks 0
+[22:19:17] arm pos36-batched (qwen36): EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+  rc=0
+model qwen36  tag pos36-batched  expect content
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1544          1544  yes           -
+solo repeat   image     1362          1362  yes           yes
+text-first    text      1521           368  NO            -
+text-first    image     1267           268  NO            yes
+image-first   image     1278           255  NO            yes
+image-first   text      1499           128  NO            -
+PASS
+wrote <scratch>/perf/batched/landed/pos36-batched.json
+  tracebacks 0
+[22:20:20] arm pos35-serial (qwen35): EXTRA_ARGS=--disable-radix-cache
+up
+  enabled lines: batched 0
+  rc=0
+model qwen35  tag pos35-serial  expect exact
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1553          1553  yes           -
+solo repeat   image     1305          1305  yes           yes
+text-first    text      1553          1553  yes           -
+text-first    image     1305          1305  yes           yes
+image-first   image     1305          1305  yes           yes
+image-first   text      1553          1553  yes           -
+PASS
+wrote <scratch>/perf/batched/landed/pos35-serial.json
+  tracebacks 0
+[22:24:10] arm pos35-batched (qwen35): EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+  rc=0
+model qwen35  tag pos35-batched  expect content
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1553          1553  yes           -
+solo repeat   image     1305          1305  yes           yes
+text-first    text      1553          1553  yes           -
+text-first    image     1263           257  NO            yes
+image-first   image     1290           257  NO            yes
+image-first   text      1532           116  NO            -
+PASS
+wrote <scratch>/perf/batched/landed/pos35-batched.json
+  tracebacks 0
+[22:27:25] arm gates35-load (qwen35): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+probe_codegen rc=0
+probe_thinking rc=0
+probe_vision rc=0
+validate_capabilities rc=1
+VERDICT: STRONG
+THINKING VERIFIED
+VERDICT: STRONG
+--- 2/3 passed in 170.3s ---
+  decode batches by running requests:    2 #running-req: 0   34 #running-req: 1   20 #running-req: 2    4 #running-req: 3    3 #running-req: 4 
+  tracebacks 0
+[22:30:47] arm q35-serial (qwen35): 
+up
+  enabled lines: batched 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.00            14.00    71.45    2.15
+      2              7.18            14.37   139.22    3.23
+      4              3.70            14.79   270.37    8.56
+  tracebacks 0
+  wired_gb 30.9
+[22:32:31] arm q35-batched (qwen35): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.02            14.02    71.34    2.04
+      2             12.82            25.63    78.03    3.09
+      4              8.96            35.86   111.55    8.44
+  tracebacks 0
+  wired_gb 31.6
+[22:33:53] arm q35-batched2 (qwen35): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.20            14.20    70.45    2.04
+      2             12.82            25.65    77.99    3.02
+      4              8.99            35.96   111.23    8.42
+  tracebacks 0
+  wired_gb 31.5
+[22:35:12] arm q35-serial2 (qwen35): 
+up
+  enabled lines: batched 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.05            14.05    71.17    2.16
+      2              7.23            14.45   138.37    3.28
+      4              3.70            14.80   270.34    8.67
+  tracebacks 0
+  wired_gb 30.9
+[22:37:03] LANDED_DONE

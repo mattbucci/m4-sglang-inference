@@ -1,0 +1,11 @@
+  solo: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1-late@4: 2048 tok finish=length FAIL
+
+model qwen35  tag lp35-on
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    2048  length  NO       6497          6497        2048     0.00000    0.00000        0           1  FAIL
+with-1                  1             1    2048  length  NO       6461          1086         427     0.00147    0.11725      143           1  FAIL
+with-1-late@4           1             1    2048  length  NO       6648          1371         514     0.00144    0.06735      141           1  FAIL
+FAIL: solo, with-1, with-1-late@4
+wrote <scratch>/perf/batched/landed/lp35-on.json

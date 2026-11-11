@@ -1,0 +1,5 @@
+[2026-11-11 00:10:39] MLX buffer cache limit set to 4.0 GB
+[2026-11-11 00:10:40] MLX fused GatedDeltaNet front enabled: patched 24 layers
+[2026-11-11 00:10:40] MLX grouped decode linears enabled: hooked 1 modules
+decode batches by running requests:    3 #running-req: 0   30 #running-req: 1   30 #running-req: 2 
+tracebacks 0

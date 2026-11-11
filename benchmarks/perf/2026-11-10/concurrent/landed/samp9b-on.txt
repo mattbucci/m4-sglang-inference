@@ -1,0 +1,57 @@
+  solo: 2048 tok finish=length FAIL
+  solo: 1544 tok finish=stop PASS
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  solo: 1053 tok finish=stop PASS
+  solo: 2048 tok finish=length FAIL
+  solo: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 1264 tok finish=stop PASS
+  with-1: 2048 tok finish=length FAIL
+  with-1: 2048 tok finish=length FAIL
+  with-1: 1683 tok finish=stop PASS
+
+model qwen35-9b-8bit  tag samp9b-on
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    2048  length  NO       6171          6171        2048     0.00000    0.00000        0           3  FAIL
+solo                    0             0    1544  stop    ok       4355            47          13     0.00000    0.00000        0           2  PASS
+solo                    0             0    2048  length  NO       6309           131          36     0.00000    0.00000        0           4  FAIL
+solo                    0             0    2048  length  NO       6042            67          20     0.00000    0.00000        0           3  FAIL
+solo                    0             0    2048  length  NO       6273            65          19     0.00000    0.00000        0           3  FAIL
+solo                    0             0    2048  length  NO       6005            47          13     0.00000    0.00000        0           4  FAIL
+solo                    0             0    2048  length  NO       6209            94          25     0.00000    0.00000        0           3  FAIL
+solo                    0             0    2048  length  NO       6067            67          20     0.00000    0.00000        0           3  FAIL
+solo                    0             0    2048  length  NO       5723            47          13     0.00000    0.00000        0           3  FAIL
+solo                    0             0    1053  stop    ok       2760            47          13     0.00000    0.00000        0           2  PASS
+solo                    0             0    2048  length  NO       5930            47          13     0.00000    0.00000        0          17  FAIL
+solo                    0             0    2048  length  NO       6022             0           0           -          -        0           3  FAIL
+with-1                  1             1    2048  length  NO       5987            94          25     0.00583    0.13067       11           2  FAIL
+with-1                  1             1    2048  length  NO       6054            94          25     0.00583    0.13067       11           7  FAIL
+with-1                  1             1    2048  length  NO       5604            47          13     0.00000    0.00003        4          18  FAIL
+with-1                  1             1    2048  length  NO       6038            47          13     0.00000    0.00003        4           1  FAIL
+with-1                  1             1    2048  length  NO       6513            67          20     0.00713    0.13067        7           2  FAIL
+with-1                  1             1    2048  length  NO       6329            47          13     0.00000    0.00003        4           2  FAIL
+with-1                  1             1    2048  length  NO       5877            67          20     0.00713    0.13067        7           7  FAIL
+with-1                  1             1    2048  length  NO       6266            47          13     0.00000    0.00003        4           2  FAIL
+with-1                  1             1    1264  stop    ok       3668            47          13     0.00000    0.00003        4           2  PASS
+with-1                  1             1    2048  length  NO       5923            47          13     0.00000    0.00003        4           3  FAIL
+with-1                  1             1    2048  length  NO       6282            47          13     0.00000    0.00003        4           1  FAIL
+with-1                  1             1    1683  stop    ok       4936            47          13     0.00000    0.00003        4           3  PASS
+
+mode              runs  stop with the answer  at the token cap  median tokens  min  max
+solo                12                     2                10           2048 1053 2048
+with-1              12                     2                10           2048 1264 2048
+FAIL: solo, solo, solo, solo, solo, solo, solo, solo, solo, solo, with-1, with-1, with-1, with-1, with-1, with-1, with-1, with-1, with-1, with-1
+wrote <scratch>/perf/batched/landed/samp9b-on.json

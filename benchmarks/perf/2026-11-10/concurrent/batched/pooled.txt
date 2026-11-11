@@ -1,0 +1,77 @@
+Aggregate tok/s in the window where every stream decodes (passes 2 and 3; pass 1 used a per-stream window, see below).
+
+arm                      streams  aggregate tok/s  per-stream  TPOT ms  TTFT s
+q36-serial-p2                  1            80.97       80.97    12.35    0.36
+q36-serial-p2                  2            97.62       48.81    20.49    0.56
+q36-serial-p2                  4           106.71       26.68    37.49    1.27
+q36-serial-p2                  8            75.82        9.48   105.51    2.84
+q36-serial-p3                  1            80.26       80.26    12.46    0.37
+q36-serial-p3                  2            97.52       48.76    20.51    0.58
+q36-serial-p3                  4           106.14       26.53    37.69    1.27
+q36-serial-p3                  8            75.42        9.43   106.08    2.89
+q36-batched-p2                 1            80.06       80.06    12.49    0.36
+q36-batched-p2                 2           116.87       58.43    17.11    0.54
+q36-batched-p2                 4           152.75       38.19    26.19    1.18
+q36-batched-p2                 8           187.54       23.44    42.66    2.64
+q36-batched-p3                 1            80.82       80.82    12.37    0.34
+q36-batched-p3                 2           117.83       58.91    16.97    0.52
+q36-batched-p3                 4           151.97       37.99    26.32    1.10
+q36-batched-p3                 8           191.52       23.94    41.77    2.47
+q36-serial-fused-p2            1            96.59       96.59    10.35    0.35
+q36-serial-fused-p2            2           116.69       58.34    17.14    0.54
+q36-serial-fused-p2            4           119.83       29.96    33.38    1.15
+q36-serial-fused-p2            8            87.42       10.93    91.51    2.57
+q36-batched-fused-p2           1            96.64       96.64    10.35    0.35
+q36-batched-fused-p2           2           137.47       68.74    14.55    0.55
+q36-batched-fused-p2           4           174.88       43.72    22.88    1.16
+q36-batched-fused-p2           8           194.56       24.32    41.12    2.60
+d27-serial-p2                  1            13.95       13.95    71.69    2.23
+d27-serial-p2                  2            14.35        7.18   139.35    3.28
+d27-serial-p2                  4            14.85        3.71   269.45    8.64
+d27-serial-p2                  8            14.49        1.81   552.10   14.93
+d27-batched-p2                 1            14.13       14.13    70.79    2.15
+d27-batched-p2                 2            25.64       12.82    78.01    3.16
+d27-batched-p2                 4            36.03        9.01   111.03    8.43
+d27-batched-p2                 8            37.39        4.67   213.94   14.84
+
+Pooled (mean of the passes) and the batched gain over serial
+pair             streams    serial   batched   gain %
+qwen36 stock           1     80.62     80.44     -0.2
+qwen36 stock           2     97.57    117.35    +20.3
+qwen36 stock           4    106.42    152.36    +43.2
+qwen36 stock           8     75.62    189.53   +150.6
+qwen36 fused           1     96.59     96.64     +0.1
+qwen36 fused           2    116.69    137.47    +17.8
+qwen36 fused           4    119.83    174.88    +45.9
+qwen36 fused           8     87.42    194.56   +122.6
+qwen36-27b             1     13.95     14.13     +1.3
+qwen36-27b             2     14.35     25.64    +78.7
+qwen36-27b             4     14.85     36.03   +142.6
+qwen36-27b             8     14.49     37.39   +158.0
+
+Pass 1 (order batched then serial; rate = each stream's own first-to-last chunk, averaged, times streams)
+arm                      streams  aggregate tok/s
+q36-serial-p1                  1            80.73
+q36-serial-p1                  2            94.09
+q36-serial-p1                  4           104.49
+q36-serial-p1                  8            75.38
+q36-batched-p1                 1            80.79
+q36-batched-p1                 2           111.53
+q36-batched-p1                 4           147.02
+q36-batched-p1                 8           187.06
+q36-serial-fused-p1            1            96.06
+q36-serial-fused-p1            2           110.71
+q36-serial-fused-p1            4           115.25
+q36-serial-fused-p1            8            85.38
+q36-batched-fused-p1           1            96.51
+q36-batched-fused-p1           2           130.52
+q36-batched-fused-p1           4           169.03
+q36-batched-fused-p1           8           191.33
+d27-serial-p1                  1            14.09
+d27-serial-p1                  2            13.23
+d27-serial-p1                  4            15.13
+d27-serial-p1                  8            14.23
+d27-batched-p1                 1            14.22
+d27-batched-p1                 2            22.22
+d27-batched-p1                 4            36.86
+d27-batched-p1                 8            36.02

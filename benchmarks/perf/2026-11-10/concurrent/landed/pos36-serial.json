@@ -1,0 +1,66 @@
+{
+ "tag": "pos36-serial",
+ "model": "qwen36",
+ "expect": "exact",
+ "max_tokens": 300,
+ "image_side": 896,
+ "rows": [
+  {
+   "run": "solo repeat",
+   "request": "text",
+   "chars": 1544,
+   "equal_prefix": 1544,
+   "same": true,
+   "sees_circle": null,
+   "text": "A binary search tree (BST) is a fundamental data structure in computer science that organizes data in a hierarchical, tree-like format to facilitate efficient searching, insertion, and deletion operations. The core mechanism that allows a BST to maintain order is a strict invariant known as the binary search property. In this structure, for any given node, all keys in its left subtree are strictly smaller than the node\u2019s key, and all keys in its right subtree are strictly larger. This recursive definition ensures that the entire tree remains sorted relative to any subtree root. When we traverse the tree in an in-order fashion\u2014visiting the left child, then the root, and finally the right child\u2014we retrieve the keys in ascending sorted order. This inherent ordering is what distinguishes a BST from a generic binary tree and enables the logarithmic time complexity typically associated with search operations.\n\nInsertion into a binary search tree begins at the root and proceeds downward by comparing the new key with the current node\u2019s key. If the new key is smaller, the algorithm moves to the left child; if it is larger, it moves to the right child. This process repeats recursively until a null pointer is encountered, indicating the correct position for the new node. The new node is then attached as a leaf, preserving the binary search property. Because the algorithm follows a single path from the root to a leaf, the time complexity of insertion is proportional to the height of the tree, denoted as O(h), where h is the height"
+  },
+  {
+   "run": "solo repeat",
+   "request": "image",
+   "chars": 1362,
+   "equal_prefix": 1362,
+   "same": true,
+   "sees_circle": true,
+   "text": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with solid red and outlined in black.\n\n---\n\n**The Red Circle**\n\nIn the quiet town of Oakhaven, where cobblestone streets curled like sleeping cats and time moved at the pace of dandelion seeds, there existed a single red circle \u2014 not painted on any wall, not carved into any stone, but floating just above the town square\u2019s old fountain. It had no source, no explanation. Some said it appeared the day the last blacksmith died; others claimed it was there before the first house was built.\n\nElara, the youngest librarian, was the first to notice its pulse. Not light or sound \u2014 but warmth. A gentle, rhythmic throb that matched her own heartbeat when she stood too close. She began leaving offerings: a drop of rainwater, a pressed rose petal, a child\u2019s drawing of a sun. The circle never changed \u2014 yet it seemed to acknowledge each gift by glowing slightly brighter.\n\nOne winter, when frost bit deeper than memory and crops failed, the circle dimmed. Panic spread. The mayor called for prayers; the priest for sacrifices. But Elara knew better. She climbed the fountain\u2019s edge, barefoot against ice, and placed her hand upon the air beneath the circle.\n\n\u201cI\u2019m sorry,\u201d she whispered. \u201cWe forgot how to give without asking.\u201d\n\nShe closed her eyes and remembered every story she\u2019d ever read \u2014 tales"
+  },
+  {
+   "run": "text-first",
+   "request": "text",
+   "chars": 1544,
+   "equal_prefix": 1544,
+   "same": true,
+   "sees_circle": null,
+   "text": "A binary search tree (BST) is a fundamental data structure in computer science that organizes data in a hierarchical, tree-like format to facilitate efficient searching, insertion, and deletion operations. The core mechanism that allows a BST to maintain order is a strict invariant known as the binary search property. In this structure, for any given node, all keys in its left subtree are strictly smaller than the node\u2019s key, and all keys in its right subtree are strictly larger. This recursive definition ensures that the entire tree remains sorted relative to any subtree root. When we traverse the tree in an in-order fashion\u2014visiting the left child, then the root, and finally the right child\u2014we retrieve the keys in ascending sorted order. This inherent ordering is what distinguishes a BST from a generic binary tree and enables the logarithmic time complexity typically associated with search operations.\n\nInsertion into a binary search tree begins at the root and proceeds downward by comparing the new key with the current node\u2019s key. If the new key is smaller, the algorithm moves to the left child; if it is larger, it moves to the right child. This process repeats recursively until a null pointer is encountered, indicating the correct position for the new node. The new node is then attached as a leaf, preserving the binary search property. Because the algorithm follows a single path from the root to a leaf, the time complexity of insertion is proportional to the height of the tree, denoted as O(h), where h is the height"
+  },
+  {
+   "run": "text-first",
+   "request": "image",
+   "chars": 1362,
+   "equal_prefix": 1362,
+   "same": true,
+   "sees_circle": true,
+   "text": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with solid red and outlined in black.\n\n---\n\n**The Red Circle**\n\nIn the quiet town of Oakhaven, where cobblestone streets curled like sleeping cats and time moved at the pace of dandelion seeds, there existed a single red circle \u2014 not painted on any wall, not carved into any stone, but floating just above the town square\u2019s old fountain. It had no source, no explanation. Some said it appeared the day the last blacksmith died; others claimed it was there before the first house was built.\n\nElara, the youngest librarian, was the first to notice its pulse. Not light or sound \u2014 but warmth. A gentle, rhythmic throb that matched her own heartbeat when she stood too close. She began leaving offerings: a drop of rainwater, a pressed rose petal, a child\u2019s drawing of a sun. The circle never changed \u2014 yet it seemed to acknowledge each gift by glowing slightly brighter.\n\nOne winter, when frost bit deeper than memory and crops failed, the circle dimmed. Panic spread. The mayor called for prayers; the priest for sacrifices. But Elara knew better. She climbed the fountain\u2019s edge, barefoot against ice, and placed her hand upon the air beneath the circle.\n\n\u201cI\u2019m sorry,\u201d she whispered. \u201cWe forgot how to give without asking.\u201d\n\nShe closed her eyes and remembered every story she\u2019d ever read \u2014 tales"
+  },
+  {
+   "run": "image-first",
+   "request": "image",
+   "chars": 1362,
+   "equal_prefix": 1362,
+   "same": true,
+   "sees_circle": true,
+   "text": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with solid red and outlined in black.\n\n---\n\n**The Red Circle**\n\nIn the quiet town of Oakhaven, where cobblestone streets curled like sleeping cats and time moved at the pace of dandelion seeds, there existed a single red circle \u2014 not painted on any wall, not carved into any stone, but floating just above the town square\u2019s old fountain. It had no source, no explanation. Some said it appeared the day the last blacksmith died; others claimed it was there before the first house was built.\n\nElara, the youngest librarian, was the first to notice its pulse. Not light or sound \u2014 but warmth. A gentle, rhythmic throb that matched her own heartbeat when she stood too close. She began leaving offerings: a drop of rainwater, a pressed rose petal, a child\u2019s drawing of a sun. The circle never changed \u2014 yet it seemed to acknowledge each gift by glowing slightly brighter.\n\nOne winter, when frost bit deeper than memory and crops failed, the circle dimmed. Panic spread. The mayor called for prayers; the priest for sacrifices. But Elara knew better. She climbed the fountain\u2019s edge, barefoot against ice, and placed her hand upon the air beneath the circle.\n\n\u201cI\u2019m sorry,\u201d she whispered. \u201cWe forgot how to give without asking.\u201d\n\nShe closed her eyes and remembered every story she\u2019d ever read \u2014 tales"
+  },
+  {
+   "run": "image-first",
+   "request": "text",
+   "chars": 1544,
+   "equal_prefix": 1544,
+   "same": true,
+   "sees_circle": null,
+   "text": "A binary search tree (BST) is a fundamental data structure in computer science that organizes data in a hierarchical, tree-like format to facilitate efficient searching, insertion, and deletion operations. The core mechanism that allows a BST to maintain order is a strict invariant known as the binary search property. In this structure, for any given node, all keys in its left subtree are strictly smaller than the node\u2019s key, and all keys in its right subtree are strictly larger. This recursive definition ensures that the entire tree remains sorted relative to any subtree root. When we traverse the tree in an in-order fashion\u2014visiting the left child, then the root, and finally the right child\u2014we retrieve the keys in ascending sorted order. This inherent ordering is what distinguishes a BST from a generic binary tree and enables the logarithmic time complexity typically associated with search operations.\n\nInsertion into a binary search tree begins at the root and proceeds downward by comparing the new key with the current node\u2019s key. If the new key is smaller, the algorithm moves to the left child; if it is larger, it moves to the right child. This process repeats recursively until a null pointer is encountered, indicating the correct position for the new node. The new node is then attached as a leaf, preserving the binary search property. Because the algorithm follows a single path from the root to a leaf, the time complexity of insertion is proportional to the height of the tree, denoted as O(h), where h is the height"
+  }
+ ],
+ "solo_text": "A binary search tree (BST) is a fundamental data structure in computer science that organizes data in a hierarchical, tree-like format to facilitate efficient searching, insertion, and deletion operations. The core mechanism that allows a BST to maintain order is a strict invariant known as the binary search property. In this structure, for any given node, all keys in its left subtree are strictly smaller than the node\u2019s key, and all keys in its right subtree are strictly larger. This recursive definition ensures that the entire tree remains sorted relative to any subtree root. When we traverse the tree in an in-order fashion\u2014visiting the left child, then the root, and finally the right child\u2014we retrieve the keys in ascending sorted order. This inherent ordering is what distinguishes a BST from a generic binary tree and enables the logarithmic time complexity typically associated with search operations.\n\nInsertion into a binary search tree begins at the root and proceeds downward by comparing the new key with the current node\u2019s key. If the new key is smaller, the algorithm moves to the left child; if it is larger, it moves to the right child. This process repeats recursively until a null pointer is encountered, indicating the correct position for the new node. The new node is then attached as a leaf, preserving the binary search property. Because the algorithm follows a single path from the root to a leaf, the time complexity of insertion is proportional to the height of the tree, denoted as O(h), where h is the height",
+ "solo_image": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with solid red and outlined in black.\n\n---\n\n**The Red Circle**\n\nIn the quiet town of Oakhaven, where cobblestone streets curled like sleeping cats and time moved at the pace of dandelion seeds, there existed a single red circle \u2014 not painted on any wall, not carved into any stone, but floating just above the town square\u2019s old fountain. It had no source, no explanation. Some said it appeared the day the last blacksmith died; others claimed it was there before the first house was built.\n\nElara, the youngest librarian, was the first to notice its pulse. Not light or sound \u2014 but warmth. A gentle, rhythmic throb that matched her own heartbeat when she stood too close. She began leaving offerings: a drop of rainwater, a pressed rose petal, a child\u2019s drawing of a sun. The circle never changed \u2014 yet it seemed to acknowledge each gift by glowing slightly brighter.\n\nOne winter, when frost bit deeper than memory and crops failed, the circle dimmed. Panic spread. The mayor called for prayers; the priest for sacrifices. But Elara knew better. She climbed the fountain\u2019s edge, barefoot against ice, and placed her hand upon the air beneath the circle.\n\n\u201cI\u2019m sorry,\u201d she whispered. \u201cWe forgot how to give without asking.\u201d\n\nShe closed her eyes and remembered every story she\u2019d ever read \u2014 tales",
+ "pass": true
+}

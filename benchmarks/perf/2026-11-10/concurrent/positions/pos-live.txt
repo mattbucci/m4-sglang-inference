@@ -1,0 +1,10 @@
+model qwen36  tag pos-live  expect exact
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1544          1544  yes           -
+solo repeat   image     1362          1362  yes           yes
+text-first    text      1503           264  NO            -
+text-first    image     1362          1362  yes           yes
+image-first   image     1304           133  NO            yes
+image-first   text      1544          1544  yes           -
+FAIL
+wrote <scratch>/perf/batched/pos-live.json

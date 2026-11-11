@@ -1,0 +1,4 @@
+[2026-11-10 22:51:48] MLX buffer cache limit set to 4.0 GB
+[2026-11-10 22:51:49] MLX batched mRoPE decode enabled: steps of two or more requests run as one forward
+decode batches by running requests:    5 #running-req: 0    4 #running-req: 1    4 #running-req: 2 
+tracebacks 0

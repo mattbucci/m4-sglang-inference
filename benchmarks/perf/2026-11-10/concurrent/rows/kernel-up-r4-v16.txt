@@ -1,0 +1,19 @@
+44 matrices 17408x5120 at 4 bits in bfloat16, 2.05 GB per sweep, res 4 vpt 16, mlx 0.32.4
+rows   2: against float32, stock mean 1.41e-03 max 1.37e-02, kernel mean 1.41e-03 max 1.37e-02; kernel equals stock on 100.0 % of outputs
+rows   3: against float32, stock mean 1.41e-03 max 1.37e-02, kernel mean 1.41e-03 max 1.37e-02; kernel equals stock on 100.0 % of outputs
+rows   4: against float32, stock mean 1.41e-03 max 1.36e-02, kernel mean 1.41e-03 max 1.36e-02; kernel equals stock on 100.0 % of outputs
+rows   6: against float32, stock mean 1.40e-03 max 1.37e-02, kernel mean 1.40e-03 max 1.37e-02; kernel equals stock on 100.0 % of outputs
+rows   8: against float32, stock mean 1.40e-03 max 1.37e-02, kernel mean 1.40e-03 max 1.37e-02; kernel equals stock on 100.0 % of outputs
+rows  12: against float32, stock mean 1.41e-03 max 1.36e-02, kernel mean 1.41e-03 max 1.36e-02; kernel equals stock on 100.0 % of outputs
+rows  16: against float32, stock mean 2.14e-03 max 1.90e-02, kernel mean 1.41e-03 max 1.36e-02; kernel equals stock on 60.4 % of outputs
+rows  24: against float32, stock mean 2.13e-03 max 1.92e-02, kernel mean 1.41e-03 max 1.36e-02; kernel equals stock on 60.4 % of outputs
+rows  32: against float32, stock mean 2.13e-03 max 1.88e-02, kernel mean 1.41e-03 max 1.37e-02; kernel equals stock on 60.2 % of outputs
+rows   2: stock     9.91 ms, kernel    24.09 ms per sweep, x2.43, kernel reads   85.3 GB/s of packed weights
+rows   3: stock    10.81 ms, kernel    30.63 ms per sweep, x2.83, kernel reads   67.1 GB/s of packed weights
+rows   4: stock    13.05 ms, kernel    37.19 ms per sweep, x2.85, kernel reads   55.2 GB/s of packed weights
+rows   6: stock    26.76 ms, kernel    50.47 ms per sweep, x1.89, kernel reads   40.7 GB/s of packed weights
+rows   8: stock    33.65 ms, kernel    64.46 ms per sweep, x1.92, kernel reads   31.9 GB/s of packed weights
+rows  12: stock    54.39 ms, kernel    95.43 ms per sweep, x1.75, kernel reads   21.5 GB/s of packed weights
+rows  16: stock    39.27 ms, kernel   126.92 ms per sweep, x3.23, kernel reads   16.2 GB/s of packed weights
+rows  24: stock    39.83 ms, kernel   196.40 ms per sweep, x4.93, kernel reads   10.5 GB/s of packed weights
+rows  32: stock    39.81 ms, kernel   275.31 ms per sweep, x6.92, kernel reads    7.5 GB/s of packed weights

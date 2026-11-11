@@ -1,0 +1,65 @@
+{
+ "model": "~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46",
+ "mlx": "0.32.4",
+ "fusions": {
+  "router": "40",
+  "front": "30",
+  "linears": "1"
+ },
+ "shape": "batch",
+ "rows_kernel": "",
+ "iters": 16,
+ "warmup": 4,
+ "depths": [
+  {
+   "depth": 1024,
+   "rows": {
+    "1": {
+     "median_ms": 12.981,
+     "p10_ms": 12.712,
+     "p90_ms": 13.979,
+     "tok_s": 77.03,
+     "ms_per_row": 12.981,
+     "against_k_single_cycles": 1.0,
+     "aggregate_tok_s": 77.0
+    },
+    "2": {
+     "median_ms": 16.508,
+     "p10_ms": 15.989,
+     "p90_ms": 17.795,
+     "tok_s": 60.58,
+     "ms_per_row": 8.254,
+     "against_k_single_cycles": 0.636,
+     "aggregate_tok_s": 121.2
+    },
+    "4": {
+     "median_ms": 24.449,
+     "p10_ms": 23.324,
+     "p90_ms": 25.601,
+     "tok_s": 40.9,
+     "ms_per_row": 6.112,
+     "against_k_single_cycles": 0.471,
+     "aggregate_tok_s": 163.6
+    },
+    "8": {
+     "median_ms": 40.67,
+     "p10_ms": 39.314,
+     "p90_ms": 41.485,
+     "tok_s": 24.59,
+     "ms_per_row": 5.084,
+     "against_k_single_cycles": 0.392,
+     "aggregate_tok_s": 196.7
+    },
+    "16": {
+     "median_ms": 68.063,
+     "p10_ms": 66.605,
+     "p90_ms": 71.067,
+     "tok_s": 14.69,
+     "ms_per_row": 4.254,
+     "against_k_single_cycles": 0.328,
+     "aggregate_tok_s": 235.1
+    }
+   }
+  }
+ ]
+}

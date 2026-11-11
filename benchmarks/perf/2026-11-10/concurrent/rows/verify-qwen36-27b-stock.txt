@@ -1,0 +1,17 @@
+loaded ~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-27B-4bit/snapshots/c000ac2c2057d94be3fa931000c31723aac53282 vlm=True layers=64 active=14.95 GB fusions={}
+
+== depth 24: prefill 0.3s
+rows   1:    71.67 ms per cycle,  71.666 ms per row, x1.000 of 1 one-row cycles
+rows   2:    73.91 ms per cycle,  36.956 ms per row, x0.516 of 2 one-row cycles
+rows   4:   109.81 ms per cycle,  27.451 ms per row, x0.383 of 4 one-row cycles
+rows   8:   210.89 ms per cycle,  26.361 ms per row, x0.368 of 8 one-row cycles
+rows  16:   324.71 ms per cycle,  20.295 ms per row, x0.283 of 16 one-row cycles
+one-row pipelined step 67.51 ms; cache ends at 1378 tokens
+
+== depth 8192: prefill 75.1s
+rows   1:    73.95 ms per cycle,  73.954 ms per row, x1.000 of 1 one-row cycles
+rows   2:    77.04 ms per cycle,  38.520 ms per row, x0.521 of 2 one-row cycles
+rows   4:   108.03 ms per cycle,  27.007 ms per row, x0.365 of 4 one-row cycles
+rows   8:   221.15 ms per cycle,  27.644 ms per row, x0.374 of 8 one-row cycles
+rows  16:   325.24 ms per cycle,  20.328 ms per row, x0.275 of 16 one-row cycles
+one-row pipelined step 70.25 ms; cache ends at 9546 tokens

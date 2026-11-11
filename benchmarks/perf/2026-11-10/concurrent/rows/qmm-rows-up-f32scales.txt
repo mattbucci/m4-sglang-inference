@@ -1,0 +1,10 @@
+44 matrices 17408x5120 at 4 bits, activations bfloat16, scales float32, 2.28 GB per sweep, mlx 0.32.4
+rows   1:    10.81 ms per sweep,  211.2 GB/s of packed weights,   10.81 ms per row, x1.00 of one row
+rows   2:    15.49 ms per sweep,  147.4 GB/s of packed weights,    7.74 ms per row, x1.43 of one row
+rows   3:    23.21 ms per sweep,   98.4 GB/s of packed weights,    7.74 ms per row, x2.15 of one row
+rows   4:    32.27 ms per sweep,   70.7 GB/s of packed weights,    8.07 ms per row, x2.98 of one row
+rows   6:    49.01 ms per sweep,   46.6 GB/s of packed weights,    8.17 ms per row, x4.53 of one row
+rows   8:    66.56 ms per sweep,   34.3 GB/s of packed weights,    8.32 ms per row, x6.16 of one row
+rows  12:   101.83 ms per sweep,   22.4 GB/s of packed weights,    8.49 ms per row, x9.42 of one row
+rows  16:    45.67 ms per sweep,   50.0 GB/s of packed weights,    2.85 ms per row, x4.23 of one row
+rows  32:    48.67 ms per sweep,   46.9 GB/s of packed weights,    1.52 ms per row, x4.50 of one row

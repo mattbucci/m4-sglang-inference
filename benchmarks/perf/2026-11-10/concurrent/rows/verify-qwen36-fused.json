@@ -1,0 +1,109 @@
+{
+ "model": "~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46",
+ "mlx": "0.32.4",
+ "fusions": {
+  "router": "40",
+  "front": "30",
+  "linears": "1"
+ },
+ "iters": 24,
+ "warmup": 4,
+ "depths": [
+  {
+   "depth": 24,
+   "prefill_s": 0.13,
+   "rows": {
+    "1": {
+     "median_ms": 13.031,
+     "p10_ms": 12.651,
+     "p90_ms": 14.216,
+     "tok_s": 76.74,
+     "ms_per_row": 13.031,
+     "against_k_single_cycles": 1.0
+    },
+    "2": {
+     "median_ms": 16.024,
+     "p10_ms": 15.313,
+     "p90_ms": 16.997,
+     "tok_s": 62.41,
+     "ms_per_row": 8.012,
+     "against_k_single_cycles": 0.615
+    },
+    "4": {
+     "median_ms": 22.286,
+     "p10_ms": 21.341,
+     "p90_ms": 23.354,
+     "tok_s": 44.87,
+     "ms_per_row": 5.572,
+     "against_k_single_cycles": 0.428
+    },
+    "8": {
+     "median_ms": 36.433,
+     "p10_ms": 34.706,
+     "p90_ms": 38.002,
+     "tok_s": 27.45,
+     "ms_per_row": 4.554,
+     "against_k_single_cycles": 0.349
+    },
+    "16": {
+     "median_ms": 57.877,
+     "p10_ms": 56.985,
+     "p90_ms": 59.683,
+     "tok_s": 17.28,
+     "ms_per_row": 3.617,
+     "against_k_single_cycles": 0.278
+    }
+   },
+   "one_row_pipelined_ms": 10.136,
+   "cache_tokens_at_end": 1874
+  },
+  {
+   "depth": 8192,
+   "prefill_s": 9.31,
+   "rows": {
+    "1": {
+     "median_ms": 13.899,
+     "p10_ms": 13.584,
+     "p90_ms": 14.935,
+     "tok_s": 71.95,
+     "ms_per_row": 13.899,
+     "against_k_single_cycles": 1.0
+    },
+    "2": {
+     "median_ms": 17.872,
+     "p10_ms": 17.035,
+     "p90_ms": 18.689,
+     "tok_s": 55.95,
+     "ms_per_row": 8.936,
+     "against_k_single_cycles": 0.643
+    },
+    "4": {
+     "median_ms": 25.52,
+     "p10_ms": 24.427,
+     "p90_ms": 26.647,
+     "tok_s": 39.18,
+     "ms_per_row": 6.38,
+     "against_k_single_cycles": 0.459
+    },
+    "8": {
+     "median_ms": 51.089,
+     "p10_ms": 48.74,
+     "p90_ms": 52.902,
+     "tok_s": 19.57,
+     "ms_per_row": 6.386,
+     "against_k_single_cycles": 0.459
+    },
+    "16": {
+     "median_ms": 75.008,
+     "p10_ms": 72.918,
+     "p90_ms": 76.842,
+     "tok_s": 13.33,
+     "ms_per_row": 4.688,
+     "against_k_single_cycles": 0.337
+    }
+   },
+   "one_row_pipelined_ms": 11.116,
+   "cache_tokens_at_end": 10042
+  }
+ ]
+}

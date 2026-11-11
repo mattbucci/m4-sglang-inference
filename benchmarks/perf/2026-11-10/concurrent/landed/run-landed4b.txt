@@ -1,0 +1,30 @@
+[23:46:26] arm lp9b-on (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+  rc=1
+model qwen35-9b-8bit  tag lp9b-on
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+with-1                  1             1    1682  stop    ok       4985          1913         648     0.00364    0.11812      349           3  PASS
+with-3                  3             3    1682  stop    ok       4985          1913         648     0.00364    0.11812      349           3  PASS
+with-1-late@1           1             1    2048  length  NO       6123          1388         519     0.00243    0.10213      232           3  FAIL
+with-1-late@8           1             1    1196  stop    ok       3479          3479        1196     0.00423    0.09975      586           3  PASS
+with-3-late@4           3             3    1651  stop    ok       4926          2556         842     0.00449    0.10223      444           3  PASS
+FAIL: with-1-late@1
+wrote <scratch>/perf/batched/landed/lp9b-on.json
+  decode batches by running requests:    7 #running-req: 0   42 #running-req: 1  118 #running-req: 2    1 #running-req: 3   81 #running-req: 4 
+  tracebacks 0
+[23:54:14] arm lp35-on (qwen35): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+  rc=1
+model qwen35  tag lp35-on
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    2048  length  NO       6497          6497        2048     0.00000    0.00000        0           1  FAIL
+with-1                  1             1    2048  length  NO       6461          1086         427     0.00147    0.11725      143           1  FAIL
+with-1-late@4           1             1    2048  length  NO       6648          1371         514     0.00144    0.06735      141           1  FAIL
+FAIL: solo, with-1, with-1-late@4
+wrote <scratch>/perf/batched/landed/lp35-on.json
+  decode batches by running requests:    4 #running-req: 0   54 #running-req: 1  101 #running-req: 2 
+  tracebacks 0
+LANDED4_DONE

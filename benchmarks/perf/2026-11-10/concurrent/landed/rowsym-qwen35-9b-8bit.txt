@@ -1,0 +1,25 @@
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/awq/awq.py:53: UserWarning: Only CUDA, HIP and XPU support AWQ currently.
+  warnings.warn(f"Only CUDA, HIP and XPU support AWQ currently.")
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/gguf.py:76: UserWarning: Only CUDA, MUSA and NPU support GGUF quantization currently.
+  warnings.warn(f"Only CUDA, MUSA and NPU support GGUF quantization currently.")
+module: ~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+native [A]         done 5s  dtype mlx.core.bfloat16
+batched [A]        done 9s  dtype mlx.core.bfloat16
+batched [A,B]      done 15s  dtype mlx.core.bfloat16
+batched [B,A]      done 20s  dtype mlx.core.bfloat16
+batched [C,A]      done 29s  dtype mlx.core.bfloat16
+batched [A,B,C,D]  done 39s  dtype mlx.core.bfloat16
+batched [B,C,D,A]  done 51s  dtype mlx.core.bfloat16
+batched [B,A,C,D]  done 63s  dtype mlx.core.bfloat16
+
+arrangement         against native [A]: bit-equal  max gap   KL mean   KL max  top-1   against batched [A,B]: bit-equal  max gap
+native [A]                            64/64    0.0000  0.00000  0.00000   64/64                         0/64    1.0312
+batched [A]                           64/64    0.0000  0.00000  0.00000   64/64                         0/64    1.0312
+batched [A,B]                          0/64    1.0312  0.00062  0.00199   61/64                        64/64    0.0000
+batched [B,A]                          0/64    1.0312  0.00062  0.00199   61/64                        64/64    0.0000
+batched [C,A]                          0/64    1.0312  0.00062  0.00199   61/64                        64/64    0.0000
+batched [A,B,C,D]                      0/64    1.0312  0.00062  0.00199   61/64                        64/64    0.0000
+batched [B,C,D,A]                      0/64    1.0312  0.00062  0.00199   61/64                        64/64    0.0000
+batched [B,A,C,D]                      0/64    1.0312  0.00062  0.00199   61/64                        64/64    0.0000
+native [A] again                      64/64    0.0000  0.00000  0.00000   64/64                         0/64    1.0312
+wrote <scratch>/perf/batched/landed/rowsym-qwen35-9b-8bit.json

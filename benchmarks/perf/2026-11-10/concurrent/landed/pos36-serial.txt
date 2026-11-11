@@ -1,0 +1,10 @@
+model qwen36  tag pos36-serial  expect exact
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1544          1544  yes           -
+solo repeat   image     1362          1362  yes           yes
+text-first    text      1544          1544  yes           -
+text-first    image     1362          1362  yes           yes
+image-first   image     1362          1362  yes           yes
+image-first   text      1544          1544  yes           -
+PASS
+wrote <scratch>/perf/batched/landed/pos36-serial.json

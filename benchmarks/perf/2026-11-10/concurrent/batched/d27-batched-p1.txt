@@ -1,0 +1,14 @@
+streams 1 rep 0: per-stream 14.22 tok/s (min 14.22) aggregate 14.22 tpot 70.32 ms ttft 2.10 s prompt 220 out 64
+streams 2 rep 0: per-stream 11.11 tok/s (min 9.17) aggregate 22.22 tpot 90.00 ms ttft 3.10 s prompt 223 out 64
+streams 4 rep 0: per-stream 9.22 tok/s (min 9.22) aggregate 36.86 tpot 108.51 ms ttft 8.43 s prompt 213 out 64
+streams 8 rep 0: per-stream 4.50 tok/s (min 2.30) aggregate 36.02 tpot 222.09 ms ttft 14.64 s prompt 218 out 64
+agreement streams 2: same_text 1/2 shortest common prefix 143 chars
+agreement streams 4: same_text 4/4 shortest common prefix 245 chars
+agreement streams 8: same_text 4/8 shortest common prefix 35 chars
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.22            14.22    70.32    2.10
+      2             11.11            22.22    90.00    3.10
+      4              9.22            36.86   108.51    8.43
+      8              4.50            36.02   222.09   14.64
+wrote <scratch>/perf/batched/d27-batched.json

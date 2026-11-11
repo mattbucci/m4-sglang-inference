@@ -1,0 +1,84 @@
+{
+ "tag": "q35-default",
+ "model": "qwen35",
+ "args": {
+  "port": 23334,
+  "streams": "1,2",
+  "prompt_words": 180,
+  "max_tokens": 64,
+  "repeats": 1,
+  "timeout": 1800,
+  "tag": "q35-default",
+  "out": "<scratch>/perf/batched/landed/q35-default.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 14.13,
+   "aggregate_tok_s": 14.13,
+   "tpot_ms": 70.79,
+   "ttft_s": 1.98
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 12.76,
+   "aggregate_tok_s": 25.51,
+   "tpot_ms": 78.39,
+   "ttft_s": 3.04
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 14.127174656394164,
+   "aggregate_tok_s": 14.127174656394164,
+   "tpot_ms": 70.78556217519301,
+   "ttft_s": 1.9800366660347208,
+   "window_s": 4.459490417037159,
+   "window_tokens": 63.0,
+   "first_to_last_tok_s": 14.127174656394164,
+   "wall_tok_s": 9.938618034271821,
+   "prompt_tokens": [
+    220
+   ],
+   "completion_tokens": [
+    64
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "0c0c5c05aee6"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 12.756002880047895,
+   "aggregate_tok_s": 25.51200576009579,
+   "tpot_ms": 78.39446332864463,
+   "ttft_s": 3.041452396020759,
+   "window_s": 4.89965395804029,
+   "window_tokens": 125.0,
+   "first_to_last_tok_s": 10.97015356800892,
+   "wall_tok_s": 14.286314797282397,
+   "prompt_tokens": [
+    223,
+    213
+   ],
+   "completion_tokens": [
+    64,
+    64
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "c1e776b4df21",
+    "1460726909a0"
+   ]
+  }
+ ]
+}

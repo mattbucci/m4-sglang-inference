@@ -1,0 +1,2 @@
+[2026-11-10 21:30:56] MLX buffer cache limit set to 4.0 GB
+tracebacks 0

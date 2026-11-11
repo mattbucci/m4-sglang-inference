@@ -1,0 +1,6 @@
+[2026-11-10 21:21:23] MLX buffer cache limit set to 4.0 GB
+[2026-11-10 21:21:24] MLX fused MoE router enabled: patched 40 blocks
+[2026-11-10 21:21:24] MLX fused GatedDeltaNet front enabled: patched 30 layers
+[2026-11-10 21:21:24] MLX grouped decode linears enabled: hooked 1 modules
+[2026-11-10 21:21:24] MLX batched mRoPE decode enabled: steps of two or more requests run as one forward
+tracebacks 0

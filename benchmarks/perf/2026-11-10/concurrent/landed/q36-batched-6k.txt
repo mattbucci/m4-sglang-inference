@@ -1,0 +1,12 @@
+streams 1 rep 0: per-stream 74.37 tok/s aggregate 74.37 tpot 13.45 ms ttft 6.79 s window 2.68 s (199 tokens) first-to-last 74.38 tok/s prompt 5343 out 200
+streams 2 rep 0: per-stream 55.55 tok/s aggregate 111.11 tpot 18.00 ms ttft 11.42 s window 3.57 s (397 tokens) first-to-last 42.78 tok/s prompt 5380 out 200
+streams 4 rep 0: per-stream 35.35 tok/s aggregate 141.41 tpot 28.29 ms ttft 17.65 s window 5.61 s (793 tokens) first-to-last 18.02 tok/s prompt 5348 out 200
+streams 1 rep 1: per-stream 76.99 tok/s aggregate 76.99 tpot 12.99 ms ttft 6.68 s window 2.58 s (199 tokens) first-to-last 76.99 tok/s prompt 5348 out 200
+streams 2 rep 1: per-stream 52.70 tok/s aggregate 105.40 tpot 18.98 ms ttft 11.12 s window 3.77 s (397 tokens) first-to-last 41.21 tok/s prompt 5367 out 200
+streams 4 rep 1: per-stream 35.77 tok/s aggregate 143.08 tpot 27.96 ms ttft 17.26 s window 5.54 s (793 tokens) first-to-last 18.31 tok/s prompt 5357 out 200
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             75.68            75.68    13.22    6.74
+      2             54.13           108.25    18.49   11.27
+      4             35.56           142.25    28.12   17.46
+wrote <scratch>/perf/batched/landed/q36-batched-6k.json

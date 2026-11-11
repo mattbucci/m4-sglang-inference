@@ -1,0 +1,22 @@
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 84, 'total_tokens': 270, 'completion_tokens': 186, 'prompt_tokens_details': {'cached_tokens': 0, 'image_tokens': 64}, 'reasoning_tokens': 172, 'completion_tokens_details': {'reasoning_tokens': 172}}
+
+--- content ---
+'\n\nA red circle with a black outline on a white background.'
+
+--- reasoning_content ---
+'The user wants a short sentence description of the image.\n1.  **Identify the main object:** It\'s a circle.\n2.  **Identify the color:** It is red.\n3.  **Identify the background:** It is white.\n4.  **Identify details:** It has a thin black outline.\n5.  **Synthesize:** A red circle with a black outline on a white background.\n\nDrafting the sentence:\n- "A red circle on a white background." (Simple, accurate)\n- "A solid red circle with a black outline." (More detail)\n- "A red circle centered on a white background." (Positional detail)\n\nLet\'s go with a simple, descriptive sentence.\n"A
+
+=== content checks ===
+color hit (red/crimson/...)    : True
+shape hit (circle/round/...)   : True
+degradation keywords found     : none
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = real content recognition.
+- DEGRADED = keyword grep passes but content reads 'pixels/scatter/
+  gradient' style (Gemma 4 calibration-side issue on Ampere).
+- FAIL = vision tower not engaging or model emits unrelated text.

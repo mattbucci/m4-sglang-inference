@@ -1,0 +1,23 @@
+[22:37:36] raw fidelity fid-qwen35
+  rc=0
+module: ~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+position deltas: [0, -756, 0, 0]
+      0     311  CONTROL delta -756 0.01972  0.17223    86/96     3.2110    3.2499
+      1    1527  CONTROL delta 0    0.15263  7.87583    89/96     1.7486    1.6334
+      2    1530  CONTROL delta -756 0.03142  0.43179    91/96     1.0278    1.0998
+      3    2617  CONTROL delta -756 0.01014  0.19072    94/96     1.2285    1.2741
+    all          solo vs prefill    0.00089  0.09656   381/384    1.8077    1.8039
+    all          batched vs prefill 0.00161  0.28245   380/384    1.8077    1.8089
+    all          batched vs solo    0.00114  0.19536   381/384    1.8039    1.8089
+[22:42:19] raw fidelity fid-qwen36-27b
+  rc=0
+module: ~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+position deltas: [0, -756, 0, 0]
+      0     311  CONTROL delta -756 0.01621  0.26541    89/96     3.0642    3.0870
+      1    1527  CONTROL delta 0    0.04009  2.48698    95/96     1.5635    1.6428
+      2    1530  CONTROL delta -756 0.02907  0.22520    88/96     1.0264    1.1068
+      3    2617  CONTROL delta -756 0.29479  16.97315    92/96     1.4783    1.4515
+    all          solo vs prefill    0.00085  0.10659   380/384    1.7856    1.7831
+    all          batched vs prefill 0.00084  0.08857   380/384    1.7856    1.7816
+    all          batched vs solo    0.00062  0.03500   382/384    1.7831    1.7816
+[22:46:44] LANDED2_DONE

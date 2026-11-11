@@ -1,0 +1,127 @@
+{
+ "tag": "q35-batched2",
+ "model": "qwen35",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 64,
+  "repeats": 1,
+  "timeout": 1800,
+  "tag": "q35-batched2",
+  "out": "<scratch>/perf/batched/landed/q35-batched2.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 14.2,
+   "aggregate_tok_s": 14.2,
+   "tpot_ms": 70.45,
+   "ttft_s": 2.04
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 12.82,
+   "aggregate_tok_s": 25.65,
+   "tpot_ms": 77.99,
+   "ttft_s": 3.02
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 8.99,
+   "aggregate_tok_s": 35.96,
+   "tpot_ms": 111.23,
+   "ttft_s": 8.42
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 14.195200168970842,
+   "aggregate_tok_s": 14.195200168970842,
+   "tpot_ms": 70.44634722276695,
+   "ttft_s": 2.0400704169878736,
+   "window_s": 4.438119875034317,
+   "window_tokens": 63.0,
+   "first_to_last_tok_s": 14.195200168970842,
+   "wall_tok_s": 9.87930226112919,
+   "prompt_tokens": [
+    220
+   ],
+   "completion_tokens": [
+    64
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "0c0c5c05aee6"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 12.822515984285552,
+   "aggregate_tok_s": 25.645031968571104,
+   "tpot_ms": 77.98781465552747,
+   "ttft_s": 3.024279520555865,
+   "window_s": 4.874238415970467,
+   "window_tokens": 125.0,
+   "first_to_last_tok_s": 11.029249047190383,
+   "wall_tok_s": 14.365391438687459,
+   "prompt_tokens": [
+    223,
+    213
+   ],
+   "completion_tokens": [
+    64,
+    64
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "c1e776b4df21",
+    "1460726909a0"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 8.990150747893885,
+   "aggregate_tok_s": 35.96060299157554,
+   "tpot_ms": 111.23284003154998,
+   "ttft_s": 8.41913335424033,
+   "window_s": 6.924244291963987,
+   "window_tokens": 249.0,
+   "first_to_last_tok_s": 9.098194704137223,
+   "wall_tok_s": 16.68424405002681,
+   "prompt_tokens": [
+    213,
+    214,
+    216,
+    213
+   ],
+   "completion_tokens": [
+    64,
+    64,
+    64,
+    64
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "923f983b767b",
+    "c1eeb598e0fb",
+    "7443ea03e4bf",
+    "86aa9c6f8fec"
+   ]
+  }
+ ]
+}

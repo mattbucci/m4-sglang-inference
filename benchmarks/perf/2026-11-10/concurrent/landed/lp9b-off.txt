@@ -1,0 +1,11 @@
+  solo: 1196 tok finish=stop PASS
+  solo-repeat: 1196 tok finish=stop PASS
+  with-1: 1196 tok finish=stop PASS
+
+model qwen35-9b-8bit  tag lp9b-off
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+solo-repeat             0             0    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+with-1                  1             1    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+PASS
+wrote <scratch>/perf/batched/landed/lp9b-off.json

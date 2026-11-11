@@ -1,0 +1,191 @@
+{
+ "model": "~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46",
+ "fused": {
+  "router": "40",
+  "front": "30",
+  "linears": "1"
+ },
+ "steps": 96,
+ "lengths": [
+  311,
+  1527,
+  1530,
+  2617
+ ],
+ "position_deltas": [
+  0,
+  -756,
+  0,
+  0
+ ],
+ "requests": [
+  {
+   "prompt_tokens": 311,
+   "solo vs prefill": {
+    "kl_mean": 0.005364803957064623,
+    "kl_max": 0.02777501568198204,
+    "top1_same": 96,
+    "steps": 96,
+    "nll_ref": 3.2573583126068115,
+    "nll_got": 3.251607656478882
+   },
+   "batched vs prefill": {
+    "kl_mean": 0.006455170721004322,
+    "kl_max": 0.048098526895046234,
+    "top1_same": 94,
+    "steps": 96,
+    "nll_ref": 3.2573583126068115,
+    "nll_got": 3.2603631019592285
+   },
+   "batched vs solo": {
+    "kl_mean": 0.0045355351658097716,
+    "kl_max": 0.02464807964861393,
+    "top1_same": 94,
+    "steps": 96,
+    "nll_ref": 3.251607656478882,
+    "nll_got": 3.2603631019592285
+   },
+   "control: wrong delta vs solo": {
+    "kl_mean": 0.027810772600579032,
+    "kl_max": 0.39847955107688904,
+    "top1_same": 89,
+    "steps": 96,
+    "nll_ref": 3.251607656478882,
+    "nll_got": 3.2440338134765625,
+    "delta": -756
+   }
+  },
+  {
+   "prompt_tokens": 1527,
+   "solo vs prefill": {
+    "kl_mean": 0.003132673535527412,
+    "kl_max": 0.03274695575237274,
+    "top1_same": 96,
+    "steps": 96,
+    "nll_ref": 1.5214203596115112,
+    "nll_got": 1.5221314430236816
+   },
+   "batched vs prefill": {
+    "kl_mean": 0.002334161298757446,
+    "kl_max": 0.0244921687990427,
+    "top1_same": 96,
+    "steps": 96,
+    "nll_ref": 1.5214203596115112,
+    "nll_got": 1.5115692615509033
+   },
+   "batched vs solo": {
+    "kl_mean": 0.003797440290041957,
+    "kl_max": 0.1303359419107437,
+    "top1_same": 96,
+    "steps": 96,
+    "nll_ref": 1.5221314430236816,
+    "nll_got": 1.5115692615509033
+   },
+   "control: wrong delta vs solo": {
+    "kl_mean": 0.01346973713865888,
+    "kl_max": 0.14479970932006836,
+    "top1_same": 94,
+    "steps": 96,
+    "nll_ref": 1.5221314430236816,
+    "nll_got": 1.548101782798767,
+    "delta": 0
+   }
+  },
+  {
+   "prompt_tokens": 1530,
+   "solo vs prefill": {
+    "kl_mean": 0.003182699814230953,
+    "kl_max": 0.061464570462703705,
+    "top1_same": 92,
+    "steps": 96,
+    "nll_ref": 1.1391940116882324,
+    "nll_got": 1.1367826461791992
+   },
+   "batched vs prefill": {
+    "kl_mean": 0.003704346158516595,
+    "kl_max": 0.06488168239593506,
+    "top1_same": 94,
+    "steps": 96,
+    "nll_ref": 1.1391940116882324,
+    "nll_got": 1.1450624465942383
+   },
+   "batched vs solo": {
+    "kl_mean": 0.0026579244843283334,
+    "kl_max": 0.025324059650301933,
+    "top1_same": 94,
+    "steps": 96,
+    "nll_ref": 1.1367826461791992,
+    "nll_got": 1.1450624465942383
+   },
+   "control: wrong delta vs solo": {
+    "kl_mean": 0.034408769025913465,
+    "kl_max": 0.3135809302330017,
+    "top1_same": 88,
+    "steps": 96,
+    "nll_ref": 1.1367826461791992,
+    "nll_got": 1.153022050857544,
+    "delta": -756
+   }
+  },
+  {
+   "prompt_tokens": 2617,
+   "solo vs prefill": {
+    "kl_mean": 0.00289769340668992,
+    "kl_max": 0.04698267579078674,
+    "top1_same": 95,
+    "steps": 96,
+    "nll_ref": 1.2332429885864258,
+    "nll_got": 1.2272000312805176
+   },
+   "batched vs prefill": {
+    "kl_mean": 0.002640495869729994,
+    "kl_max": 0.042263537645339966,
+    "top1_same": 95,
+    "steps": 96,
+    "nll_ref": 1.2332429885864258,
+    "nll_got": 1.2228463888168335
+   },
+   "batched vs solo": {
+    "kl_mean": 0.0019771901973152004,
+    "kl_max": 0.03066265396773815,
+    "top1_same": 96,
+    "steps": 96,
+    "nll_ref": 1.2272000312805176,
+    "nll_got": 1.2228463888168335
+   },
+   "control: wrong delta vs solo": {
+    "kl_mean": 0.013469178662281442,
+    "kl_max": 0.08357827365398407,
+    "top1_same": 93,
+    "steps": 96,
+    "nll_ref": 1.2272000312805176,
+    "nll_got": 1.2204636335372925,
+    "delta": -756
+   }
+  }
+ ],
+ "solo vs prefill": {
+  "kl_mean": 0.003644467678378227,
+  "kl_max": 0.061464570462703705,
+  "top1_same": 379,
+  "steps": 384,
+  "nll_ref": 1.7878039181232452,
+  "nll_got": 1.78443044424057
+ },
+ "batched vs prefill": {
+  "kl_mean": 0.003783543512002089,
+  "kl_max": 0.06488168239593506,
+  "top1_same": 379,
+  "steps": 384,
+  "nll_ref": 1.7878039181232452,
+  "nll_got": 1.784960299730301
+ },
+ "batched vs solo": {
+  "kl_mean": 0.0032420225343738154,
+  "kl_max": 0.1303359419107437,
+  "top1_same": 380,
+  "steps": 384,
+  "nll_ref": 1.78443044424057,
+  "nll_got": 1.784960299730301
+ }
+}

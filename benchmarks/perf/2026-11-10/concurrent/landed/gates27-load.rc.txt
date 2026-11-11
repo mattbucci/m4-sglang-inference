@@ -1,0 +1,4 @@
+probe_codegen rc=0
+probe_thinking rc=0
+probe_vision rc=0
+validate_capabilities rc=0

@@ -1,0 +1,23 @@
+  solo: 1196 tok finish=stop PASS
+  with-1-late@0.5: 2048 tok finish=length FAIL
+  with-1-late@2: 1196 tok finish=stop PASS
+  with-1-late@3: 2048 tok finish=length FAIL
+  with-1-late@5: 1196 tok finish=stop PASS
+  with-1-late@6: 1196 tok finish=stop PASS
+  with-1-late@10: 2048 tok finish=length FAIL
+  with-1-late@12: 2048 tok finish=length FAIL
+  with-1-late@15: 2048 tok finish=length FAIL
+
+model qwen35-9b-8bit  tag lp9b-sweep
+mode              fillers  alive at end  tokens  finish  answer  chars  equal prefix  shared tok  dlogp mean  dlogp max  nonzero  top line x  verdict
+solo                    0             0    1196  stop    ok       3479          3479        1196     0.00000    0.00000        0           3  PASS
+with-1-late@0.5         1             1    2048  length  NO       6585          1052         384     0.00204    0.06308      179           2  FAIL
+with-1-late@2           1             1    1196  stop    ok       3479          3479        1196     0.00424    0.11721      643           3  PASS
+with-1-late@3           1             1    2048  length  NO       6458          1052         384     0.00129    0.05182      134           3  FAIL
+with-1-late@5           1             1    1196  stop    ok       3479          3479        1196     0.00421    0.10034      607           3  PASS
+with-1-late@6           1             1    1196  stop    ok       3479          3479        1196     0.00411    0.10843      599           3  PASS
+with-1-late@10          1             1    2048  length  NO       6169          1388         519     0.00188    0.06808      144           3  FAIL
+with-1-late@12          1             1    2048  length  NO       6377          1052         384     0.00091    0.05181       46           2  FAIL
+with-1-late@15          1             1    2048  length  NO       6630          2640         861     0.00388    0.07891      323           2  FAIL
+FAIL: with-1-late@0.5, with-1-late@3, with-1-late@10, with-1-late@12, with-1-late@15
+wrote <scratch>/perf/batched/landed/lp9b-sweep.json

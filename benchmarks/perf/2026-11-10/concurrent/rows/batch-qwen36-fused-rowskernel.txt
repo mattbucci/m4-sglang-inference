@@ -1,0 +1,8 @@
+loaded ~/.cache/huggingface/hub/models--mlx-community--Qwen3.6-35B-A3B-4bit/snapshots/38740b847e4cb78f352aba30aa41c76e08e6eb46 vlm=True layers=40 active=19.00 GB fusions={'router': 40, 'front': 30, 'linears': 1}
+
+== depth 1024, batched sequences
+rows   1:    12.95 ms per step,    77.2 tok/s aggregate, x1.000 of 1 one-row steps, linear calls {'kernel': 0, 'stock': 1620}
+rows   2:    16.84 ms per step,   118.8 tok/s aggregate, x0.650 of 2 one-row steps, linear calls {'kernel': 0, 'stock': 1620}
+rows   4:    30.49 ms per step,   131.2 tok/s aggregate, x0.589 of 4 one-row steps, linear calls {'kernel': 1620, 'stock': 0}
+rows   8:    49.35 ms per step,   162.1 tok/s aggregate, x0.476 of 8 one-row steps, linear calls {'kernel': 1620, 'stock': 0}
+rows  16:    68.16 ms per step,   234.8 tok/s aggregate, x0.329 of 16 one-row steps, linear calls {'kernel': 0, 'stock': 1620}

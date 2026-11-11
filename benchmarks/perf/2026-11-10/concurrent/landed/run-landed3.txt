@@ -1,0 +1,46 @@
+[23:11:07] arm think9b-off (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=0
+up
+  enabled lines: batched 0
+  rc=0
+model qwen35-9b-8bit  tag think9b-off
+mode          fillers  alive at end  tokens  finish  answer  chars  equal prefix  lines  unique  top line x  verdict
+solo                0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+solo-repeat         0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+with-1              1             1    1196  stop    ok       3479          3479     56      50           3  PASS
+with-3              3             3    1196  stop    ok       3479          3479     56      50           3  PASS
+with-3-late         3             3    1196  stop    ok       3479          3479     56      50           3  PASS
+PASS
+wrote <scratch>/perf/batched/landed/think9b-off.json
+  decode batches by running requests:    6 #running-req: 0   65 #running-req: 1   30 #running-req: 2    1 #running-req: 3   57 #running-req: 4 
+  tracebacks 0
+[23:20:38] arm think9b-on (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+  rc=0
+model qwen35-9b-8bit  tag think9b-on
+mode          fillers  alive at end  tokens  finish  answer  chars  equal prefix  lines  unique  top line x  verdict
+solo                0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+solo-repeat         0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+with-1              1             1    1682  stop    ok       4985          1913     83      75           3  PASS
+with-3              3             3    1682  stop    ok       4985          1913     83      75           3  PASS
+with-3-late         3             3    1196  stop    ok       3479          3479     56      50           3  PASS
+PASS
+wrote <scratch>/perf/batched/landed/think9b-on.json
+  decode batches by running requests:    6 #running-req: 0   64 #running-req: 1   42 #running-req: 2    1 #running-req: 3   71 #running-req: 4 
+  tracebacks 0
+[23:26:16] arm think9b-on2 (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+  rc=0
+model qwen35-9b-8bit  tag think9b-on2
+mode          fillers  alive at end  tokens  finish  answer  chars  equal prefix  lines  unique  top line x  verdict
+solo                0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+solo-repeat         0             0    1196  stop    ok       3479          3479     56      50           3  PASS
+with-1              1             1    1682  stop    ok       4985          1913     83      75           3  PASS
+with-3              3             3    1682  stop    ok       4985          1913     83      75           3  PASS
+with-3-late         3             3    1196  stop    ok       3479          3479     56      50           3  PASS
+PASS
+wrote <scratch>/perf/batched/landed/think9b-on2.json
+  decode batches by running requests:    6 #running-req: 0   64 #running-req: 1   42 #running-req: 2    1 #running-req: 3   71 #running-req: 4 
+  tracebacks 0
+LANDED3_DONE

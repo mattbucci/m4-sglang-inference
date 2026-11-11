@@ -1,0 +1,66 @@
+{
+ "tag": "pos35-serial",
+ "model": "qwen35",
+ "expect": "exact",
+ "max_tokens": 300,
+ "image_side": 896,
+ "rows": [
+  {
+   "run": "solo repeat",
+   "request": "text",
+   "chars": 1553,
+   "equal_prefix": 1553,
+   "same": true,
+   "sees_circle": null,
+   "text": "A binary search tree, often abbreviated as a BST, is a fundamental data structure used in computer science to store and retrieve data efficiently. Its primary power lies in its ability to maintain a specific order among its keys, which allows for rapid searching, insertion, and deletion operations. The core principle that keeps the keys ordered is a simple yet powerful rule applied recursively to every node in the tree. For any given node, all keys stored in its left subtree must be strictly smaller than the node's own key, while all keys in its right subtree must be strictly larger. This structural invariant ensures that if you were to traverse the tree in an \"in-order\" fashion\u2014visiting the left subtree, then the current node, and finally the right subtree\u2014you would encounter the keys in perfect ascending numerical or alphabetical order. This logical arrangement is what makes the BST so effective for sorted data management.\n\nWhen inserting a new key into the tree, the process begins at the root and follows a path determined by comparisons. The algorithm compares the new key with the current node's key. If the new key is smaller, the algorithm moves down to the left child; if it is larger, it moves to the right child. This descent continues recursively until the algorithm reaches a point where the intended child position is empty, or null. At this empty spot, a new node is created and attached, preserving the ordering rule. Because the path is determined by the values, the new key is automatically placed in the correct position"
+  },
+  {
+   "run": "solo repeat",
+   "request": "image",
+   "chars": 1305,
+   "equal_prefix": 1305,
+   "same": true,
+   "sees_circle": true,
+   "text": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with a vivid, saturated red colour, outlined in bold black against a stark white background.\n\n\u2014\n\n**Story: The Red Circle**\n\nIn the quiet town of Oakhaven, where clocks ran slow and secrets lingered like mist over the river, there lived an old clockmaker named Elias Thorne. His workshop was cluttered with gears, springs, and half-finished timepieces \u2014 but one object sat untouched on his workbench for decades: a simple red circle, painted on canvas, framed in black.\n\nNo one knew why it was there. Not even Elias\u2019s granddaughter, Lily, who inherited the shop after he passed. She\u2019d ask, \u201cGrandpa, what does this mean?\u201d and he\u2019d only smile, stroke her hair, and say, \u201cIt\u2019s the heart of time.\u201d\n\nLily didn\u2019t understand. To her, it was just\u2026 a red circle. But as she grew older, she began to notice strange things. When she looked at it during storms, the air hummed. When she held it during eclipses, shadows danced differently. And when she whispered her deepest fears into its surface, they vanished \u2014 not erased, but absorbed.\n\nOne night, during a lunar eclipse that turned the sky blood-red, Lily finally understood. The circle wasn\u2019t decoration. It was a vessel \u2014 a container for moments too heavy to carry alone. Grief. Regret. Love"
+  },
+  {
+   "run": "text-first",
+   "request": "text",
+   "chars": 1553,
+   "equal_prefix": 1553,
+   "same": true,
+   "sees_circle": null,
+   "text": "A binary search tree, often abbreviated as a BST, is a fundamental data structure used in computer science to store and retrieve data efficiently. Its primary power lies in its ability to maintain a specific order among its keys, which allows for rapid searching, insertion, and deletion operations. The core principle that keeps the keys ordered is a simple yet powerful rule applied recursively to every node in the tree. For any given node, all keys stored in its left subtree must be strictly smaller than the node's own key, while all keys in its right subtree must be strictly larger. This structural invariant ensures that if you were to traverse the tree in an \"in-order\" fashion\u2014visiting the left subtree, then the current node, and finally the right subtree\u2014you would encounter the keys in perfect ascending numerical or alphabetical order. This logical arrangement is what makes the BST so effective for sorted data management.\n\nWhen inserting a new key into the tree, the process begins at the root and follows a path determined by comparisons. The algorithm compares the new key with the current node's key. If the new key is smaller, the algorithm moves down to the left child; if it is larger, it moves to the right child. This descent continues recursively until the algorithm reaches a point where the intended child position is empty, or null. At this empty spot, a new node is created and attached, preserving the ordering rule. Because the path is determined by the values, the new key is automatically placed in the correct position"
+  },
+  {
+   "run": "text-first",
+   "request": "image",
+   "chars": 1305,
+   "equal_prefix": 1305,
+   "same": true,
+   "sees_circle": true,
+   "text": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with a vivid, saturated red colour, outlined in bold black against a stark white background.\n\n\u2014\n\n**Story: The Red Circle**\n\nIn the quiet town of Oakhaven, where clocks ran slow and secrets lingered like mist over the river, there lived an old clockmaker named Elias Thorne. His workshop was cluttered with gears, springs, and half-finished timepieces \u2014 but one object sat untouched on his workbench for decades: a simple red circle, painted on canvas, framed in black.\n\nNo one knew why it was there. Not even Elias\u2019s granddaughter, Lily, who inherited the shop after he passed. She\u2019d ask, \u201cGrandpa, what does this mean?\u201d and he\u2019d only smile, stroke her hair, and say, \u201cIt\u2019s the heart of time.\u201d\n\nLily didn\u2019t understand. To her, it was just\u2026 a red circle. But as she grew older, she began to notice strange things. When she looked at it during storms, the air hummed. When she held it during eclipses, shadows danced differently. And when she whispered her deepest fears into its surface, they vanished \u2014 not erased, but absorbed.\n\nOne night, during a lunar eclipse that turned the sky blood-red, Lily finally understood. The circle wasn\u2019t decoration. It was a vessel \u2014 a container for moments too heavy to carry alone. Grief. Regret. Love"
+  },
+  {
+   "run": "image-first",
+   "request": "image",
+   "chars": 1305,
+   "equal_prefix": 1305,
+   "same": true,
+   "sees_circle": true,
+   "text": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with a vivid, saturated red colour, outlined in bold black against a stark white background.\n\n\u2014\n\n**Story: The Red Circle**\n\nIn the quiet town of Oakhaven, where clocks ran slow and secrets lingered like mist over the river, there lived an old clockmaker named Elias Thorne. His workshop was cluttered with gears, springs, and half-finished timepieces \u2014 but one object sat untouched on his workbench for decades: a simple red circle, painted on canvas, framed in black.\n\nNo one knew why it was there. Not even Elias\u2019s granddaughter, Lily, who inherited the shop after he passed. She\u2019d ask, \u201cGrandpa, what does this mean?\u201d and he\u2019d only smile, stroke her hair, and say, \u201cIt\u2019s the heart of time.\u201d\n\nLily didn\u2019t understand. To her, it was just\u2026 a red circle. But as she grew older, she began to notice strange things. When she looked at it during storms, the air hummed. When she held it during eclipses, shadows danced differently. And when she whispered her deepest fears into its surface, they vanished \u2014 not erased, but absorbed.\n\nOne night, during a lunar eclipse that turned the sky blood-red, Lily finally understood. The circle wasn\u2019t decoration. It was a vessel \u2014 a container for moments too heavy to carry alone. Grief. Regret. Love"
+  },
+  {
+   "run": "image-first",
+   "request": "text",
+   "chars": 1553,
+   "equal_prefix": 1553,
+   "same": true,
+   "sees_circle": null,
+   "text": "A binary search tree, often abbreviated as a BST, is a fundamental data structure used in computer science to store and retrieve data efficiently. Its primary power lies in its ability to maintain a specific order among its keys, which allows for rapid searching, insertion, and deletion operations. The core principle that keeps the keys ordered is a simple yet powerful rule applied recursively to every node in the tree. For any given node, all keys stored in its left subtree must be strictly smaller than the node's own key, while all keys in its right subtree must be strictly larger. This structural invariant ensures that if you were to traverse the tree in an \"in-order\" fashion\u2014visiting the left subtree, then the current node, and finally the right subtree\u2014you would encounter the keys in perfect ascending numerical or alphabetical order. This logical arrangement is what makes the BST so effective for sorted data management.\n\nWhen inserting a new key into the tree, the process begins at the root and follows a path determined by comparisons. The algorithm compares the new key with the current node's key. If the new key is smaller, the algorithm moves down to the left child; if it is larger, it moves to the right child. This descent continues recursively until the algorithm reaches a point where the intended child position is empty, or null. At this empty spot, a new node is created and attached, preserving the ordering rule. Because the path is determined by the values, the new key is automatically placed in the correct position"
+  }
+ ],
+ "solo_text": "A binary search tree, often abbreviated as a BST, is a fundamental data structure used in computer science to store and retrieve data efficiently. Its primary power lies in its ability to maintain a specific order among its keys, which allows for rapid searching, insertion, and deletion operations. The core principle that keeps the keys ordered is a simple yet powerful rule applied recursively to every node in the tree. For any given node, all keys stored in its left subtree must be strictly smaller than the node's own key, while all keys in its right subtree must be strictly larger. This structural invariant ensures that if you were to traverse the tree in an \"in-order\" fashion\u2014visiting the left subtree, then the current node, and finally the right subtree\u2014you would encounter the keys in perfect ascending numerical or alphabetical order. This logical arrangement is what makes the BST so effective for sorted data management.\n\nWhen inserting a new key into the tree, the process begins at the root and follows a path determined by comparisons. The algorithm compares the new key with the current node's key. If the new key is smaller, the algorithm moves down to the left child; if it is larger, it moves to the right child. This descent continues recursively until the algorithm reaches a point where the intended child position is empty, or null. At this empty spot, a new node is created and attached, preserving the ordering rule. Because the path is determined by the values, the new key is automatically placed in the correct position",
+ "solo_image": "**Shape and Colour:**  \nThe image displays a perfect circle, filled with a vivid, saturated red colour, outlined in bold black against a stark white background.\n\n\u2014\n\n**Story: The Red Circle**\n\nIn the quiet town of Oakhaven, where clocks ran slow and secrets lingered like mist over the river, there lived an old clockmaker named Elias Thorne. His workshop was cluttered with gears, springs, and half-finished timepieces \u2014 but one object sat untouched on his workbench for decades: a simple red circle, painted on canvas, framed in black.\n\nNo one knew why it was there. Not even Elias\u2019s granddaughter, Lily, who inherited the shop after he passed. She\u2019d ask, \u201cGrandpa, what does this mean?\u201d and he\u2019d only smile, stroke her hair, and say, \u201cIt\u2019s the heart of time.\u201d\n\nLily didn\u2019t understand. To her, it was just\u2026 a red circle. But as she grew older, she began to notice strange things. When she looked at it during storms, the air hummed. When she held it during eclipses, shadows danced differently. And when she whispered her deepest fears into its surface, they vanished \u2014 not erased, but absorbed.\n\nOne night, during a lunar eclipse that turned the sky blood-red, Lily finally understood. The circle wasn\u2019t decoration. It was a vessel \u2014 a container for moments too heavy to carry alone. Grief. Regret. Love",
+ "pass": true
+}

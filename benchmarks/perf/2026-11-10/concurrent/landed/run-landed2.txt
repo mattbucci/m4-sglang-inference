@@ -1,0 +1,96 @@
+[22:47:37] arm pos35-pre034 (qwen35): EXTRA_ARGS=--disable-radix-cache PYTHONPATH=<scratch>/wt033/python
+up
+  enabled lines: batched 0
+  rc=1
+model qwen35  tag pos35-pre034  expect exact
+run           request  chars  equal prefix  same as solo  sees the red circle
+solo repeat   text      1553          1553  yes           -
+solo repeat   image     1305          1305  yes           yes
+text-first    text      1562           159  NO            -
+text-first    image     1305          1305  yes           yes
+image-first   image     1304           137  NO            yes
+image-first   text      1553          1553  yes           -
+FAIL
+wrote <scratch>/perf/batched/landed/pos35-pre034.json
+  tracebacks 0
+[22:51:27] arm q35-default (qwen35): 
+up
+  enabled lines: batched 1
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             14.13            14.13    70.79    1.98
+      2             12.76            25.51    78.39    3.04
+  tracebacks 0
+  wired_gb 29.6
+[22:52:24] arm q35-off (qwen35): SGLANG_MLX_BATCH_MROPE_DECODE=0
+up
+  enabled lines: batched 0
+
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             13.97            13.97    71.56    2.18
+      2              7.13            14.26   140.21    3.36
+  tracebacks 0
+  wired_gb 29.4
+[22:53:30] arm gates27-load (qwen36-27b): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+probe_codegen rc=0
+probe_thinking rc=0
+probe_vision rc=0
+validate_capabilities rc=0
+VERDICT: STRONG
+THINKING VERIFIED
+VERDICT: STRONG
+--- 3/3 passed in 126.1s ---
+  decode batches by running requests:    2 #running-req: 0   21 #running-req: 1   16 #running-req: 2    4 #running-req: 3    3 #running-req: 4 
+  tracebacks 0
+[22:56:06] arm gates9b-load (qwen35-9b-8bit): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+probe_codegen rc=0
+probe_thinking rc=0
+probe_vision rc=0
+validate_capabilities rc=1
+VERDICT: STRONG
+THINKING VERIFIED
+VERDICT: STRONG
+--- 2/3 passed in 89.7s ---
+  decode batches by running requests:    3 #running-req: 0   35 #running-req: 1   15 #running-req: 2    6 #running-req: 3    4 #running-req: 4 
+  tracebacks 0
+[22:58:05] arm q36-serial-6k (qwen36): 
+up
+  enabled lines: batched 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             75.35            75.35    13.27    7.08
+      2             45.40            90.79    22.03   12.58
+      4             25.18           100.71    39.72   18.13
+  tracebacks 0
+  wired_gb 29.1
+[23:01:23] arm q36-batched-6k (qwen36): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             75.68            75.68    13.22    6.74
+      2             54.13           108.25    18.49   11.27
+      4             35.56           142.25    28.12   17.46
+  tracebacks 0
+  wired_gb 29.4
+[23:04:28] arm q36-batched-6k2 (qwen36): SGLANG_MLX_BATCH_MROPE_DECODE=1
+up
+  enabled lines: batched 1
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             75.62            75.62    13.23    6.70
+      2             55.05           110.11    18.16   11.99
+      4             35.50           141.99    28.17   17.36
+  tracebacks 0
+  wired_gb 29.4
+[23:07:33] arm q36-serial-6k2 (qwen36): 
+up
+  enabled lines: batched 0
+streams  per-stream tok/s  aggregate tok/s  TPOT ms  TTFT s
+      1             76.07            76.07    13.15    6.66
+      2             45.84            91.69    21.81   12.01
+      4             25.33           101.32    39.48   17.49
+  tracebacks 0
+  wired_gb 29.0
+[23:10:52] LANDED2_DONE

@@ -1,0 +1,28 @@
+module: <scratch>/wt029/python/sglang/srt/hardware_backend/mlx/model_runner.py
+fusions installed: {}
+prefill path done 8s
+position deltas: [0, -756, 0, 0]
+solo path done 21s
+batched path done 32s
+
+request  prompt  pair               KL mean    KL max   top-1 same   NLL ref   NLL got
+      0     311  solo vs prefill    0.00442  0.02524    93/96     3.2329    3.2224
+      0     311  batched vs prefill 0.00521  0.05830    91/96     3.2329    3.2282
+      0     311  batched vs solo    0.00433  0.02232    91/96     3.2224    3.2282
+      0     311  CONTROL delta -756 0.02687  0.53750    88/96     3.2224    3.2433
+      1    1527  solo vs prefill    0.00221  0.04966    95/96     1.5180    1.5172
+      1    1527  batched vs prefill 0.00180  0.02095    96/96     1.5180    1.5205
+      1    1527  batched vs solo    0.00232  0.03838    95/96     1.5172    1.5205
+      1    1527  CONTROL delta 0    0.01319  0.13296    94/96     1.5172    1.5336
+      2    1530  solo vs prefill    0.00361  0.10762    95/96     1.1380    1.1367
+      2    1530  batched vs prefill 0.00193  0.01565    94/96     1.1380    1.1430
+      2    1530  batched vs solo    0.00312  0.09248    93/96     1.1367    1.1430
+      2    1530  CONTROL delta -756 0.03419  0.29292    88/96     1.1367    1.1735
+      3    2617  solo vs prefill    0.00205  0.01650    93/96     1.2235    1.2198
+      3    2617  batched vs prefill 0.00225  0.01879    92/96     1.2235    1.2149
+      3    2617  batched vs solo    0.00238  0.02768    93/96     1.2198    1.2149
+      3    2617  CONTROL delta -756 0.01009  0.07826    94/96     1.2198    1.2018
+    all          solo vs prefill    0.00307  0.10762   376/384    1.7781    1.7740
+    all          batched vs prefill 0.00280  0.05830   373/384    1.7781    1.7766
+    all          batched vs solo    0.00304  0.09248   372/384    1.7740    1.7766
+wrote <scratch>/perf/batched/fid-q36-stock.json
