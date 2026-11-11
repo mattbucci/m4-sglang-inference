@@ -1,0 +1,41 @@
+{
+  "tag": "pc-one",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.2782,
+        "total_s": 9.9975,
+        "text_sha": "703bfcdec71bd753",
+        "tpot_ms": 11.4149,
+        "decode_tok_s": 87.6
+      },
+      "prefill_tok_s": 819.2
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 52.2553,
+        "total_s": 53.2056,
+        "text_sha": "4a3e37e3d6b5ef03",
+        "tpot_ms": 15.0835,
+        "decode_tok_s": 66.3
+      },
+      "prefill_tok_s": 582.2
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

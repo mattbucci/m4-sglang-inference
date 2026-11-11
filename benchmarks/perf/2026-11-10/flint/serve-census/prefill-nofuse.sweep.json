@@ -1,0 +1,41 @@
+{
+  "tag": "pc-nofuse",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.5099,
+        "total_s": 10.3279,
+        "text_sha": "5b0507d87e5622d6",
+        "tpot_ms": 12.9833,
+        "decode_tok_s": 77.02
+      },
+      "prefill_tok_s": 799.3
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 52.7693,
+        "total_s": 53.808,
+        "text_sha": "9cff5cce95b9de98",
+        "tpot_ms": 16.4843,
+        "decode_tok_s": 60.66
+      },
+      "prefill_tok_s": 576.5
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

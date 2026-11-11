@@ -1,0 +1,64 @@
+{
+  "requests": [
+    {
+      "chunks": 8,
+      "tokens": 7601,
+      "wall_s": 8.925,
+      "tok_s": 851.6,
+      "chunk_ms": 1115.68,
+      "eval_ms": 1112.58,
+      "host_ms": 3.1,
+      "host_share": 0.0028,
+      "evals_per_chunk": null,
+      "per_chunk_ms": {
+        "gap": 0.72,
+        "launch": 1063.49,
+        "trunk": 1.71,
+        "pool_sync": 0.0,
+        "track": 0.0,
+        "async_eval": 1061.1,
+        "wait": 51.48
+      },
+      "last_chunk": {
+        "gap": 0.792,
+        "launch": 592.351,
+        "trunk": null,
+        "pool_sync": null,
+        "track": null,
+        "async_eval": 588.135,
+        "wait": 11.786,
+        "tokens": 433
+      }
+    },
+    {
+      "chunks": 30,
+      "tokens": 30422,
+      "wall_s": 50.466,
+      "tok_s": 602.8,
+      "chunk_ms": 1682.19,
+      "eval_ms": 1679.18,
+      "host_ms": 3.0,
+      "host_share": 0.0018,
+      "evals_per_chunk": null,
+      "per_chunk_ms": {
+        "gap": 0.78,
+        "launch": 1594.78,
+        "trunk": 1.9,
+        "pool_sync": 0.0,
+        "track": 0.0,
+        "async_eval": 1592.56,
+        "wait": 86.63
+      },
+      "last_chunk": {
+        "gap": 0.803,
+        "launch": 1607.308,
+        "trunk": null,
+        "pool_sync": null,
+        "track": null,
+        "async_eval": 1601.543,
+        "wait": 13.26,
+        "tokens": 726
+      }
+    }
+  ]
+}

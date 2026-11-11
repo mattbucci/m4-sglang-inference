@@ -1,0 +1,79 @@
+## arm radix-a () 11:32:52
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[pc-radix-a] cold    7601 tok: cached None, ttft 9.5483 s, prefill 796.1 tok/s, decode 86.7 tok/s
+[pc-radix-a] cold   30422 tok: cached None, ttft 52.0398 s, prefill 584.6 tok/s, decode 67.15 tok/s
+wrote <scratch>/flint/pc-radix-a.json
+census rows: 40
+   7601 tokens in 8 chunks: 797.1 tok/s served, 12110.6 on GPU time alone, host share 93.4 %
+        per chunk ms: gap 1.06, launch 1176.37 (trunk 2.18, pool 0.14, track 1109.54, async_eval 63.84), wait 14.61
+  30422 tokens in 30 chunks: 585.0 tok/s served, 9563.5 on GPU time alone, host share 93.9 %
+        per chunk ms: gap 1.34, launch 1712.46 (trunk 2.17, pool 0.15, track 1623.37, async_eval 86.47), wait 19.57
+wired 31.3 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm noradix (EXTRA_ARGS=--disable-radix-cache) 11:34:17
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[pc-noradix] cold    7601 tok: cached None, ttft 8.9377 s, prefill 850.4 tok/s, decode 89.2 tok/s
+[pc-noradix] cold   30422 tok: cached None, ttft 50.5033 s, prefill 602.4 tok/s, decode 66.26 tok/s
+wrote <scratch>/flint/pc-noradix.json
+census rows: 40
+   7601 tokens in 8 chunks: 851.6 tok/s served, 854.0 on GPU time alone, host share 0.3 %
+        per chunk ms: gap 0.72, launch 1063.49 (trunk 1.71, pool 0.0, track 0.0, async_eval 1061.1), wait 51.48
+  30422 tokens in 30 chunks: 602.8 tok/s served, 603.9 on GPU time alone, host share 0.2 %
+        per chunk ms: gap 0.78, launch 1594.78 (trunk 1.9, pool 0.0, track 0.0, async_eval 1592.56), wait 86.63
+wired 27.4 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm nofuse (SGLANG_MLX_FUSE_FLINT_MOE=0) 11:35:43
+up
+MLX buffer cache limit set to 2.0 GB
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[pc-nofuse] cold    7601 tok: cached None, ttft 9.5099 s, prefill 799.3 tok/s, decode 77.02 tok/s
+[pc-nofuse] cold   30422 tok: cached None, ttft 52.7693 s, prefill 576.5 tok/s, decode 60.66 tok/s
+wrote <scratch>/flint/pc-nofuse.json
+census rows: 40
+   7601 tokens in 8 chunks: 800.3 tok/s served, 11903.9 on GPU time alone, host share 93.3 %
+        per chunk ms: gap 0.95, launch 1172.35 (trunk 2.13, pool 0.14, track 1103.5, async_eval 65.89), wait 13.92
+  30422 tokens in 30 chunks: 576.9 tok/s served, 9802.1 on GPU time alone, host share 94.1 %
+        per chunk ms: gap 1.3, launch 1741.51 (trunk 2.09, pool 0.15, track 1650.4, async_eval 88.59), wait 14.86
+wired 31.2 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm one (MAX_RUNNING=1) 11:37:10
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[pc-one] cold    7601 tok: cached None, ttft 9.2782 s, prefill 819.2 tok/s, decode 87.6 tok/s
+[pc-one] cold   30422 tok: cached None, ttft 52.2553 s, prefill 582.2 tok/s, decode 66.3 tok/s
+wrote <scratch>/flint/pc-one.json
+census rows: 40
+   7601 tokens in 8 chunks: 820.3 tok/s served, 13756.0 on GPU time alone, host share 94.0 %
+        per chunk ms: gap 0.99, launch 1137.73 (trunk 2.06, pool 0.14, track 1085.35, async_eval 49.53), wait 19.54
+  30422 tokens in 30 chunks: 582.6 tok/s served, 10733.8 on GPU time alone, host share 94.6 %
+        per chunk ms: gap 1.28, launch 1720.53 (trunk 1.94, pool 0.14, track 1642.43, async_eval 75.71), wait 18.76
+wired 28.2 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+## arm radix-b () 11:38:40
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[pc-radix-b] cold    7601 tok: cached None, ttft 9.5354 s, prefill 797.1 tok/s, decode 87.25 tok/s
+[pc-radix-b] cold   30422 tok: cached None, ttft 53.106 s, prefill 572.9 tok/s, decode 68.01 tok/s
+wrote <scratch>/flint/pc-radix-b.json
+census rows: 40
+   7601 tokens in 8 chunks: 798.2 tok/s served, 12265.3 on GPU time alone, host share 93.5 %
+        per chunk ms: gap 0.97, launch 1176.08 (trunk 2.03, pool 0.14, track 1109.08, async_eval 64.18), wait 13.28
+  30422 tokens in 30 chunks: 573.3 tok/s served, 9681.4 on GPU time alone, host share 94.1 %
+        per chunk ms: gap 1.31, launch 1750.86 (trunk 2.02, pool 0.15, track 1660.39, async_eval 88.02), wait 16.73
+wired 31.1 GB; 1 no-thermal-warning lines
+tracebacks in the log: 0
+PREFILL_CENSUS_DONE 11:40:15

@@ -84,6 +84,7 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset |
 | attention parts (knock-out census) | launches | at 1K attention costs 4.29 ms of the 11.47 ms raw mlx-lm step and its reads cost 3.12 ms at 200 GB/s; the query and output projections run at 218 to 243 GB/s, their read cost; head norms, the rotary embedding and a non-additive rest hold 1.17 ms | no fold carried: the folds over these operations (`qkv`, `front`, `mid`) measured inside noise. Recorded as the attention floor of this graph |
 | deep ladder through 128K | like for like | decode 98.9 tok/s at 1K to 35.5 at 128K: 78 to 84 % of rec through 32K, 94 % at 64K, 101 % at 128K, 75 to 80 % of Kapitsa at every depth; per token of context a step costs 0.140 µs here, 0.159 for rec, 0.107 for Kapitsa | measured. The fixed 2.1 ms per step is this graph's launches; the per-token term is the read rate of the shared keys and values, and a raw probe of the attention kernel at 32K to 128K is the next experiment |
+| served prefill chunk (census) | host | host time is 3 to 4 ms of a 1.1 to 1.8 s chunk; with the radix cache on the tracked snapshot evaluates its 35 layers one at a time and the chunk costs 75.5 ms more at 8K (796 against 850 tok/s) and 51 to 87 ms more at 32K (573 to 585 against 602); the decode flags do not run on prefill chunks | measured. Served prefill is not host-bound; the per-layer evaluations are the radix-on cost, and one evaluation per snapshot is the candidate |
 
 ## Baseline
 
@@ -405,6 +406,58 @@ does not already have. The served arms with 200 MB buffers read 6.5 to 7.9 %
 slower at 8K (Served A/B) and the raw loop does not reproduce it, so that
 loss belongs to the served chunk path and not to MLX's prefill.
 
+## Served prefill census
+
+`serve-census/prefill-<arm>.jsonl`, `.summary.json`, `.sweep.json` and
+`serve-census/prefill-census.txt` (`scripts/bench/serve_census/sitecustomize.py`
+with `SERVE_CENSUS_PREFILL`, `scripts/bench/prefill_census_report.py`): one
+row per served prefill chunk, int4 with the preset's flags, cold prompts of
+7,601 and 30,422 tokens in 1,024-token chunks. A chunk splits into the
+scheduler gap before its launch, the launch (graph build, the tracked
+snapshot, the submission) and the wait for its token. The tracked snapshot is
+the copy of the 35 sliding-window caches that the radix cache restores on a
+hit, taken at every chunk boundary. Five arms, the preset first and last.
+Each cell is the 8K reading, then the 32K reading.
+
+| arm | prefill tok/s | ms per chunk | host | snapshot | submission | wait | wired peak, GB |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| preset, first | 796.1 / 584.6 | 1,192.1 / 1,733.4 | 4.1 / 4.0 | 1,109.5 / 1,623.4 | 63.8 / 86.5 | 14.6 / 19.6 | 31.3 |
+| radix cache off | 850.4 / 602.4 | 1,115.7 / 1,682.2 | 3.1 / 3.0 | none | 1,061.1 / 1,592.6 | 51.5 / 86.6 | 27.4 |
+| stock MoE forward (`SGLANG_MLX_FUSE_FLINT_MOE=0`) | 799.3 / 576.5 | 1,187.2 / 1,757.7 | 3.9 / 3.8 | 1,103.5 / 1,650.4 | 65.9 / 88.6 | 13.9 / 14.9 | 31.2 |
+| one slot | 819.2 / 582.2 | 1,158.3 / 1,740.6 | 3.8 / 3.7 | 1,085.4 / 1,642.4 | 49.5 / 75.7 | 19.5 / 18.8 | 28.2 |
+| preset, last | 797.1 / 572.9 | 1,190.3 / 1,768.9 | 3.8 / 3.8 | 1,109.1 / 1,660.4 | 64.2 / 88.0 | 13.3 / 16.7 | 31.1 |
+
+Host is the gap plus the graph build: 3 to 4 ms of a chunk that takes 1.1 to
+1.8 s, under 0.4 %. A served prefill chunk is evaluation time and nothing
+else; the scheduler adds 1 ms between chunks. The driver log printed its
+summaries before the report counted the snapshot as evaluation time, so its
+"host share" lines read 93 %; `prefill-census.txt` is the same rows under the
+split used here.
+
+With the radix cache on, the chunk's forward runs inside the snapshot. The
+store (`kv_cache/auxiliary_state.py`) evaluates one layer's copy at a time,
+and each `mx.eval` runs the forward up to that layer as its own submission
+and waits for it, so one chunk becomes 35 submit-and-wait cycles and a short
+tail. Against the radix-off arm the chunk costs 75.5 ms more at 8K (6.8 %)
+and 51 to 87 ms more at 32K (3.0 to 5.2 %): a fixed cost per chunk of about
+2 ms per cycle, not one that grows with depth. That is the whole difference
+between the radix-on and radix-off prefill rows of this file.
+
+The decode flags do not run on a prefill chunk. Patch 037 takes its fused
+call only for a one-token step and keeps the stock forward otherwise, and
+patch 038 submits early only on one-token steps; the stock-forward arm reads
+799.3 / 576.5 against 796.1 to 797.1 and 572.9 to 584.6 for the preset. The
+lower prefill of the shipping arm in the deep ladder is therefore not the
+flags.
+
+One slot reads 2.8 % more at 8K and the same at 32K, a single arm against two
+preset arms that agree within 0.2 % at 8K and 2 % at 32K. Radix off is 2 to
+5 % under the raw loop of the section above at slightly shallower prompts;
+that remainder is not attributed here.
+
+The candidate this prices is one evaluation for all 35 layers of a snapshot:
+the same state, stored at the same boundary, as one submission.
+
 ## Attention census
 
 `raw/attention-census-int4.txt` (`scripts/bench/mlx_flint_attention_census.py`):
@@ -581,7 +634,7 @@ weight reads.
 |---|---|
 | `baseline/` | published-shape sweeps of the preset before this lane (int4 radix on and off, oQ8e), the validator, the chat-template check, the scale scan, `mlx_lm.generate` |
 | `raw/` | decode census, attention census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
-| `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes |
+| `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes; the per-chunk prefill census of five arms with its report and driver log |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
 | `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log |
 | `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log |

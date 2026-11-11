@@ -1,0 +1,25 @@
+## radix-a
+   7601 tokens in 8 chunks: 797.1 tok/s served, 1192.05 ms per chunk, 1187.99 in evaluations, 4.05 host (0.34 %)
+        per chunk ms: gap 1.06, launch 1176.37 (trunk 2.18, pool 0.14, track 1109.54, async_eval 63.84), wait 14.61
+  30422 tokens in 30 chunks: 585.0 tok/s served, 1733.37 ms per chunk, 1729.41 in evaluations, 3.96 host (0.23 %)
+        per chunk ms: gap 1.34, launch 1712.46 (trunk 2.17, pool 0.15, track 1623.37, async_eval 86.47), wait 19.57
+## noradix
+   7601 tokens in 8 chunks: 851.6 tok/s served, 1115.68 ms per chunk, 1112.58 in evaluations, 3.1 host (0.28 %)
+        per chunk ms: gap 0.72, launch 1063.49 (trunk 1.71, pool 0.0, track 0.0, async_eval 1061.1), wait 51.48
+  30422 tokens in 30 chunks: 602.8 tok/s served, 1682.19 ms per chunk, 1679.18 in evaluations, 3.0 host (0.18 %)
+        per chunk ms: gap 0.78, launch 1594.78 (trunk 1.9, pool 0.0, track 0.0, async_eval 1592.56), wait 86.63
+## nofuse
+   7601 tokens in 8 chunks: 800.3 tok/s served, 1187.22 ms per chunk, 1183.32 in evaluations, 3.9 host (0.33 %)
+        per chunk ms: gap 0.95, launch 1172.35 (trunk 2.13, pool 0.14, track 1103.5, async_eval 65.89), wait 13.92
+  30422 tokens in 30 chunks: 576.9 tok/s served, 1757.67 ms per chunk, 1753.85 in evaluations, 3.82 host (0.22 %)
+        per chunk ms: gap 1.3, launch 1741.51 (trunk 2.09, pool 0.15, track 1650.4, async_eval 88.59), wait 14.86
+## one
+   7601 tokens in 8 chunks: 820.3 tok/s served, 1158.26 ms per chunk, 1154.42 in evaluations, 3.84 host (0.33 %)
+        per chunk ms: gap 0.99, launch 1137.73 (trunk 2.06, pool 0.14, track 1085.35, async_eval 49.53), wait 19.54
+  30422 tokens in 30 chunks: 582.6 tok/s served, 1740.56 ms per chunk, 1736.9 in evaluations, 3.66 host (0.21 %)
+        per chunk ms: gap 1.28, launch 1720.53 (trunk 1.94, pool 0.14, track 1642.43, async_eval 75.71), wait 18.76
+## radix-b
+   7601 tokens in 8 chunks: 798.2 tok/s served, 1190.33 ms per chunk, 1186.54 in evaluations, 3.79 host (0.32 %)
+        per chunk ms: gap 0.97, launch 1176.08 (trunk 2.03, pool 0.14, track 1109.08, async_eval 64.18), wait 13.28
+  30422 tokens in 30 chunks: 573.3 tok/s served, 1768.89 ms per chunk, 1765.13 in evaluations, 3.76 host (0.21 %)
+        per chunk ms: gap 1.31, launch 1750.86 (trunk 2.02, pool 0.15, track 1660.39, async_eval 88.02), wait 16.73

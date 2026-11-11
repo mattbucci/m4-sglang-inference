@@ -1,0 +1,41 @@
+{
+  "tag": "pc-radix-b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 64,
+  "cold": [
+    {
+      "target": 8192,
+      "cold": {
+        "prompt_tokens": 7601,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 9.5354,
+        "total_s": 10.2577,
+        "text_sha": "e120942da9f74527",
+        "tpot_ms": 11.4614,
+        "decode_tok_s": 87.25
+      },
+      "prefill_tok_s": 797.1
+    },
+    {
+      "target": 32768,
+      "cold": {
+        "prompt_tokens": 30422,
+        "cached_tokens": null,
+        "completion_tokens": 64,
+        "ttft_s": 53.106,
+        "total_s": 54.0324,
+        "text_sha": "021d232187da0b24",
+        "tpot_ms": 14.7046,
+        "decode_tok_s": 68.01
+      },
+      "prefill_tok_s": 572.9
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

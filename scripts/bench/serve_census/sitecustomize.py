@@ -26,12 +26,25 @@ SERVE_CENSUS_GRAPH=<path> writes the primitive histogram of one launch (the
 400th `mx.async_eval`, a chained decode step in any run past a few hundred
 tokens) as JSON, for comparison with the raw-MLX step graph that
 mlx_decode_census.py counts.
+
+SERVE_CENSUS_PREFILL=<jsonl> (alone or with SERVE_CENSUS_OUT) writes one row
+per prefill chunk launch: `gap_ms` from the previous chunk's token to this
+launch (scheduler time, GPU idle), `launch_ms` for the graph build and its
+submission (`async_eval_ms` of it inside `mx.async_eval`, `trunk_ms`,
+`pool_sync_ms` and `track_ms` building the forward, the pool scatter and the
+tracked-state snapshot), and `wait_ms` blocking on the chunk's token. The
+snapshot evaluates synchronously, so with the radix cache on the chunk's
+forward runs inside `track_ms`; a raw chunked prefill of the same depth spends
+everything in the equivalent of `track_ms + async_eval_ms + wait_ms`. `evals`
+counts the synchronous `mx.eval` calls of the launch, each one a submission
+the launch waits for. Summarise with prefill_census_report.py.
 """
 import os
 import sys
 
 _OUT = os.environ.get("SERVE_CENSUS_OUT")
-if _OUT:
+_PRE = os.environ.get("SERVE_CENSUS_PREFILL")
+if _OUT or _PRE:
     import importlib.abc
     import importlib.util
     import json
@@ -45,6 +58,21 @@ if _OUT:
     _cur = {}          # label -> ns in the current iteration
     _win = {}          # label -> ns in the current window
     _state = {"t0": None, "n": 0, "seq": 0}
+    _pre = {"last_end": None, "open": None, "acc": {}, "evals": 0}
+
+    def _pre_wrap(obj, name, label):
+        f = getattr(obj, name)
+
+        def w(*a, **k):
+            t = _ns()
+            try:
+                return f(*a, **k)
+            finally:
+                if _pre["open"] is not None:
+                    _pre["acc"][label] = _pre["acc"].get(label, 0) + _ns() - t
+
+        w.__name__ = getattr(f, "__name__", name)
+        setattr(obj, name, w)
 
     def _add(label, d):
         _cur[label] = _cur.get(label, 0) + d
@@ -100,11 +128,49 @@ if _OUT:
                 _state["seq"] += 1
                 row = {"seq": _state["seq"], "t": time.time(), "n": _state["n"], "pid": os.getpid()}
                 row.update({k: v for k, v in _win.items()})
-                with open(_OUT, "a") as fh:
-                    fh.write(json.dumps(row) + "\n")
+                if _OUT:
+                    with open(_OUT, "a") as fh:
+                        fh.write(json.dumps(row) + "\n")
                 _win.clear()
                 _state["n"] = 0
         _cur.clear()
+
+    def _patch_prefill_worker(cls):
+        launch = cls._async_extend_batch
+        finalize = cls.finalize_mlx_result
+
+        def extend(self, batch):
+            t = _ns()
+            _pre["open"], _pre["acc"], _pre["evals"] = t, {}, 0
+            try:
+                return launch(self, batch)
+            finally:
+                end = _ns()
+                acc, last = _pre["acc"], _pre["last_end"]
+                _pre["open"] = None
+                _pre["row"] = {
+                    "t": time.time(), "pid": os.getpid(),
+                    "tokens": int(sum(batch.extend_lens)), "reqs": len(batch.reqs),
+                    "gap_ms": None if last is None else round((t - last) / 1e6, 3),
+                    "launch_ms": round((end - t) / 1e6, 3), "evals": _pre["evals"],
+                    **{k + "_ms": round(v / 1e6, 3) for k, v in acc.items()},
+                }
+
+        def fin(self, launch_obj, reqs):
+            row = _pre.pop("row", None) if launch_obj.mode == "extend" else None
+            t = _ns()
+            try:
+                return finalize(self, launch_obj, reqs)
+            finally:
+                end = _ns()
+                if row is not None:
+                    _pre["last_end"] = end
+                    row["wait_ms"] = round((end - t) / 1e6, 3)
+                    with open(_PRE, "a") as fh:
+                        fh.write(json.dumps(row) + "\n")
+
+        cls._async_extend_batch = extend
+        cls.finalize_mlx_result = fin
 
     def _patch(name, module):
         if name == "sglang.srt.managers.scheduler":
@@ -155,6 +221,8 @@ if _OUT:
 
             cls.async_forward_batch_generation_mlx = fresh
             _wrap(cls, "finalize_mlx_result", "finalize_result")
+            if _PRE:
+                _patch_prefill_worker(cls)
             mx = module.mx
             g = mx.async_eval
 
@@ -169,9 +237,21 @@ if _OUT:
                 try:
                     return g(*a, **k)
                 finally:
-                    _add("async_eval", _ns() - t)
+                    d = _ns() - t
+                    _add("async_eval", d)
+                    if _pre["open"] is not None:
+                        _pre["acc"]["async_eval"] = _pre["acc"].get("async_eval", 0) + d
 
             mx.async_eval = async_eval
+            if _PRE:
+                sync = mx.eval
+
+                def sync_eval(*a, **k):
+                    if _pre["open"] is not None:
+                        _pre["evals"] += 1
+                    return sync(*a, **k)
+
+                mx.eval = sync_eval
         elif name == "sglang.srt.hardware_backend.mlx.model_runner":
             cls = module.MlxModelRunner
             for attr, label in (
@@ -184,6 +264,10 @@ if _OUT:
                     _wrap(cls, attr, label)
             _wrap(cls, "decode_batch_start_chained", "graph_build")
             _wrap(cls, "decode_batch_finalize", "token_wait")
+            if _PRE:
+                _pre_wrap(cls, "_trunk_forward", "trunk")
+                _pre_wrap(cls, "_sync_new_kv_to_pool", "pool_sync")
+                _pre_wrap(cls, "_store_tracked_auxiliary_state", "track")
             if _PROF:
                 import cProfile
 
