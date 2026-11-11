@@ -69,7 +69,7 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 
 | experiment | family | measured | disposition |
 |---|---|---|---|
-| checkpoint: oQ8e against int4 | weight reads | oQ8e reads 2,672.5 MB of weights per token, int4 1,450.7; served greedy 55.0 against 74.9 tok/s at 1K on the same tree | published rows are compared on int4; the preset default stays oQ8e until the gates and a fidelity dump run on int4 |
+| checkpoint: oQ8e, oQ6e, int4 | weight reads | per token oQ8e reads 2,672.5 MB of weights, oQ6e 2,465.0, int4 1,450.7; the shipped preset decodes 62.5 / 66.7 / 96.7 tok/s sampled at 1K and peaks at 52.2 / 42.7 / 32.6 GB wired; int4 and oQ8e pass the validator, the thinking probe and the codegen probe with the preset's flags; teacher-forced against oQ8e, oQ6e is at KL 0.051 with 93.7 % of argmax tokens equal and int4 at KL 0.218 with 83.0 %, NLL equal within one standard error on all three | the default stays oQ8e: the agentic cell was scored on it, and int4 is a different distribution from the oQ builds, not a smaller copy of them. int4 is the gate-validated fast option (`MODEL=RecursiveSI/flint-int4 scripts/launch.sh flint`); a default switch waits for an agentic cell on int4 |
 | windowed lookahead view (patch 036) | host and copies | a chained step held a frozen view of each of the 35 sliding caches, so the next write copied the buffer: 1.20 against 0.84 ms per step of cache writes raw; served +7.8 % greedy at 1K, +6.1 / +6.1 / +7.3 % at 1K / 8K / 32K | retained, always on |
 | `gatek`: router logits as one launch on the BF16 weight | launches | 10.66 to 10.86 against 11.32 to 11.53 ms raw at 1K, bit-identical | in patch 037 |
 | `comb`: expert combine plus shared expert as one launch | launches | 10.79 to 10.89 ms raw at 1K, bit-identical | in patch 037 |
@@ -82,6 +82,8 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | radix cache off | host | 82.5 against 74.9 tok/s greedy before patch 036, 92.4 against 91.0 with both patches; a repeat of a 30K prompt answers in 51.5 s against 0.21 s | radix stays on: patch 036 removed the reason to turn it off |
 | command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired | not a preset default: a trade, decode for cold prefill. The three settings tie in decode and 200 MB costs the least prefill and memory. Patch 038 takes three quarters of the same gain for free, so the limit stays an opt-in for decode-heavy work |
 | decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset |
+| attention parts (knock-out census) | launches | at 1K attention costs 4.29 ms of the 11.47 ms raw mlx-lm step and its reads cost 3.12 ms at 200 GB/s; the query and output projections run at 218 to 243 GB/s, their read cost; head norms, the rotary embedding and a non-additive rest hold 1.17 ms | no fold carried: the folds over these operations (`qkv`, `front`, `mid`) measured inside noise. Recorded as the attention floor of this graph |
+| deep ladder through 128K | like for like | decode 98.9 tok/s at 1K to 35.5 at 128K: 78 to 84 % of rec through 32K, 94 % at 64K, 101 % at 128K, 75 to 80 % of Kapitsa at every depth; per token of context a step costs 0.140 µs here, 0.159 for rec, 0.107 for Kapitsa | measured. The fixed 2.1 ms per step is this graph's launches; the per-token term is the read rate of the shared keys and values, and a raw probe of the attention kernel at 32K to 128K is the next experiment |
 
 ## Baseline
 
@@ -403,6 +405,154 @@ does not already have. The served arms with 200 MB buffers read 6.5 to 7.9 %
 slower at 8K (Served A/B) and the raw loop does not reproduce it, so that
 loss belongs to the served chunk path and not to MLX's prefill.
 
+## Attention census
+
+`raw/attention-census-int4.txt` (`scripts/bench/mlx_flint_attention_census.py`):
+one part of every layer's attention knocked out of the raw mlx-lm step, both
+arm orders, the saved step time next to the bytes the part reads. The read
+cost is priced at 200 GB/s. The step with all attention removed is 7.13 to
+7.21 ms at every depth.
+
+| part | saved at 1,024 | read cost | saved at 8,192 | read cost |
+|---|--:|--:|--:|--:|
+| whole attention | 4.29 ms | 3.12 ms (623.0 MB) | 5.49 ms | 4.33 ms (865.2 MB) |
+| query projection | 0.95 | 1.16 (231.2 MB) | 1.09 | 1.16 |
+| output projection | 1.06 | 1.16 (231.2 MB) | 1.21 | 1.16 |
+| key and value projections | 0.39 | 0.29 (57.8 MB) | 0.57 | 0.29 |
+| attention kernel | 0.66 | 0.51 (102.8 MB) | 1.84 | 1.73 (345.0 MB) |
+| head norms | 0.23 | | 0.02 | |
+| rotary embedding | 0.20 | | 0.15 | |
+| cache write alone | 0.01 | | -0.03 | |
+| rest (the parts are not additive) | 0.79 | | 0.65 | |
+| one more attention launch per layer | 0.84 | 0.51 | 2.26 | 1.73 |
+
+The attention kernel's bytes are the size of the cache buffers, an upper
+bound of what a step reads. The two base arms at depth 24 disagree by 1.3 ms
+(the first arm of the process), so that depth is not read.
+
+- The projections are at their read cost: 231.2 MB in 0.95 to 1.21 ms is 191
+  to 243 GB/s. Nothing is left to fold there.
+- The attention kernel costs what its reads cost, and a second launch of it
+  on warm buffers costs 0.3 to 0.5 ms more than its reads.
+- 1.17 ms of attention sits above its reads at both depths: the head norms
+  and the rotary embedding (0.43 ms at 1K) and a non-additive rest of 0.65 to
+  0.79 ms. The fold probe already ran one launch over these operations
+  (`qkv`, `front`, `mid`) and measured inside noise, so this is the floor of
+  attention in this graph, not a queue of folds.
+
+## Deep ladder against the published rows
+
+`deep/`: the published context sweep through 128K on int4. One request slot,
+radix cache off, `CTX=131136 MEM_FRAC=0.5`, 1,024-token chunks, the OOM guard
+running, one cold request per depth and a 256-token reply at temperature 1.0.
+The shipping flags are the preset's (patches 037 and 038 on); the base flags
+have both off. Patch 036 is in both.
+
+Decode, tok/s:
+
+| prompt tokens | shipping flags | base flags | gain | rec | Kapitsa | llama.cpp | of rec | of Kapitsa | of llama.cpp |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1,025 | 98.86 | 82.75 | +19.5 % | 126.5 | 124.3 | 77.5 | 78 % | 80 % | 128 % |
+| 2,056 | 96.94 | 81.26 | +19.3 % | 123.0 | 121.3 | 75.1 | 79 % | 80 % | 129 % |
+| 4,086 | 93.96 | 79.41 | +18.3 % | 116.5 | 119.2 | 73.4 | 81 % | 79 % | 128 % |
+| 8,202 | 88.07 | 75.14 | +17.2 % | 107.0 | 113.2 | 69.7 | 82 % | 78 % | 126 % |
+| 16,406 | 79.56 | 69.53 | +14.4 % | 95.2 | 106.2 | 63.7 | 84 % | 75 % | 125 % |
+| 32,799 | 66.39 | 60.60 | +9.6 % | 79.4 | 85.9 | 53.8 | 84 % | 77 % | 123 % |
+| 64,958 | 52.92 | 49.53 | +6.8 % | 56.5 | 66.2 | 40.5 | 94 % | 80 % | 131 % |
+| 129,953 | 35.46 | 34.62 | +2.4 % | 35.2 | 45.7 | 23.8 | 101 % | 78 % | 149 % |
+
+Prefill, tok/s (prompt tokens over time to first token):
+
+| prompt tokens | base flags | shipping flags | TTFT base | rec | Kapitsa | llama.cpp | base of rec | base of Kapitsa | base of llama.cpp |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1,025 | 948.1 | 956.2 | 1.1 s | 781 | 858 | 927 | 121 % | 111 % | 102 % |
+| 2,056 | 947.1 | 931.2 | 2.2 s | 800 | 976 | 1015 | 118 % | 97 % | 93 % |
+| 4,086 | 928.2 | 904.7 | 4.4 s | 791 | 960 | 978 | 117 % | 97 % | 95 % |
+| 8,202 | 859.9 | 791.6 | 9.5 s | 760 | 907 | 910 | 113 % | 95 % | 94 % |
+| 16,406 | 761.2 | 677.0 | 21.6 s | 699 | 808 | 785 | 109 % | 94 % | 97 % |
+| 32,799 | 605.8 | 561.1 | 54.1 s | 581 | 651 | 602 | 104 % | 93 % | 101 % |
+| 64,958 | 442.3 | 424.0 | 146.9 s | 427 | 464 | 382 | 104 % | 95 % | 116 % |
+| 129,953 | 281.1 | 281.0 | 462.4 s | 262 | 300 | 199 | 107 % | 94 % | 141 % |
+
+- Decode is ahead of llama.cpp at every depth, level with rec at 128K and
+  behind Kapitsa by a fifth everywhere.
+- Patches 037 and 038 are worth 19.5 % at 1K and 2.4 % at 128K: they remove
+  a fixed cost per step, and the step grows from 10.1 to 28.2 ms.
+- The gap is two terms. Against both engines the step is 2.1 to 2.2 ms
+  longer at 1K (10.12 against 7.91 and 8.05 ms). Per token of context the
+  step grows by 0.140 µs here, 0.159 for rec and 0.107 for Kapitsa. The 14
+  full-attention layers hold 28.7 KB of BF16 keys and values per token, so
+  those slopes are read rates of about 204, 180 and 267 GB/s if the other
+  engines read the same bytes. This stack already reads deep context faster
+  than rec; Kapitsa's lead at depth is the attention read.
+- Prefill with the base flags is the reading of this stack: past rec at
+  every depth, 93 to 97 % of Kapitsa past 1K, past llama.cpp at 1K and from
+  32K and 93 to 97 % of it between. It matches the raw loop (859.9 at 8.2K
+  against about 870 raw, 605.8 at 32.8K against 633).
+- The shipping arm's lower prefill between 4K and 64K is a slow stretch of
+  the host, not the flags. `deep/chunk-rates.txt`
+  (`scripts/bench/prefill_chunk_rates.py` on the two server logs) has the
+  rate of each chunk: the first chunk of the 4K, 8K, 16K, 32K and 64K
+  requests runs at 919, 879, 828, 850 and 895 tok/s against 934 to 936 in
+  the base arm, and the 128K request, the last one, matches the base arm on
+  every chunk (932 / 441 / 279 / 162 against 930 / 441 / 279 / 162 at chunks
+  0, 31, 63 and 124). A cost of the fused block would be on every request.
+  The stretch is the first five minutes after the boot that followed the
+  oQ8e and oQ6e arms (52 and 43 GB wired).
+
+## Checkpoints
+
+`gates/`, `preset/`, `fidelity/`. The preset as it ships (radix on, four
+slots, 32K label, patches 037 and 038 on), one server per checkpoint.
+
+| checkpoint | bits per weight | on disk | cold decode 959 / 7,601 / 30,422 | same request again | cold prefill | sampled 1K | greedy 1K | follow-up TTFT 3.8K | wired peak |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| int4 | 4.54 | 22.6 GB | 96.23 / 88.75 / 66.99 | 96.10 / 88.88 / 67.66 | 883.1 / 795.2 / 540.4 | 96.70 | 99.51 | 0.172 s | 32.6 GB |
+| oQ6e | 6.6 | 32.8 GB | 66.76 / 62.39 / 52.00 | 66.65 / 62.83 / 52.25 | 832.5 / 743.5 / 527.8 | 66.68 | 67.64 | 0.219 s | 42.7 GB |
+| oQ8e (default) | 8.5 | 42.3 GB | 62.73 / 58.44 / 49.20 | 62.01 / 58.44 / 49.76 | 795.2 / 674.9 / 487.2 | 62.53 | 63.38 | 0.222 s | 52.2 GB |
+| oQ8e, one decode submission | 8.5 | 42.3 GB | 60.07 / 56.77 / 49.02 | 60.45 / 56.95 / 49.36 | 826.3 / 702.5 / 503.7 | 60.96 | 61.87 | 0.217 s | 52.2 GB |
+
+- Gates with the preset's flags (`gates/`): int4 and oQ8e each pass
+  `validate_capabilities.py` 3/3, `probe_thinking.py` (THINKING VERIFIED) and
+  `probe_codegen.py` (STRONG, 8 of 8 tests), with zero tracebacks in either
+  server log.
+- Patch 038 on oQ8e, one pair: +4.4 / +2.9 / +0.4 % cold decode at 1K / 8K /
+  32K, +2.6 % sampled and +2.4 % greedy at 1K. Smaller than on int4 because
+  the oQ8e step is longer, never negative, so the preset's value of 5 covers
+  every Flint checkpoint. The prefill columns of the pair differ by 4 % in a
+  single cold reading per depth, inside what one cold request scatters.
+- The follow-up turn of a 3.8K-token conversation starts in 0.17 s on int4
+  (Kapitsa 0.13 s, llama.cpp 0.23 s, rec 0.41 s).
+
+Teacher-forced fidelity (`scripts/eval/quant_fidelity.py` through the served
+preset, eight documents, 1,984 scored positions, half prose and half code;
+oQ8e is the reference dump):
+
+| checkpoint | domain | NLL | PPL | top-1 | KL to oQ8e, mean | median | argmax equal to oQ8e |
+|---|---|--:|--:|--:|--:|--:|--:|
+| oQ8e | all | 2.1405 | 8.504 | 58.6 % | | | |
+| oQ8e | prose | 2.6604 | 14.301 | 49.9 % | | | |
+| oQ8e | code | 1.6207 | 5.057 | 67.2 % | | | |
+| oQ6e | all | 2.1455 | 8.546 | 58.3 % | 0.0514 | 0.0050 | 93.7 % |
+| oQ6e | prose | 2.6736 | 14.491 | 49.9 % | 0.0616 | 0.0083 | 91.6 % |
+| oQ6e | code | 1.6174 | 5.040 | 66.7 % | 0.0412 | 0.0023 | 95.8 % |
+| int4 | all | 2.1331 | 8.441 | 59.2 % | 0.2177 | 0.0491 | 83.0 % |
+| int4 | prose | 2.6528 | 14.194 | 50.9 % | 0.2942 | 0.0814 | 77.7 % |
+| int4 | code | 1.6134 | 5.020 | 67.4 % | 0.1412 | 0.0178 | 88.2 % |
+
+- NLL is equal on the three checkpoints inside one standard error (0.073 to
+  0.075): none of them predicts the held-out text worse.
+- oQ6e is a close copy of oQ8e: KL 0.051 and 93.7 % of argmax tokens equal,
+  inside the band of the 4-bit Qwen builds against their 8-bit references
+  (KL 0.034 to 0.069, 89.8 to 91.3 % equal, `benchmarks/quality/fidelity/`).
+- int4 is not a copy of the oQ builds: KL 0.218 and 83.0 % equal, three to
+  six times the Qwen band, on text it predicts as well. The dumps cannot say
+  which of the two is closer to the BF16 weights, which do not fit in 64 GB.
+- So the choice is not made on these numbers. int4 is 55 % faster than oQ8e
+  at 1K and 36 % faster at 30K and wires 19.6 GB less; oQ6e is 6.6 % faster
+  and wires 9.5 GB less. The default stays oQ8e because the agentic cell
+  was scored on it. An agentic cell on int4 is what decides a switch.
+
 ## The gap at 1K
 
 | | ms per token | tok/s |
@@ -430,8 +580,12 @@ weight reads.
 | folder | contents |
 |---|---|
 | `baseline/` | published-shape sweeps of the preset before this lane (int4 radix on and off, oQ8e), the validator, the chat-template check, the scale scan, `mlx_lm.generate` |
-| `raw/` | decode census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
+| `raw/` | decode census, attention census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
 | `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
 | `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log |
 | `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log |
+| `gates/` | validator, thinking probe and codegen probe on int4 and oQ8e with the preset's flags, and the driver log |
+| `preset/` | the shipped preset on int4, oQ6e and oQ8e, oQ8e with one decode submission, and one-second wired memory samples of each arm |
+| `deep/` | the published context sweep through 128K on int4 with radix off and one slot, shipping flags against base flags, and the per-chunk prefill rates of both |
+| `fidelity/` | teacher-forced dumps of oQ8e (the reference), oQ6e and int4 |

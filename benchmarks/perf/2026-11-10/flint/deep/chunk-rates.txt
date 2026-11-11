@@ -1,0 +1,12 @@
+         deep-ship.log request 0 (3 full chunks): 0:919 1:878
+         deep-base.log request 0 (3 full chunks): 0:936 1:905
+         deep-ship.log request 1 (8 full chunks): 0:879 1:844 2:809 3:779 4:751 5:724 6:697
+         deep-base.log request 1 (8 full chunks): 0:935 1:906 2:878 3:850 4:824 5:799 6:778
+         deep-ship.log request 2 (16 full chunks): 0:828 1:801 2:771 3:750 4:724 5:705 6:686 8:650 12:591 14:564
+         deep-base.log request 2 (16 full chunks): 0:934 1:904 2:876 3:848 4:825 5:798 6:776 8:733 12:654 14:630
+         deep-ship.log request 3 (32 full chunks): 0:850 1:828 2:803 3:777 4:751 5:732 6:710 8:659 16:544 24:464 30:410
+         deep-base.log request 3 (32 full chunks): 0:935 1:905 2:877 3:850 4:823 5:798 6:775 8:732 16:587 24:487 30:435
+         deep-ship.log request 4 (63 full chunks): 0:895 1:867 2:830 3:810 4:780 5:753 6:717 15:572 31:421 47:328 61:278
+         deep-base.log request 4 (63 full chunks): 0:934 1:902 2:873 3:845 4:821 5:797 6:765 15:614 31:439 47:342 61:285
+         deep-ship.log request 5 (126 full chunks): 0:932 1:905 2:873 3:850 4:821 5:799 6:775 31:441 63:279 94:204 124:162
+         deep-base.log request 5 (126 full chunks): 0:930 1:904 2:875 3:850 4:811 5:799 6:771 31:441 63:279 94:206 124:162

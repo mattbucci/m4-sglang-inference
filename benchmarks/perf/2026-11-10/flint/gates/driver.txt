@@ -1,0 +1,170 @@
+## gates int4 (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 10:35:28
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+validate rc=0
+=== M4 capability validator — http://localhost:23334  model=flint ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (329 tok, finish=stop)
+--- 3/3 passed in 5.0s ---
+thinking rc=0
+reasoning_content non-empty   : True
+content non-empty             : True
+
+THINKING VERIFIED
+codegen rc=0
+Notes:
+- STRONG = all 8 algorithmic test cases pass.
+- PARTIAL = some tests fail (algorithm mostly right, edge cases broken).
+- FAIL = no working code returned.
+wired 30.5 GB
+tracebacks in the log: 0
+## gates oq8e (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 10:36:08
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+validate rc=0
+=== M4 capability validator — http://localhost:23334  model=flint ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok           (307 tok, finish=stop)
+--- 3/3 passed in 7.5s ---
+thinking rc=0
+reasoning_content non-empty   : True
+content non-empty             : True
+
+THINKING VERIFIED
+codegen rc=0
+Notes:
+- STRONG = all 8 algorithmic test cases pass.
+- PARTIAL = some tests fail (algorithm mostly right, edge cases broken).
+- FAIL = no working code returned.
+wired 50.3 GB
+tracebacks in the log: 0
+## sweep int4-ship (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 10:37:09
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[int4-ship] cold     959 tok: cached None, ttft 1.086 s, prefill 883.1 tok/s, decode 96.23 tok/s; repeat cached None, ttft 0.1618 s, decode 96.1 tok/s
+[int4-ship] cold    7601 tok: cached None, ttft 9.5589 s, prefill 795.2 tok/s, decode 88.75 tok/s; repeat cached None, ttft 0.1709 s, decode 88.88 tok/s
+[int4-ship] cold   30422 tok: cached None, ttft 56.2966 s, prefill 540.4 tok/s, decode 66.99 tok/s; repeat cached None, ttft 0.213 s, decode 67.66 tok/s
+[int4-ship] runs 1024:512:5:sampled: prompt 963, decode mean 96.7 median 96.43 tok/s (96.12 to 97.59)
+[int4-ship] runs 1024:512:5:greedy: prompt 963, decode mean 99.51 median 99.49 tok/s (99.24 to 99.7)
+[int4-ship] followup    3813 tok: first ttft 5.1036 s (256 tok, finish length); second ttft 0.1723 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-int4-ship.json
+wired peak 32.60 GB over 149 samples
+tracebacks in the log: 0
+phase_b.sh: line 62: 13009 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/ab-$name.wired
+## sweep oq8e-ship (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 10:40:06
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[oq8e-ship] cold     959 tok: cached None, ttft 1.206 s, prefill 795.2 tok/s, decode 62.73 tok/s; repeat cached None, ttft 0.235 s, decode 62.01 tok/s
+[oq8e-ship] cold    7601 tok: cached None, ttft 11.262 s, prefill 674.9 tok/s, decode 58.44 tok/s; repeat cached None, ttft 0.2078 s, decode 58.44 tok/s
+[oq8e-ship] cold   30422 tok: cached None, ttft 62.4408 s, prefill 487.2 tok/s, decode 49.2 tok/s; repeat cached None, ttft 0.2414 s, decode 49.76 tok/s
+[oq8e-ship] runs 1024:512:5:sampled: prompt 963, decode mean 62.53 median 62.46 tok/s (62.37 to 62.76)
+[oq8e-ship] runs 1024:512:5:greedy: prompt 963, decode mean 63.38 median 63.36 tok/s (63.29 to 63.46)
+[oq8e-ship] followup    3813 tok: first ttft 5.6998 s (256 tok, finish length); second ttft 0.2215 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-oq8e-ship.json
+wired peak 52.25 GB over 197 samples
+tracebacks in the log: 0
+phase_b.sh: line 63: 14477 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/ab-$name.wired
+## sweep oq8e-noship (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 10:44:06
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+[oq8e-noship] cold     959 tok: cached None, ttft 1.1606 s, prefill 826.3 tok/s, decode 60.07 tok/s; repeat cached None, ttft 0.2375 s, decode 60.45 tok/s
+[oq8e-noship] cold    7601 tok: cached None, ttft 10.8198 s, prefill 702.5 tok/s, decode 56.77 tok/s; repeat cached None, ttft 0.209 s, decode 56.95 tok/s
+[oq8e-noship] cold   30422 tok: cached None, ttft 60.4029 s, prefill 503.7 tok/s, decode 49.02 tok/s; repeat cached None, ttft 0.2341 s, decode 49.36 tok/s
+[oq8e-noship] runs 1024:512:5:sampled: prompt 963, decode mean 60.96 median 60.98 tok/s (60.81 to 61.1)
+[oq8e-noship] runs 1024:512:5:greedy: prompt 963, decode mean 61.87 median 61.86 tok/s (61.84 to 61.91)
+[oq8e-noship] followup    3813 tok: first ttft 5.7671 s (256 tok, finish length); second ttft 0.2175 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-oq8e-noship.json
+wired peak 52.17 GB over 197 samples
+tracebacks in the log: 0
+phase_b.sh: line 64: 16332 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/ab-$name.wired
+## sweep oq6e-ship (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 10:48:04
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[oq6e-ship] cold     959 tok: cached None, ttft 1.1519 s, prefill 832.5 tok/s, decode 66.76 tok/s; repeat cached None, ttft 0.208 s, decode 66.65 tok/s
+[oq6e-ship] cold    7601 tok: cached None, ttft 10.2236 s, prefill 743.5 tok/s, decode 62.39 tok/s; repeat cached None, ttft 0.2429 s, decode 62.83 tok/s
+[oq6e-ship] cold   30422 tok: cached None, ttft 57.6429 s, prefill 527.8 tok/s, decode 52.0 tok/s; repeat cached None, ttft 0.232 s, decode 52.25 tok/s
+[oq6e-ship] runs 1024:512:5:sampled: prompt 963, decode mean 66.68 median 66.67 tok/s (66.49 to 66.93)
+[oq6e-ship] runs 1024:512:5:greedy: prompt 963, decode mean 67.64 median 67.66 tok/s (67.41 to 67.82)
+[oq6e-ship] followup    3813 tok: first ttft 5.4062 s (256 tok, finish length); second ttft 0.2187 s, None of 3823 cached, 3823 fresh
+wrote <scratch>/flint/ab-oq6e-ship.json
+wired peak 42.70 GB over 184 samples
+tracebacks in the log: 0
+phase_b.sh: line 65: 18052 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/ab-$name.wired
+## deep ship (SGLANG_MLX_FUSE_FLINT_MOE=1 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 10:51:40
+up
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+[deep-ship] cold    1025 tok: cached None, ttft 1.072 s, prefill 956.2 tok/s, decode 98.86 tok/s
+[deep-ship] cold    2056 tok: cached None, ttft 2.2079 s, prefill 931.2 tok/s, decode 96.94 tok/s
+[deep-ship] cold    4086 tok: cached None, ttft 4.5166 s, prefill 904.7 tok/s, decode 93.96 tok/s
+[deep-ship] cold    8202 tok: cached None, ttft 10.3614 s, prefill 791.6 tok/s, decode 88.07 tok/s
+[deep-ship] cold   16406 tok: cached None, ttft 24.2332 s, prefill 677.0 tok/s, decode 79.56 tok/s
+[deep-ship] cold   32799 tok: cached None, ttft 58.4523 s, prefill 561.1 tok/s, decode 66.39 tok/s
+[deep-ship] cold   64958 tok: cached None, ttft 153.207 s, prefill 424.0 tok/s, decode 52.92 tok/s
+[deep-ship] cold  129953 tok: cached None, ttft 462.4955 s, prefill 281.0 tok/s, decode 35.46 tok/s
+wrote <scratch>/flint/deep-ship.json
+wired 29.9 GB
+tracebacks in the log: 0
+## deep base (SGLANG_MLX_FUSE_FLINT_MOE=0 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 11:04:38
+up
+[deep-base] cold    1025 tok: cached None, ttft 1.0811 s, prefill 948.1 tok/s, decode 82.75 tok/s
+[deep-base] cold    2056 tok: cached None, ttft 2.1709 s, prefill 947.1 tok/s, decode 81.26 tok/s
+[deep-base] cold    4086 tok: cached None, ttft 4.4022 s, prefill 928.2 tok/s, decode 79.41 tok/s
+[deep-base] cold    8202 tok: cached None, ttft 9.5382 s, prefill 859.9 tok/s, decode 75.14 tok/s
+[deep-base] cold   16406 tok: cached None, ttft 21.5531 s, prefill 761.2 tok/s, decode 69.53 tok/s
+[deep-base] cold   32799 tok: cached None, ttft 54.1446 s, prefill 605.8 tok/s, decode 60.6 tok/s
+[deep-base] cold   64958 tok: cached None, ttft 146.8801 s, prefill 442.3 tok/s, decode 49.53 tok/s
+[deep-base] cold  129953 tok: cached None, ttft 462.3675 s, prefill 281.1 tok/s, decode 34.62 tok/s
+wrote <scratch>/flint/deep-base.json
+wired 29.9 GB
+tracebacks in the log: 0
+## fidelity oq8e 11:17:17
+up
+  "nll_mean": 1.620683406961278,
+  "ppl": 5.0565448139415015,
+  "nll_se": 0.08964275011874012,
+  "top1_acc": 0.6723790322580645
+ }
+}
+tracebacks in the log: 0
+## fidelity int4 11:19:49
+up
+  "kl_ref_mean": 0.14120418492585304,
+  "kl_ref_median": 0.017763162534975764,
+  "kl_ref_se": 0.02589555056857307,
+  "argmax_agree_ref": 0.8820564516129032
+ }
+}
+tracebacks in the log: 0
+## fidelity oq6e 11:21:46
+up
+  "kl_ref_mean": 0.04124742859943214,
+  "kl_ref_median": 0.002257352610989488,
+  "kl_ref_se": 0.011856178197826802,
+  "argmax_agree_ref": 0.9576612903225806
+ }
+}
+tracebacks in the log: 0
+PHASE_B_DONE 11:24:13
