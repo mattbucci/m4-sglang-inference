@@ -313,10 +313,95 @@ operations and 400 MB, early submission has nothing left to recover. 200
 operations per buffer is past the optimum: the step is slower than stock at
 zero delay.
 
+Middle limits (`buffers/pipeline-slack-middle-limits.jsonl`, same probe,
+delays 0 and 2 ms, two passes, tokens equal in every arm):
+
+| operations per buffer | MB per buffer | early submissions | delay 0 ms | delay 2 ms |
+|--:|--:|--:|--:|--:|
+| 50 | 75 | 0 | 11.44 / 11.41 | 13.36 / 13.31 |
+| 50 | 75 | 4 | 11.16 / 11.20 | 11.68 / 11.72 |
+| 50 | 100 | 0 | 11.12 / 11.08 | 12.20 / 12.15 |
+| 50 | 100 | 4 | 11.10 / 11.08 | 11.13 / 11.09 |
+| 50 | 150 | 0 | 11.07 / 11.10 | 11.63 / 11.66 |
+| 50 | 150 | 4 | 11.10 / 11.16 | 11.04 / 11.05 |
+| 100 | 50 (stock) | 0 | 11.34 / 11.41 | 13.27 / 13.40 |
+| 100 | 50 (stock) | 4 | 11.13 / 11.26 | 11.62 / 11.81 |
+
+With four early submissions, 100 MB per buffer is the smallest limit that
+hides 2 ms of host work in full. 75 MB behaves like stock, and so does the
+operations limit on its own: the megabyte limit is the one that splits a
+Flint step.
+
 The two-kernel fold under each limit (`buffers/fold-probe-*.jsonl`,
 `comb+gatek`, bit-identical in every setting): 9.94 ms on stock limits,
 9.49 to 9.52 at 200 MB, 9.42 to 9.50 at 400 MB, 9.39 to 9.41 at 100
 operations and 400 MB, 9.97 to 9.98 at 200 operations and 1,000 MB.
+
+## Raw prefill
+
+`buffers/raw-prefill-by-limit.jsonl`, `buffers/raw-prefill-by-cache.jsonl`
+and `buffers/raw-prefill-cache-in-process-*.jsonl`
+(`scripts/bench/mlx_prefill_limit_probe.py`): the int4 checkpoint prefilled
+by a bare MLX loop in 1,024-token chunks, trunk only, one `mx.eval` on the
+cache arrays per chunk. Depths are exact token counts. Limits are read once
+per process, so every limit setting is its own process; the buffer-cache
+limit and the per-chunk `mx.clear_cache()` change inside one.
+
+Prefill tok/s by command-buffer limit, cache cleared after every chunk, 2 GB
+buffer cache. Two passes at 8,192, one at 32,768, processes in run order:
+
+| operations per buffer | MB per buffer | 8,192 | 32,768 | last chunk at 32,768 | peak over weights at 32,768, GB |
+|--:|--:|--:|--:|--:|--:|
+| 50 (stock) | 50 (stock) | 775.7 / 795.0 | 576.6 | 442.7 | 7.8 |
+| 50 | 75 | 853.6 / 847.3 | 611.9 | 449.7 | 8.0 |
+| 50 | 100 | 864.8 / 869.6 | 628.1 | 461.6 | 8.2 |
+| 50 | 150 | 866.8 / 849.8 | 618.8 | 462.0 | 8.7 |
+| 50 | 200 | 862.1 / 861.8 | 626.3 | 460.8 | 8.9 |
+| 100 | 400 | 862.6 / 866.9 | 625.2 | 459.0 | 10.5 |
+| 100 | 50 | 862.0 / 859.5 | 625.1 | 458.6 | 7.8 |
+| 50 (stock, again) | 50 (stock) | 865.6 / 862.8 | 630.6 | 462.7 | 7.8 |
+
+The first stock process is the slow one and the repeated stock process is
+as fast as any other arm, so the limits are not what moved it. The cache
+probe repeats the pattern (stock process first, cache kept between chunks,
+three passes at 8,192):
+
+| MB per buffer | buffer cache, GB | 8,192 | 32,768 |
+|--:|--:|--:|--:|
+| 50 (stock) | 2 | 795.0 / 748.0 / 743.4 | 550.8 |
+| 50 (stock) | 8 | 803.6 / 744.6 / 775.4 | 587.8 |
+| 100 | 2 | 866.5 / 854.4 / 839.4 | 610.1 |
+| 100 | 8 | 866.6 / 866.7 / 867.3 | 629.5 |
+| 200 | 2 | 863.3 / 863.4 / 866.7 | 627.4 |
+| 200 | 8 | 866.9 / 864.9 / 864.7 | 626.5 |
+
+The in-process probe settles it: one process per row, four arms inside it
+(clear every chunk, keep the cache, keep an 8 GB cache, clear again), stock
+limits before and after the 100 MB process.
+
+| process | 8,192, range over four arms and two passes | 32,768, range over four arms | first chunk | last chunk at 8,192 | last chunk at 32,768 |
+|---|--:|--:|--:|--:|--:|
+| stock | 862.9 to 881.3 | 626.1 to 634.5 | 979 to 1,016 | 778 to 799 | 460 to 467 |
+| 100 MB | 871.5 to 876.8 | 631.6 to 635.1 | 989 to 1,013 | 788 to 791 | 463 to 468 |
+| stock, again | 868.0 to 877.3 | 631.4 to 635.6 | 988 to 1,015 | 782 to 792 | 461 to 467 |
+
+Raw chunked prefill is about 870 tok/s at 8,192 tokens and 633 at 32,768,
+and it does not depend on the command-buffer limits, on the buffer-cache
+limit or on clearing the cache per chunk. Two of five stock processes ran 8
+to 12 % slow at every depth, and none of the nine with a raised limit. Both
+slow ones started right after another GPU process had exited (a server stop,
+the slack probes), the arm order puts stock there, and `pmset -g therm`
+records no thermal or performance warning: a process-level event, unexplained,
+and the reason every sequence here repeats its reference arm last.
+
+Against the published prefill rows at the same depths (rec 760 and 581,
+Kapitsa 907 and 651, llama.cpp 910 and 602), the raw MLX loop is past rec
+at both depths, 4 % under Kapitsa and llama.cpp at 8K, and at 32K 3 % under
+Kapitsa and past llama.cpp. No served lever is left in this family: a
+per-chunk cache clear or a raised limit would change nothing the raw loop
+does not already have. The served arms with 200 MB buffers read 6.5 to 7.9 %
+slower at 8K (Served A/B) and the raw loop does not reproduce it, so that
+loss belongs to the served chunk path and not to MLX's prefill.
 
 ## The gap at 1K
 
@@ -348,5 +433,5 @@ weight reads.
 | `raw/` | decode census, weight-read census per checkpoint, fold probes, route replay probe, frozen view probe, host slack probe |
 | `serve-census/` | served step split into host and GPU phases, radix on and off and with both changes |
 | `ab/` | the thirteen served arms, streams, follow-up fidelity, the validator with both patches, the driver log |
-| `buffers/` | host slack and the two-kernel fold under each command-buffer limit; the eight served arms, their streams and the driver log |
+| `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log |
 | `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log |
