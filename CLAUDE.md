@@ -36,7 +36,7 @@ scripts/launch.sh qwen3-moe                       # [OK]  Qwen3-30B-A3B-DWQ MoE
 scripts/launch.sh qwen35                          # [OK]  Qwen3.5-27B DeltaNet hybrid+VL
 scripts/launch.sh devstral                        # [OK]  Devstral 24B + image VLM
 scripts/launch.sh nemotron-30b                    # [OK]  NemotronH Mamba2+Attn+MoE
-scripts/launch.sh flint                           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for oQ6e/oQ4e)
+scripts/launch.sh flint                           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for int4/oQ6e/oQ4e)
 scripts/launch.sh qwen35-9b-8bit                  # [OK]  Qwen3.5-9B 8-bit (codegen/vision/video STRONG, validator 3/3; thinking always on)
 scripts/launch.sh qwen36-27b                      # [OK]  Qwen3.6-27B Dense+DeltaNet+VL (codegen/vision/video STRONG, thinking VERIFIED; thinking always on)
 MODEL=mlx-community/Qwen3.8-27B-4bit scripts/launch.sh qwen36-27b   # [OK]  Qwen3.8-27B Dense+DeltaNet+VL (validator 4/4, thinking/vision/codegen gates pass; thinking always on)

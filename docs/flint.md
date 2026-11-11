@@ -7,21 +7,92 @@ the full layers, 262K context, Apache-2.0. It runs through mlx-lm's `flint` mode
 019; the oMLX `oQ*e` checkpoints are converted through mlx-vlm's model class, hence the
 patch's checkpoint-layout adapter.
 
-| Variant | bpw | Resident | Decode tok/s @83 / @3.5K / @13.9K / @27K | Prefill tok/s @3.5K / @13.9K / @27K | Validator / codegen / thinking | Greedy vs mlx-lm |
-|---------|:---:|:--------:|:----------------------------------------:|:-----------------------------------:|:------------------------------:|:----------------:|
-| **`flint-oQ8e`** (default) | 8.5 | 42.3 GB | 61.9 / 59.1 / 54.4 / 49.3 | 926 / 809 / 634 | 3/3 · STRONG · VERIFIED | identical |
-| `flint-oQ6e` | 6.6 | 32.9 GB | 64.8 / 61.2 / 56.0 / — | 760 / 638 / — | 3/3 · STRONG · VERIFIED | identical |
-| `flint-oQ4e` | 4.7 | 23.5 GB | 70.5 / 67.5 / 61.5 / — | 708 / 595 / — | 3/3 · STRONG · VERIFIED | identical |
+## Checkpoints
 
-Measured radix-off (oQ8e at the preset's `CHUNKED=1024`, 2 GB MLX buffer cache,
-`MAX_RUNNING=4`; oQ6e/oQ4e at `CHUNKED=4096` with the 4 GB cache). The shipped preset runs
-the radix cache and keeps the pipelined decode loop under it (patch 028): oQ8e decodes at
-55.1 / 52.5 / 47.2 tok/s at 1K / 7.6K / 22.8K (`benchmarks/perf/2026-11-10/hybrid-presets/`),
-against 49.5 / 47.3 / 42.7 on the scheduler's normal loop, and turn 2 of a 13.4K-token
-conversation starts in 0.6 s instead of 19 s (`benchmarks/flint/2026-10-31/prefix-cache/`). A 27K prefill at chunk 1024 leaves 17 GB
-kernel-available and never leaves pressure level "normal"; four concurrent requests decode
-at 123 tok/s aggregate (batched output is not bit-identical to single-request output, the
-usual non-batch-invariance of batched kernels).
+The preset as it ships (radix cache on, `MAX_RUNNING=4`, `CHUNKED=1024`, 2 GB MLX buffer
+cache, patches 036 to 038), one cold request per depth with a 256-token reply at the
+checkpoint's own sampling (`benchmarks/perf/2026-11-10/flint/preset/`):
+
+| Checkpoint | bpw | On disk | Wired peak | Decode tok/s @1K / 7.6K / 30.4K | Prefill tok/s @1K / 7.6K / 30.4K | TTFT @30.4K | Follow-up TTFT @3.8K | KL to oQ8e / same argmax |
+|------------|:---:|:-------:|:----------:|:-------------------------------:|:--------------------------------:|:-----------:|:--------------------:|:------------------------:|
+| **`mlx-community/flint-oQ8e`** (default) | 8.5 | 42.3 GB | 52.2 GB | 62.7 / 58.4 / 49.2 | 795 / 675 / 487 | 62 s | 0.22 s | reference |
+| `mlx-community/flint-oQ6e` | 6.6 | 32.8 GB | 42.7 GB | 66.8 / 62.4 / 52.0 | 833 / 744 / 528 | 58 s | 0.22 s | 0.051 / 93.7 % |
+| `RecursiveSI/flint-int4` | 4.54 | 22.6 GB | 32.6 GB | 96.2 / 88.8 / 67.0 | 883 / 795 / 540 | 56 s | 0.17 s | 0.218 / 83.0 % |
+
+- **Gates:** every checkpoint passes validator 3/3, codegen STRONG and thinking VERIFIED;
+  receipts for int4 and oQ8e on the shipping flags are in
+  `benchmarks/perf/2026-11-10/flint/gates/`. Greedy output of the oQ checkpoints is
+  identical to mlx-lm's. `mlx-community/flint-oQ4e` (4.7 bpw, 23.5 GB) passes the same
+  gates and has no row on the shipping flags; int4 is the 4-bit checkpoint the published
+  engines use.
+- **Choosing one:** `MODEL=RecursiveSI/flint-int4 scripts/launch.sh flint` decodes 55 %
+  faster than oQ8e at 1K and 36 % faster at 30K and wires 19.6 GB less. Teacher-forced NLL
+  on held-out prose and code is equal on the three (2.133 to 2.146, inside one standard
+  error). oQ6e is a close copy of oQ8e, inside the band of the 4-bit Qwen builds against
+  their 8-bit references. int4 is a different quantization: it disagrees with oQ8e on 17 %
+  of greedy tokens on text it predicts equally well, and the BF16 weights that would say
+  which is closer do not fit in 64 GB. The default stays oQ8e because the agentic cell
+  below was scored on it; an agentic cell on int4 decides a switch.
+- **Concurrency:** int4 decodes at 103 / 136 / 182 tok/s aggregate for 1 / 2 / 4 streams
+  (batched output is not bit-identical to single-request output, the usual
+  non-batch-invariance of batched kernels).
+
+## Against the published M4 Pro engines
+
+Two engines publish Flint numbers for this chip, both on a MacBook Pro M4 Pro with the
+20-core GPU and 48 GB, on `RecursiveSI/flint-int4`, each next to llama.cpp: Recursive's
+[rec](https://github.com/recursive-oss/rec) and
+[Kapitsa](https://github.com/nace-ai/kapitsa/pull/290). They are this preset's reference
+engines: a number already reached on the same GPU. The same sweep here, one request slot,
+radix cache off, `CTX=131136 MEM_FRAC=0.5`, one cold request per depth, a 256-token reply
+at temperature 1.0 (`benchmarks/perf/2026-11-10/flint/deep/`):
+
+| Prompt tokens | 1K | 2K | 4K | 8K | 16K | 32K | 64K | 128K |
+|---------------|---:|---:|---:|---:|----:|----:|----:|-----:|
+| Decode tok/s, this stack | 98.9 | 96.9 | 94.0 | 88.1 | 79.6 | 66.4 | 52.9 | 35.5 |
+| Decode, rec | 126.5 | 123.0 | 116.5 | 107.0 | 95.2 | 79.4 | 56.5 | 35.2 |
+| Decode, Kapitsa | 124.3 | 121.3 | 119.2 | 113.2 | 106.2 | 85.9 | 66.2 | 45.7 |
+| Decode, llama.cpp | 77.5 | 75.1 | 73.4 | 69.7 | 63.7 | 53.8 | 40.5 | 23.8 |
+| Prefill tok/s, this stack | 948 | 947 | 928 | 860 | 761 | 606 | 442 | 281 |
+| Prefill, rec | 781 | 800 | 791 | 760 | 699 | 581 | 427 | 262 |
+| Prefill, Kapitsa | 858 | 976 | 960 | 907 | 808 | 651 | 464 | 300 |
+| Prefill, llama.cpp | 927 | 1015 | 978 | 910 | 785 | 602 | 382 | 199 |
+
+- **Decode** is ahead of llama.cpp at every depth (123 to 149 %), level with rec at 128K
+  (78 to 84 % of it to 32K, 94 % at 64K) and at 75 to 80 % of Kapitsa throughout.
+- **Prefill** is ahead of rec at every depth (104 to 121 %) and at 93 to 97 % of Kapitsa
+  past 1K. A 128K prompt reaches its first token in 462 s.
+- **Follow-up turn:** 0.17 s to first token at 3.8K on the preset, against 0.13 s for
+  Kapitsa, 0.23 s for llama.cpp and 0.41 s for rec.
+- **Where the gap is:** a decode step at 1K takes 10.1 ms here against 7.9 to 8.1 ms
+  published, a fixed 2.1 to 2.2 ms that sits in the graph itself (the router launches,
+  attention and the routed experts above their weight reads). Per token of context the
+  step grows by 0.140 µs here, 0.159 for rec and 0.107 for Kapitsa, so deep context is
+  already read faster than rec and Kapitsa's lead at depth is its attention read.
+  The lane, its probes and every disposition: `experiments/12-flint-published-parity.md`
+  and `benchmarks/perf/2026-11-10/flint/VERDICT.md`.
+
+## Decode flags
+
+- **Patch 036** (always on) keeps the frozen view of a sliding-window cache from turning
+  the next token's write into a copy of both buffers.
+- **Patch 037** (`SGLANG_MLX_FUSE_FLINT_MOE`, on in the preset) runs the router and the
+  expert combine of a one-token step as two Metal kernels, bit-identical to the stock
+  block and checked per module at install.
+- **Patch 038** (`SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the preset) submits a decode step
+  in parts so the GPU runs the front of the step while the host builds the rest.
+- Patches 037 and 038 together are worth 19.5 % decode at 1K, 17.2 % at 8K, 9.6 % at 32K
+  and 2.4 % at 128K on int4: they remove a fixed cost per step. On oQ8e patch 038 is worth
+  4.4 / 2.9 / 0.4 % at 1K / 8K / 32K. Neither runs on prefill chunks.
+- `MLX_MAX_MB_PER_BUFFER=200` is opt-in: 102.7 against 99.9 tok/s greedy at 1K on int4,
+  for 6.5 % of the cold prefill at 8K and 0.5 GB more wired.
+
+## Behaviour
+
+The preset runs the radix cache and keeps the pipelined decode loop under it (patch 028;
+the scheduler's normal loop decodes 10 % slower, `benchmarks/perf/2026-11-10/hybrid-presets/`).
+Turn 2 of a 13.4K-token conversation starts in 0.6 s instead of 19 s
+(`benchmarks/flint/2026-10-31/prefix-cache/`).
 
 - **Reasoning:** Flint decides per turn whether to emit `<think>…</think>`; there is no
   template toggle. `--reasoning-parser flint` returns it as `reasoning_content` and never
@@ -49,6 +120,10 @@ usual non-batch-invariance of batched kernels).
   radix-off preset. Set `MAX_TOTAL_TOKENS=131072` explicitly for CTX=131072 runs
   (`CTX * MAX_RUNNING` would be a 14.7 GB pool); `EXTRA_ARGS="--disable-radix-cache"`
   restores the pool-free recompute path. Per-request KV is 28 KB/token on top of the pool.
+  Tracking the windowed caches costs a cold prefill 6.8 % at 8K and 3 to 5 % at 32K
+  (796 against 850 tok/s and 573 to 585 against 602 on int4): the snapshot evaluates its
+  35 layers one at a time, so each chunk's forward runs as 35 submissions
+  (`benchmarks/perf/2026-11-10/flint/serve-census/`).
 - **Agentic cell:** SWE-bench Lite, the 26-instance scorecard set on the omp harness,
   bash-only, sealed, 64K with the radix cache, 1800 s per instance: **5/26 non-empty
   patches, 0/26 resolved** on the local scorer (three apply and fail their tests, two are
@@ -63,4 +138,5 @@ usual non-batch-invariance of batched kernels).
   smoke (`…/flint-oQ8e-omp-ilast-64k-sealed-2026-11-09/`, `i` moved last, no rewrites)
   is the lane configuration going forward: 366 of 366 calls well-formed, 0 omp
   rejections, 10 of 22 edits applied, same 1/3 engagement with every instance at the
-  cap. The oQ6e/oQ4e sweep on the depth bench and this cell is the remaining Flint item.
+  cap. An agentic cell on int4 is the remaining Flint item: it decides the default
+  checkpoint.

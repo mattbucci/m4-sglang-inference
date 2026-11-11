@@ -33,7 +33,7 @@ compares a live server against them).
 | `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | 14.5 / 14.1 / 12.9 | 301 s | 32K measured, 256K label |
 | `qwen36-27b` + `MODEL=…/Qwen3.8-27B-4bit` | `Qwen3.8-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.1 @1K | — | 131K served (SWE-bench) |
 | `qwen36-27b` + `MODEL=mattbucci/Qwopus3.8-27B-Coder-Flash-MLX-4bit` | `Qwopus3.8-27B-Coder-Flash-MLX-4bit` (in-house build, published) | DeltaNet hybrid+VL | 15 GB | 14.6 / 14.2 / 13.2 | 302 s | 32K measured, 131K served (SWE-bench) |
-| `flint` | `flint-oQ8e` (`MODEL=` for oQ6e / oQ4e) | MoE 40B-A2.5B, SWA + sinks | 42 GB | 61.9 @83 / 54.4 @13.9K / 49.3 @27K | — | 32K preset, 262K label |
+| `flint` | `flint-oQ8e` (`MODEL=RecursiveSI/flint-int4` for the fast 4-bit) | MoE 40B-A2.5B, SWA + sinks | 42 GB | 62.7 / 58.4 / 49.2 (int4: 96.2 / 88.8 / 67.0) | 62 s | 32K preset, 128K measured, 262K label |
 | `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.0 / 10.5 / 7.5† | 494 s | 32K at `MEM_FRAC=0.5` |
 | `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | — | 32K probe |
 
@@ -41,7 +41,8 @@ compares a live server against them).
 `MEM_FRAC=0.5`. **DeltaNet holds decode flat at depth** (the hybrids retain 85–88% of their
 short-context speed at 32K) while full-attention models halve or worse. Full curves (128→32K,
 9 points) and concurrency rows: `benchmarks/<slug>/results.json`; regression receipts:
-`benchmarks/regression/`. Flint variants, radix-on cost and tool-call behaviour: [docs/flint.md](docs/flint.md).
+`benchmarks/regression/`. Flint checkpoints, the published M4 Pro engine targets and tool-call
+behaviour: [docs/flint.md](docs/flint.md).
 
 ### Probe matrix (radix on)
 
@@ -55,7 +56,7 @@ short-context speed at 32K) while full-attention models halve or worse. Full cur
 | `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | pass validate gate |
 | `devstral` | **STRONG** | **STRONG** | PARTIAL | n/a |
 | `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
-| `flint` (oQ8e / oQ6e / oQ4e) | **STRONG** | n/a | n/a | **VERIFIED** |
+| `flint` (oQ8e / oQ6e / oQ4e / int4) | **STRONG** | n/a | n/a | **VERIFIED** |
 | `coder-30b` / `qwen3-moe` / `qwen3-32b` | **STRONG** | n/a | n/a | pass validate gate |
 
 Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Qwen3.8-27B,
@@ -131,7 +132,7 @@ Session endurance, the append-turn cost and the radix prefix cache on hybrids:
 | `qwen36-27b` [OK] | Qwen3.6-27B dense DeltaNet+VL | `MODEL=mlx-community/Qwen3.8-27B-4bit` serves Qwen3.8-27B (validator 4/4); `MODEL=mattbucci/Qwopus3.8-27B-Coder-Flash-MLX-4bit` serves the Qwopus coding fine-tune (in-house MLX build, validator 3/3); thinking always on |
 | `devstral` [OK] | Devstral 24B + image VLM | custom chat template (`scripts/devstral_chat_template.jinja`) |
 | `nemotron-30b` [OK] | NemotronH Mamba2+Attn+MoE | `nemotron_3` reasoning parser |
-| `flint` [OK] | Recursive Flint 40B-A2.5B coding-agent MoE | oQ8e default, `MODEL=` for oQ6e / oQ4e; [docs/flint.md](docs/flint.md) |
+| `flint` [OK] | Recursive Flint 40B-A2.5B coding-agent MoE | oQ8e default; `MODEL=RecursiveSI/flint-int4` decodes 55 % faster in 20 GB less, also oQ6e / oQ4e; [docs/flint.md](docs/flint.md) |
 | `gemma4`, `gemma4-31b` [WIP] | Gemma 4 26B MoE / 31B dense | boot failure: mlx-vlm Gemma 4 attention not recognised by the MLX attention contract |
 | `coder-next` | Qwen3-Coder-Next-80B | infeasible on 64 GB |
 | `smol-docling` | 256M VLM | smoke test only |
