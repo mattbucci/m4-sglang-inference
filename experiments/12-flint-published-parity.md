@@ -3,12 +3,12 @@
 | | |
 |---|---|
 | **Type** | experiment lane |
-| **Status** | measured; patches 036 to 038 retained. Patch 036 is always on, patches 037 and 038 are flags the `flint` preset sets. `RecursiveSI/flint-int4` is the gate-validated fast checkpoint and the preset default stays oQ8e until an agentic cell is scored on int4. Open: one evaluation per tracked snapshot (served prefill with the radix cache on), a raw probe of the attention kernel at 32K to 128K, one routing kernel per block (`benchmarks/perf/2026-11-10/flint/VERDICT.md`) |
+| **Status** | measured; patches 036 to 039 retained. Patches 036 and 039 are always on, patches 037 and 038 are flags the `flint` preset sets. `RecursiveSI/flint-int4` is the gate-validated fast checkpoint and the preset default stays oQ8e until an agentic cell is scored on int4. Open: a raw probe of the attention kernel at 32K to 128K, and the routing launches of a block, 0.8 ms a step that one kernel per block does not recover (`benchmarks/perf/2026-11-10/flint/VERDICT.md`) |
 | **Execution host** | m4-box |
 | **Wall clock** | about one day of exclusive serving windows (the like-for-like baseline is 45 minutes, a raw probe 5 to 25, a mirrored serving A/B 70 minutes for thirteen arms) |
 | **GPU time** | none separate from the box (Apple unified memory); raw probes and serving arms never overlap |
 | **Depends on** | The `flint` preset (patches 019 and 021, the pipelined decode loop under patch 028); experiment 11's method and its launch prices (`benchmarks/perf/2026-11-10/micro/VERDICT.md`); the published checkpoint `RecursiveSI/flint-int4`. |
-| **Provides to** | The `flint` preset's default checkpoint and decode flags; patches 036, 037 and 038; the Flint rows in `README.md` and `docs/flint.md`; a cross-team note with the reference numbers. |
+| **Provides to** | The `flint` preset's default checkpoint and decode flags; patches 036 to 039; the Flint rows in `README.md` and `docs/flint.md`; a cross-team note with the reference numbers. |
 
 ## Objective
 
@@ -92,14 +92,15 @@ Baseline is the `flint` preset on `RecursiveSI/flint-int4` with no experiment va
 ## Deliverables
 
 - `benchmarks/perf/2026-11-10/flint/VERDICT.md` with the gap table, a disposition per arm and a receipts map.
-- `scripts/bench/published_shape_sweep.py`, `scripts/bench/mlx_flint_decode_probe.py`, `scripts/bench/mlx_flint_attention_census.py`, `scripts/bench/mlx_pipeline_slack_probe.py` and `scripts/bench/prefill_census_report.py`.
-- Patches 036, 037 and 038, each with a unit test and a row in `patches/README.md`.
+- `scripts/bench/published_shape_sweep.py`, `scripts/bench/mlx_flint_decode_probe.py`, `scripts/bench/mlx_flint_attention_census.py`, `scripts/bench/mlx_pipeline_slack_probe.py`, `scripts/bench/prefill_census_report.py` and `scripts/bench/gpu_time.py`.
+- Patches 036 to 039, each with a unit test and a row in `patches/README.md`.
 - The Flint rows in `README.md` and `docs/flint.md`.
 - A cross-team entry with the reference numbers and the method.
 
 ## Constraints
 
 - One serving process at a time, and no raw MLX timing while a server is up.
+- Timed arms run with the display asleep and the agent session idle behind one background driver per stage; `scripts/bench/gpu_time.py` records the GPU time of every process per arm.
 - OOM guard for every arm at 32K and beyond; `MEM_FRAC` 0.5 for deep arms, never above 0.7.
 - The full checkpoint in every arm; a tiny random Flint is for kernel exactness only.
 - Third-party engine binaries are not run on this box; their numbers are quoted from their own receipts.
@@ -118,7 +119,7 @@ Baseline is the `flint` preset on `RecursiveSI/flint-int4` with no experiment va
 
 Receipts and the full disposition table: `benchmarks/perf/2026-11-10/flint/VERDICT.md`.
 
-Served decode on `RecursiveSI/flint-int4`, 1K prompt, greedy, five runs of 512 tokens, against the published 131.6 (Kapitsa) and 132.4 (rec) tok/s:
+Served decode on `RecursiveSI/flint-int4`, 1K prompt, greedy, five runs of 512 tokens, the display on, against the published 131.6 (Kapitsa) and 132.4 (rec) tok/s:
 
 | tree | ms per token | tok/s | of the published rate |
 |---|--:|--:|--:|
@@ -128,25 +129,26 @@ Served decode on `RecursiveSI/flint-int4`, 1K prompt, greedy, five runs of 512 t
 | patches 036 to 038 (decode submission in parts), the preset | 10.01 | 99.9 | 76 % |
 | the preset with `MLX_MAX_MB_PER_BUFFER=200` | 9.75 | 102.6 | 78 % |
 
-The published context sweep (one slot, radix off, `CTX=131136 MEM_FRAC=0.5`, 256-token reply at temperature 1.0):
+The published context sweep (one slot, radix off, `CTX=131136 MEM_FRAC=0.5`, 256-token reply at temperature 1.0, the display asleep):
 
 | prompt tokens | 1K | 2K | 4K | 8K | 16K | 32K | 64K | 128K |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|
-| decode tok/s | 98.9 | 96.9 | 94.0 | 88.1 | 79.6 | 66.4 | 52.9 | 35.5 |
-| of rec | 78 % | 79 % | 81 % | 82 % | 84 % | 84 % | 94 % | 101 % |
-| of Kapitsa | 80 % | 80 % | 79 % | 78 % | 75 % | 77 % | 80 % | 78 % |
-| of llama.cpp | 128 % | 129 % | 128 % | 126 % | 125 % | 123 % | 131 % | 149 % |
-| prefill tok/s | 948 | 947 | 928 | 860 | 761 | 606 | 442 | 281 |
-| of rec | 121 % | 118 % | 117 % | 113 % | 109 % | 104 % | 104 % | 107 % |
-| of Kapitsa | 111 % | 97 % | 97 % | 95 % | 94 % | 93 % | 95 % | 94 % |
-| of llama.cpp | 102 % | 93 % | 95 % | 94 % | 97 % | 101 % | 116 % | 141 % |
+| decode tok/s | 102.5 | 101.7 | 98.4 | 92.8 | 83.3 | 71.4 | 55.3 | 37.5 |
+| of rec | 81 % | 83 % | 84 % | 87 % | 88 % | 90 % | 98 % | 106 % |
+| of Kapitsa | 82 % | 84 % | 83 % | 82 % | 78 % | 83 % | 84 % | 82 % |
+| of llama.cpp | 132 % | 135 % | 134 % | 133 % | 131 % | 133 % | 137 % | 157 % |
+| prefill tok/s | 1022 | 965 | 953 | 879 | 738 | 594 | 448 | 296 |
+| of rec | 131 % | 121 % | 120 % | 116 % | 106 % | 102 % | 105 % | 113 % |
+| of Kapitsa | 119 % | 99 % | 99 % | 97 % | 91 % | 91 % | 96 % | 99 % |
+| of llama.cpp | 110 % | 95 % | 97 % | 97 % | 94 % | 99 % | 117 % | 149 % |
 
 - Patch 036: a chained step held a frozen view of each of the 35 sliding caches, so the next token's write copied both buffers. The view now reads the window from the live buffer. +7.8 % greedy at 1K, +6.1 to +7.3 % to 32K.
 - Patch 037: the router logits on the BF16 weight and the expert combine with the shared expert, each as one Metal kernel, bit-identical to the stock block. Raw 10.03 to 10.16 against 11.47 to 11.51 ms at 1K; served +12.7 % at 1K, +11.7 / +8.9 % at 8K / 32K over the view, +14.1 % on oQ8e.
 - Patch 038: the pipelined loop left the GPU idle through the host work between submissions (a raw loop loses 2.0 ms of step time to a 2 ms host delay). Five submissions per step recover three quarters of it: +7.5 % greedy at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, prefill and memory unchanged, the same greedy text. A larger command buffer hides the same slack and pays 5 to 8 % of cold prefill for it, so it stays an opt-in.
-- The two flags are worth 19.5 % at 1K and 2.4 % at 128K: they remove a fixed cost per step, and the step grows from 10.1 to 28.2 ms.
+- The two flags are worth 19 to 21 % of decode through 8K, 13 % at 32K and 2.4 % at 128K: they remove a fixed cost per step, and the step grows from 9.8 to 26.7 ms. Prefill reads the same with and without them (three mirrored arms per setting).
 - Checkpoints on the shipping preset: int4 96.2 / 88.8 / 67.0 tok/s at 1K / 7.6K / 30.4K, oQ6e 66.8 / 62.4 / 52.0, oQ8e 62.7 / 58.4 / 49.2. int4 and oQ8e pass the validator, the thinking probe and the codegen probe with the flags on. Teacher-forced NLL is equal on the three; oQ6e sits at KL 0.051 from oQ8e (93.7 % of argmax tokens equal) and int4 at 0.218 (83.0 %). The default is not decided on these numbers: it waits for an agentic cell on int4.
-- The follow-up turn at 3.8K answers in 0.17 s on int4 (Kapitsa 0.13 s, llama.cpp 0.23 s, rec 0.41 s).
-- Served prefill is evaluation time: host time is 3 to 4 ms of a 1.1 to 1.8 s chunk. With the radix cache on, the tracked snapshot evaluates its 35 layers one at a time, which costs 6.8 % at 8K and 3 to 5 % at 32K against the radix-off path.
-- Not carried: folds of the attention projections, head norms and rotary embedding (`qkv`, `front`, `mid`, inside noise), deeper launch folding past 2,183 primitives (equal step time), the tree's fused routed-expert kernel (slower, not bit-identical), nine submissions per step (not separable from five), larger operation limits per command buffer.
-- What is left at 1K is 2.1 to 2.2 ms per step against both engines: the two routing launches per block (0.85 ms a step) and attention above its reads (1.17 ms). Per token of context the step grows by 0.140 µs here, 0.159 for rec and 0.107 for Kapitsa, so the deep gap to Kapitsa is the read rate of the shared keys and values.
+- The follow-up turn answers in 0.16 s at 3.8K and 0.30 s at 15K on int4 (Kapitsa 0.13 and 0.15 s, llama.cpp 0.23 and 0.31 s, rec 0.41 and 0.44 s at 4K and 16K).
+- Served prefill is evaluation time: host time is 3 to 4 ms of a 1.1 to 1.8 s chunk. Patch 039: with the radix cache on a chunk stores a snapshot of the 35 tracked layers, and an evaluation that waits per layer idles the GPU about 1.1 ms each. Scheduling the evaluations takes 3.5 % off a cold prefill at 7.6K and 4.0 % at 30.4K (879 to 881 and 637 to 642 tok/s) and 3.4 to 5.0 % off a follow-up's cached request; one evaluation for all layers ties. Cold follow-ups of the two trees are equal at KL 0 and the gates pass. qwen36, with 30 waits on a 4,096-token chunk, gains under 1 % cold and 3 to 6 % on a repeat.
+- Not carried: folds of the attention projections, head norms and rotary embedding (`qkv`, `front`, `mid`, inside noise), deeper launch folding past 2,183 primitives (equal step time), the tree's fused routed-expert kernel (slower, not bit-identical), one Metal kernel for the router logits and the routing of a block (bit-identical, 8 to 10 % slower per step than the two launches it replaces), nine submissions per step (not separable from five), larger operation limits per command buffer.
+- What is left at 1K is 1.7 to 1.9 ms per step against both engines: the two routing launches per block (0.8 ms a step) and attention above its reads. Per token of context the step grows by 0.131 µs here, 0.159 for rec and 0.107 for Kapitsa, so the deep gap to Kapitsa is the read rate of the shared keys and values.
+- The desktop is part of the instrument. A lit display costs 3.5 to 4.6 % of decode and 2 to 3 % of cold prefill, and an agent session blocked in a foreground wait up to 10 % of a deep prefill. Timed arms run with the display asleep and the session idle, and each arm carries its GPU share.

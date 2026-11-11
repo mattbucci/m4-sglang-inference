@@ -152,6 +152,21 @@ Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error
 - Run regression test before committing: `./scripts/bench/bench_regression.sh <model>`
 - Regression threshold: >10% deviation triggers alert
 
+### Quiet GPU for timed arms
+The MLX server shares the GPU with the desktop: the compositor of a lit display, any app
+that draws, and the terminal an agent session animates while it blocks on a foreground
+command. On `flint` int4 a lit display costs 3.5 to 4.6 % of decode and 2 to 3 % of cold
+prefill, and a session blocked in a foreground wait a further 6 to 10 % of an 8K to 32K
+prefill (`benchmarks/perf/2026-11-10/flint/VERDICT.md`).
+
+- Sleep the display for timed arms: `pmset displaysleepnow`; `caffeinate -u -t 5` wakes it.
+- Run each timed stage as one background driver and keep the session idle until it ends.
+- Record who was on the GPU: `python scripts/bench/gpu_time.py sample <file>` during the
+  stage, then `report <file> <label>=HH:MM:SS-HH:MM:SS`. A share names the company an arm
+  had, not its cost; an A/B prices it.
+- Compare settings inside one window, arms mirrored, the reference arm repeated last.
+- Do not quit or suspend the user's apps to quieten the machine.
+
 ### Important notes
 - MLX kernels compile on first use — first requests will be slow (warmup required)
 - Unified memory means no OOM in the traditional sense — system will swap, degrading performance
