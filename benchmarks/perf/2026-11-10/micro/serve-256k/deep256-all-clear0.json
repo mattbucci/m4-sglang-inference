@@ -1,0 +1,32 @@
+{
+  "tag": "deep256-all-clear0",
+  "max_tokens": 256,
+  "runs": 1,
+  "contexts": [
+    {
+      "target": 271000,
+      "prompt_tokens": 251474,
+      "tpot_ms_median": 35.8432,
+      "tpot_ms_min": 35.8432,
+      "tpot_ms_max": 35.8432,
+      "decode_tok_s_median": 27.9,
+      "ttft_cold_s": 1429.4605,
+      "ttft_repeat_s": null,
+      "text_shas": [
+        "85e8ca8a8223081d"
+      ],
+      "runs": [
+        {
+          "prompt_tokens": 251474,
+          "cached_tokens": null,
+          "completion_tokens": 256,
+          "ttft_s": 1429.4605,
+          "total_s": 1438.6009,
+          "text_sha": "85e8ca8a8223081d",
+          "tpot_ms": 35.8432,
+          "decode_tok_s": 27.9
+        }
+      ]
+    }
+  ]
+}

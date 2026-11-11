@@ -1,0 +1,4 @@
+[all-clear0] prompt 251474 generated 800 ttft 1418.946s
+  depth  251477  median  35.763 ms/step  mean  36.107  max   40.82 ms
+  798 steps, median 35.763 ms, mean 36.107 ms
+  stalls over 40 ms: []  = 0.000 ms per step

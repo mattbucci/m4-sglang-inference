@@ -1,0 +1,7 @@
+[2026-11-10 20:26:19] MLX buffer cache limit set to 4.0 GB
+[2026-11-10 20:26:21] MLX fused MoE router enabled: patched 40 blocks
+[2026-11-10 20:26:21] MLX fused GatedDeltaNet front enabled: patched 30 layers
+[2026-11-10 20:26:21] MLX grouped decode linears enabled: hooked 1 modules
+[2026-11-10 20:50:16] SDPA block ladder: 251475 keys -> 2048 blocks
+[deep256-all-clear0]  251474 tok: 35.84 ms/step 27.9 tok/s (min 35.84 max 35.84) ttft cold 1429.4605s repeat Nones shas 1
+deep_mem deep256-all-clear0 wired_peak_gb 29.39 min_memorystatus_level 51 tracebacks 0 guard_kills 

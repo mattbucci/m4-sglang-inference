@@ -49,7 +49,7 @@ The R9700 team's decode lane, carried over to Metal:
 | `MLX_MAX_OPS_PER_BUFFER` 200 | launch commit | −17.1 % at 30K | rejected |
 | `MLX_METAL_FAST_SYNCH=1` | launch commit | raw: equal to stock | rejected |
 | `MLX_BFS_MAX_WIDTH` 1 / 5 / 100 / 100000 (stock 20) | graph order | raw: 1 costs 0.75 ms, 5 equal, 100 and up 0.1 to 0.4 ms slower | rejected, stock is best |
-| `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | no cost to 122K (−0.1 % pooled over four traces, equal wired peak); a 93 to 186 ms stall every 256 steps at 139K and 196K, 1.7 % | open, the 256K arm decides (cache-clear section) |
+| `SGLANG_MLX_CLEAR_CACHE_STEPS=0` (stock 256) | host | no cost to 122K (−0.1 % pooled over four traces, equal wired peak); a 93 to 186 ms stall every 256 steps at 139K and 196K, 1.7 %; 251K with every retained setting: 35.84 against 36.77 ms per token, no step over 40.8 ms in 798, wired peak 29.39 against 29.73 GB, the same text | retained for long-context work: the buffer-cache cap bounds memory, the clear only stalls |
 | `SGLANG_MLX_FUSE_SWIGLU=1` | launches | never installed on qwen36 (read on the mlx-lm load path, and it matches mlx-lm's `SwitchGLU` class only); the −0.3 to +0.6 % was noise | not measured on qwen36, coder-30b arm queued |
 | `mx.compile` around the MoE and DeltaNet blocks | graph build | raw: build 1.72 → 0.87 ms, step time equal | rejected, the build already overlaps the GPU |
 | constant `lhs_indices` for gathered matmuls | launches | raw: 2,780 → 2,540 primitives, step time equal | rejected |
@@ -227,6 +227,7 @@ per-layer shape: stock through 196,608 keys, then
 | 200 MB, `MLX_SDPA_BLOCKS=2048` pinned | 36.89 | 27.1 | 1434.5 | 29.68 | f0e76c51 |
 | 200 MB, ladder flag | 37.28 | 26.8 | 1426.0 | 29.44 | f0e76c51 |
 | 200 MB, ladder flag, patches 030 to 032 | 36.77 | 27.2 | 1410.6 | 29.73 | 85e8ca8a |
+| 200 MB, ladder flag, patches 030 to 032, periodic cache clear off | 35.84 | 27.9 | 1429.5 | 29.39 | 85e8ca8a |
 
 The ladder arm logs `SDPA block ladder: 251475 keys -> 2048 blocks` and
 produces the pinned arm's text. Against the no-settings base it is −8.7 %
@@ -239,14 +240,16 @@ Depth recall with the ladder engaged (`scripts/eval/probe_depth_recall.py
 --labels 215040`, `recall/`): 6/6 at 245,656 prompt tokens, the same as the
 buffer-only arm.
 
-The last row is the whole retained set at this depth (`deep256-all`): the
-three fusion hooks log their "enabled" lines, the ladder logs 2048 blocks,
+The row with patches 030 to 032 is the retained code at this depth
+(`deep256-all`): the three fusion hooks log their "enabled" lines, the ladder logs 2048 blocks,
 recall is 6/6 at 245,656 prompt tokens, 0 tracebacks. Its 0.5 ms under the
 ladder arm is inside the 0.65 ms the two buffer-only samples differ by, so
 at this depth the fusions are free and no more: the 1.1 ms they take off a
 short-context step is launch time, and a 251K step spends 26 ms reading
 keys and values. The fused router changes rounding, so the text differs
-from the ladder arm's.
+from the ladder arm's. The last row adds `SGLANG_MLX_CLEAR_CACHE_STEPS=0`
+(`deep256-all-clear0`, the cache-clear section): the same text, 0.93 ms
+less per token.
 
 Two things in `serve-256k/` and `serve-ladder/` come from earlier builds of
 the patch. The first ladder arm did nothing: the hook sat only on the
@@ -296,6 +299,7 @@ under 4 GB. What the clear costs depends on the depth.
 | 122K | `serve-clear/c122-*`, four 1,100-token traces in mirrored order | one 15 ms stall at the first clear, none at the next three: 0.014 ms per token, 0.06 % |
 | 139K | `serve-ladder/cross139-ladder.trace.json`, stalls of 178 and 156 ms | 0.43 ms per token, 1.7 % |
 | 196K | `serve-ladder/cross196-ladder.trace.json`, stalls of 186, 127 and 93 ms | 0.52 ms per token, 1.7 % |
+| 251K | `serve-256k/deep256-all-clear0.json` against `deep256-all.json`, one cold request per arm; `serve-clear/c256-all-clear0.trace.json`, 798 steps with the clear off | 0.93 ms per token, 2.5 % |
 
 At 122K the two arms are the same request to the token: 23.42 and 23.40 ms
 per token with the clear, 23.34 and 23.42 without, pooled −0.10 %, and a
@@ -304,6 +308,20 @@ The runner's step counter is global, so the first clear of a trace lands
 where earlier requests left the count; at 122K that step takes 38 to 39 ms
 against 23.5 and the later clears cost nothing. The repeating stall is in
 the 139K and 196K traces only.
+
+At 251,474 prompt tokens the arm with every retained setting and the clear
+off decodes at 35.84 ms per token against 36.77 with the stock 256-step
+clear, one cold request each. The 0.93 ms per token is 240 ms over the 256
+generated tokens and is larger than the 0.65 ms two buffer-only samples
+differ by at this depth. The stock arm was not traced, so the receipts do
+not show whether that is one clear. A second request on the clear-off server, traced for 798
+steps, has a median of 35.76 ms, a mean of 36.11 and no step over 40.8 ms.
+Wired memory peaks at 29.39 GB against 29.73 and the lowest
+`kern.memorystatus_level` is 51 in both arms. The generated text is the
+same to the hash, so the setting does not touch numerics.
+
+Disposition: `SGLANG_MLX_CLEAR_CACHE_STEPS=0` is part of the long-context
+recipe. Below 122K it buys nothing measurable and costs nothing.
 
 ## Launch folding (patches 030, 031, 032), raw MLX
 
@@ -688,7 +706,7 @@ request in every arm, read 24.4 to 24.6 GB with and without the fusions
 | `serve-knobs/`, `serve-flags/`, `serve-sampled/`, `serve-prefill/` | serving A/B chains to 30K |
 | `serve-128k/`, `serve-256k/` | deep arms with memory lines |
 | `serve-ladder/` | threshold-crossing trace |
-| `serve-clear/` | cache-clear traces at 122K with memory lines |
+| `serve-clear/` | cache-clear traces at 122K with memory lines, the 251K clear-off trace |
 | `serve-router/` | launch-folding serving A/B, eleven arms with hook lines, wired memory and text hashes in `pooled.txt` |
 | `serve-router3/` | grouped linears on top of the fused router and front, three mirrored pairs on the tree with patch 033 |
 | `serve-router-null/` | eleven arms of one build (launch-folding flags set, hooks not installed): the A/B design's noise floor |
