@@ -1,0 +1,71 @@
+diff --git a/sympy/functions/elementary/exponential.py b/sympy/functions/elementary/exponential.py
+index fbd80fc02..b62b26697 100644
+--- a/sympy/functions/elementary/exponential.py
++++ b/sympy/functions/elementary/exponential.py
+@@ -452,6 +452,13 @@ def _eval_rewrite_as_tanh(self, arg):
+         from sympy import tanh
+         return (1 + tanh(arg/2))/(1 - tanh(arg/2))
+ 
++    def _eval_rewrite_as_sinc(self, arg):
++        # Convert exp to sin/cos form (same as _eval_rewrite_as_sin).
++        # When the full expression simplifies, sin(x)/x → sinc(x).
++        from sympy import sin
++        I = S.ImaginaryUnit
++        return sin(I*arg + S.Pi/2) - I*sin(I*arg)
++
+ 
+ class log(Function):
+     r"""
+diff --git a/sympy/simplify/fu.py b/sympy/simplify/fu.py
+index e48f99e69..20a68a786 100644
+--- a/sympy/simplify/fu.py
++++ b/sympy/simplify/fu.py
+@@ -1723,6 +1723,28 @@ def fu(rv, measure=lambda x: (L(x), x.count_ops())):
+         rv = min([was, rv, rv1, rv2], key=measure)
+     return min(TR2i(rv), rv, key=measure)
+ 
++def _sincify(rv):
++    """Check if an expression matches sin(x)/x and convert to sinc(x)."""
++    from sympy import sinc
++    if rv.is_Mul:
++        args = rv.args
++        sin_x = None
++        x_inv = None
++        for a in args:
++            if a.is_Pow:
++                # Look for x**(-1) pattern (sin is not the base)
++                if not isinstance(a.base, sin) and a.exp == -1:
++                    x_inv = a.base
++            elif isinstance(a, sin):
++                # Found sin(x) directly
++                sin_x = a
++            elif a.is_Pow and isinstance(a.base, sin):
++                # Look for sin(x)*x**(-1) pattern (sin is the base of Pow)
++                sin_x = a.base
++        if sin_x is not None and x_inv is not None and x_inv == sin_x.args[0]:
++            return sinc(x_inv)
++    return rv
++
+ 
+ def process_common_addends(rv, do, key2=None, key1=True):
+     """Apply ``do`` to addends of ``rv`` that (if key1=True) share at least
+diff --git a/sympy/simplify/trigsimp.py b/sympy/simplify/trigsimp.py
+index 34a3bab3f..2fb5cc94d 100644
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -1115,8 +1115,13 @@ def _futrig(e, **kwargs):
+         TR12)
+     from sympy.core.compatibility import _nodes
+ 
+-    if not e.has(TrigonometricFunction):
+-        return e
++    if e.has(exp):
++        # Try rewriting exp terms to trig functions for simplification.
++        from sympy.simplify.fu import fu, _sincify
++        rewritten = _sincify(fu(e.rewrite(cos)))
++        if rewritten.count_ops() < e.count_ops():
++            e = rewritten
++
+ 
+     if e.is_Mul:
+         coeff, e = e.as_independent(TrigonometricFunction)

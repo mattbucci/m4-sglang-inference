@@ -1,0 +1,108 @@
+diff --git a/xarray/core/concat.py b/xarray/core/concat.py
+index ecae2566..889df993 100644
+--- a/xarray/core/concat.py
++++ b/xarray/core/concat.py
+@@ -16,6 +16,7 @@ def concat(
+     positions=None,
+     fill_value=dtypes.NA,
+     join="outer",
++    combine="all",
+ ):
+     """Concatenate xarray objects along a new or existing dimension.
+ 
+@@ -75,9 +76,12 @@ def concat(
+         List of integer arrays which specifies the integer positions to which
+         to assign each dataset along the concatenated dimension. If not
+         supplied, objects are concatenated in the provided order.
+-    fill_value : scalar, optional
+-        Value to use for newly missing values
+-    join : {'outer', 'inner', 'left', 'right', 'exact'}, optional
++    combine : {'skip', 'all'}, optional
++        Whether data variables must be present in all datasets:
++          * 'skip': Data variables which are not present in all datasets
++            are silently skipped.
++          * 'all': All data variables must be present in all datasets;
++            a ``ValueError`` is raised otherwise (the default).
+         String indicating how to combine differing indexes
+         (excluding dim) in objects
+ 
+@@ -119,6 +123,9 @@ def concat(
+             % compat
+         )
+ 
++    if combine not in ("skip", "all"):
++        raise ValueError("combine must be 'skip' or 'all'")
++
+     if isinstance(first_obj, DataArray):
+         f = _dataarray_concat
+     elif isinstance(first_obj, Dataset):
+@@ -128,7 +135,7 @@ def concat(
+             "can only concatenate xarray Dataset and DataArray "
+             "objects, got %s" % type(first_obj)
+         )
+-    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join)
++    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join, combine)
+ 
+ 
+ def _calc_concat_dim_coord(dim):
+@@ -259,7 +266,6 @@ def _parse_datasets(datasets):
+ 
+     return dim_coords, dims_sizes, all_coord_names, data_vars
+ 
+-
+ def _dataset_concat(
+     datasets,
+     dim,
+@@ -269,6 +275,7 @@ def _dataset_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    combine="all",
+ ):
+     """
+     Concatenate a sequence of datasets along a new or existing dimension
+@@ -314,10 +321,13 @@ def _dataset_concat(
+         for ds in datasets:
+             absent_merge_vars = variables_to_merge - set(ds.variables)
+             if absent_merge_vars:
+-                raise ValueError(
+-                    "variables %r are present in some datasets but not others. "
+-                    % absent_merge_vars
+-                )
++                if combine == "all":
++                    raise ValueError(
++                        "variables %r are present in some datasets but not others. "
++                        % absent_merge_vars
++                    )
++                # In 'skip' mode, remove absent variables from the merge set
++                variables_to_merge -= absent_merge_vars
+ 
+             for var in variables_to_merge:
+                 to_merge[var].append(ds.variables[var])
+@@ -361,7 +371,10 @@ def _dataset_concat(
+             try:
+                 vars = ensure_common_dims([ds.variables[k] for ds in datasets])
+             except KeyError:
+-                raise ValueError("%r is not present in all datasets." % k)
++                if combine == "all":
++                    raise ValueError("%r is not present in all datasets." % k)
++                # In 'skip' mode, silently skip variables missing from some datasets
++                continue
+             combined = concat_vars(vars, dim, positions)
+             assert isinstance(combined, Variable)
+             result_vars[k] = combined
+@@ -394,6 +407,7 @@ def _dataarray_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    combine="all",
+ ):
+     arrays = list(arrays)
+ 
+@@ -422,5 +436,6 @@ def _dataarray_concat(
+         positions,
+         fill_value=fill_value,
+         join=join,
++        combine=combine,
+     )
+     return arrays[0]._from_temp_dataset(ds, name)

@@ -1,0 +1,25 @@
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..5ab55da83 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -533,9 +533,17 @@ def import_path(
+ 
+         if spec is None:
+             raise ImportError(f"Can't find module {module_name} at location {path}")
+-        mod = importlib.util.module_from_spec(spec)
+-        sys.modules[module_name] = mod
+-        spec.loader.exec_module(mod)  # type: ignore[union-attr]
++        # If the module is already in sys.modules, reuse it. This handles the case where
++        # another module (imported via prepend mode or another importlib import) has already
++        # registered this module. Creating a new module and overwriting sys.modules would
++        # cause the imported module to be a different object from the one stored in
++        # sys.modules, breaking references held by other modules.
++        if module_name in sys.modules:
++            mod = sys.modules[module_name]
++        else:
++            mod = importlib.util.module_from_spec(spec)
++            sys.modules[module_name] = mod
++            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+         insert_missing_modules(sys.modules, module_name)
+         return mod
+ 

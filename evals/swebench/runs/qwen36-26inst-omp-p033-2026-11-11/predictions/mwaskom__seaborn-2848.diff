@@ -1,0 +1,42 @@
+diff --git a/seaborn/axisgrid.py b/seaborn/axisgrid.py
+index 8526f44..6d605fd 100644
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1450,12 +1450,21 @@ class PairGrid(Grid):
+             else:
+                 plt.sca(ax)
+ 
++
+             vector = self.data[var]
+             if self._hue_var is not None:
+                 hue = self.data[self._hue_var]
+             else:
+                 hue = None
+ 
++            # Filter data to values in the requested hue_order
++            # This handles the case where hue_order contains a subset
++            # of the values present in the data
++            if self._hue_var is not None:
++                hue_mask = self.hue_vals.isin(self._hue_order)
++                vector = vector.loc[hue_mask]
++                hue = hue.loc[hue_mask]
++
+             if self._dropna:
+                 not_na = vector.notna()
+                 if hue is not None:
+@@ -1566,6 +1575,15 @@ class PairGrid(Grid):
+             hue = data.get(self._hue_var)
+ 
+         if "hue" not in kwargs:
++            # Filter data to values in the requested hue_order
++            # This handles the case where hue_order contains a subset
++            # of the values present in the data
++            if self._hue_var is not None:
++                hue_mask = self.hue_vals.isin(self._hue_order)
++                data = data.loc[hue_mask]
++                x = data[x_var]
++                y = data[y_var]
++                hue = data.get(self._hue_var)
+             kwargs.update({
+                 "hue": hue, "hue_order": self._hue_order, "palette": self._orig_palette,
+             })

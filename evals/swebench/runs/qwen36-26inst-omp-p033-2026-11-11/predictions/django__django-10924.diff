@@ -1,0 +1,51 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..782d893e2d 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1663,10 +1663,10 @@ class FilePathField(Field):
+ 
+     def __init__(self, verbose_name=None, name=None, path='', match=None,
+                  recursive=False, allow_files=True, allow_folders=False, **kwargs):
+-        self.path, self.match, self.recursive = path, match, recursive
++        self._path_callback = path if callable(path) else None
++        self.path = path() if self._path_callback else path
++        self.match, self.recursive = match, recursive
+         self.allow_files, self.allow_folders = allow_files, allow_folders
+-        kwargs.setdefault('max_length', 100)
+-        super().__init__(verbose_name, name, **kwargs)
+ 
+     def check(self, **kwargs):
+         return [
+@@ -1687,7 +1687,9 @@ class FilePathField(Field):
+ 
+     def deconstruct(self):
+         name, path, args, kwargs = super().deconstruct()
+-        if self.path != '':
++        if self._path_callback is not None:
++            kwargs['path'] = self._path_callback
++        elif self.path != '':
+             kwargs['path'] = self.path
+         if self.match is not None:
+             kwargs['match'] = self.match
+@@ -1709,7 +1711,7 @@ class FilePathField(Field):
+ 
+     def formfield(self, **kwargs):
+         return super().formfield(**{
+-            'path': self.path,
++            'path': self._path_callback if self._path_callback is not None else self.path,
+             'match': self.match,
+             'recursive': self.recursive,
+             'form_class': forms.FilePathField,
+diff --git a/django/forms/fields.py b/django/forms/fields.py
+index a977256525..3c50b3d7f0 100644
+--- a/django/forms/fields.py
++++ b/django/forms/fields.py
+@@ -1079,6 +1079,8 @@ class FilePathField(ChoiceField):
+     def __init__(self, path, *, match=None, recursive=False, allow_files=True,
+                  allow_folders=False, **kwargs):
+         self.path, self.match, self.recursive = path, match, recursive
++        if callable(self.path):
++            self.path = self.path()
+         self.allow_files, self.allow_folders = allow_files, allow_folders
+         super().__init__(choices=(), **kwargs)
+ 

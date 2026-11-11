@@ -1,0 +1,189 @@
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..b03568f602 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -48,8 +48,45 @@ class Media:
+                 css = {}
+             if js is None:
+                 js = []
+-        self._css_lists = [css]
+-        self._js_lists = [js]
++        self._css_lists, self._js_lists = self._parse_media(css, js)
++
++    def _parse_media(self, css, js):
++        """
++        Split the css and js into sub-lists for merging.
++        For js (a plain list), split at each duplicate element to create
++        sub-lists. For css (a dict mapping medium to file lists), keep
++        the dict structure and apply splitting to each file list.
++        """
++        def parse_list(media):
++            if not media:
++                return [media]
++            seen = {}
++            sub_lists = []
++            current = []
++            for item in media:
++                if item in seen:
++                    sub_lists.append(current)
++                    current = [item]
++                    seen[item] = len(current) - 1
++                else:
++                    seen[item] = len(current)
++                    current.append(item)
++            sub_lists.append(current)
++            return sub_lists
++
++        def parse_css(media):
++            """Parse a CSS dict: {medium: [files]} -> [{medium: [parsed_files]}]."""
++            if not media:
++                return [media]
++            result = []
++            for medium, files in media.items():
++                parsed_files = parse_list(files)
++                # Wrap all parsed sub-lists back into dicts with the medium.
++                for sub_list in parsed_files:
++                    result.append({medium: sub_list})
++            return result
++
++        return (parse_css(css), parse_list(js))
+ 
+     def __repr__(self):
+         return 'Media(css=%r, js=%r)' % (self._css, self._js)
+@@ -59,22 +96,123 @@ class Media:
+ 
+     @property
+     def _css(self):
+-        css = self._css_lists[0]
+-        # filter(None, ...) avoids calling merge with empty dicts.
+-        for obj in filter(None, self._css_lists[1:]):
+-            css = {
+-                medium: self.merge(css.get(medium, []), obj.get(medium, []))
+-                for medium in css.keys() | obj.keys()
+-            }
+-        return css
++        """
++        Build CSS result using a graph-based approach that respects
++        ordering constraints from all sub-lists while minimizing false
++        ordering conflicts from intermediate merges.
++        """
++        # Group sub-lists by medium.
++        css_sublists = {}
++        for sublist in self._css_lists:
++            # Each sublist can be a dict (css={'screen': [...]}), or a
++            # plain list (css=[...]). Handle both cases.
++            if isinstance(sublist, dict):
++                for medium, files in sublist.items():
++                    if medium not in css_sublists:
++                        css_sublists[medium] = []
++                    css_sublists[medium].append(files)
++            else:
++                # Plain list: no medium specified, treat as 'all'.
++                if 'all' not in css_sublists:
++                    css_sublists['all'] = []
++                css_sublists['all'].append(sublist)
++
++        result = {}
++        for medium, sublists in css_sublists.items():
++            # Collect all unique elements in order of first appearance.
++            all_items = []
++            seen = set()
++            for files in sublists:
++                for item in files:
++                    if item not in seen:
++                        all_items.append(item)
++                        seen.add(item)
++            if not all_items:
++                result[medium] = []
++                continue
++
++            # Build dependency graph: for each sublist, adjacent pairs (a, b)
++            # mean b depends on a (a must come before b).
++            dep_of = {}  # item -> element it depends on (or None if no dependency)
++            for files in sublists:
++                for i in range(len(files) - 1):
++                    a, b = files[i], files[i + 1]
++                    if b not in dep_of:  # first occurrence of this dependency chain edge
++                        dep_of[b] = a
++
++            # Topological sort with concatenation-order tiebreaking.
++            result_list = []
++            remaining = set(all_items)
++            while remaining:
++                next_item = None
++                for item in all_items:
++                    if item not in remaining:
++                        continue
++                    dependency = dep_of.get(item)
++                    if dependency is None or dependency not in remaining:
++                        next_item = item
++                        break
++                if next_item is None:
++                    # Cycle detected: output remaining in first-occurrence order
++                    result_list.extend(remaining)
++                    break
++                result_list.append(next_item)
++                remaining.remove(next_item)
++            result[medium] = result_list
++        return result
+ 
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        """
++        Build result by collecting all sub-lists, deduplicating, and then
++        assembling the result using a graph-based approach that preserves
++        ordering constraints from all sub-lists while minimizing false
++        """
++        # Collect all unique elements in order of first appearance.
++        all_items = []
++        seen = set()
++        for sublist in self._js_lists:
++            for item in sublist:
++                if item not in seen:
++                    all_items.append(item)
++                    seen.add(item)
++        if not all_items:
++            return []
++
++        # Build dependency graph: for each sub-list, adjacent pairs (a, b)
++        # mean b depends on a (a must come before b).
++        # Map: item -> element it depends on (or None if no dependency).
++        dep_of = {}  # item -> element it depends on (or None if no dependency)
++        for sublist in self._js_lists:
++            for i in range(len(sublist) - 1):
++                a, b = sublist[i], sublist[i + 1]
++                if b not in dep_of:  # first occurrence of this dependency chain edge
++                    dep_of[b] = a
++
++        # Topological sort with concatenation-order tiebreaking.
++        # Process elements in order of first appearance.
++        result = []
++        remaining = set(all_items)
++        while remaining:
++            # Find the next element: first in remaining that has no unmet
++            # dependencies (dep_of doesn't point to something still in remaining).
++            next_item = None
++            for item in all_items:
++                if item not in remaining:
++                    continue
++                dependency = dep_of.get(item)
++                if dependency is None or dependency not in remaining:
++                    next_item = item
++                    break
++            if next_item is None:
++                # Cycle detected: output remaining in first-occurrence order
++                result.extend(remaining)
++                break
++            # Element has no unmet dependency
++            result.append(next_item)
++            remaining.remove(next_item)
++
++        return result
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))

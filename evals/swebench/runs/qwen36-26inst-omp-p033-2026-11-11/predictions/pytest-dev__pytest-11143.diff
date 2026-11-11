@@ -1,0 +1,13 @@
+diff --git a/src/_pytest/assertion/rewrite.py b/src/_pytest/assertion/rewrite.py
+index 157903faf..85aab030e 100644
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -677,6 +677,8 @@ class AssertionRewriter(ast.NodeVisitor):
+                 and isinstance(item, ast.Expr)
+                 and isinstance(item.value, ast.Constant)
+             ):
++                if not isinstance(item.value.value, str):
++                    break
+                 doc = item.value.value
+                 if self.is_rewrite_disabled(doc):
+                     return

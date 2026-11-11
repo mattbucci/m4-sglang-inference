@@ -78,7 +78,9 @@ across all 12 ecosystems in the 26-instance test set.**
   isolated instances), so harness variants are not a lever. The M4 validation cell agrees:
   qwen36 under omp engages 26/26 with 25 patches on the file the opencode cell patched, 0
   timeouts, 99 min against 87, and the local scorer resolves 6/26 against 5/26 for the
-  opencode lane (`evals/swebench/runs/qwen36-26inst-omp-2026-11-08/`). opencode
+  opencode lane (`evals/swebench/runs/qwen36-26inst-omp-2026-11-08/`). The omp cell on
+  the 25-patch tree (`evals/swebench/runs/qwen36-26inst-omp-p033-2026-11-11/`): 26/26, local
+  scorer 5/26, 89 min, served decode 62 tok/s pooled over 1092 turns. opencode
   stays selectable (`SCAFFOLD=opencode`) to reproduce the archived cells, which ran on it.
 - **Sealed harness:** web tools off, the scaffold and its bash children under a localhost-only
   network sandbox, ancestor-only checkout (no branch, tag or commit past the base commit);
