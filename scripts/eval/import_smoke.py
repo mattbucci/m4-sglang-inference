@@ -51,11 +51,18 @@ ATTR_CHECKS = {
          lambda m: m.WindowedAttentionKVCache.snapshot_state),
         ("PoolBackedAttentionKVCache appends across calls",            # 022
          lambda m: _src_has(m, "if self._full_keys is not None:")),
+        ("WindowedAttentionKVCache.snapshot_state_one_token_back",     # 036
+         lambda m: m.WindowedAttentionKVCache.snapshot_state_one_token_back),
     ],
     "sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state": [
         ("MlxAuxiliaryStateComponent.finalize_match_result_in_cache",  # 008
          lambda m: _own(m.MlxAuxiliaryStateComponent,
                         "finalize_match_result_in_cache")),
+        ("lookahead_view", lambda m: m.lookahead_view),                # 036
+        ("WindowedLookaheadView", lambda m: m.WindowedLookaheadView),  # 036
+    ],
+    "sglang.srt.hardware_backend.mlx.moe.fused_flint_block": [
+        ("patch_flint_moe_blocks", lambda m: m.patch_flint_moe_blocks),  # 037
     ],
     "sglang.srt.hardware_backend.mlx.model_runner": [
         ("_CompactCacheModel", lambda m: m._CompactCacheModel),        # 008

@@ -1,0 +1,111 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+index 8872fab3aa..79ed9c986a 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_kv_cache.py
+@@ -246,6 +246,22 @@ class WindowedAttentionKVCache:
+             self.values[:, :, start : self._local, :],
+         )
+ 
++    def snapshot_state_one_token_back(self):
++        """:meth:`snapshot_state` as it was before the newest token was written.
++
++        Valid right after a one-token write. The window that token found sits
++        just before it in the buffer, also when the write compacted: compaction
++        copies the kept window to the buffer start and puts the token after it.
++        """
++        end = self._local - 1
++        kept = min(end, self.window)
++        if kept == 0:
++            return ()
++        return (
++            self.keys[:, :, end - kept : end, :],
++            self.values[:, :, end - kept : end, :],
++        )
++
+     def reset(self) -> None:
+         """Reset for reuse, keeping allocated buffers."""
+         self.offset = 0
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+index 085beb2f30..a479316603 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+@@ -15,6 +15,9 @@ from typing import Any, Iterable, Iterator, Optional
+ import mlx.core as mx
+ import torch
+ 
++from sglang.srt.hardware_backend.mlx.kv_cache.attention_kv_cache import (
++    WindowedAttentionKVCache,
++)
+ from sglang.srt.mem_cache.base_prefix_cache import EvictParams, InsertResult
+ from sglang.srt.mem_cache.memory_pool import ReqToTokenPool
+ from sglang.srt.mem_cache.unified_cache.components.base import TreeComponent
+@@ -111,6 +114,38 @@ class FrozenCacheView:
+                 setattr(self, name, _clone_tree(getattr(cache, name)))
+ 
+ 
++class WindowedLookaheadView:
++    """A sliding-window layer cache one token back, read out of the live cache.
++
++    A ``FrozenCacheView`` of that cache holds its buffers, so the next token's
++    write has to copy them, on every chained step. The window the newest token
++    found is still in the live buffer, so this keeps the cache and the offset
++    it had, and reads the window when a snapshot asks for it.
++    """
++
++    __slots__ = ("offset", "_cache")
++
++    def __init__(self, cache: WindowedAttentionKVCache):
++        self.offset = cache.offset
++        self._cache = cache
++
++    @property
++    def state(self):
++        if self._cache.offset != self.offset + 1:
++            raise RuntimeError(
++                "windowed lookahead view read "
++                f"{self._cache.offset - self.offset} tokens after it was taken"
++            )
++        return self._cache.snapshot_state_one_token_back()
++
++
++def lookahead_view(cache: Any) -> FrozenCacheView | WindowedLookaheadView:
++    """The state a layer cache holds now, readable after its next token."""
++    if isinstance(cache, WindowedAttentionKVCache):
++        return WindowedLookaheadView(cache)
++    return FrozenCacheView(cache)
++
++
+ def _restore_cache(cache: Any, snapshot: _CacheSnapshot) -> None:
+     cache.state = _clone_tree(snapshot.state)
+     if snapshot.meta_state is not _MISSING and hasattr(cache, "meta_state"):
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 0079bb8e55..21470c786b 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -61,7 +61,7 @@ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     set_context,
+     uses_sliding_window_attention,
+ )
+-from sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state import FrozenCacheView
++from sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state import lookahead_view
+ from sglang.srt.hardware_backend.mlx.remote_code_gate import (
+     ensure_remote_code_allowed,
+     resolve_model_directory,
+@@ -411,7 +411,7 @@ class MlxModelRunner:
+         self._req_to_token_pool: ReqToTokenPool | None = None
+         self._req_pool_idx: dict[str, int] = {}
+         self._req_synced_offset: dict[str, int] = {}
+-        # Per request: (chain_seq, {layer_idx: FrozenCacheView}) — the
++        # Per request: (chain_seq, {layer_idx: lookahead_view}) — the
+         # auxiliary state the newest launched-but-unfinalised chained decode
+         # step was built on. A request that finishes while that lookahead is
+         # in flight donates this state, which matches its radix key; the live
+@@ -2295,7 +2295,7 @@ class MlxModelRunner:
+                 self._lookahead_aux_base[rid] = (
+                     chain_seq,
+                     {
+-                        layer_idx: FrozenCacheView(cache[layer_idx])
++                        layer_idx: lookahead_view(cache[layer_idx])
+                         for layer_idx in self._snapshot_layer_indices
+                     },
+                 )

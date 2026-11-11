@@ -359,6 +359,13 @@ apply_preset() {
             # --sampling-defaults model: Flint ships temperature 1.0 / top-p
             # 0.95 / top-k 20 and Recursive does not validate greedy decoding
             # (requests that set temperature=0 stay greedy).
+            # Patch 037 (on by default for this preset, =0 restores the stock
+            # block): the MoE router logits and the expert combine of a
+            # decode step run as one launch each, bit-identical to the stock
+            # ops: 91.0 tok/s greedy at 1K against 80.8 on
+            # RecursiveSI/flint-int4
+            # (benchmarks/perf/2026-11-10/flint/VERDICT.md).
+            export SGLANG_MLX_FUSE_FLINT_MOE="${SGLANG_MLX_FUSE_FLINT_MOE:-1}"
             MODEL="${MODEL:-mlx-community/flint-oQ8e}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=1024
             SGLANG_MLX_CACHE_LIMIT_GB="${SGLANG_MLX_CACHE_LIMIT_GB:-2}"
