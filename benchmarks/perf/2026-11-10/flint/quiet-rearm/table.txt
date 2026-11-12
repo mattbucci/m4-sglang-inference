@@ -1,0 +1,22 @@
+## A: regression instrument, qwen36, 64 output tokens, tripwire recipe
+| arm | tok/s 1K | 8K | 32K | TTFT ms 1K | 8K | 32K | input tokens | recall at label 28000 |
+|---|---|---|---|---|---|---|---|---|
+| preset-a | 97.4 | 80.8 | 65.0 | 1197.2 | 10057.6 | 55803.7 | [1024, 8192, 32768] | 6/6 at 32240 tokens |
+| stock | 86.7 | 70.6 | 58.7 | 1202.3 | 10170.6 | 56519.6 | [1024, 8192, 32768] | 6/6 at 32240 tokens |
+| preset-b | 98.9 | 79.9 | 64.9 | 1194.3 | 10071.5 | 56487.0 | [1024, 8192, 32768] | 6/6 at 32240 tokens |
+preset-a against the stock arm of the same window: +12.3 % / +14.4 % / +10.7 %
+preset-b against the stock arm of the same window: +14.1 % / +13.2 % / +10.6 %
+mean of the two preset arms: 98.15 / 80.35 / 64.95 against stock: +13.2 % / +13.8 % / +10.6 %
+
+## B: qwen36 at depth, 200 MB command buffers (CTX=131136 MEM_FRAC=0.5 CHUNKED=1024, radix off)
+| arm | prompt tokens | decode tok/s | TTFT s | prefill tok/s | wired peak GB |
+|---|---|---|---|---|---|
+| preset-a | 64919 / 129887 | 60.6 / 44.15 | 133.12 / 397.35 | 487.7 / 326.9 | 28.75 |
+| preset-buf-a | 64919 / 129887 | 63.16 / 44.01 | 134.24 / 395.58 | 483.6 / 328.3 | 28.86 |
+| preset-buf-b | 64919 / 129887 | 63.15 / 45.49 | 133.34 / 395.55 | 486.9 / 328.4 | 29.01 |
+| preset-b | 64919 / 129887 | 60.78 / 45.22 | 132.86 / 398.11 | 488.6 / 326.3 | 28.73 |
+decode: preset 60.69 / 44.69, 200 MB buffers 63.16 / 44.75, +4.1 % / +0.1 %
+prefill: preset 488.15 / 326.60, 200 MB buffers 485.25 / 328.35, -0.6 % / +0.5 %
+TTFT: preset 132.99 / 397.73, 200 MB buffers 133.79 / 395.56, +0.6 % / -0.5 %
+wired peak: preset 28.75 GB, 200 MB buffers 29.01 GB
+130K decode by run order: 44.15 -> 44.01 -> 45.49 -> 45.22

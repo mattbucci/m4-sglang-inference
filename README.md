@@ -24,7 +24,7 @@ compares a live server against them).
 
 | Preset | Checkpoint (mlx-community) | Type | Wts | tok/s @1K / 8K / 32K | TTFT @32K | Context |
 |--------|---------------------------|------|:---:|:--------------------:|:---------:|:--------|
-| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 79.4 / 68.0 / 56.9 | 59 s | **256K validated** |
+| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 97.4 / 80.8 / 65.0 | 56 s | **256K validated** |
 | `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 81.9 / 55.2 / 32.0 | 97 s | 32K measured, 256K label |
 | `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 81.9 / 55.1 / 31.8 | 100 s | 32K measured, 256K label |
 | `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | 26.8 / 25.9 / 23.4 | 100 s | 32K measured |

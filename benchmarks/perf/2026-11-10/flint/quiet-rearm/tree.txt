@@ -1,0 +1,10 @@
+Server tree per arm: module paths in each server log.
+wt042 is the pristine v0.5.23 checkout with patches 001-039 applied.
+j2-reg-preset-a.log wt042-paths 4 live-tree-paths 0
+j2-reg-stock.log wt042-paths 4 live-tree-paths 0
+j2-reg-preset-b.log wt042-paths 4 live-tree-paths 0
+j2-q36deep-preset-a.log wt042-paths 4 live-tree-paths 0
+j2-q36deep-preset-buf-a.log wt042-paths 4 live-tree-paths 0
+j2-q36deep-preset-buf-b.log wt042-paths 4 live-tree-paths 0
+j2-q36deep-preset-b.log wt042-paths 4 live-tree-paths 0
+j2-recall.log wt042-paths 4 live-tree-paths 0

@@ -1,0 +1,146 @@
+display asleep: yes; keyboard and mouse idle 459567 s
+oom guard running
+## part A: regression instrument on qwen36 16:40:34
+## regression arm preset-a () 16:40:34
+MLX buffer cache limit set to 2.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+regression rc=0
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--- recall_32k tripwire (baseline 6/6, seed 42, label 28000) ---
+  rung   28000  in=  32240  verified=True  score=6/6  55s  -> benchmarks/quality/depth-recall/rung28000-tripwire-seed42.json
+  recall_32k: 6/6 [ok]
+  1024: tok/s 79.4 -> 97.4 (+22.7%) [ok]
+  8192: tok/s 68.0 -> 80.8 (+18.8%) [ok]
+  32768: tok/s 56.9 -> 65.0 (+14.2%) [ok]
+RESULT: PASS
+| reg-preset-a | 44 | 787 | 0 | 75 | 86 | 7 |
+run file: benchmarks/regression/qwen36-20261111T164052.json; window 16:40:51-16:44:29
+tracebacks in the log: 0
+## regression arm stock (SGLANG_MLX_FUSE_MOE_ROUTER=0 SGLANG_MLX_FUSE_GDN_FRONT=0 SGLANG_MLX_FUSE_DECODE_LINEARS=0 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 16:44:29
+MLX buffer cache limit set to 2.0 GB
+module paths in the log: frozen tree 4, live tree 0
+regression rc=0
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--- recall_32k tripwire (baseline 6/6, seed 42, label 28000) ---
+  rung   28000  in=  32240  verified=True  score=6/6  55s  -> benchmarks/quality/depth-recall/rung28000-tripwire-seed42.json
+  recall_32k: 6/6 [ok]
+  1024: tok/s 79.4 -> 86.7 (+9.2%) [ok]
+  8192: tok/s 68.0 -> 70.6 (+3.8%) [ok]
+  32768: tok/s 56.9 -> 58.7 (+3.2%) [ok]
+RESULT: PASS
+| reg-stock | 44 | 798 | 0 | 71 | 88 | 7 |
+run file: benchmarks/regression/qwen36-20261111T164451.json; window 16:44:50-16:48:31
+tracebacks in the log: 0
+## regression arm preset-b () 16:48:31
+MLX buffer cache limit set to 2.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+regression rc=0
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--- recall_32k tripwire (baseline 6/6, seed 42, label 28000) ---
+  rung   28000  in=  32240  verified=True  score=6/6  54s  -> benchmarks/quality/depth-recall/rung28000-tripwire-seed42.json
+  recall_32k: 6/6 [ok]
+  1024: tok/s 79.4 -> 98.9 (+24.6%) [ok]
+  8192: tok/s 68.0 -> 79.9 (+17.5%) [ok]
+  32768: tok/s 56.9 -> 64.9 (+14.1%) [ok]
+RESULT: PASS
+| reg-preset-b | 44 | 787 | 0 | 75 | 92 | 7 |
+run file: benchmarks/regression/qwen36-20261111T164855.json; window 16:48:55-16:52:34
+tracebacks in the log: 0
+JOB2A_REG_DONE 16:52:34
+## part B: qwen36 at depth, 200 MB command buffers 16:52:34
+## arm q36deep-preset-a (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache) 16:52:34
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+[q36deep-preset-a] cold   64919 tok: cached None, ttft 133.1217 s, prefill 487.7 tok/s, decode 60.6 tok/s
+[q36deep-preset-a] cold  129887 tok: cached None, ttft 397.3465 s, prefill 326.9 tok/s, decode 44.15 tok/s
+wrote <scratch>/flint/j2-q36deep-preset-a.json
+| q36deep-preset-a | 107 | 911 | 0 | 75 | 99 | 8 |
+<scratch>/flint/quiet_lib.sh: line 27: 72035 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/j2-$name.wired
+wired peak 28.75 GB over 536 samples; window 16:52:59-17:02:01
+tracebacks in the log: 0
+## arm q36deep-preset-buf-a (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache MLX_MAX_MB_PER_BUFFER=200) 17:02:01
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+[q36deep-preset-buf-a] cold   64919 tok: cached None, ttft 134.2355 s, prefill 483.6 tok/s, decode 63.16 tok/s
+[q36deep-preset-buf-a] cold  129887 tok: cached None, ttft 395.5838 s, prefill 328.3 tok/s, decode 44.01 tok/s
+wrote <scratch>/flint/j2-q36deep-preset-buf-a.json
+| q36deep-preset-buf-a | 108 | 903 | 0 | 82 | 99 | 8 |
+<scratch>/flint/quiet_lib.sh: line 27: 76194 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/j2-$name.wired
+wired peak 28.86 GB over 535 samples; window 17:02:26-17:11:27
+tracebacks in the log: 0
+## arm q36deep-preset-buf-b (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache MLX_MAX_MB_PER_BUFFER=200) 17:11:27
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+[q36deep-preset-buf-b] cold   64919 tok: cached None, ttft 133.3441 s, prefill 486.9 tok/s, decode 63.15 tok/s
+[q36deep-preset-buf-b] cold  129887 tok: cached None, ttft 395.5489 s, prefill 328.4 tok/s, decode 45.49 tok/s
+wrote <scratch>/flint/j2-q36deep-preset-buf-b.json
+| q36deep-preset-buf-b | 107 | 909 | 0 | 82 | 99 | 8 |
+<scratch>/flint/quiet_lib.sh: line 27: 80347 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/j2-$name.wired
+wired peak 29.01 GB over 534 samples; window 17:11:52-17:20:52
+tracebacks in the log: 0
+## arm q36deep-preset-b (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache) 17:20:52
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+[q36deep-preset-b] cold   64919 tok: cached None, ttft 132.8635 s, prefill 488.6 tok/s, decode 60.78 tok/s
+[q36deep-preset-b] cold  129887 tok: cached None, ttft 398.1115 s, prefill 326.3 tok/s, decode 45.22 tok/s
+wrote <scratch>/flint/j2-q36deep-preset-b.json
+| q36deep-preset-b | 108 | 906 | 0 | 76 | 99 | 8 |
+<scratch>/flint/quiet_lib.sh: line 27: 84493 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/j2-$name.wired
+wired peak 28.73 GB over 536 samples; window 17:21:19-17:30:21
+tracebacks in the log: 0
+JOB2A_DEEP_DONE 17:30:21
+display asleep at the end of the timed parts: yes
+job2a.sh: line 111: 68276 Terminated: 15          quiet_keeper
+job2a.sh: line 111: 68292 Terminated: 15          nice -n 10 $PY $F/gpu_sampler.py $F/gpu-samples.txt 5 12 > /dev/null 2>&1
+JOB2A_TIMED_DONE 20:15:51
+## part D: depth recall at the 215,040 label, qwen36 preset 20:15:51
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+module paths in the log: frozen tree 4, live tree 0
+  rung  215040  in= 245656  verified=True  score=6/6  1416s  -> <scratch>/flint/recall/rung215040-qwen36-preset-seed42.json
+== 1 rungs, 0 void/error, 0 at <=3/6 ==
+wired peak 28.47 GB; tracebacks in the log: 0
+job2a.sh: line 123: 34360 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 2;
+done ) > $F/j2-recall.wired
+JOB2A_DONE 20:39:54

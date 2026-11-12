@@ -1026,8 +1026,7 @@ both, parts, base:
   sampled and +1.6 % greedy, with prefill not lower (unlike Flint, where the
   same limit costs 6.5 % of the cold prefill at 8K). They cost 1.6 GB of
   wired memory, 15 ms on a follow-up's TTFT and 13 to 14 ms on a repeated
-  request at 1K and 8K. No arm at 65K and 130K yet, so they stay a
-  candidate.
+  request at 1K and 8K. Their arms at 65K and 130K are in the next section.
 
 Decision: the `qwen36` preset sets `SGLANG_MLX_FUSE_MOE_ROUTER`,
 `SGLANG_MLX_FUSE_GDN_FRONT`, `SGLANG_MLX_FUSE_DECODE_LINEARS` and five decode
@@ -1038,6 +1037,71 @@ decode path and 0.0194 for the stock prefill path, perplexity 5.227 against
 5.244 through the server) and depth recall 6/6 at 251K
 (`../micro/VERDICT.md`); five parts are bit-identical. `=0` on a fusion flag
 and `SGLANG_MLX_DECODE_SUBMIT_PARTS=1` restore the stock step.
+
+## Re-armed baseline, buffers at depth, recall on the preset
+
+`quiet-rearm/`. Display asleep and session idle for the timed arms, one server
+per arm, zero tracebacks, the compositor at 0 ms of GPU time per second in
+every arm. Every arm booted from the tree with patches 001 to 039
+(`tree.txt`). `table.txt` is the summary these tables are cut from.
+
+The regression instrument on qwen36 (`scripts/bench/bench_regression.sh`, the
+tripwire recipe with radix off, 64-token replies), order preset, stock flags,
+preset. The stock arm sets the three fusion flags to 0 and one decode
+submission per step:
+
+| arm | tok/s 1K / 8K / 32K | TTFT s 1K / 8K / 32K | recall at label 28000 |
+|---|--:|--:|--:|
+| preset, first | 97.4 / 80.8 / 65.0 | 1.20 / 10.06 / 55.80 | 6/6 at 32,240 tokens |
+| stock flags | 86.7 / 70.6 / 58.7 | 1.20 / 10.17 / 56.52 | 6/6 at 32,240 tokens |
+| preset, second | 98.9 / 79.9 / 64.9 | 1.19 / 10.07 / 56.49 | 6/6 at 32,240 tokens |
+
+- The preset against the stock flags of the same window: +12.3 / +14.4 /
+  +10.7 % and +14.1 / +13.2 / +10.6 %. A second instrument (radix off,
+  64-token replies) reads the same size as the settings table above
+  (+14.5 / +13.8 / +10.8 %).
+- The stock arm is 9.2 / 3.8 / 3.2 % above the baseline that was on file
+  (79.4 / 68.0 / 56.9), so a fifth to two fifths of the distance from that
+  baseline to the preset is the quiet window and the tree, not the preset's
+  flags.
+- `benchmarks/baselines.json` is re-armed from the first preset arm: 97.4 /
+  80.8 / 65.0 tok/s, TTFT 1.20 / 10.06 / 55.80 s. The gate fires on a 10 %
+  drop, and a server that lost the preset's flags reads -11.0 / -12.6 /
+  -9.7 % against it, so the tripwire now catches that at 1K and 8K.
+
+200 MB command buffers on top of the preset at depth (`CTX=131136
+MEM_FRAC=0.5 CHUNKED=1024`, radix off, prompts of 64,919 and 129,887 tokens,
+256-token replies), order preset, buffers, buffers, preset:
+
+| arm | decode 65K / 130K | cold prefill tok/s | TTFT s | wired peak |
+|---|--:|--:|--:|--:|
+| preset, first | 60.60 / 44.15 | 487.7 / 326.9 | 133.12 / 397.35 | 28.75 GB |
+| 200 MB buffers, first | 63.16 / 44.01 | 483.6 / 328.3 | 134.24 / 395.58 | 28.86 GB |
+| 200 MB buffers, second | 63.15 / 45.49 | 486.9 / 328.4 | 133.34 / 395.55 | 29.01 GB |
+| preset, second | 60.78 / 45.22 | 488.6 / 326.3 | 132.86 / 398.11 | 28.73 GB |
+
+- At 65K the buffers are worth +4.1 % (63.16 against 60.69) and both buffer
+  arms sit above both preset arms. At 130K they are worth +0.1 % (44.75
+  against 44.69): the four arms read 44.15, 44.01, 45.49, 45.22 in run
+  order, a 3 % drift of the window that the setting does not rise out of.
+- Prefill -0.6 / +0.5 %, TTFT +0.6 / -0.5 %, wired peak 29.01 against
+  28.75 GB.
+- Over the whole range the setting adds +1.8 / +2.6 / +3.6 / +4.1 / +0.1 %
+  at 1K / 7.6K / 30K / 65K / 130K. On the radix-on preset it costs 1.6 GB of
+  wired memory, 15 ms on a follow-up's TTFT (0.171 to 0.186 s) and 13 to
+  14 ms on a repeated request.
+
+Decision: `MLX_MAX_MB_PER_BUFFER=200` stays opt-in on qwen36. A default has
+to lose nowhere. This one gives nothing at 130K, the depth this rig tunes
+for first, and it pays in wired memory and in the first token of every
+cached follow-up. It is worth setting for single-shot work at 30K to 65K.
+
+Depth recall on the preset as it ships (`CTX=262208 MEM_FRAC=0.5
+CHUNKED=1024`, radix off, label 215040): 245,656 prompt tokens, 6/6, 1,416 s,
+wired peak 28.47 GB, zero tracebacks, the four "enabled" lines of the
+preset's flags in the server log (`driver.txt`). This gate is untimed and ran
+with the session active. Receipt `rung215040-qwen36-preset-seed42.json`, also
+filed under `benchmarks/quality/depth-recall/`.
 
 ## The gap at 1K
 
@@ -1074,6 +1138,7 @@ the preset's sampled step at 1K is 9.76 ms, 102.5 tok/s, 81 % of rec.
 | `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log; the four qwen36 arms |
 | `gates/` | validator, thinking probe and codegen probe on int4 and oQ8e with the preset's flags, and the driver log; `q36-fuse-sub5/`: the five gates on qwen36 with patches 030 to 032 and five decode parts |
 | `quiet-settings/` | quiet GPU: two arms per Flint checkpoint on the shipping preset, ten arms of five settings on the `qwen36` preset, six deep arms of three settings at 65K and 130K, one-second wired memory samples per arm, `table.txt`, `tree.txt`, the driver log |
+| `quiet-rearm/` | quiet GPU: the regression instrument on qwen36 in three arms (preset, stock flags, preset) with their recall receipts, four deep arms of the preset with and without 200 MB buffers and their wired memory samples, depth recall at the 215,040 label on the preset, `table.txt`, `tree.txt`, the driver log |
 | `preset/` | the shipped preset on int4, oQ6e and oQ8e, oQ8e with one decode submission, and one-second wired memory samples of each arm |
 | `deep/` | the published context sweep through 128K on int4 with radix off and one slot, shipping flags against base flags, and the per-chunk prefill rates of both |
 | `fidelity/` | teacher-forced dumps of oQ8e (the reference), oQ6e and int4 |

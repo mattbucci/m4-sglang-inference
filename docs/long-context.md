@@ -23,25 +23,29 @@ Four settings carry the ceiling:
   kill deep prefills at ~100–113K; 1024 buys ~4.3 GB of transient margin over 2048 at no speed
   cost. Chunk size sets the transient peak, not the steady per-token growth.
 
-There is no decode wall: streamed decode is 61.7 tok/s at 32K, 36.0 at 128K and 30.2 at 151K
-(`benchmarks/longctx-bisect/decode-curve/DECISION.md`). Bench tooling needs a long urllib
+There is no decode wall: streamed decode on the preset is 65.0 tok/s at 32K, 60.7 at 65K and
+44.7 at 130K (`benchmarks/perf/2026-11-10/flint/quiet-rearm/`; the per-depth curve to 151K on
+stock decode flags is in `benchmarks/longctx-bisect/decode-curve/DECISION.md`). Bench tooling needs a long urllib
 timeout for deep runs. `--kv-cache-dtype` is inert on this backend (bf16 KV in every run), so
 the levers that move memory are the four above plus `--max-total-tokens`, `MAX_RUNNING` and
 request `max_tokens`. Models with native context below the requested `CTX` get linear RoPE
 interpolation (logged at boot).
 
-**Decode flags at depth.** The `qwen36` preset sets the three fusion flags (patches 030 to
-032, fewer launches per step) and five decode submissions per step (patch 038): 61.8 against
-56.9 tok/s at 65K and 45.4 against 42.8 at 130K, prefill and wired memory equal
-(`benchmarks/perf/2026-11-10/flint/quiet-settings/`). Three more are opt-in: put
-`MLX_MAX_MB_PER_BUFFER=200 SGLANG_MLX_SDPA_BLOCK_LADDER=1 SGLANG_MLX_CLEAR_CACHE_STEPS=0` in
-front of the launch line. With these and the fusion flags a step is 35.8 ms at 251,474 prompt
-tokens against 40.8 with no decode flag, cold prefill 1,430 s against 1,529 s, wired peak
-29.4 GB. The buffer limit commits launches in larger command buffers, the ladder repartitions
-the attention kernel past 196,608 keys (patch 029), and with the buffer-cache cap in place the
-periodic cache clear only stalls a deep decode (93 to 186 ms every 256 steps), so it is
-switched off. Depth recall is 6/6 with the fusion flags, the buffer limit and the ladder set,
-and the cache-clear switch leaves the output identical. Receipts:
+**Decode flags at depth.** The `qwen36` preset sets the three fusion flags (patches 030 to 032,
+fewer launches per step) and five decode submissions per step (patch 038): 61.8 against 56.9
+tok/s at 65K and 45.4 against 42.8 at 130K, prefill and wired memory equal
+(`benchmarks/perf/2026-11-10/flint/quiet-settings/`), and depth recall on the preset is 6/6 at
+245,656 tokens with a 28.5 GB wired peak (`benchmarks/perf/2026-11-10/flint/quiet-rearm/`). Three
+more are opt-in: put `MLX_MAX_MB_PER_BUFFER=200 SGLANG_MLX_SDPA_BLOCK_LADDER=1
+SGLANG_MLX_CLEAR_CACHE_STEPS=0` in front of the launch line. With these and the fusion flags a
+step is 35.8 ms at 251,474 prompt tokens against 40.8 with no decode flag, cold prefill 1,430 s
+against 1,529 s, wired peak 29.4 GB. The buffer limit commits launches in larger command buffers;
+on top of the preset it adds 4.1 % at 65K (63.2 against 60.7 tok/s) and nothing at 130K (44.8
+against 44.7) for 1.6 GB of wired memory with the radix cache on, so the preset leaves it off.
+The ladder repartitions the attention kernel past 196,608 keys (patch 029), and with the
+buffer-cache cap in place the periodic cache clear only stalls a deep decode (93 to 186 ms every
+256 steps), so it is switched off. Depth recall is 6/6 with the fusion flags, the buffer limit
+and the ladder set, and the cache-clear switch leaves the output identical. Receipts:
 `benchmarks/perf/2026-11-10/micro/VERDICT.md`.
 
 ## Memory budget at 256K

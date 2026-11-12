@@ -1,0 +1,27 @@
+=== qwen36 (live bench @ 1024,8192,32768) ===
+=== qwen36 ===
+Model: qwen36
+Port: 23334
+
+Warming up (3 requests)...
+
+--- Context sweep (single user, 64 output tokens, sglang.bench_serving) ---
+ Context    TPOT(ms)     tok/s    TTFT(ms)
+--------------------------------------------------
+    1024        10.3      97.4      1197.2
+    8192        12.4      80.8     10057.6
+   32768        15.4      65.0     55803.7
+
+Skipping concurrency sweep (--skip-concurrency)
+
+Results saved to ~/AI/m4-sglang-inference/benchmarks/regression/qwen36-20261111T164052.json
+--- recall_32k tripwire (baseline 6/6, seed 42, label 28000) ---
+  rung   28000  in=  32240  verified=True  score=6/6  55s  -> benchmarks/quality/depth-recall/rung28000-tripwire-seed42.json
+== 1 rungs, 0 void/error, 0 at <=3/6 ==
+  recall_32k: 6/6 [ok]
+--- comparing ---
+  1024: tok/s 79.4 -> 97.4 (+22.7%) [ok]
+  8192: tok/s 68.0 -> 80.8 (+18.8%) [ok]
+  32768: tok/s 56.9 -> 65.0 (+14.2%) [ok]
+
+RESULT: PASS

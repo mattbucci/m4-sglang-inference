@@ -119,7 +119,7 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 
 ## Optimization Target
 - **Primary:** single-user **256K context** (decode tok/s, TPOT). Measure at long context
-  first. Met: 256K validated, 6/6 recall at 245K, 36 tok/s true decode at 128K.
+  first. Met: 256K validated, 6/6 recall at 245K, 45 tok/s true decode at 130K.
 - **Secondary:** multi-user throughput; never sacrifice single-user latency for batch wins.
 - **Tertiary (most productive workload):** single-user agentic coding at 8-32K per turn.
   qwen36 is the validated recommendation (SWE-bench Lite engagement 26/26; official

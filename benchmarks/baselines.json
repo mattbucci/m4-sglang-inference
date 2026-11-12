@@ -3,10 +3,10 @@
     "hardware": "Apple M4 Pro 64GB",
     "instrument": "scripts/bench/bench_all_unified.py --context-list",
     "output_tokens": 64,
-    "saved": "2026-11-01",
+    "saved": "2026-11-11",
     "schema": 2,
     "serving_recipe": "CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant",
-    "stack": "v0.5.23-17-gbd6c417cd5"
+    "stack": "v0.5.23-18-g99e3ad7e01"
   },
   "coder-30b": {
     "1024": {
@@ -131,21 +131,21 @@
   "qwen36": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 79.4,
-      "tpot_ms": 12.6,
-      "ttft_ms": 1249.5
+      "tok_per_sec": 97.4,
+      "tpot_ms": 10.3,
+      "ttft_ms": 1197.2
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 56.9,
-      "tpot_ms": 17.6,
-      "ttft_ms": 58740.2
+      "tok_per_sec": 65.0,
+      "tpot_ms": 15.4,
+      "ttft_ms": 55803.7
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 68.0,
-      "tpot_ms": 14.7,
-      "ttft_ms": 10398.5
+      "tok_per_sec": 80.8,
+      "tpot_ms": 12.4,
+      "ttft_ms": 10057.6
     },
     "recall_32k": {
       "label": 28000,

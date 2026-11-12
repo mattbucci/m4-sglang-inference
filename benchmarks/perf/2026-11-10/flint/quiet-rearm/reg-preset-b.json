@@ -1,0 +1,36 @@
+{
+  "model": "qwen36",
+  "model_id": "qwen36",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-11-11 16:51:40",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.23-18-g99e3ad7e01",
+  "kv_cache_mode": "auto",
+  "output_tokens": 64,
+  "context_max": 32768,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "tpot_ms": 10.1,
+      "tok_per_sec": 98.9,
+      "ttft_ms": 1194.3,
+      "actual_input_tokens": 1024
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 12.5,
+      "tok_per_sec": 79.9,
+      "ttft_ms": 10071.5,
+      "actual_input_tokens": 8192
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 15.4,
+      "tok_per_sec": 64.9,
+      "ttft_ms": 56487.0,
+      "actual_input_tokens": 32768
+    }
+  ],
+  "throughput_sweep": []
+}

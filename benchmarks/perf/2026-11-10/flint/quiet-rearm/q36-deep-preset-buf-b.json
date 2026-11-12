@@ -1,0 +1,41 @@
+{
+  "tag": "q36deep-preset-buf-b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 70000,
+      "cold": {
+        "prompt_tokens": 64919,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 133.3441,
+        "total_s": 137.3824,
+        "text_sha": "e9e610d4e3d15aaf",
+        "tpot_ms": 15.8357,
+        "decode_tok_s": 63.15
+      },
+      "prefill_tok_s": 486.9
+    },
+    {
+      "target": 140000,
+      "cold": {
+        "prompt_tokens": 129887,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 395.5489,
+        "total_s": 401.1543,
+        "text_sha": "8605bf4de61d5cd9",
+        "tpot_ms": 21.9813,
+        "decode_tok_s": 45.49
+      },
+      "prefill_tok_s": 328.4
+    }
+  ],
+  "runs": [],
+  "followup": []
+}
