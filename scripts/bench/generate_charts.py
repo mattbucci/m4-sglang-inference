@@ -70,6 +70,7 @@ FLEET_DEFAULT_GROUPING = "class"
 
 _FLINT = "perf/2026-11-10/flint"
 _STREAMS = "perf/2026-11-10/concurrent"
+_STAGEB = "perf/2026-11-12/stage-b"
 
 
 def _model(label, cls, quant, color, marker, baseline=None, cold=(), streams=(), results=None):
@@ -92,9 +93,11 @@ MODELS = {
         streams=[f"{_STREAMS}/batched/q36-serial-fused-p1.json", f"{_STREAMS}/batched/q36-serial-fused-p2.json"],
         results="qwen36-35b-a3b-4bit"),
     "coder-30b": _model("Coder-30B-A3B 4-bit DWQ (MoE)", "moe", "4bit", "green", "^",
-                        baseline="coder-30b", results="coder-30b-4bit"),
+                        baseline="coder-30b", results="coder-30b-4bit",
+        streams=[f"{_STAGEB}/ab-coder-30b-router-sub5-a.streams.json", f"{_STAGEB}/ab-coder-30b-router-sub5-b.streams.json"]),
     "qwen3-moe": _model("Qwen3-30B-A3B 4-bit DWQ (MoE)", "moe", "4bit", "pink", "s",
-                        baseline="qwen3-moe", results="qwen3-30b-moe-4bit"),
+                        baseline="qwen3-moe", results="qwen3-30b-moe-4bit",
+        streams=[f"{_STAGEB}/ab-qwen3-moe-router-sub5-a.streams.json", f"{_STAGEB}/ab-qwen3-moe-router-sub5-b.streams.json"]),
     "flint-oq8e": _model(
         "Flint oQ8e (MoE, SWA + sinks)", "moe", "8bit", "tan", ">",
         cold=[f"{_FLINT}/quiet-settings/flint-oq8e-a.json", f"{_FLINT}/quiet-settings/flint-oq8e-b.json"]),
@@ -103,7 +106,8 @@ MODELS = {
     "qwen35-9b-8bit": _model("Qwen3.5-9B 8-bit (DeltaNet)", "dense", "8bit", "pink", "h",
                              baseline="qwen35-9b-8bit", results="qwen35-9b-8bit"),
     "devstral": _model("Devstral-24B 4-bit (Dense)", "dense", "4bit", "yellow", "X",
-                       baseline="devstral", results="devstral-24b-4bit"),
+                       baseline="devstral", results="devstral-24b-4bit",
+        streams=[f"{_STAGEB}/ab-devstral-base-a.streams.json", f"{_STAGEB}/ab-devstral-base-b.streams.json"]),
     "qwen36-27b": _model(
         "Qwen3.6-27B 4-bit (DeltaNet)", "dense", "4bit", "blue", "P", baseline="qwen36-27b",
         streams=[f"{_STREAMS}/batched/d27-serial-p1.json", f"{_STREAMS}/batched/d27-serial-p2.json"],
@@ -115,7 +119,8 @@ MODELS = {
         streams=[f"{_STREAMS}/landed/q35-batched.json", f"{_STREAMS}/landed/q35-batched2.json"],
         results="qwen35-27b-4bit"),
     "qwen3-32b": _model("Qwen3-32B 4-bit DWQ (Dense)", "dense", "4bit", "tan", "*",
-                        baseline="qwen3-32b", results="qwen3-32b-4bit"),
+                        baseline="qwen3-32b", results="qwen3-32b-4bit",
+        streams=[f"{_STAGEB}/ab-qwen3-32b-base-a.streams.json", f"{_STAGEB}/ab-qwen3-32b-base-b.streams.json"]),
 }
 
 # Context axis: every power of two from 128 to 256K; per-model charts share one range.

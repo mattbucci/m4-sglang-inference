@@ -1,0 +1,215 @@
+{
+ "tag": "qwen35-sub5-b",
+ "model": "qwen35",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "qwen35-sub5-b",
+  "out": "ab-qwen35-sub5-b.streams.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 15.28,
+   "aggregate_tok_s": 15.28,
+   "tpot_ms": 65.44,
+   "ttft_s": 1.79
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 14.15,
+   "aggregate_tok_s": 28.29,
+   "tpot_ms": 70.69,
+   "ttft_s": 2.65
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 10.28,
+   "aggregate_tok_s": 41.13,
+   "tpot_ms": 97.26,
+   "ttft_s": 5.71
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 15.293159198505167,
+   "aggregate_tok_s": 15.293159198505167,
+   "tpot_ms": 65.38871315076254,
+   "ttft_s": 1.769644666928798,
+   "window_s": 13.012353917001747,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 15.293159198505167,
+   "wall_tok_s": 13.52997017720048,
+   "prompt_tokens": [
+    220
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "104d84a9273e"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 14.074359675123258,
+   "aggregate_tok_s": 28.148719350246516,
+   "tpot_ms": 71.05118975803369,
+   "ttft_s": 2.6581576040480286,
+   "window_s": 14.103661166969687,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 13.326464704818001,
+   "wall_tok_s": 22.672271696270794,
+   "prompt_tokens": [
+    223,
+    213
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "57e6f1d5e022",
+    "de675066a7ed"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 10.195129682231716,
+   "aggregate_tok_s": 40.780518728926864,
+   "tpot_ms": 98.08605002276929,
+   "ttft_s": 5.719372083287453,
+   "window_s": 19.44555941701401,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 9.688140997961446,
+   "wall_tok_s": 30.20846360476666,
+   "prompt_tokens": [
+    213,
+    214,
+    216,
+    213
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "1eec5381790b",
+    "f31527750cfa",
+    "d93258309eb8",
+    "664eecf1fb37"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 15.267361760739513,
+   "aggregate_tok_s": 15.267361760739513,
+   "tpot_ms": 65.49920121572875,
+   "ttft_s": 1.80577770806849,
+   "window_s": 13.03434104193002,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 15.267361760739513,
+   "wall_tok_s": 13.476981105694998,
+   "prompt_tokens": [
+    215
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "d266b379cd6e"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 14.21798198164247,
+   "aggregate_tok_s": 28.43596396328494,
+   "tpot_ms": 70.3334693552959,
+   "ttft_s": 2.648571270983666,
+   "window_s": 13.961193667026237,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 13.45619826874912,
+   "wall_tok_s": 22.87085197248283,
+   "prompt_tokens": [
+    216,
+    212
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "e2643670a35f",
+    "6d12b348a10c"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 10.369704347766495,
+   "aggregate_tok_s": 41.47881739106598,
+   "tpot_ms": 96.43476481712688,
+   "ttft_s": 5.703949833783554,
+   "window_s": 19.118192124995403,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 9.847805209305587,
+   "wall_tok_s": 30.608837127373832,
+   "prompt_tokens": [
+    216,
+    220,
+    217,
+    215
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "92d8da94c777",
+    "29a0f106afc1",
+    "3b5f8f3ba001",
+    "ab983152f24a"
+   ]
+  }
+ ]
+}

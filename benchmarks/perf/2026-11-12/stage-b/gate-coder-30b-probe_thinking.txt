@@ -1,0 +1,17 @@
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 61, 'total_tokens': 176, 'completion_tokens': 115, 'prompt_tokens_details': None, 'reasoning_tokens': 0, 'completion_tokens_details': None}
+
+--- reasoning_content ---
+''
+
+--- content ---
+'Let me work through this step by step:\n\nStarting amount: 17 apples\n\nStep 1: Give 5 to my sister\n17 - 5 = 12 apples\n\nStep 2: Eat 2 apples\n12 - 2 = 10 apples\n\nStep 3: Buy 12 more apples\n10 + 12 = 22 apples\n\nStep 4: Give half to my brother\n22 ÷ 2 = 11 apples\n\nTherefore, I have 11 apples left.'
+
+correct answer (11) appears   : True
+intermediate step (22) appears: True
+reasoning channel marker      : False
+reasoning_content non-empty   : False
+content non-empty             : True
+
+THINKING DEGRADED

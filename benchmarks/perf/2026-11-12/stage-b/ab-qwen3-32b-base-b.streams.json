@@ -1,0 +1,215 @@
+{
+ "tag": "qwen3-32b-base-b",
+ "model": "qwen3-32b",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "qwen3-32b-base-b",
+  "out": "ab-qwen3-32b-base-b.streams.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 12.73,
+   "aggregate_tok_s": 12.73,
+   "tpot_ms": 78.58,
+   "ttft_s": 2.24
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 11.92,
+   "aggregate_tok_s": 23.83,
+   "tpot_ms": 83.92,
+   "ttft_s": 3.32
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 8.51,
+   "aggregate_tok_s": 34.05,
+   "tpot_ms": 117.48,
+   "ttft_s": 7.14
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 12.71627153599155,
+   "aggregate_tok_s": 12.71627153599155,
+   "tpot_ms": 78.63940284458742,
+   "ttft_s": 2.2411014169920236,
+   "window_s": 15.649241166072898,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 12.71627153599155,
+   "wall_tok_s": 11.17921577361637,
+   "prompt_tokens": [
+    219
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "97bc1aafefca"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 11.859414498068626,
+   "aggregate_tok_s": 23.71882899613725,
+   "tpot_ms": 84.32119479109663,
+   "ttft_s": 3.331766229472123,
+   "window_s": 16.73775716603268,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 11.190933550031012,
+   "wall_tok_s": 18.8825328840446,
+   "prompt_tokens": [
+    222,
+    212
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "129c9352c203",
+    "3980344c28e6"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 8.478865857507069,
+   "aggregate_tok_s": 33.915463430028275,
+   "tpot_ms": 117.94030201747019,
+   "ttft_s": 7.1335397500079125,
+   "window_s": 23.381664874963462,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 8.045032447097299,
+   "wall_tok_s": 24.880156497900266,
+   "prompt_tokens": [
+    212,
+    213,
+    215,
+    212
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "97bc1aafefca",
+    "5354323276ad",
+    "c3d70ef87e8d",
+    "bd4b3539907d"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 12.737075518661321,
+   "aggregate_tok_s": 12.737075518661321,
+   "tpot_ms": 78.51095791454497,
+   "ttft_s": 2.248884667060338,
+   "window_s": 15.62368062499445,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 12.737075518661321,
+   "wall_tok_s": 11.190335395720142,
+   "prompt_tokens": [
+    214
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "c5e288aaf387"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 11.973037112000714,
+   "aggregate_tok_s": 23.94607422400143,
+   "tpot_ms": 83.52099727459196,
+   "ttft_s": 3.3167913539800793,
+   "window_s": 16.578917959006503,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 11.29482168659725,
+   "wall_tok_s": 19.042965422899943,
+   "prompt_tokens": [
+    215,
+    211
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "3ffb87c1aa6d",
+    "97bc1aafefca"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 8.546021316248424,
+   "aggregate_tok_s": 34.1840852649937,
+   "tpot_ms": 117.01351576302703,
+   "ttft_s": 7.140643874765374,
+   "window_s": 23.19792950002011,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 8.104664464675041,
+   "wall_tok_s": 25.0134531668136,
+   "prompt_tokens": [
+    215,
+    219,
+    216,
+    214
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "3c55cd5d0bcb",
+    "c4fd5301d94d",
+    "0d32583a27da",
+    "fd980fd23abe"
+   ]
+  }
+ ]
+}

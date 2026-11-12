@@ -3,7 +3,7 @@
     "hardware": "Apple M4 Pro 64GB",
     "instrument": "scripts/bench/bench_all_unified.py --context-list",
     "output_tokens": 64,
-    "saved": "2026-11-11",
+    "saved": "2026-11-12",
     "schema": 2,
     "serving_recipe": "CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant",
     "stack": "v0.5.23-18-g99e3ad7e01"
@@ -11,21 +11,21 @@
   "coder-30b": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 81.9,
-      "tpot_ms": 12.2,
-      "ttft_ms": 1074.4
+      "tok_per_sec": 88.3,
+      "tpot_ms": 11.3,
+      "ttft_ms": 1048.3
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 32.0,
-      "tpot_ms": 31.2,
-      "ttft_ms": 96544.5
+      "tok_per_sec": 33.2,
+      "tpot_ms": 30.1,
+      "ttft_ms": 101153.5
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 55.2,
-      "tpot_ms": 18.1,
-      "ttft_ms": 12093.1
+      "tok_per_sec": 57.5,
+      "tpot_ms": 17.4,
+      "ttft_ms": 12146.2
     }
   },
   "devstral": {
@@ -71,21 +71,21 @@
   "qwen3-moe": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 81.9,
-      "tpot_ms": 12.2,
-      "ttft_ms": 1075.2
+      "tok_per_sec": 88.4,
+      "tpot_ms": 11.3,
+      "ttft_ms": 1063.4
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 31.8,
-      "tpot_ms": 31.4,
-      "ttft_ms": 100252.9
+      "tok_per_sec": 32.5,
+      "tpot_ms": 30.8,
+      "ttft_ms": 98149.3
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 55.1,
-      "tpot_ms": 18.1,
-      "ttft_ms": 11519.0
+      "tok_per_sec": 57.7,
+      "tpot_ms": 17.3,
+      "ttft_ms": 11513.2
     }
   },
   "qwen35": {

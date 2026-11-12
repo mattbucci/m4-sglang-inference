@@ -103,6 +103,13 @@ apply_preset() {
             # parsing into tool_calls[]); operates on output tokens only so
             # safe under greedy MLX decode.
             MODEL="${MODEL:-mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ}"
+            # Patches 030 and 038 (on by default for this preset, =0 / =1
+            # restore the stock path): fused MoE router launches and a decode
+            # step submitted in five parts. Mirrored A/B against the stock
+            # path: 6.5-7.2 % / 3.4-7.1 % / 2.9-3.6 % more decode at 1K / 8K / 30K,
+            # +5.9 % aggregate at 8 streams, prefill and wired memory level.
+            export SGLANG_MLX_FUSE_MOE_ROUTER="${SGLANG_MLX_FUSE_MOE_ROUTER:-1}"
+            export SGLANG_MLX_DECODE_SUBMIT_PARTS="${SGLANG_MLX_DECODE_SUBMIT_PARTS:-5}"
             CTX=32768; MAX_RUNNING=8; CHUNKED=4096
             EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen3_coder"
             ;;
@@ -245,6 +252,13 @@ apply_preset() {
             # No generation_config.json in the checkpoint: the base model's
             # sampling defaults stand in (see qwen3-32b).
             SAMPLING_FALLBACK="${SAMPLING_FALLBACK-$QWEN3_SAMPLING}"
+            # Patches 030 and 038 (on by default for this preset, =0 / =1
+            # restore the stock path): fused MoE router launches and a decode
+            # step submitted in five parts. Mirrored A/B against the stock
+            # path: 6.3-6.6 % / 2.6-5.7 % / 2.6-4.6 % more decode at 1K / 8K / 30K,
+            # +5.2 % aggregate at 8 streams, prefill and wired memory level.
+            export SGLANG_MLX_FUSE_MOE_ROUTER="${SGLANG_MLX_FUSE_MOE_ROUTER:-1}"
+            export SGLANG_MLX_DECODE_SUBMIT_PARTS="${SGLANG_MLX_DECODE_SUBMIT_PARTS:-5}"
             CTX=32768; MAX_RUNNING=16; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen25"

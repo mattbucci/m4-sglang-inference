@@ -1,0 +1,215 @@
+{
+ "tag": "qwen35-front-lin-sub5-buf-a",
+ "model": "qwen35",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "qwen35-front-lin-sub5-buf-a",
+  "out": "ab-qwen35-front-lin-sub5-buf-a.streams.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 15.55,
+   "aggregate_tok_s": 15.55,
+   "tpot_ms": 64.32,
+   "ttft_s": 1.8
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 14.31,
+   "aggregate_tok_s": 28.62,
+   "tpot_ms": 69.88,
+   "ttft_s": 2.66
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 10.31,
+   "aggregate_tok_s": 41.24,
+   "tpot_ms": 97.0,
+   "ttft_s": 6.33
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 15.555184668416647,
+   "aggregate_tok_s": 15.555184668416647,
+   "tpot_ms": 64.28724707013005,
+   "ttft_s": 1.7572712500113994,
+   "window_s": 12.79316216695588,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 15.555184668416647,
+   "wall_tok_s": 13.745295021025266,
+   "prompt_tokens": [
+    220
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "096c477de439"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 14.320525383466126,
+   "aggregate_tok_s": 28.641050766932253,
+   "tpot_ms": 69.8298402623243,
+   "ttft_s": 2.654034624923952,
+   "window_s": 13.861223292071372,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 13.556728426707124,
+   "wall_tok_s": 23.00907473604248,
+   "prompt_tokens": [
+    223,
+    213
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "8fd4daa8637e",
+    "eb49e271cfd0"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 10.27791363964204,
+   "aggregate_tok_s": 41.11165455856816,
+   "tpot_ms": 97.29601114208506,
+   "ttft_s": 6.99760800000513,
+   "window_s": 19.288934208918363,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 10.316687852529354,
+   "wall_tok_s": 30.433341490681073,
+   "prompt_tokens": [
+    213,
+    214,
+    216,
+    213
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "5fa385140100",
+    "f31527750cfa",
+    "32830b910c89",
+    "5c5090d1bcee"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 15.540851907327971,
+   "aggregate_tok_s": 15.540851907327971,
+   "tpot_ms": 64.34653685416502,
+   "ttft_s": 1.8370705000124872,
+   "window_s": 12.80496083397884,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 15.540851907327971,
+   "wall_tok_s": 13.65930692524213,
+   "prompt_tokens": [
+    215
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "27ad57ce9f8a"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 14.299003208190673,
+   "aggregate_tok_s": 28.598006416381345,
+   "tpot_ms": 69.93494479581526,
+   "ttft_s": 2.6712095210095868,
+   "window_s": 13.88208654196933,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 13.532635663451863,
+   "wall_tok_s": 22.951108630251998,
+   "prompt_tokens": [
+    216,
+    212
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "39242434d30b",
+    "9979aa083fdf"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 10.34021677703936,
+   "aggregate_tok_s": 41.36086710815744,
+   "tpot_ms": 96.70977132902263,
+   "ttft_s": 5.659498385764891,
+   "window_s": 19.172712165978737,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 9.825073172903227,
+   "wall_tok_s": 30.611174824663234,
+   "prompt_tokens": [
+    216,
+    220,
+    217,
+    215
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "ce70a49ec463",
+    "fc9f4675db2d",
+    "3b5f8f3ba001",
+    "ab983152f24a"
+   ]
+  }
+ ]
+}
