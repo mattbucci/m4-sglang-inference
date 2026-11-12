@@ -1,0 +1,87 @@
+{
+ "passed": 8,
+ "total": 8,
+ "verdict": "STRONG",
+ "rows": [
+  {
+   "prompt": "What is the capital of France? Answer in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 57,
+   "seconds": 0.93,
+   "text": "User asks: \"What is the capital of France? Answer in one sentence.\"\n\nNeed answer in one sentence. Should be simple: \"The capital of France is Paris.\" That's one sentence. No need extra. Ensure one sentence only.\nThe capital of France is Paris."
+  },
+  {
+   "prompt": "What is the capital of France? Answer in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 47,
+   "seconds": 0.76,
+   "text": "The user is asking a simple factual question: the capital of France. They want the answer in one sentence.\n\nThe answer is Paris.\n\nI should keep it to one sentence as requested.\nThe capital of France is Paris."
+  },
+  {
+   "prompt": "What is 17 + 25? Answer with the number.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 59,
+   "seconds": 0.93,
+   "text": "We need answer simple. User asks \"What is 17 + 25? Answer with the number.\" Need answer with number likely 42. Must comply. Could just \"42\". Ensure no extra? They said answer with the number. final should be just 42.\n42"
+  },
+  {
+   "prompt": "What is 17 + 25? Answer with the number.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 26,
+   "seconds": 0.46,
+   "text": "We need answer simple. Need maybe just number. 17+25=42. Must answer with number.\n42"
+  },
+  {
+   "prompt": "Name the largest planet in the solar system in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 71,
+   "seconds": 1.11,
+   "text": "1.  The user asks for the largest planet in the solar system in one sentence.\n2.  The answer is Jupiter.\n3.  Construct a single sentence stating this fact clearly and concisely.\nThe largest planet in the solar system is Jupiter, a colossal gas giant that is more than twice as massive as all the other planets combined."
+  },
+  {
+   "prompt": "Name the largest planet in the solar system in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 85,
+   "seconds": 1.33,
+   "text": "1.  The user asks for the name of the largest planet in the solar system in one sentence.\n2.  The largest planet is Jupiter.\n3.  The response should be a single sentence.\n4.  Draft: \"The largest planet in the solar system is Jupiter.\"\n5.  Check: One sentence, names the largest planet, accurate.\nThe largest planet in the solar system is Jupiter."
+  },
+  {
+   "prompt": "Write a Python function add(a, b) that returns their sum. Code only.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 74,
+   "seconds": 1.17,
+   "text": "We need to write a Python function add(a, b) that returns their sum. The instruction says \"Code only.\" So we should just output the function definition, no extra text. Likely just:\n\ndef add(a, b):\n    return a + b\n\nThat's it.\n```python\ndef add(a, b):\n    return a + b\n```"
+  },
+  {
+   "prompt": "Write a Python function add(a, b) that returns their sum. Code only.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 268,
+   "seconds": 3.98,
+   "text": "We need to write a Python function add(a, b) that returns their sum. The user says \"Code only.\" So we should just output the function definition without any extra text or explanation.\n\nWe should probably include proper indentation and maybe a docstring? The instruction says \"Code only.\" So we should just output the code, no comments, no extra text.\n\nThe function is simple: return a + b.\n\nWe'll wri"
+  }
+ ]
+}

@@ -46,12 +46,13 @@ validator 3/3, probe trio STRONG, sealed SWE-bench smoke 3/3). The two Qwen buil
 
 ## Checkpoint audits
 
-Run both gates on every new checkpoint before adding numbers to the README:
+Run these on every new checkpoint before adding numbers to the README:
 
 ```bash
 python scripts/eval/check_mlx_quant_scales.py <repo>    # per-layer corruption (dead dequant output)
 python scripts/eval/audit_mlx_quant_metadata.py         # recipe hazards (wrong module classes quantized), header-only
-python scripts/eval/validate_chat_template.py --model <path>
+python scripts/eval/validate_chat_template.py --model <path>    # also warns when generation_config.json is missing
+python scripts/eval/check_mlx_logit_tail.py <repo>              # probability beyond the top 1000 tokens at temperature 1 (raw load)
 ```
 
 | Checkpoint | Recipe-level hazard |
@@ -62,12 +63,21 @@ python scripts/eval/validate_chat_template.py --model <path>
 | `Qwen3.6-35B-A3B-4bit` | DeltaNet `in_proj_a/b` INT4 (60 layers); MoE router and shared-expert gate 8-bit. |
 | `Qwen3-Coder-30B-A3B-4bit-DWQ` / `Qwen3-30B-A3B-4bit-DWQ` | MoE router `mlp.gate` INT4, bounded impact in practice. |
 | `Qwen3.8-27B-8bit` | Ships a `processor_config.json` naming `Qwen3VLImageProcessor`, which `AutoProcessor` cannot load; serve from a mirror without that file (fidelity reference only). |
-| `Devstral-24B`, `Qwen3-32B-DWQ`, `Nemotron-3-Nano-30B-A3B`, `flint-oQ*e`, in-house builds (incl. `Qwopus3.8-27B-Coder-Flash-MLX-4bit`) | **clean** (Flint: router, sinks and norms bf16; 180 shared-expert projections use group size 128, honoured per tensor). |
+| `Qwen3-32B-4bit-DWQ` | Quantization recipe clean, but no `generation_config.json` and a **heavy logit tail**: 34 % of the probability sits beyond the top 1000 tokens at temperature 1.0 (62 % at the worst position; every other loadable preset checkpoint under 0.3 %). A request with no sampling fields returns token soup; greedy and the base model's 0.6 / top-p 0.95 / top-k 20 are coherent, and the preset's `SAMPLING_FALLBACK` applies the latter. Its edit tool calls over-escape newlines in the JSON arguments. |
+| `Qwen3-30B-A3B-4bit-DWQ` / `Qwen3.5-9B-MLX-8bit` | No `generation_config.json`; the logit tail is healthy and default sampling is coherent at temperature 1.0. The presets still carry `SAMPLING_FALLBACK` so the default is the base model's recommendation. |
+| `Devstral-24B`, `Nemotron-3-Nano-30B-A3B`, `flint-oQ*e`, in-house builds (incl. `Qwopus3.8-27B-Coder-Flash-MLX-4bit`) | **clean** (Flint: router, sinks and norms bf16; 180 shared-expert projections use group size 128, honoured per tensor). |
 
 DWQ variants are used where they measured better (`coder-30b` +2.8 MMLU / +20 HE over the
 broken 4-bit, `qwen3-moe` +7.9 MMLU / −5 HE, `qwen3-32b` +2.8 / +7.5); `qwen36` stays on
 standard 4-bit (its DWQ trades −5.5 MMLU for +15 HE; `MODEL=mlx-community/Qwen3.6-35B-A3B-4bit-DWQ`
 overrides). **Never blind-swap DWQ: recipes vary per upload; measure MMLU + HumanEval per model.**
+
+**Default sampling.** Every capability gate sends temperature 0, and the omp scaffold sends no
+sampling fields at all, so a gate-clean preset can still serve its agentic turns from a default
+nobody tested. `scripts/eval/probe_defaults.py` sends four short questions with no sampling fields
+(`probe_all.sh` runs it on every preset); `check_mlx_logit_tail.py` loads the checkpoint raw and
+reports how much probability it leaves beyond the top 1000 tokens, which is what an untruncated
+temperature 1.0 default samples from. Receipts: `benchmarks/perf/2026-11-10/sampling-defaults/VERDICT.md`.
 
 Chat-template hazards the validator catches: Devstral leading BOS produces `<unk>` (fixed by
 `scripts/devstral_chat_template.jinja`); Qwen3.5 thinking tags without calibrated thinking

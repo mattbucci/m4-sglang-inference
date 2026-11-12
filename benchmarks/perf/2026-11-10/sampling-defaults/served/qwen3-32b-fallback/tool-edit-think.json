@@ -1,0 +1,35 @@
+{
+ "no_think": false,
+ "max_tokens": 2500,
+ "sampling": null,
+ "verdict": "PARTIAL",
+ "rows": [
+  {
+   "finish": "stop",
+   "completion_tokens": 475,
+   "reasoning_chars": 1630,
+   "content_chars": 311,
+   "tool_calls": [],
+   "ok": false
+  },
+  {
+   "finish": "tool_calls",
+   "completion_tokens": 370,
+   "reasoning_chars": 1132,
+   "content_chars": 0,
+   "tool_calls": [
+    "edit"
+   ],
+   "ok": true,
+   "argument_keys": [
+    "new",
+    "old",
+    "path"
+   ],
+   "path": "src/handlers.py",
+   "old_in_file": true,
+   "new_has_line": true,
+   "escaped_newlines": false
+  }
+ ]
+}

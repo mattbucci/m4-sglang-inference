@@ -1,7 +1,7 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's
-native MLX backend: **SGLang v0.5.23** (`297e54f`) + 30 patches ([patches/README.md](patches/README.md)).
+native MLX backend: **SGLang v0.5.23** (`297e54f`) + 31 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
 than peak batch throughput. Known issues are
@@ -138,9 +138,10 @@ Session endurance, the append-turn cost and the radix prefix cache on hybrids:
 | `smol-docling` | 256M VLM | smoke test only |
 
 Every preset sets `--mlx-enable-sampling` (per-request temperature / top-p / top-k / min-p;
-greedy stays bit-stable argmax; `--sampling-defaults model` applies checkpoint generation
-configs). Hybrid presets and `flint` run the radix cache and keep the pipelined decode loop
-under it (patch 028, +5–25 % decode tok/s; `SGLANG_MLX_HYBRID_OVERLAP=0` restores the normal
+greedy stays bit-stable argmax; a request with no sampling fields takes the checkpoint's
+generation config, or the preset's `SAMPLING_FALLBACK` where the checkpoint ships none:
+`qwen3-32b`, `qwen3-moe`, `qwen35-9b-8bit`). Hybrid presets and `flint` run the radix cache
+and keep the pipelined decode loop under it (patch 028, +5–25 % decode tok/s; `SGLANG_MLX_HYBRID_OVERLAP=0` restores the normal
 loop). `launch.sh` knobs: `CTX`, `MEM_FRAC`,
 `CHUNKED`, `MAX_RUNNING`, `MAX_TOTAL_TOKENS`, `MODEL`, `EXTRA_ARGS`, `--kv-cache` (accepted,
 inert on this backend: KV stays bf16).
@@ -156,7 +157,7 @@ Receipts: `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`.
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 30 patches + gates
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 31 patches + gates
 source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; always before launching
 
 ./scripts/launch.sh qwen36                  # PRIMARY (any preset from the table above)
@@ -201,7 +202,7 @@ Python 3.12, ~200 GB disk for models. Reference rig: Mac mini (Mac16,11), M4 Pro
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 30 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 31 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -238,7 +239,8 @@ under the radix cache · 029 SDPA block ladder (opt-in) · 030–032 fused decod
 (on in `qwen36`) · 033–035 mRoPE prefix-hit positions, per-request delta, batched decode ·
 036 windowed lookahead view · 037 fused Flint MoE block (on in `flint`) · 038 decode
 submission in parts (5 in `flint` and `qwen36`) · 039 scheduled snapshot evaluation ·
-040 prompt-lookup drafts for a lone request on a dense checkpoint (opt-in).
+040 prompt-lookup drafts for a lone request on a dense checkpoint (opt-in) · 041 sampling
+defaults for a checkpoint with no generation config.
 
 **Gate protocol (publish precondition):** every setup run, and any stack change before its
 numbers are published, must pass `scripts/test_patch_gates.sh` (pristine replay +

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Run the probe trio (thinking + vision + codegen) against every M4 preset.
+# Run the probe trio (thinking + vision + codegen) against every M4 preset,
+# plus the default-sampling probe (no sampling fields sent) on all of them.
 # Ported in concept from the 3090 sister repo's test_capabilities_all.sh — but
 # uses the deeper content-aware probes (probe_thinking / probe_vision /
 # probe_codegen) instead of the validator's loose keyword grep.
@@ -16,6 +17,7 @@
 #   - gemma4 / gemma4-31b:                  codegen + thinking + vision + video
 #   - nemotron-30b:                         codegen + thinking (text-only Mamba2+Attn+MoE)
 #   - nemotron-omni:                        codegen + vision + video + thinking (patch 017 aligns multi-image token/feature counts)
+#   - every preset:                         defaults (what a client that sends no temperature gets)
 #
 # Output: JSON-per-preset under benchmarks/quality/probe-trio/<preset>.json with
 # {thinking, vision, codegen} verdicts and per-probe rc.
@@ -44,6 +46,7 @@ mkdir -p "$LOG_DIR" "$RESULTS_DIR"
 # processor which pulls in torchcodec/decord); arch must support multi-image
 # input (Qwen-VL, Gemma 4, Devstral) — same patch 013 plumbing as vision.
 probes_for() {
+    echo -n "defaults "
     case "$1" in
         coder-30b)         echo "codegen" ;;
         coder-next)        echo "codegen" ;;
@@ -71,6 +74,7 @@ probe_args() {
     case "$1:$2" in
         flint:codegen)  echo "--max-tokens 4096" ;;
         flint:thinking) echo "--max-tokens 4096" ;;
+        flint:defaults) echo "--max-tokens 2048" ;;
         *)              echo "" ;;
     esac
 }

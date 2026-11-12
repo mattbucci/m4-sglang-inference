@@ -9,6 +9,10 @@ Adapted from the 3090 sister repo. Catches static (no-server-needed) issues:
   3. Thinking templates: enable_thinking kwarg actually toggles the marker
      (catches Qwen3.5/Coder where the template embeds <think> regardless).
   4. Vision content placeholder renders without raising.
+  5. generation_config.json is present (warning only). Without it a chat
+     request that sends no sampling fields decodes at temperature 1.0 with no
+     truncation; the preset then needs SAMPLING_FALLBACK (patch 041), and
+     check_mlx_logit_tail.py says how bad that default is for the checkpoint.
 
 Optionally also pings a live server with a tiny prompt to catch unicode-replacement
 chars or empty content.
@@ -21,12 +25,27 @@ Usage:
     python scripts/eval/validate_chat_template.py --model <path> --port 23334
 """
 import argparse
+import glob
+import os
 import sys
 
 
 def load_tokenizer(model_path):
     from transformers import AutoTokenizer
     return AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+
+
+def has_generation_config(model_path):
+    """True or False for a checkpoint on disk, None when it is not on disk."""
+    if os.path.isdir(model_path):
+        dirs = [model_path]
+    else:
+        hub = os.path.expanduser(os.environ.get("HF_HOME", "~/.cache/huggingface") + "/hub")
+        repo = "models--" + model_path.replace("/", "--")
+        dirs = glob.glob(os.path.join(hub, repo, "snapshots", "*"))
+    if not dirs:
+        return None
+    return any(os.path.exists(os.path.join(d, "generation_config.json")) for d in dirs)
 
 
 def check_has_template(tok):
@@ -147,6 +166,15 @@ def main():
         tag = "OK" if status is True else ("SKIP" if status is None else "FAIL")
         print(f"  [{tag:4}] {name}: {detail}")
         results.append((name, status, detail))
+
+    gen = has_generation_config(args.model)
+    if gen is False:
+        print("  [WARN] generation config: generation_config.json is missing; a chat request with no "
+              "sampling fields decodes at temperature 1.0 with no truncation. Give the preset "
+              "SAMPLING_FALLBACK (launch.sh) and run check_mlx_logit_tail.py on the checkpoint.")
+    else:
+        print(f"  [{'OK' if gen else 'SKIP':4}] generation config: "
+              f"{'generation_config.json present' if gen else 'checkpoint not on disk, not checked'}")
 
     live_status = None
     if args.port:

@@ -1,0 +1,109 @@
+diff --git a/python/sglang/srt/arg_groups/field_order.py b/python/sglang/srt/arg_groups/field_order.py
+index e61963eea3..000be505ab 100644
+--- a/python/sglang/srt/arg_groups/field_order.py
++++ b/python/sglang/srt/arg_groups/field_order.py
+@@ -153,6 +153,7 @@ POSITIONAL_FIELD_ORDER = (
+     "tool_call_parser",
+     "tool_server",
+     "sampling_defaults",
++    "sampling_defaults_fallback",
+     "asr_max_buffer_seconds",
+     "asr_max_concurrent_sessions",
+     "preferred_sampling_params",
+diff --git a/python/sglang/srt/arg_groups/fields/serving.py b/python/sglang/srt/arg_groups/fields/serving.py
+index fda824b84d..f83f223ca6 100644
+--- a/python/sglang/srt/arg_groups/fields/serving.py
++++ b/python/sglang/srt/arg_groups/fields/serving.py
+@@ -236,6 +236,13 @@ class Serving(msgspec.Struct):
+             choices=["openai", "model"],
+         ),
+     ] = "model"
++    sampling_defaults_fallback: A[
++        Optional[str],
++        Arg(
++            help="json-formatted sampling parameters used as the model defaults when the checkpoint ships no generation_config.json. Only applies with '--sampling-defaults model'. Supported keys: temperature, top_p, top_k, min_p, repetition_penalty.",
++            type_parser=json.loads,
++        ),
++    ] = None
+     asr_max_buffer_seconds: A[
+         int,
+         "Maximum seconds of PCM audio the streaming ASR WebSocket handler will accumulate before closing the session with a buffer_overflow error. Guards against OOM when a client streams audio faster than inference can consume it. Default 60s.",
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index b9df131985..6f94d815a4 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -563,6 +563,31 @@ def get_num_indexer_layers(config) -> int:
+     return getattr(config, "num_indexer_layers", 0)
+ 
+ 
++# The keys get_default_sampling_params reads from a generation config.
++_SAMPLING_DEFAULT_KEYS = (
++    "repetition_penalty",
++    "temperature",
++    "top_k",
++    "top_p",
++    "min_p",
++)
++
++
++def _parse_sampling_defaults_fallback(
++    fallback: Union[str, dict[str, Any], None],
++) -> dict[str, Any]:
++    if not fallback:
++        return {}
++    params = json.loads(fallback) if isinstance(fallback, str) else dict(fallback)
++    unknown = sorted(set(params) - set(_SAMPLING_DEFAULT_KEYS))
++    if unknown:
++        raise ValueError(
++            f"--sampling-defaults-fallback: unsupported keys {unknown}, "
++            f"expected a subset of {list(_SAMPLING_DEFAULT_KEYS)}"
++        )
++    return params
++
++
+ class ModelConfig:
+     def __init__(
+         self,
+@@ -588,6 +613,7 @@ class ModelConfig:
+         model_config_parser: str = "auto",
+         speculative_algorithm: Optional[str] = None,
+         is_draft_quantization_explicit: bool = False,
++        sampling_defaults_fallback: Union[str, dict[str, Any], None] = None,
+     ) -> None:
+         # Parse args
+         self.model_path = model_path
+@@ -598,6 +624,9 @@ class ModelConfig:
+         self.speculative_algorithm = speculative_algorithm
+         self.model_impl = model_impl
+         self.sampling_defaults = sampling_defaults
++        self.sampling_defaults_fallback = _parse_sampling_defaults_fallback(
++            sampling_defaults_fallback
++        )
+         self.quantize_and_serve = quantize_and_serve
+         self.is_multi_layer_eagle = is_multi_layer_eagle
+         self.disable_hybrid_swa_memory = disable_hybrid_swa_memory
+@@ -969,6 +998,7 @@ class ModelConfig:
+             quantization=quantization,
+             model_impl=cfg.model_impl,
+             sampling_defaults=cfg.sampling_defaults,
++            sampling_defaults_fallback=cfg.sampling_defaults_fallback,
+             quantize_and_serve=cfg.quantize_and_serve,
+             override_config_file=override_config_file,
+             is_multi_layer_eagle=cfg.enable_multi_layer_eagle,
+@@ -2224,7 +2254,15 @@ class ModelConfig:
+             return {}
+ 
+         if self.hf_generation_config is None:
+-            return {}
++            # A converted checkpoint can ship without generation_config.json;
++            # every request field left unset would then take the OpenAI default.
++            if self.sampling_defaults_fallback:
++                logger.info(
++                    "No generation_config.json in the checkpoint; default "
++                    "sampling params fall back to %s",
++                    self.sampling_defaults_fallback,
++                )
++            return dict(self.sampling_defaults_fallback)
+ 
+         config = self.hf_generation_config.to_dict()
+ 

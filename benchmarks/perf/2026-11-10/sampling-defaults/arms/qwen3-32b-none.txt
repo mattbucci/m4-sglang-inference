@@ -1,0 +1,8 @@
+nothing sent                               | length | ' простความสามารถ underestimate Q relu conversations lui advisor Mode Enc Sn Discovery.player:right parasites stick generic === FORWARDamentosсы vale E'
+temperature 0                              | stop   | 'The capital of France is Paris, a city renowned for its historical landmarks, cultural institutions, and vibrant atmosphere.'
+temperature 0.6                            | stop   | 'The capital of France is Paris, a bustling metropolis known for its rich history, iconic landmarks such as the Eiffel Tower and the Louvre, and its vi'
+temperature 1.0                            | length | 'Lastly, human interactions across these discourses occurred through person tuausionsaguoming veteran_activity redux harborるのが╳看一看/H.\n\n\n\n\n\nIputAvg Barr'
+temperature 1.0, top_k 20                  | stop   | 'Paris is the capital of France.'
+temperature 1.0, top_p 0.95                | length | 'amوافق-par茅台 consoles resident innovation boats Submission林 do Neighbor翌 hashing_OWNER Personality KOholesputed.models μら echo Haltery Magazine rumors'
+temperature 0.6, top_k 20, top_p 0.95      | stop   | 'The capital of France is Paris, a city renowned for its cultural landmarks, historical significance, and vibrant art scene.'
+nothing sent, again                        | length | 'phere-red alguns override texts HERO Little BuildingsIC Story Designer eligible caliber stones lePin Section mf Bir一遍ârzura moist! the lookvia busines'

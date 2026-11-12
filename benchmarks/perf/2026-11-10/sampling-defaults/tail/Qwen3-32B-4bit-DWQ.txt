@@ -1,0 +1,33 @@
+  'The'            p=0.2520 top1=0.2520 beyond1000=0.5590 at T=0.6: 0.0020 max logit 11.69 median 0.14
+  ' capital'       p=0.5074 top1=0.5074 beyond1000=0.3730 at T=0.6: 0.0005 max logit 11.94 median -1.11
+  ' of'            p=0.7424 top1=0.7424 beyond1000=0.2222 at T=0.6: 0.0001 max logit 12.94 median -0.62
+  ' France'        p=0.8429 top1=0.8429 beyond1000=0.1101 at T=0.6: 0.0000 max logit 13.62 median -0.86
+  ' is'            p=0.5640 top1=0.5640 beyond1000=0.2909 at T=0.6: 0.0002 max logit 11.88 median -1.09
+  ' Paris'         p=0.4387 top1=0.4387 beyond1000=0.4280 at T=0.6: 0.0005 max logit 11.50 median -0.89
+  ','              p=0.2740 top1=0.2740 beyond1000=0.5375 at T=0.6: 0.0011 max logit 11.50 median -0.03
+  ' a'             p=0.3753 top1=0.3753 beyond1000=0.3961 at T=0.6: 0.0006 max logit 12.00 median -0.34
+  ' city'          p=0.2572 top1=0.2572 beyond1000=0.2944 at T=0.6: 0.0007 max logit 11.50 median -1.04
+  ' renowned'      p=0.3549 top1=0.3549 beyond1000=0.3457 at T=0.6: 0.0006 max logit 11.44 median -1.09
+  ' for'           p=0.6553 top1=0.6553 beyond1000=0.2777 at T=0.6: 0.0001 max logit 12.56 median -0.63
+  ' its'           p=0.4650 top1=0.4650 beyond1000=0.4398 at T=0.6: 0.0005 max logit 11.81 median -0.60
+  ' historical'    p=0.1160 top1=0.1160 beyond1000=0.3652 at T=0.6: 0.0020 max logit 10.62 median -0.94
+  ' landmarks'     p=0.4121 top1=0.4121 beyond1000=0.3108 at T=0.6: 0.0004 max logit 11.94 median -1.06
+  'def'            p=0.0068 top1=0.3081 beyond1000=0.5915 at T=0.6: 0.0014 max logit 11.56 median 0.01
+  ' add'           p=0.7518 top1=0.7518 beyond1000=0.1955 at T=0.6: 0.0001 max logit 13.69 median -0.02
+  '(a'             p=0.7394 top1=0.7394 beyond1000=0.2236 at T=0.6: 0.0001 max logit 13.19 median -0.17
+  ','              p=0.7900 top1=0.7900 beyond1000=0.1831 at T=0.6: 0.0000 max logit 13.25 median -0.36
+  ' b'             p=0.8584 top1=0.8584 beyond1000=0.1213 at T=0.6: 0.0000 max logit 12.75 median -1.44
+  '):\n'           p=0.5527 top1=0.5527 beyond1000=0.3424 at T=0.6: 0.0002 max logit 12.25 median -0.34
+  '   '            p=0.3327 top1=0.3327 beyond1000=0.6199 at T=0.6: 0.0012 max logit 11.38 median -0.13
+  ' return'        p=0.5378 top1=0.5378 beyond1000=0.3979 at T=0.6: 0.0003 max logit 12.12 median -0.35
+  ' a'             p=0.6939 top1=0.6939 beyond1000=0.2757 at T=0.6: 0.0001 max logit 12.94 median -0.17
+  ' +'             p=0.7202 top1=0.7202 beyond1000=0.2552 at T=0.6: 0.0001 max logit 13.12 median -0.07
+  ' b'             p=0.5338 top1=0.5338 beyond1000=0.4164 at T=0.6: 0.0003 max logit 12.19 median -0.27
+mlx-community/Qwen3-32B-4bit-DWQ  (mlx-lm, 25 positions)
+  generation_config.json: MISSING
+  mass beyond the top 1000 at temperature 1.0: mean 0.3429, max 0.6199
+  mass beyond the top 1000 at temperature 0.6: mean 0.0005
+  max logit minus median logit, median over positions: 12.6
+  a chat request with no sampling fields decodes at temperature 1.0 over this tail:
+  give the preset --sampling-defaults-fallback (launch.sh SAMPLING_FALLBACK)
+VERDICT: HEAVY TAIL

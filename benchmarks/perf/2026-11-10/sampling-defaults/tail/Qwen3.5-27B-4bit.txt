@@ -1,0 +1,32 @@
+  'The'            p=0.3770 top1=0.6215 beyond1000=0.0000 at T=0.6: -0.0000 max logit 24.75 median -0.38
+  ' capital'       p=0.9998 top1=0.9998 beyond1000=0.0000 at T=0.6: 0.0000 max logit 25.25 median -2.77
+  ' of'            p=0.9922 top1=0.9922 beyond1000=0.0000 at T=0.6: 0.0000 max logit 30.12 median -3.36
+  ' France'        p=1.0000 top1=1.0000 beyond1000=0.0000 at T=0.6: 0.0000 max logit 30.75 median -3.83
+  ' is'            p=0.9991 top1=0.9991 beyond1000=0.0000 at T=0.6: -0.0000 max logit 28.00 median -3.00
+  ' Paris'         p=0.9962 top1=0.9962 beyond1000=0.0000 at T=0.6: -0.0000 max logit 28.75 median -2.39
+  ','              p=0.9770 top1=0.9770 beyond1000=0.0000 at T=0.6: 0.0000 max logit 24.12 median -3.98
+  ' a'             p=0.9808 top1=0.9808 beyond1000=0.0000 at T=0.6: -0.0000 max logit 27.38 median -1.42
+  ' city'          p=0.2355 top1=0.3024 beyond1000=0.0000 at T=0.6: -0.0000 max logit 24.50 median -2.12
+  ' renowned'      p=0.9916 top1=0.9916 beyond1000=0.0000 at T=0.6: -0.0000 max logit 28.62 median -2.52
+  ' for'           p=0.9516 top1=0.9516 beyond1000=-0.0000 at T=0.6: 0.0000 max logit 29.12 median -2.08
+  ' its'           p=0.9974 top1=0.9974 beyond1000=0.0000 at T=0.6: -0.0000 max logit 27.38 median -2.05
+  ' historical'    p=0.0009 top1=0.5929 beyond1000=0.0001 at T=0.6: -0.0000 max logit 22.12 median -2.22
+  ' landmarks'     p=0.8856 top1=0.8856 beyond1000=0.0000 at T=0.6: -0.0000 max logit 25.50 median -2.31
+  'def'            p=0.3482 top1=0.6506 beyond1000=0.0000 at T=0.6: 0.0000 max logit 25.12 median 0.30
+  ' add'           p=1.0000 top1=1.0000 beyond1000=-0.0000 at T=0.6: 0.0000 max logit 28.25 median -3.66
+  '(a'             p=1.0000 top1=1.0000 beyond1000=0.0000 at T=0.6: 0.0000 max logit 29.88 median -1.16
+  ','              p=0.9994 top1=0.9994 beyond1000=-0.0000 at T=0.6: 0.0000 max logit 28.00 median -2.58
+  ' b'             p=1.0000 top1=1.0000 beyond1000=-0.0000 at T=0.6: 0.0000 max logit 29.50 median -3.27
+  '):'             p=0.9999 top1=0.9999 beyond1000=0.0000 at T=0.6: -0.0000 max logit 28.88 median -2.09
+  '\n'             p=0.9998 top1=0.9998 beyond1000=0.0000 at T=0.6: -0.0000 max logit 25.00 median -3.16
+  '   '            p=1.0000 top1=1.0000 beyond1000=0.0000 at T=0.6: 0.0000 max logit 28.00 median -1.77
+  ' return'        p=0.9999 top1=0.9999 beyond1000=0.0000 at T=0.6: -0.0000 max logit 29.75 median -2.08
+  ' a'             p=1.0000 top1=1.0000 beyond1000=0.0000 at T=0.6: 0.0000 max logit 29.88 median -2.97
+  ' +'             p=1.0000 top1=1.0000 beyond1000=0.0000 at T=0.6: 0.0000 max logit 28.88 median -2.64
+  ' b'             p=0.9999 top1=0.9999 beyond1000=-0.0000 at T=0.6: 0.0000 max logit 29.38 median -3.52
+mlx-community/Qwen3.5-27B-4bit  (mlx-lm, 26 positions)
+  generation_config.json: present
+  mass beyond the top 1000 at temperature 1.0: mean 0.0000, max 0.0001
+  mass beyond the top 1000 at temperature 0.6: mean 0.0000
+  max logit minus median logit, median over positions: 31.0
+VERDICT: OK

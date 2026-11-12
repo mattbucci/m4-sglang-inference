@@ -15,7 +15,14 @@ No vLLM, no llama.cpp, no direct mlx_lm serving — SGLang is the serving layer.
 ### MLX Backend
 - Activated via `SGLANG_USE_MLX=1` environment variable
 - Models loaded via `mlx_lm.load()` — requires MLX-format weights
-- **Greedy sampling only** — `mx.argmax` for token selection; no temperature, top-p, top-k
+- **Sampling is per request** (`--mlx-enable-sampling`, set by every preset) — temperature,
+  top-p, top-k, min-p; a greedy request stays `mx.argmax`
+- **A request with no sampling fields takes the checkpoint's `generation_config.json`.**
+  A converted checkpoint can ship without one, and the request then decodes at
+  temperature 1.0 over the whole vocabulary. Give such a preset `SAMPLING_FALLBACK` in
+  `launch.sh` (patch 041, the base model's generation config) and check it with
+  `scripts/eval/probe_defaults.py`; `scripts/eval/check_mlx_logit_tail.py` measures how
+  much probability the checkpoint leaves in its tail at that default
 - No tensor parallelism — single unified memory device
 - No CUDA graphs — not applicable on Metal
 - No custom all-reduce — single device
@@ -25,9 +32,7 @@ No vLLM, no llama.cpp, no direct mlx_lm serving — SGLang is the serving layer.
 ### Model Format
 - **MLX-format models required** — standard HuggingFace (BF16/FP16) or MLX quantized
 - AWQ/GPTQ/Marlin models from CUDA/ROCm repos are NOT compatible
-- Pre-quantized models available at `mlx-community/` on HuggingFace
-- Convert BF16 models to 4-bit MLX: `mlx_lm.convert --hf-path <model> --mlx-path <output> -q --q-bits 4`
-- Convert to 8-bit MLX: `mlx_lm.convert --hf-path <model> --mlx-path <output> -q --q-bits 8`
+- Pre-quantized models available at `mlx-community/` on HuggingFace; conversion commands under Quantization
 
 ### Memory Budget
 64 GB unified memory, shared between OS, CPU, and GPU. Practical GPU budget ~55 GB.
@@ -103,8 +108,7 @@ Always source `common.sh` and call `setup_mlx_env` before launching.
 - No `--tensor-parallel-size` (always 1)
 - No `--quantization` flag needed (MLX handles quantization internally)
 - No `--attention-backend` flag (MLX handles attention)
-- `--kv-cache-dtype` is inert (MLX stores KV in the attention compute dtype; the aliases only exist so the presets pass argparse)
-- `--max-mamba-cache-size` — the hybrid presets pass `AUX_SLOTS` (default 64) here; it bounds how many prefix-cache checkpoints a hybrid model can keep (see Memory above)
+- `--max-mamba-cache-size` — set by `AUX_SLOTS` on the hybrid presets (see Memory above)
 
 ## Quantization
 
@@ -118,14 +122,6 @@ python -m mlx_lm.convert --hf-path <hf-model-id> --mlx-path <output-dir> -q --q-
 # 8-bit quantization (better quality, ~2x memory)
 python -m mlx_lm.convert --hf-path <hf-model-id> --mlx-path <output-dir> -q --q-bits 8
 ```
-
-### Pre-quantized models
-Many models are pre-quantized on HuggingFace under the `mlx-community/` namespace:
-- `mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit`
-- `mlx-community/Qwen3-Coder-30B-A3B-4bit`
-- etc.
-
-Check `https://huggingface.co/mlx-community` for available models.
 
 ### MoE model quantization — CRITICAL
 The same MoE quantization challenges apply to MLX:
@@ -144,7 +140,7 @@ Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error
 
 ### Methodology
 - Use `sglang.bench_serving` for accurate TPOT measurement when possible
-- For models with greedy-only sampling, `bench_all_unified.py` measures tok/s via the chat API
+- `bench_all_unified.py` runs the context and concurrency sweeps through `sglang.bench_serving`
 - Concurrency sweep: 1, 2, 4, 8, 16
 - Context sweep: powers of 2 from 128 to model max
 - Save to `benchmarks/{model}/results.json`

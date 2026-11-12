@@ -1,0 +1,10 @@
+  ok    ascii 1.00  keyword yes  'The capital of France is Paris.'
+  ok    ascii 1.00  keyword yes  'The capital of France is Paris.'
+  ok    ascii 1.00  keyword yes  '42'
+  ok    ascii 1.00  keyword yes  '42'
+  ok    ascii 1.00  keyword yes  'The largest planet in the solar system is Jupiter.'
+  ok    ascii 1.00  keyword yes  'The largest planet in the solar system is Jupiter.'
+  ok    ascii 1.00  keyword yes  'def add(a, b): return a + b'
+  ok    ascii 1.00  keyword yes  'def add(a, b): return a + b'
+DEFAULT SAMPLING 8/8
+VERDICT: STRONG

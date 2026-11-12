@@ -1,0 +1,238 @@
+{
+ "model": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
+ "loader": "mlx-lm",
+ "positions": 25,
+ "generation_config": true,
+ "mean_beyond_1000": 0.0025,
+ "max_beyond_1000": 0.0338,
+ "mean_beyond_1000_at_0.6": 0.0,
+ "median_logit_span": 21.7,
+ "verdict": "OK",
+ "rows": [
+  {
+   "token": "The",
+   "p_token": 0.1038,
+   "top1": 0.3198,
+   "beyond_1000": 0.0338,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 12.12,
+   "median_logit": -3.0
+  },
+  {
+   "token": " capital",
+   "p_token": 0.9921,
+   "top1": 0.9921,
+   "beyond_1000": 0.0007,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 17.62,
+   "median_logit": -3.03
+  },
+  {
+   "token": " of",
+   "p_token": 0.9806,
+   "top1": 0.9806,
+   "beyond_1000": 0.0001,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 21.12,
+   "median_logit": -1.47
+  },
+  {
+   "token": " France",
+   "p_token": 0.9948,
+   "top1": 0.9948,
+   "beyond_1000": 0.0002,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 18.12,
+   "median_logit": -3.58
+  },
+  {
+   "token": " is",
+   "p_token": 0.9792,
+   "top1": 0.9792,
+   "beyond_1000": 0.0004,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 18.25,
+   "median_logit": -2.53
+  },
+  {
+   "token": " Paris",
+   "p_token": 0.8784,
+   "top1": 0.8784,
+   "beyond_1000": 0.004,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 15.06,
+   "median_logit": -3.47
+  },
+  {
+   "token": ",",
+   "p_token": 0.1303,
+   "top1": 0.3125,
+   "beyond_1000": 0.0043,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 15.06,
+   "median_logit": -1.67
+  },
+  {
+   "token": " a",
+   "p_token": 0.2552,
+   "top1": 0.6122,
+   "beyond_1000": 0.002,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 16.75,
+   "median_logit": -1.8
+  },
+  {
+   "token": " city",
+   "p_token": 0.9363,
+   "top1": 0.9363,
+   "beyond_1000": 0.0003,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 19.0,
+   "median_logit": -2.23
+  },
+  {
+   "token": " renowned",
+   "p_token": 0.1683,
+   "top1": 0.7542,
+   "beyond_1000": 0.0005,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 18.5,
+   "median_logit": -1.98
+  },
+  {
+   "token": " for",
+   "p_token": 0.9994,
+   "top1": 0.9994,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 22.5,
+   "median_logit": -1.35
+  },
+  {
+   "token": " its",
+   "p_token": 0.9926,
+   "top1": 0.9926,
+   "beyond_1000": 0.0001,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 20.75,
+   "median_logit": -1.78
+  },
+  {
+   "token": " historical",
+   "p_token": 0.0177,
+   "top1": 0.5159,
+   "beyond_1000": 0.0026,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 15.62,
+   "median_logit": -2.44
+  },
+  {
+   "token": " landmarks",
+   "p_token": 0.8657,
+   "top1": 0.8657,
+   "beyond_1000": 0.0004,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 18.25,
+   "median_logit": -2.2
+  },
+  {
+   "token": "def",
+   "p_token": 0.621,
+   "top1": 0.621,
+   "beyond_1000": 0.0111,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 13.75,
+   "median_logit": -3.19
+  },
+  {
+   "token": " add",
+   "p_token": 0.9992,
+   "top1": 0.9992,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 21.0,
+   "median_logit": -2.59
+  },
+  {
+   "token": "(a",
+   "p_token": 0.9988,
+   "top1": 0.9988,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 20.75,
+   "median_logit": -2.08
+  },
+  {
+   "token": ",",
+   "p_token": 0.9947,
+   "top1": 0.9947,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 24.62,
+   "median_logit": 0.54
+  },
+  {
+   "token": " b",
+   "p_token": 0.9999,
+   "top1": 0.9999,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 21.12,
+   "median_logit": -3.16
+  },
+  {
+   "token": "):\n",
+   "p_token": 0.975,
+   "top1": 0.975,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 22.38,
+   "median_logit": -1.37
+  },
+  {
+   "token": "   ",
+   "p_token": 0.9752,
+   "top1": 0.9752,
+   "beyond_1000": 0.0008,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 17.12,
+   "median_logit": -2.42
+  },
+  {
+   "token": " return",
+   "p_token": 0.9937,
+   "top1": 0.9937,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 21.25,
+   "median_logit": -2.05
+  },
+  {
+   "token": " a",
+   "p_token": 0.9992,
+   "top1": 0.9992,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 22.38,
+   "median_logit": -2.23
+  },
+  {
+   "token": " +",
+   "p_token": 0.9901,
+   "top1": 0.9901,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": 0.0,
+   "max_logit": 25.25,
+   "median_logit": 1.7
+  },
+  {
+   "token": " b",
+   "p_token": 0.9998,
+   "top1": 0.9998,
+   "beyond_1000": 0.0,
+   "beyond_1000_at_t": -0.0,
+   "max_logit": 22.12,
+   "median_logit": -2.31
+  }
+ ]
+}

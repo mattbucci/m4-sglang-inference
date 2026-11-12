@@ -4,7 +4,7 @@ SGLang with native MLX backend on Apple M4 Pro (64GB unified memory).
 
 **All inference MUST use SGLang with the MLX backend.** Set `SGLANG_USE_MLX=1` for all operations.
 
-**Stack: SGLang v0.5.23 + 30 patches.** Text and VLM/hybrid paths are
+**Stack: SGLang v0.5.23 + 31 patches.** Text and VLM/hybrid paths are
 production-validated. **`qwen36` is the primary agentic model** (codegen
 STRONG, vision STRONG, video STRONG, thinking VERIFIED); `coder-30b` /
 `qwen3-moe` / `qwen3-32b`, `qwen35`, `devstral`, `nemotron-30b`, and `flint`
@@ -22,26 +22,26 @@ do — chunk-grid bf16 noise); patch 028 keeps the overlap decode loop on.
 |------|---------|
 | [README.md](README.md) | Setup, benchmarks, model support; known issues are GitHub issues |
 | [rules-for-agents.md](rules-for-agents.md) | Apple Silicon constraints, launch rules, MLX specifics |
-| [patches/README.md](patches/README.md) | Per-patch notes (30 patches on top of SGLang v0.5.23) |
+| [patches/README.md](patches/README.md) | Per-patch notes (31 patches on top of SGLang v0.5.23) |
 | `docs/` | flint.md, quality.md (evals + checkpoint audits), long-context.md |
 
 ## Key Commands
 ```bash
-scripts/setup.sh                                  # conda env, SGLang v0.5.23, MLX deps, apply 30 patches
+scripts/setup.sh                  # conda env, SGLang v0.5.23, MLX deps, apply 31 patches
 # Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
-scripts/launch.sh qwen36                          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
-scripts/launch.sh coder-30b                       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
-scripts/launch.sh qwen3-32b                       # [OK]  Qwen3-32B-DWQ Dense
-scripts/launch.sh qwen3-moe                       # [OK]  Qwen3-30B-A3B-DWQ MoE
-scripts/launch.sh qwen35                          # [OK]  Qwen3.5-27B DeltaNet hybrid+VL
-scripts/launch.sh devstral                        # [OK]  Devstral 24B + image VLM
-scripts/launch.sh nemotron-30b                    # [OK]  NemotronH Mamba2+Attn+MoE
-scripts/launch.sh flint                           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for int4/oQ6e/oQ4e)
-scripts/launch.sh qwen35-9b-8bit                  # [OK]  Qwen3.5-9B 8-bit (codegen/vision/video STRONG, validator 3/3; thinking always on)
-scripts/launch.sh qwen36-27b                      # [OK]  Qwen3.6-27B Dense+DeltaNet+VL (codegen/vision/video STRONG, thinking VERIFIED; thinking always on)
+scripts/launch.sh qwen36          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
+scripts/launch.sh coder-30b       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
+scripts/launch.sh qwen3-32b       # [OK]  Qwen3-32B-DWQ Dense
+scripts/launch.sh qwen3-moe       # [OK]  Qwen3-30B-A3B-DWQ MoE
+scripts/launch.sh qwen35          # [OK]  Qwen3.5-27B DeltaNet hybrid+VL
+scripts/launch.sh devstral        # [OK]  Devstral 24B + image VLM
+scripts/launch.sh nemotron-30b    # [OK]  NemotronH Mamba2+Attn+MoE
+scripts/launch.sh flint           # [OK]  Recursive Flint 40B-A2.5B MoE coding agent (oQ8e default; MODEL= for int4/oQ6e/oQ4e)
+scripts/launch.sh qwen35-9b-8bit  # [OK]  Qwen3.5-9B 8-bit (codegen/vision/video STRONG, validator 3/3; thinking always on)
+scripts/launch.sh qwen36-27b      # [OK]  Qwen3.6-27B Dense+DeltaNet+VL (codegen/vision/video STRONG, thinking VERIFIED; thinking always on)
 MODEL=mlx-community/Qwen3.8-27B-4bit scripts/launch.sh qwen36-27b   # [OK]  Qwen3.8-27B Dense+DeltaNet+VL (validator 4/4, thinking/vision/codegen gates pass; thinking always on)
-scripts/launch.sh gemma4                          # [WIP] Gemma 4 26B MoE (boot: mlx-vlm attention not recognised)
-scripts/launch.sh gemma4-31b                      # [WIP] Gemma 4 31B Dense (same model class as gemma4)
+scripts/launch.sh gemma4          # [WIP] Gemma 4 26B MoE (boot: mlx-vlm attention not recognised)
+scripts/launch.sh gemma4-31b      # [WIP] Gemma 4 31B Dense (same model class as gemma4)
 # coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
 
 # Capability gates (run AFTER server is up on PORT 23334)
@@ -49,17 +49,19 @@ python scripts/eval/validate_capabilities.py --port 23334    # basic + thinking 
 python scripts/eval/probe_thinking.py        --port 23334    # content-aware reasoning probe
 python scripts/eval/probe_vision.py          --port 23334    # content-aware image probe
 python scripts/eval/probe_codegen.py         --port 23334    # 2-task / 8-test codegen probe
+python scripts/eval/probe_defaults.py        --port 23334    # no sampling fields, as omp sends
 bash   scripts/eval/probe_all.sh                              # full sweep across presets
 PRESETS="nemotron-30b" bash scripts/eval/probe_all.sh         # single-preset sweep
 
 # Pre-launch checkpoint audits (no server needed)
-python scripts/eval/check_mlx_quant_scales.py    <repo>       # per-layer scale corruption scan
-python scripts/eval/audit_mlx_quant_metadata.py               # recipe-level hazards across M4 set
-python scripts/eval/validate_chat_template.py    --model <path>
-for t in scripts/eval/test_*_unit.py scripts/eval/test_incremental_tokenizer.py; do python $t; done   # per-patch CPU tests (021-040), no server
-python scripts/quantize/convert_qwen36_inhouse.py --dry-run     # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
+python scripts/eval/check_mlx_quant_scales.py <repo>   # per-layer scale corruption scan
+python scripts/eval/audit_mlx_quant_metadata.py   # recipe-level hazards across M4 set
+python scripts/eval/validate_chat_template.py --model <path>
+python scripts/eval/check_mlx_logit_tail.py <repo>   # logit tail at temperature 1
+for t in scripts/eval/test_*_unit.py scripts/eval/test_incremental_tokenizer.py; do python $t; done   # per-patch CPU tests (021-041), no server
+python scripts/quantize/convert_qwen36_inhouse.py --dry-run   # in-house qwen36 4-bit, hazard classes BF16 (spec 07); drop --dry-run to convert
 python scripts/eval/quant_fidelity.py --port 23334 --tokenizer <path> --tag <arm> [--ref-dump <8bit-dump.json>] --out <json>   # teacher-forced NLL/PPL, KL to a reference dump
-python3 evals/swebench/audit_rollouts.py                       # answer-leak audit of archived SWE-bench sessions (web/network/git-history); the harness itself is sealed
+python3 evals/swebench/audit_rollouts.py   # answer-leak audit of archived SWE-bench sessions (web/network/git-history); the harness itself is sealed
 bash evals/swebench/vendor_omp.sh && bash evals/swebench/smoke.sh   # sealed SWE-bench cell on the omp scaffold (PRESET= INSTANCES= TIMEOUT=; SCAFFOLD=opencode for the archived lane)
 python scripts/eval/structured_reads.py --server http://<cuda-host>:30000 --tokenizer google/diffusiongemma-26B-A4B-it --question ... --kind noul   # DiffusionGemma reads (CUDA/ROCm host)
 
@@ -85,9 +87,11 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 - **No tensor parallelism** — MLX runs on a single unified memory device
 - **Never open pull requests against upstream packages** (SGLang, MLX, mlx-lm, mlx-vlm, or any dependency). Patches live in `patches/` and the local component tree only; no upstream PRs, no "upstream candidate" queue.
 - **Real sampling supported** (upstream `--mlx-enable-sampling`, set by every
-  preset) — per-request temperature/top-p/top-k/min-p; greedy (the default)
-  stays bit-stable argmax, `--sampling-defaults model` applies checkpoint
-  generation configs. Validate every Qwen-family model with
+  preset) — per-request temperature/top-p/top-k/min-p; greedy stays bit-stable
+  argmax. A request with no sampling fields takes the checkpoint's generation
+  config, or the preset's `SAMPLING_FALLBACK` (patch 041) when it ships none;
+  with neither it decodes at temperature 1.0 untruncated (token soup on
+  `qwen3-32b`). Validate every Qwen-family model with
   `validate_capabilities.py` before publishing numbers — the 3090 confirmed
   Qwen3.x can enter `</think>` repetition loops at temperature=0, so
   thinking workloads should use model-recommended sampling.

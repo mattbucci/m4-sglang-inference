@@ -1,0 +1,22 @@
+[2026-11-11 21:41:24] No generation_config.json in the checkpoint; default sampling params fall back to {'temperature': 0.6, 'top_p': 0.95, 'top_k': 20}
+[2026-11-11 21:41:24] Using default chat sampling params from model generation config: {'temperature': 0.6, 'top_p': 0.95, 'top_k': 20}
+[2026-11-11 21:41:24] No generation_config.json in the checkpoint; default sampling params fall back to {'temperature': 0.6, 'top_p': 0.95, 'top_k': 20}
+[2026-11-11 21:41:25] Prefill batch, #new-seq: 1, #new-token: 6, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 3.74
+[2026-11-11 21:41:27] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.43
+[2026-11-11 21:41:28] Prefill batch, #new-seq: 1, #new-token: 24, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 19.59
+[2026-11-11 21:41:29] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 23, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1.40
+[2026-11-11 21:41:30] Prefill batch, #new-seq: 1, #new-token: 22, #cached-token: 5, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 21.24
+[2026-11-11 21:41:31] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 26, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 3.09
+[2026-11-11 21:41:31] Prefill batch, #new-seq: 1, #new-token: 21, #cached-token: 3, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 32.67
+[2026-11-11 21:41:32] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 23, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.82
+[2026-11-11 21:41:34] Prefill batch, #new-seq: 1, #new-token: 26, #cached-token: 3, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 17.27
+[2026-11-11 21:41:35] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 28, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.69
+[2026-11-11 21:41:42] Prefill batch, #new-seq: 1, #new-token: 484, #cached-token: 1, token usage: 0.02, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 76.28
+[2026-11-11 21:42:01] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 484, token usage: 0.02, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.05
+[2026-11-11 21:42:30] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 480, token usage: 0.02, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.03
+[2026-11-11 21:43:09] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 480, token usage: 0.02, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.03
+[2026-11-11 21:43:39] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.03
+[2026-11-11 21:43:40] Prefill batch, #new-seq: 1, #new-token: 7, #cached-token: 13, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 5.94
+[2026-11-11 21:43:50] Prefill batch, #new-seq: 1, #new-token: 176, #cached-token: 3, token usage: 0.01, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 18.60
+[2026-11-11 21:43:52] Prefill batch, #new-seq: 1, #new-token: 49, #cached-token: 3, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 20.48
+[2026-11-11 21:44:46] Prefill batch, #new-seq: 1, #new-token: 351, #cached-token: 129, token usage: 0.02, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 6.55

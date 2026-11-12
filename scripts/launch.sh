@@ -25,6 +25,11 @@
 # KV cache modes (--kv-cache): fp8 (default), turboquant, fp16 — accepted for
 # CLI compatibility, inert on the MLX backend (KV is stored in the attention
 # compute dtype; the aliases come from patch 002 so presets pass argparse).
+#
+# SAMPLING_FALLBACK: JSON sampling defaults for a checkpoint that ships no
+# generation_config.json (patch 041). The server fills them into the chat
+# request fields a client leaves unset; a checkpoint that ships the file
+# keeps its own. SAMPLING_FALLBACK= (empty) leaves the OpenAI defaults.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,6 +63,9 @@ MAX_RUNNING="${MAX_RUNNING:-8}"
 AUX_SLOTS="${AUX_SLOTS-64}"
 HYBRID_AUX=0
 CHUNKED="${CHUNKED:-4096}"
+# Generation config of the Qwen3 and Qwen3.5 base models (Qwen/Qwen3-32B,
+# Qwen/Qwen3-30B-A3B, Qwen/Qwen3.5-27B), for conversions that dropped it.
+QWEN3_SAMPLING='{"temperature": 0.6, "top_p": 0.95, "top_k": 20}'
 CHAT_TEMPLATE=""
 REASONING=""
 WARMUP=""
@@ -192,6 +200,10 @@ apply_preset() {
             # most workloads (~10 GB resident vs ~14 GB). Radix cache enabled
             # (same aux-state snapshot path as qwen35).
             MODEL="${MODEL:-mlx-community/Qwen3.5-9B-MLX-8bit}"
+            # Neither the checkpoint nor Qwen/Qwen3.5-9B ships a
+            # generation_config.json; the 27B's values are the model card's
+            # thinking-mode setting for precise coding.
+            SAMPLING_FALLBACK="${SAMPLING_FALLBACK-$QWEN3_SAMPLING}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --tool-call-parser qwen3_coder"
@@ -205,6 +217,14 @@ apply_preset() {
             # (non-Coder, non-3.5/3.6) emits JSON-in-tag `<tool_call>{json}</tool_call>`
             # which the qwen25 parser handles.
             MODEL="${MODEL:-mlx-community/Qwen3-32B-4bit-DWQ}"
+            # The checkpoint ships no generation_config.json, so a chat request
+            # with no sampling fields would decode at temperature 1.0 over the
+            # whole vocabulary. This build holds a third of its probability
+            # beyond the top 1000 tokens there (0.34 mean, 0.62 worst position,
+            # scripts/eval/check_mlx_logit_tail.py) and returns token soup;
+            # greedy, temperature 0.6 and top-k 20 are coherent. The fallback
+            # is the base model's generation config.
+            SAMPLING_FALLBACK="${SAMPLING_FALLBACK-$QWEN3_SAMPLING}"
             CTX=32768; MAX_RUNNING=4; CHUNKED=8192
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen25"
@@ -222,6 +242,9 @@ apply_preset() {
             # batched decode path (patch 011); the real ceiling is set by
             # what fits in the activation budget, and 16 fits.
             MODEL="${MODEL:-mlx-community/Qwen3-30B-A3B-4bit-DWQ}"
+            # No generation_config.json in the checkpoint: the base model's
+            # sampling defaults stand in (see qwen3-32b).
+            SAMPLING_FALLBACK="${SAMPLING_FALLBACK-$QWEN3_SAMPLING}"
             CTX=32768; MAX_RUNNING=16; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --tool-call-parser qwen25"
@@ -524,6 +547,7 @@ CMD=(python3 -m sglang.launch_server
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$AUX_SLOTS" && "$HYBRID_AUX" == 1 ]] && CMD+=(--max-mamba-cache-size "$AUX_SLOTS")
+[[ -n "${SAMPLING_FALLBACK:-}" ]] && CMD+=(--sampling-defaults-fallback "$SAMPLING_FALLBACK")
 # Hybrid presets keep the pipelined (overlap) decode loop under the radix
 # cache (patch 028): 5-25 % more decode tok/s than the normal loop, with a
 # finish-time checkpoint that resumes bit-equal to it on every preset

@@ -1,0 +1,33 @@
+[transformers] `MistralCommonBackend.apply_chat_template(..., tokenize=False)` is unsafe and may lead to unexpected behavior. Please consider using `tokenize=True` instead and don't encode the output manually.
+[transformers] `MistralCommonBackend.apply_chat_template(..., tokenize=False)` is unsafe and may lead to unexpected behavior. Please consider using `tokenize=True` instead and don't encode the output manually.
+  'The'            p=0.1038 top1=0.3198 beyond1000=0.0338 at T=0.6: 0.0000 max logit 12.12 median -3.00
+  ' capital'       p=0.9921 top1=0.9921 beyond1000=0.0007 at T=0.6: 0.0000 max logit 17.62 median -3.03
+  ' of'            p=0.9806 top1=0.9806 beyond1000=0.0001 at T=0.6: 0.0000 max logit 21.12 median -1.47
+  ' France'        p=0.9948 top1=0.9948 beyond1000=0.0002 at T=0.6: 0.0000 max logit 18.12 median -3.58
+  ' is'            p=0.9792 top1=0.9792 beyond1000=0.0004 at T=0.6: -0.0000 max logit 18.25 median -2.53
+  ' Paris'         p=0.8784 top1=0.8784 beyond1000=0.0040 at T=0.6: 0.0000 max logit 15.06 median -3.47
+  ','              p=0.1303 top1=0.3125 beyond1000=0.0043 at T=0.6: -0.0000 max logit 15.06 median -1.67
+  ' a'             p=0.2552 top1=0.6122 beyond1000=0.0020 at T=0.6: 0.0000 max logit 16.75 median -1.80
+  ' city'          p=0.9363 top1=0.9363 beyond1000=0.0003 at T=0.6: 0.0000 max logit 19.00 median -2.23
+  ' renowned'      p=0.1683 top1=0.7542 beyond1000=0.0005 at T=0.6: 0.0000 max logit 18.50 median -1.98
+  ' for'           p=0.9994 top1=0.9994 beyond1000=0.0000 at T=0.6: -0.0000 max logit 22.50 median -1.35
+  ' its'           p=0.9926 top1=0.9926 beyond1000=0.0001 at T=0.6: -0.0000 max logit 20.75 median -1.78
+  ' historical'    p=0.0177 top1=0.5159 beyond1000=0.0026 at T=0.6: 0.0000 max logit 15.62 median -2.44
+  ' landmarks'     p=0.8657 top1=0.8657 beyond1000=0.0004 at T=0.6: 0.0000 max logit 18.25 median -2.20
+  'def'            p=0.6210 top1=0.6210 beyond1000=0.0111 at T=0.6: 0.0000 max logit 13.75 median -3.19
+  ' add'           p=0.9992 top1=0.9992 beyond1000=0.0000 at T=0.6: -0.0000 max logit 21.00 median -2.59
+  '(a'             p=0.9988 top1=0.9988 beyond1000=0.0000 at T=0.6: -0.0000 max logit 20.75 median -2.08
+  ','              p=0.9947 top1=0.9947 beyond1000=0.0000 at T=0.6: 0.0000 max logit 24.62 median 0.54
+  ' b'             p=0.9999 top1=0.9999 beyond1000=0.0000 at T=0.6: 0.0000 max logit 21.12 median -3.16
+  '):\n'           p=0.9750 top1=0.9750 beyond1000=0.0000 at T=0.6: 0.0000 max logit 22.38 median -1.37
+  '   '            p=0.9752 top1=0.9752 beyond1000=0.0008 at T=0.6: 0.0000 max logit 17.12 median -2.42
+  ' return'        p=0.9937 top1=0.9937 beyond1000=0.0000 at T=0.6: -0.0000 max logit 21.25 median -2.05
+  ' a'             p=0.9992 top1=0.9992 beyond1000=0.0000 at T=0.6: -0.0000 max logit 22.38 median -2.23
+  ' +'             p=0.9901 top1=0.9901 beyond1000=0.0000 at T=0.6: 0.0000 max logit 25.25 median 1.70
+  ' b'             p=0.9998 top1=0.9998 beyond1000=0.0000 at T=0.6: -0.0000 max logit 22.12 median -2.31
+mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit  (mlx-lm, 25 positions)
+  generation_config.json: present
+  mass beyond the top 1000 at temperature 1.0: mean 0.0025, max 0.0338
+  mass beyond the top 1000 at temperature 0.6: mean 0.0000
+  max logit minus median logit, median over positions: 21.7
+VERDICT: OK

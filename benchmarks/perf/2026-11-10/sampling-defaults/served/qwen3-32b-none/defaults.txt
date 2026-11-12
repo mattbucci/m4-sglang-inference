@@ -1,0 +1,10 @@
+  FAIL  ascii 0.94  keyword no   'okoorsk dual ro af xnxx terrcovering Guillàn Coral Key parad Cit urbanrobbe taxpowe textil'
+  FAIL  ascii 0.91  keyword no   '문맥什么都不 protecting synonyms[layerünküWN牯 tipo Rocket poolsironame the FrenchJessy ana simul'
+  FAIL  ascii 0.94  keyword no   'PHY Tennis Swapna getObject ni rat":"" Lola Incident nickHead,"pho herғqm PrimaryProcessin'
+  FAIL  ascii 0.92  keyword no   '签名.removeFrom losers或其他Widgetahalingumes pond Bey未ziehung F愈海外.codec cathиikal Worksheet l'
+  FAIL  ascii 0.93  keyword no   'The largest planet in the solar system is Joshua노IXолнexeящ, Katça Glenn剧 efficiently espa'
+  FAIL  ascii 0.94  keyword no   'The largest planet in the solar system is...) spark compt recharge Fedora Administrativelc'
+  FAIL  ascii 0.92  keyword no   '```python heirs complet aggravemet*Cevil Lit Officer ProfessionalDataURL still bev informa'
+  FAIL  ascii 0.92  keyword no   '(Mat StatusCode geldMainActivityط往往会�ولة ?athers exposing guidelines Gael tas drove*)Cum e'
+DEFAULT SAMPLING 0/8
+VERDICT: FAIL

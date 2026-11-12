@@ -1,0 +1,87 @@
+{
+ "passed": 8,
+ "total": 8,
+ "verdict": "STRONG",
+ "rows": [
+  {
+   "prompt": "What is the capital of France? Answer in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 8,
+   "seconds": 0.85,
+   "text": "The capital of France is Paris."
+  },
+  {
+   "prompt": "What is the capital of France? Answer in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 8,
+   "seconds": 0.82,
+   "text": "The capital of France is Paris."
+  },
+  {
+   "prompt": "What is 17 + 25? Answer with the number.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 3,
+   "seconds": 0.49,
+   "text": "42"
+  },
+  {
+   "prompt": "What is 17 + 25? Answer with the number.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 3,
+   "seconds": 0.49,
+   "text": "42"
+  },
+  {
+   "prompt": "Name the largest planet in the solar system in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 12,
+   "seconds": 1.08,
+   "text": "Jupiter is the largest planet in the solar system."
+  },
+  {
+   "prompt": "Name the largest planet in the solar system in one sentence.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 12,
+   "seconds": 1.07,
+   "text": "Jupiter is the largest planet in the solar system."
+  },
+  {
+   "prompt": "Write a Python function add(a, b) that returns their sum. Code only.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 18,
+   "seconds": 1.51,
+   "text": "```python\ndef add(a, b):\n    return a + b\n```"
+  },
+  {
+   "prompt": "Write a Python function add(a, b) that returns their sum. Code only.",
+   "ok": true,
+   "keyword": true,
+   "ascii_share": 1.0,
+   "finish": "stop",
+   "completion_tokens": 18,
+   "seconds": 1.52,
+   "text": "```python\ndef add(a, b):\n    return a + b\n```"
+  }
+ ]
+}

@@ -1,0 +1,4 @@
+{"finish": "tool_calls", "completion_tokens": 235, "reasoning_chars": 0, "content_chars": 544, "tool_calls": ["edit"], "ok": false, "argument_keys": ["new", "old", "path"], "path": "src/handlers.py", "old_in_file": false, "new_has_line": true, "escaped_newlines": true}
+{"finish": "stop", "completion_tokens": 361, "reasoning_chars": 0, "content_chars": 1319, "tool_calls": [], "ok": false}
+TOOL EDIT 0/2
+VERDICT: FAIL

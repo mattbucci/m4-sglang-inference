@@ -1,0 +1,4 @@
+{"finish": "length", "completion_tokens": 800, "reasoning_chars": 0, "content_chars": 4075, "tool_calls": [], "ok": false}
+{"finish": "length", "completion_tokens": 800, "reasoning_chars": 0, "content_chars": 3865, "tool_calls": [], "ok": false}
+TOOL EDIT 0/2
+VERDICT: FAIL

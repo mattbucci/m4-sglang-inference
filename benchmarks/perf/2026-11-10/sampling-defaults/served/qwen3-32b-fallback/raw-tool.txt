@@ -1,0 +1,11 @@
+Raw /v1/completions reply to the edit-tool prompt, temperature 0, thinking closed, qwen3-32b with the fallback.
+The chat template was rendered locally with the edit tool; no tool-call parser touches this text.
+prompt tokens 480, completion tokens 199
+
+raw text repr:
+'The current function `handler_3` is:\n\n```python\ndef handler_3(request, response):\n    response.status = 203\n    return response\n```\n\nWe want to modify it to also set `response.reason = \'ok\'`, so the new function will be:\n\n```python\ndef handler_3(request, response):\n    response.status = 203\n    response.reason = \'ok\'\n    return response\n```\n\nHere is the tool call to perform the edit:\n\n```xml\n<tool_call>\n{"name": "edit", "arguments": {"path": "src/handlers.py", "old": "def handler_3(request, response):\\\\n    response.status = 203\\\\n    return response", "new": "def handler_3(request, response):\\\\n    response.status = 203\\\\n    response.reason = \'ok\'\\\\n    return response"}}\n</tool_call>\n```'
+
+inside the tool call's JSON strings: 5 newlines written as backslash backslash n, 0 written as backslash n
+real newline characters in the whole reply: 23
+A JSON string that holds backslash backslash n decodes to a literal backslash and the letter n,
+so the model's own JSON carries the over-escaped newline; the qwen25 parser decodes it faithfully.

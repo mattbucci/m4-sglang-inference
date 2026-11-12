@@ -1,0 +1,2 @@
+mlx-community/flint-oQ8e: not loadable by mlx-lm or mlx-vlm (ValueError)
+VERDICT: NOT LOADED
