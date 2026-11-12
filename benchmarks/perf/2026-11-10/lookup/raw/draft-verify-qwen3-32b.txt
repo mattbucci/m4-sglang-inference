@@ -1,0 +1,35 @@
+loaded mlx-community/Qwen3-32B-4bit-DWQ vlm=False layers=64 active=17.16 GB arms=['plain', 'sync', 'adapt4', 'fixed2']
+
+== psf__requests-1963 turn 12: context 6231 tokens, prefill 72.2s, pure_kv=True
+  plain        47 tok    89.69 ms/tok   11.15 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         47 tok    89.61 ms/tok   11.16 tok/s x1.001  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       60 tok    84.85 ms/tok   11.79 tok/s x1.057  drafts  17 accepted      9/31 replayed   0  vs plain: differs at 6
+  fixed2       60 tok    79.55 ms/tok   12.57 tok/s x1.127  drafts  17 accepted      9/17 replayed   0  vs plain: differs at 6
+  text: "The fix is now applied. Let's verify it by running the relevant tests. I'll run the full test suite to ensure no regressions are introduced, but focus on the redirect-related tests.\n\nLet's run the tests now."
+
+== psf__requests-1963 turn 22: context 10189 tokens, prefill 51.2s, pure_kv=True
+  plain       256 tok    96.61 ms/tok   10.35 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    97.77 ms/tok   10.23 tok/s x0.988  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    61.22 ms/tok   16.34 tok/s x1.579  drafts  64 accepted   134/158 replayed   0  vs plain: same
+  fixed2      256 tok    69.26 ms/tok   14.44 tok/s x1.395  drafts 106 accepted    92/106 replayed   0  vs plain: same
+  text: "The error is due to the `before_request` hook being passed to `prepare()` in the `PreparedRequest`, which is not a valid hook at that stage. The `before_request` hook is not supported in `PreparedRequest.prepare()` \u2014 it's only used in `Session.prepare_request()`.\n\nLet me fix the test by removing the"
+
+== pylint-dev__pylint-5859 turn 4: context 6778 tokens, prefill 73.1s, pure_kv=True
+  plain       256 tok    92.04 ms/tok   10.86 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    93.42 ms/tok   10.70 tok/s x0.985  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    81.96 ms/tok   12.20 tok/s x1.123  drafts  82 accepted    54/142 replayed   0  vs plain: differs at 143
+  fixed2      256 tok    79.93 ms/tok   12.51 tok/s x1.152  drafts  90 accepted     46/90 replayed   0  vs plain: differs at 143
+  text: "The key issue is in the `open` method of the `EncodingChecker` class, where the `notes` are joined with `re.escape`, but the `notes-rgx` is not. The `notes-rgx` is used as-is, which is correct for regex patterns. However, the `notes` are being used in two places:\n\n1. In the `open` method, to build t"
+
+== pylint-dev__pylint-5859 turn 9: context 9245 tokens, prefill 32.1s, pure_kv=True
+  plain       256 tok    97.57 ms/tok   10.25 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    98.73 ms/tok   10.13 tok/s x0.988  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    75.36 ms/tok   13.27 tok/s x1.295  drafts  82 accepted    95/162 replayed   0  vs plain: differs at 20
+  fixed2      256 tok    77.42 ms/tok   12.92 tok/s x1.260  drafts 106 accepted    71/106 replayed   0  vs plain: differs at 20
+  text: "The issue is the `\\b` at the end of the regex pattern. For note tags that are **entirely punctuation**, like `???`, the `\\b` fails to match because there's no word boundary between the punctuation and the following space or colon.\n\n### Solution\n\nWe need to **remove the `\\b`** at the end of the regex"
+
+== pooled over turns
+  plain        1630 tok   10.52 tok/s x1.000
+  sync         1630 tok   10.39 tok/s x0.988
+  adapt4       1656 tok   13.57 tok/s x1.290
+  fixed2       1656 tok   13.19 tok/s x1.254

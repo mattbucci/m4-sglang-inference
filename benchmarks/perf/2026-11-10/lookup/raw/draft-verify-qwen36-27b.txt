@@ -1,0 +1,35 @@
+loaded mlx-community/Qwen3.6-27B-4bit vlm=True layers=64 active=14.95 GB arms=['plain', 'sync', 'adapt4', 'fixed2']
+
+== psf__requests-1963 turn 12: context 6639 tokens, prefill 55.5s, pure_kv=False
+  plain        89 tok    70.64 ms/tok   14.16 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         89 tok    72.76 ms/tok   13.74 tok/s x0.970  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       89 tok    55.77 ms/tok   17.93 tok/s x1.266  drafts  32 accepted     33/58 replayed  35  vs plain: same
+  fixed2       89 tok    58.31 ms/tok   17.15 tok/s x1.211  drafts  41 accepted     24/41 replayed  27  vs plain: same
+  text: "Now I also need to fix line 102 (which is now line 105 after the edit) to use `prepared_request.method` instead of `req.method`:\n\n\n\n<tool_call>\n<function=read>\n<parameter=path>\nrequests/sessions.py:100-110\n</parameter>\n<parameter=i>\nCheck current state of method line\n</parameter>\n</function>\n</tool_"
+
+== psf__requests-1963 turn 22: context 10845 tokens, prefill 35.6s, pure_kv=False
+  plain       256 tok    70.92 ms/tok   14.10 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    73.89 ms/tok   13.53 tok/s x0.960  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    27.70 ms/tok   36.10 tok/s x2.560  drafts  65 accepted   187/191 replayed   4  vs plain: same
+  fixed2      256 tok    39.85 ms/tok   25.10 tok/s x1.780  drafts 127 accepted   125/127 replayed   2  vs plain: same
+  text: "<tool_call>\n<function=bash>\n<parameter=command>\npython -c \"\nfrom requests import Session\nfrom requests.models import PreparedRequest\nfrom requests.structures import CaseInsensitiveDict\nfrom requests.status_codes import codes\n\n# Test the fix: POST -> 303 (method becomes GET) -> 307 (should preserve G"
+
+== pylint-dev__pylint-5859 turn 4: context 7192 tokens, prefill 59.3s, pure_kv=False
+  plain        47 tok    70.91 ms/tok   14.10 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         47 tok    72.62 ms/tok   13.77 tok/s x0.977  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       47 tok    45.17 ms/tok   22.14 tok/s x1.570  drafts  13 accepted     23/29 replayed   8  vs plain: same
+  fixed2       47 tok    49.40 ms/tok   20.24 tok/s x1.435  drafts  19 accepted     17/19 replayed   2  vs plain: same
+  text: "<tool_call>\n<function=read>\n<parameter=path>\npylint/utils/pragma_parser.py\n</parameter>\n<parameter=i>\nread pragma_parser to understand OPTION_PO\n</parameter>\n</function>\n</tool_call>"
+
+== pylint-dev__pylint-5859 turn 9: context 9843 tokens, prefill 22.2s, pure_kv=False
+  plain       167 tok    71.39 ms/tok   14.01 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        167 tok    74.06 ms/tok   13.50 tok/s x0.964  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      155 tok    62.30 ms/tok   16.05 tok/s x1.146  drafts  53 accepted     42/91 replayed  53  vs plain: differs at 57
+  fixed2      155 tok    63.39 ms/tok   15.78 tok/s x1.126  drafts  64 accepted     31/64 replayed  47  vs plain: differs at 57
+  text: "Confirmed! The pattern `#\\s*(YES|\\?\\?\\?)\\b` matches `# YES` but not `# ???` because `\\b` (word boundary) requires a transition between word and non-word characters. After `???`, the next character is a space, and since `?` is not a word character, there's no word boundary.\n\nThe fix is to remove the "
+
+== pooled over turns
+  plain        1118 tok   14.08 tok/s x1.000
+  sync         1118 tok   13.58 tok/s x0.964
+  adapt4       1094 tok   22.95 tok/s x1.630
+  fixed2       1094 tok   19.86 tok/s x1.411

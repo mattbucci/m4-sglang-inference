@@ -75,6 +75,7 @@ def runner(n_tokens, lookahead=None):
         _req_caches={"a": "LIVE"},
         _req_token_ids={"a": list(range(n_tokens))},
         _lookahead_aux_base={} if lookahead is None else {"a": (1, lookahead)},
+        _lookup_rows=0,
         stored=[],
     )
     r._store_auxiliary_state = lambda idx, cache: r.stored.append((idx, cache))

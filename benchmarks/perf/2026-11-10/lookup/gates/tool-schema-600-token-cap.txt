@@ -1,0 +1,24 @@
+## tool schema, qwen3-32b on (SGLANG_MLX_LOOKUP_DECODE=1) 19:32:50
+up
+enabled lines: 1
+finish length usage {'prompt_tokens': 481, 'total_tokens': 1081, 'completion_tokens': 600, 'prompt_tokens_details': None, 'reasoning_tokens': 600, 'completion_tokens_details': {'reasoning_tokens': 600}}
+reasoning chars 2908 content chars 0 tool calls []
+finish length usage {'prompt_tokens': 481, 'total_tokens': 1081, 'completion_tokens': 600, 'prompt_tokens_details': None, 'reasoning_tokens': 600, 'completion_tokens_details': {'reasoning_tokens': 600}}
+reasoning chars 2921 content chars 0 tool calls []
+finish length usage {'prompt_tokens': 481, 'total_tokens': 1081, 'completion_tokens': 600, 'prompt_tokens_details': None, 'reasoning_tokens': 600, 'completion_tokens_details': {'reasoning_tokens': 600}}
+reasoning chars 2912 content chars 0 tool calls []
+7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+599 tokens from 0 drafting, 0 replay-only and 599 ordinary forwards, 0 of 0 drafted tokens kept, 0 rows replayed
+599 tokens from 0 drafting, 0 replay-only and 599 ordinary forwards, 0 of 0 drafted tokens kept, 0 rows replayed
+599 tokens from 0 drafting, 0 replay-only and 599 ordinary forwards, 0 of 0 drafted tokens kept, 0 rows replayed
+tracebacks in the log: 0
+## tool schema, qwen3-32b off () 19:35:44
+up
+enabled lines: 0
+finish length usage {'prompt_tokens': 481, 'total_tokens': 1081, 'completion_tokens': 600, 'prompt_tokens_details': None, 'reasoning_tokens': 600, 'completion_tokens_details': {'reasoning_tokens': 600}}
+reasoning chars 2844 content chars 0 tool calls []
+finish length usage {'prompt_tokens': 481, 'total_tokens': 1081, 'completion_tokens': 600, 'prompt_tokens_details': None, 'reasoning_tokens': 600, 'completion_tokens_details': {'reasoning_tokens': 600}}
+reasoning chars 2886 content chars 0 tool calls []
+finish length usage {'prompt_tokens': 481, 'total_tokens': 1081, 'completion_tokens': 600, 'prompt_tokens_details': None, 'reasoning_tokens': 600, 'completion_tokens_details': {'reasoning_tokens': 600}}
+reasoning chars 2885 content chars 0 tool calls []
+tracebacks in the log: 0

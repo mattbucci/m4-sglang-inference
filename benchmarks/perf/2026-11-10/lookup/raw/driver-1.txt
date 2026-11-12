@@ -1,0 +1,48 @@
+[02:40:24] decode qwen36 rc=0
+
+== pooled over turns
+  plain        2244 tok   77.97 tok/s x1.000
+  sync         2244 tok   65.34 tok/s x0.838
+  adapt4       2256 tok   79.99 tok/s x1.026
+  fixed2-m4    2312 tok   79.43 tok/s x1.019
+  len-m8       2244 tok   80.19 tok/s x1.029
+[02:53:39] decode qwen3-32b rc=0
+  text: "The issue is the `\\b` at the end of the regex pattern. For note tags that are **entirely punctuation**, like `???`, the `\\b` fails to match because there's no word boundary between the punctuation and the following space or colon.\n\n### Solution\n\nWe need to **remove the `\\b`** at the end of the regex"
+
+== pooled over turns
+  plain        1630 tok   10.52 tok/s x1.000
+  sync         1630 tok   10.39 tok/s x0.988
+  adapt4       1656 tok   13.57 tok/s x1.290
+  fixed2       1656 tok   13.19 tok/s x1.254
+[03:01:03] decode qwen36-27b rc=0
+  text: "Confirmed! The pattern `#\\s*(YES|\\?\\?\\?)\\b` matches `# YES` but not `# ???` because `\\b` (word boundary) requires a transition between word and non-word characters. After `???`, the next character is a space, and since `?` is not a word character, there's no word boundary.\n\nThe fix is to remove the "
+
+== pooled over turns
+  plain        1118 tok   14.08 tok/s x1.000
+  sync         1118 tok   13.58 tok/s x0.964
+  adapt4       1094 tok   22.95 tok/s x1.630
+  fixed2       1094 tok   19.86 tok/s x1.411
+[03:08:49] rows qwen36-depth rc=0
+== depth 32768: prefill 47.7s
+rows   1:    17.48 ms per cycle,  17.484 ms per row, x1.000 of 1 one-row cycles
+rows   2:    23.34 ms per cycle,  11.672 ms per row, x0.668 of 2 one-row cycles
+rows   3:    28.47 ms per cycle,   9.491 ms per row, x0.543 of 3 one-row cycles
+rows   4:    35.28 ms per cycle,   8.820 ms per row, x0.504 of 4 one-row cycles
+rows   8:    92.12 ms per cycle,  11.515 ms per row, x0.659 of 8 one-row cycles
+one-row pipelined step 14.61 ms; cache ends at 33602 tokens
+== depth 131072: prefill 381.2s
+rows   1:    26.84 ms per cycle,  26.840 ms per row, x1.000 of 1 one-row cycles
+rows   2:    41.21 ms per cycle,  20.605 ms per row, x0.768 of 2 one-row cycles
+rows   3:    53.17 ms per cycle,  17.723 ms per row, x0.660 of 3 one-row cycles
+rows   4:    68.73 ms per cycle,  17.183 ms per row, x0.640 of 4 one-row cycles
+rows   8:   256.27 ms per cycle,  32.034 ms per row, x1.194 of 8 one-row cycles
+one-row pipelined step 24.28 ms; cache ends at 131906 tokens
+[03:14:25] rows qwen36-27b-depth rc=0
+== depth 32768: prefill 293.1s
+rows   1:    80.38 ms per cycle,  80.378 ms per row, x1.000 of 1 one-row cycles
+rows   2:    87.88 ms per cycle,  43.938 ms per row, x0.547 of 2 one-row cycles
+rows   3:   100.05 ms per cycle,  33.351 ms per row, x0.415 of 3 one-row cycles
+rows   4:   122.90 ms per cycle,  30.724 ms per row, x0.382 of 4 one-row cycles
+rows   8:   298.78 ms per cycle,  37.348 ms per row, x0.465 of 8 one-row cycles
+one-row pipelined step 76.59 ms; cache ends at 33602 tokens
+LOOKUP_RUN_DONE

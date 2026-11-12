@@ -1,0 +1,36 @@
+loaded mlx-community/Qwen3.6-35B-A3B-4bit vlm=True layers=40 active=19.00 GB arms=['plain', 'sync', 'adapt4', 'fixed2', 'fixed2-m4', 'len-m8']
+
+== mwaskom__seaborn-2848 turn 44: context 49902 tokens, prefill 97.0s, pure_kv=False
+  plain       256 tok    16.84 ms/tok   59.36 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    19.21 ms/tok   52.05 tok/s x0.877  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    23.21 ms/tok   43.08 tok/s x0.726  drafts 106 accepted   124/208 replayed 118  vs plain: same
+  fixed2      256 tok    19.71 ms/tok   50.73 tok/s x0.855  drafts 139 accepted    91/139 replayed  74  vs plain: same
+  fixed2-m4   256 tok    17.42 ms/tok   57.41 tok/s x0.967  drafts 101 accepted    81/101 replayed  29  vs plain: same
+  len-m8      256 tok    19.87 ms/tok   50.33 tok/s x0.848  drafts  36 accepted    88/114 replayed  51  vs plain: same
+  text: "Now I can see the exact lines. Let me apply the fix to `_plot_bivariate`:\n\n```python\n# After line 1566 (hue = data.get(self._hue_var))\n# Add filtering:\nif (\n    self._hue_var is not None and\n    not self.hue_vals.isin(self._hue_order).all()\n):\n    # Filter data to only include rows where hue value i"
+
+== mwaskom__seaborn-2848 turn 76: context 61100 tokens, prefill 30.0s, pure_kv=False
+  plain       256 tok    17.81 ms/tok   56.15 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    20.21 ms/tok   49.48 tok/s x0.881  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    25.21 ms/tok   39.67 tok/s x0.707  drafts 101 accepted   133/203 replayed 114  vs plain: differs at 145
+  fixed2      256 tok    22.43 ms/tok   44.59 tok/s x0.794  drafts 137 accepted    95/137 replayed  78  vs plain: differs at 145
+  fixed2-m4   256 tok    19.24 ms/tok   51.98 tok/s x0.926  drafts  78 accepted     54/78 replayed  25  vs plain: differs at 83
+  len-m8      256 tok    20.13 ms/tok   49.68 tok/s x0.885  drafts  36 accepted    99/122 replayed  14  vs plain: differs at 145
+  text: "OK, I think the issue is that the PUT line is being parsed as the \"payload line\" and the `[path#hash]` is not being recognized as a \"hunk header\" because it's on a separate line. Let me try putting the path#hash on the same line as the PUT:\n\nActually, looking at the spec more carefully:\n> `[path#has"
+
+== mwaskom__seaborn-2848 turn 108: context 81997 tokens, prefill 64.0s, pure_kv=False
+  plain       256 tok    19.96 ms/tok   50.10 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    22.28 ms/tok   44.88 tok/s x0.896  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    39.12 ms/tok   25.57 tok/s x0.510  drafts 121 accepted    88/205 replayed 184  vs plain: differs at 43
+  fixed2      256 tok    35.16 ms/tok   28.44 tok/s x0.568  drafts 142 accepted    67/142 replayed 159  vs plain: differs at 43
+  fixed2-m4   256 tok    21.25 ms/tok   47.07 tok/s x0.940  drafts  82 accepted     61/82 replayed  24  vs plain: differs at 185
+  len-m8      256 tok    24.50 ms/tok   40.81 tok/s x0.815  drafts  25 accepted     33/62 replayed  21  vs plain: differs at 43
+  text: "The fix is complete. Let me summarize what was changed:\n\n**Problem**: When `pairplot(iris, hue=\"species\", hue_order=[\"setosa\", \"versicolor\"])` is called, the `PairGrid` passes the full hue data (all 150 rows, 3 species) along with `hue_order=[\"setosa\", \"versicolor\"]` to the delegated axes-level func"
+
+== pooled over turns
+  plain        1536 tok   54.93 tok/s x1.000
+  sync         1536 tok   48.62 tok/s x0.885
+  adapt4       1536 tok   34.27 tok/s x0.624
+  fixed2       1536 tok   38.81 tok/s x0.707
+  fixed2-m4    1536 tok   51.81 tok/s x0.943
+  len-m8       1536 tok   46.51 tok/s x0.847

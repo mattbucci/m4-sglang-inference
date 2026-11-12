@@ -1,0 +1,286 @@
+## qwen36-27b off-1 (off) 03:52:01
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 64.4s, 89 tok in 89 chunks, 13.858 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10845, cached 6592, ttft 44.5s, 256 tok in 256 chunks, 13.86 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 66.1s, 47 tok in 47 chunks, 13.73 tok/s, finish stop
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 7168, ttft 24.9s, 153 tok in 153 chunks, 13.908 tok/s, finish stop
+pass 2 psf__requests-1963 turn 12: context 6639, cached 6592, ttft 0.6s, 89 tok in 89 chunks, 14.129 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10845, cached 10816, ttft 0.4s, 256 tok in 256 chunks, 13.909 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 7192, cached 7168, ttft 0.4s, 256 tok in 256 chunks, 14.136 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9843, cached 9792, ttft 0.6s, 155 tok in 155 chunks, 13.873 tok/s, finish stop
+pooled: 1293 tokens, 13.94 tok/s
+tracebacks in the log: 0
+## qwen36-27b r4-1 (r4) 03:57:18
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 62.6s, 89 tok in 89 chunks, 17.032 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10845, cached 6592, ttft 42.2s, 256 tok in 256 chunks, 35.655 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 63.3s, 47 tok in 47 chunks, 21.579 tok/s, finish stop
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 7168, ttft 24.1s, 155 tok in 155 chunks, 16.066 tok/s, finish stop
+pass 2 psf__requests-1963 turn 12: context 6639, cached 6592, ttft 0.6s, 89 tok in 89 chunks, 17.745 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10845, cached 10816, ttft 0.4s, 256 tok in 256 chunks, 35.653 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 7192, cached 7168, ttft 0.4s, 256 tok in 256 chunks, 15.68 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9843, cached 9792, ttft 0.6s, 153 tok in 153 chunks, 16.254 tok/s, finish stop
+pooled: 1293 tokens, 20.94 tok/s
+88 tokens from 32 drafting, 7 replay-only and 17 ordinary forwards, 32 of 57 drafted tokens kept, 35 rows replayed
+255 tokens from 65 drafting, 0 replay-only and 3 ordinary forwards, 187 of 189 drafted tokens kept, 2 rows replayed
+46 tokens from 13 drafting, 3 replay-only and 8 ordinary forwards, 22 of 28 drafted tokens kept, 8 rows replayed
+154 tokens from 53 drafting, 20 replay-only and 39 ordinary forwards, 42 of 91 drafted tokens kept, 53 rows replayed
+88 tokens from 32 drafting, 7 replay-only and 17 ordinary forwards, 32 of 57 drafted tokens kept, 35 rows replayed
+255 tokens from 65 drafting, 0 replay-only and 3 ordinary forwards, 187 of 189 drafted tokens kept, 2 rows replayed
+255 tokens from 71 drafting, 29 replay-only and 102 ordinary forwards, 53 of 123 drafted tokens kept, 65 rows replayed
+152 tokens from 51 drafting, 17 replay-only and 40 ordinary forwards, 44 of 91 drafted tokens kept, 50 rows replayed
+tracebacks in the log: 0
+## qwen36-27b r2-1 (r2) 04:01:59
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 58.5s, 89 tok in 89 chunks, 17.535 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10845, cached 6592, ttft 39.8s, 256 tok in 256 chunks, 24.55 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 61.6s, 47 tok in 47 chunks, 18.975 tok/s, finish stop
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 7168, ttft 24.0s, 155 tok in 155 chunks, 15.577 tok/s, finish stop
+pass 2 psf__requests-1963 turn 12: context 6639, cached 6592, ttft 0.6s, 89 tok in 89 chunks, 17.757 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10845, cached 10816, ttft 0.4s, 256 tok in 256 chunks, 24.729 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 7192, cached 7168, ttft 0.4s, 256 tok in 256 chunks, 15.609 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9843, cached 9792, ttft 0.6s, 153 tok in 153 chunks, 15.995 tok/s, finish stop
+pooled: 1293 tokens, 18.79 tok/s
+88 tokens from 39 drafting, 7 replay-only and 18 ordinary forwards, 24 of 39 drafted tokens kept, 20 rows replayed
+255 tokens from 126 drafting, 0 replay-only and 4 ordinary forwards, 125 of 126 drafted tokens kept, 1 rows replayed
+46 tokens from 18 drafting, 2 replay-only and 10 ordinary forwards, 16 of 18 drafted tokens kept, 2 rows replayed
+154 tokens from 64 drafting, 20 replay-only and 39 ordinary forwards, 31 of 64 drafted tokens kept, 47 rows replayed
+88 tokens from 39 drafting, 7 replay-only and 18 ordinary forwards, 24 of 39 drafted tokens kept, 20 rows replayed
+255 tokens from 126 drafting, 0 replay-only and 4 ordinary forwards, 125 of 126 drafted tokens kept, 1 rows replayed
+255 tokens from 83 drafting, 27 replay-only and 103 ordinary forwards, 42 of 83 drafted tokens kept, 55 rows replayed
+152 tokens from 62 drafting, 17 replay-only and 40 ordinary forwards, 33 of 62 drafted tokens kept, 42 rows replayed
+tracebacks in the log: 0
+## qwen36-27b r2-2 (r2) 04:06:40
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.9s, 89 tok in 89 chunks, 17.875 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10845, cached 6592, ttft 39.3s, 256 tok in 256 chunks, 24.9 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 61.7s, 47 tok in 47 chunks, 19.762 tok/s, finish stop
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 7168, ttft 23.8s, 155 tok in 155 chunks, 15.692 tok/s, finish stop
+pass 2 psf__requests-1963 turn 12: context 6639, cached 6592, ttft 0.6s, 89 tok in 89 chunks, 17.655 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10845, cached 10816, ttft 0.4s, 256 tok in 256 chunks, 24.678 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 7192, cached 7168, ttft 0.4s, 256 tok in 256 chunks, 15.56 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9843, cached 9792, ttft 0.6s, 153 tok in 153 chunks, 15.899 tok/s, finish stop
+pooled: 1293 tokens, 18.86 tok/s
+88 tokens from 39 drafting, 7 replay-only and 18 ordinary forwards, 24 of 39 drafted tokens kept, 20 rows replayed
+255 tokens from 126 drafting, 0 replay-only and 4 ordinary forwards, 125 of 126 drafted tokens kept, 1 rows replayed
+46 tokens from 18 drafting, 2 replay-only and 10 ordinary forwards, 16 of 18 drafted tokens kept, 2 rows replayed
+154 tokens from 64 drafting, 20 replay-only and 39 ordinary forwards, 31 of 64 drafted tokens kept, 47 rows replayed
+88 tokens from 39 drafting, 7 replay-only and 18 ordinary forwards, 24 of 39 drafted tokens kept, 20 rows replayed
+255 tokens from 126 drafting, 0 replay-only and 4 ordinary forwards, 125 of 126 drafted tokens kept, 1 rows replayed
+255 tokens from 83 drafting, 27 replay-only and 103 ordinary forwards, 42 of 83 drafted tokens kept, 55 rows replayed
+152 tokens from 62 drafting, 17 replay-only and 40 ordinary forwards, 33 of 62 drafted tokens kept, 42 rows replayed
+tracebacks in the log: 0
+## qwen36-27b r4-2 (r4) 04:11:18
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.7s, 89 tok in 89 chunks, 17.665 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10845, cached 6592, ttft 39.4s, 256 tok in 256 chunks, 35.669 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 62.0s, 47 tok in 47 chunks, 21.779 tok/s, finish stop
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 7168, ttft 23.9s, 155 tok in 155 chunks, 15.9 tok/s, finish stop
+pass 2 psf__requests-1963 turn 12: context 6639, cached 6592, ttft 0.6s, 89 tok in 89 chunks, 17.742 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10845, cached 10816, ttft 0.4s, 256 tok in 256 chunks, 35.788 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 7192, cached 7168, ttft 0.4s, 256 tok in 256 chunks, 15.792 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9843, cached 9792, ttft 0.6s, 153 tok in 153 chunks, 16.342 tok/s, finish stop
+pooled: 1293 tokens, 21.04 tok/s
+88 tokens from 32 drafting, 7 replay-only and 17 ordinary forwards, 32 of 57 drafted tokens kept, 35 rows replayed
+255 tokens from 65 drafting, 0 replay-only and 3 ordinary forwards, 187 of 189 drafted tokens kept, 2 rows replayed
+46 tokens from 13 drafting, 3 replay-only and 8 ordinary forwards, 22 of 28 drafted tokens kept, 8 rows replayed
+154 tokens from 53 drafting, 20 replay-only and 39 ordinary forwards, 42 of 91 drafted tokens kept, 53 rows replayed
+88 tokens from 32 drafting, 7 replay-only and 17 ordinary forwards, 32 of 57 drafted tokens kept, 35 rows replayed
+255 tokens from 65 drafting, 0 replay-only and 3 ordinary forwards, 187 of 189 drafted tokens kept, 2 rows replayed
+255 tokens from 71 drafting, 29 replay-only and 102 ordinary forwards, 53 of 123 drafted tokens kept, 65 rows replayed
+152 tokens from 51 drafting, 17 replay-only and 40 ordinary forwards, 44 of 91 drafted tokens kept, 50 rows replayed
+tracebacks in the log: 0
+## qwen36-27b off-2 (off) 04:15:49
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.7s, 89 tok in 89 chunks, 14.144 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10845, cached 6592, ttft 38.8s, 256 tok in 256 chunks, 13.911 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 61.4s, 47 tok in 47 chunks, 13.743 tok/s, finish stop
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 7168, ttft 23.8s, 153 tok in 153 chunks, 13.895 tok/s, finish stop
+pass 2 psf__requests-1963 turn 12: context 6639, cached 6592, ttft 0.6s, 89 tok in 89 chunks, 14.134 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10845, cached 10816, ttft 0.4s, 256 tok in 256 chunks, 14.043 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 7192, cached 7168, ttft 0.4s, 256 tok in 256 chunks, 14.177 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9843, cached 9792, ttft 0.6s, 155 tok in 155 chunks, 13.871 tok/s, finish stop
+pooled: 1293 tokens, 14.01 tok/s
+tracebacks in the log: 0
+## qwen36-27b fup-off (off) 04:20:49
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 59.1s, 89 tok in 89 chunks, 14.064 tok/s, finish stop
+  follow-up: 6727 of 6754 prompt tokens from the cache, KL(cold || hit) mean 0.047555 max 0.084034 over 2 steps, part step 1
+pass 1 psf__requests-1963 turn 22: context 10845, cached 0, ttft 96.0s, 256 tok in 256 chunks, 13.912 tok/s, finish length
+  follow-up: 11100 of 11128 prompt tokens from the cache, KL(cold || hit) mean 0.000768 max 0.005297 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 61.1s, 47 tok in 47 chunks, 13.835 tok/s, finish stop
+  follow-up: 7238 of 7265 prompt tokens from the cache, KL(cold || hit) mean 0.001927 max 0.023561 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 0, ttft 84.5s, 153 tok in 153 chunks, 13.813 tok/s, finish stop
+  follow-up: 9995 of 10022 prompt tokens from the cache, KL(cold || hit) mean 0.001641 max 0.020367 over 30 steps, part step 29
+pooled: 541 tokens, 13.90 tok/s
+tracebacks in the log: 0
+## qwen36-27b fup-r4 (r4) 04:32:31
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.7s, 89 tok in 89 chunks, 17.701 tok/s, finish stop
+  follow-up: 6727 of 6754 prompt tokens from the cache, KL(cold || hit) mean 0.182878 max 0.182878 over 1 steps, part step 0
+pass 1 psf__requests-1963 turn 22: context 10845, cached 0, ttft 94.3s, 256 tok in 256 chunks, 35.628 tok/s, finish length
+  follow-up: 11100 of 11128 prompt tokens from the cache, KL(cold || hit) mean 0.000761 max 0.007002 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 4: context 7192, cached 0, ttft 61.1s, 47 tok in 47 chunks, 21.721 tok/s, finish stop
+  follow-up: 7238 of 7265 prompt tokens from the cache, KL(cold || hit) mean 0.001726 max 0.030314 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 0, ttft 84.5s, 153 tok in 153 chunks, 16.145 tok/s, finish stop
+  follow-up: 9995 of 10022 prompt tokens from the cache, KL(cold || hit) mean 0.001262 max 0.009084 over 48 steps, part step None
+pooled: 541 tokens, 22.86 tok/s
+88 tokens from 32 drafting, 7 replay-only and 17 ordinary forwards, 32 of 57 drafted tokens kept, 35 rows replayed
+255 tokens from 65 drafting, 0 replay-only and 3 ordinary forwards, 187 of 189 drafted tokens kept, 2 rows replayed
+46 tokens from 13 drafting, 3 replay-only and 8 ordinary forwards, 22 of 28 drafted tokens kept, 8 rows replayed
+152 tokens from 51 drafting, 17 replay-only and 40 ordinary forwards, 44 of 91 drafted tokens kept, 50 rows replayed
+tracebacks in the log: 0
+## qwen3-32b off-1 (off) 04:43:47
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 66.5s, 47 tok in 47 chunks, 10.734 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10189, cached 6227, ttft 48.8s, 256 tok in 256 chunks, 10.151 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 155, ttft 70.5s, 256 tok in 256 chunks, 10.99 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 6774, ttft 30.5s, 256 tok in 256 chunks, 10.234 tok/s, finish length
+pass 2 psf__requests-1963 turn 12: context 6231, cached 6230, ttft 0.2s, 47 tok in 47 chunks, 10.863 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10189, cached 10188, ttft 0.2s, 256 tok in 256 chunks, 10.099 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 6778, cached 6777, ttft 0.2s, 256 tok in 256 chunks, 10.948 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9245, cached 9244, ttft 0.2s, 256 tok in 256 chunks, 10.228 tok/s, finish length
+pooled: 1622 tokens, 10.45 tok/s
+tracebacks in the log: 0
+## qwen3-32b r4-1 (r4) 04:50:25
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 72.6s, 47 tok in 47 chunks, 10.262 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10189, cached 6227, ttft 52.9s, 256 tok in 256 chunks, 15.855 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 155, ttft 74.7s, 256 tok in 256 chunks, 12.109 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 6774, ttft 31.0s, 256 tok in 256 chunks, 13.162 tok/s, finish length
+pass 2 psf__requests-1963 turn 12: context 6231, cached 6230, ttft 0.2s, 47 tok in 47 chunks, 10.405 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10189, cached 10188, ttft 0.2s, 256 tok in 256 chunks, 15.998 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 6778, cached 6777, ttft 0.2s, 256 tok in 256 chunks, 12.126 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9245, cached 9244, ttft 0.2s, 256 tok in 256 chunks, 13.181 tok/s, finish length
+pooled: 1622 tokens, 13.32 tok/s
+7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 64 drafting, 0 replay-only and 57 ordinary forwards, 134 of 158 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 117 ordinary forwards, 56 of 146 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 78 ordinary forwards, 95 of 161 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 64 drafting, 0 replay-only and 57 ordinary forwards, 134 of 158 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 117 ordinary forwards, 56 of 146 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 78 ordinary forwards, 95 of 161 drafted tokens kept, 0 rows replayed
+tracebacks in the log: 0
+## qwen3-32b r2-1 (r2) 04:56:55
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 68.1s, 47 tok in 47 chunks, 10.251 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10189, cached 6227, ttft 49.6s, 256 tok in 256 chunks, 13.855 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 155, ttft 71.6s, 256 tok in 256 chunks, 12.354 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 6774, ttft 30.9s, 256 tok in 256 chunks, 12.683 tok/s, finish length
+pass 2 psf__requests-1963 turn 12: context 6231, cached 6230, ttft 0.2s, 47 tok in 47 chunks, 10.303 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10189, cached 10188, ttft 0.2s, 256 tok in 256 chunks, 13.884 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 6778, cached 6777, ttft 0.2s, 256 tok in 256 chunks, 12.335 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9245, cached 9244, ttft 0.2s, 256 tok in 256 chunks, 12.568 tok/s, finish length
+pooled: 1622 tokens, 12.73 tok/s
+7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 106 drafting, 0 replay-only and 57 ordinary forwards, 92 of 106 drafted tokens kept, 0 rows replayed
+255 tokens from 90 drafting, 0 replay-only and 117 ordinary forwards, 48 of 90 drafted tokens kept, 0 rows replayed
+255 tokens from 105 drafting, 0 replay-only and 79 ordinary forwards, 71 of 105 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 106 drafting, 0 replay-only and 57 ordinary forwards, 92 of 106 drafted tokens kept, 0 rows replayed
+255 tokens from 90 drafting, 0 replay-only and 117 ordinary forwards, 48 of 90 drafted tokens kept, 0 rows replayed
+255 tokens from 105 drafting, 0 replay-only and 79 ordinary forwards, 71 of 105 drafted tokens kept, 0 rows replayed
+tracebacks in the log: 0
+## qwen3-32b r2-2 (r2) 05:03:08
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 67.8s, 47 tok in 47 chunks, 10.364 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10189, cached 6227, ttft 48.8s, 256 tok in 256 chunks, 14.218 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 155, ttft 70.4s, 256 tok in 256 chunks, 12.713 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 6774, ttft 30.2s, 256 tok in 256 chunks, 12.828 tok/s, finish length
+pass 2 psf__requests-1963 turn 12: context 6231, cached 6230, ttft 0.2s, 47 tok in 47 chunks, 10.572 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10189, cached 10188, ttft 0.2s, 256 tok in 256 chunks, 14.238 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 6778, cached 6777, ttft 0.2s, 256 tok in 256 chunks, 12.718 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9245, cached 9244, ttft 0.2s, 256 tok in 256 chunks, 13.013 tok/s, finish length
+pooled: 1622 tokens, 13.06 tok/s
+7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 106 drafting, 0 replay-only and 57 ordinary forwards, 92 of 106 drafted tokens kept, 0 rows replayed
+255 tokens from 90 drafting, 0 replay-only and 117 ordinary forwards, 48 of 90 drafted tokens kept, 0 rows replayed
+255 tokens from 105 drafting, 0 replay-only and 79 ordinary forwards, 71 of 105 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 106 drafting, 0 replay-only and 57 ordinary forwards, 92 of 106 drafted tokens kept, 0 rows replayed
+255 tokens from 90 drafting, 0 replay-only and 117 ordinary forwards, 48 of 90 drafted tokens kept, 0 rows replayed
+255 tokens from 105 drafting, 0 replay-only and 79 ordinary forwards, 71 of 105 drafted tokens kept, 0 rows replayed
+tracebacks in the log: 0
+## qwen3-32b r4-2 (r4) 05:09:16
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 66.8s, 47 tok in 47 chunks, 10.498 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10189, cached 6227, ttft 48.6s, 256 tok in 256 chunks, 16.226 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 155, ttft 70.6s, 256 tok in 256 chunks, 12.306 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 6774, ttft 30.2s, 256 tok in 256 chunks, 13.343 tok/s, finish length
+pass 2 psf__requests-1963 turn 12: context 6231, cached 6230, ttft 0.2s, 47 tok in 47 chunks, 10.547 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10189, cached 10188, ttft 0.2s, 256 tok in 256 chunks, 16.219 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 6778, cached 6777, ttft 0.2s, 256 tok in 256 chunks, 12.324 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9245, cached 9244, ttft 0.2s, 256 tok in 256 chunks, 13.36 tok/s, finish length
+pooled: 1622 tokens, 13.54 tok/s
+7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 64 drafting, 0 replay-only and 57 ordinary forwards, 134 of 158 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 117 ordinary forwards, 56 of 146 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 78 ordinary forwards, 95 of 161 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 64 drafting, 0 replay-only and 57 ordinary forwards, 134 of 158 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 117 ordinary forwards, 56 of 146 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 78 ordinary forwards, 95 of 161 drafted tokens kept, 0 rows replayed
+tracebacks in the log: 0
+## qwen3-32b off-2 (off) 05:15:18
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 66.3s, 47 tok in 47 chunks, 10.908 tok/s, finish stop
+pass 1 psf__requests-1963 turn 22: context 10189, cached 6227, ttft 48.4s, 256 tok in 256 chunks, 10.232 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 155, ttft 70.4s, 256 tok in 256 chunks, 11.15 tok/s, finish length
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 6774, ttft 30.3s, 256 tok in 256 chunks, 10.252 tok/s, finish length
+pass 2 psf__requests-1963 turn 12: context 6231, cached 6230, ttft 0.2s, 47 tok in 47 chunks, 10.885 tok/s, finish stop
+pass 2 psf__requests-1963 turn 22: context 10189, cached 10188, ttft 0.2s, 256 tok in 256 chunks, 10.143 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 4: context 6778, cached 6777, ttft 0.2s, 256 tok in 256 chunks, 11.009 tok/s, finish length
+pass 2 pylint-dev__pylint-5859 turn 9: context 9245, cached 9244, ttft 0.2s, 256 tok in 256 chunks, 10.252 tok/s, finish length
+pooled: 1622 tokens, 10.51 tok/s
+tracebacks in the log: 0
+## qwen3-32b fup-off (off) 05:21:53
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 71.9s, 47 tok in 47 chunks, 10.774 tok/s, finish stop
+  follow-up: 6232 of 6304 prompt tokens from the cache, KL(cold || hit) mean 0.000172 max 0.00063 over 48 steps, part step None
+pass 1 psf__requests-1963 turn 22: context 10189, cached 0, ttft 118.1s, 256 tok in 256 chunks, 10.114 tok/s, finish length
+  follow-up: 10190 of 10472 prompt tokens from the cache, KL(cold || hit) mean 0.000294 max 0.000703 over 11 steps, part step 10
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 0, ttft 72.4s, 256 tok in 256 chunks, 10.918 tok/s, finish length
+  follow-up: 6779 of 7061 prompt tokens from the cache, KL(cold || hit) mean 0.000259 max 0.000979 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 0, ttft 103.2s, 256 tok in 256 chunks, 10.262 tok/s, finish length
+  follow-up: 9246 of 9528 prompt tokens from the cache, KL(cold || hit) mean 0.000235 max 0.001566 over 27 steps, part step 26
+pooled: 811 tokens, 10.44 tok/s
+tracebacks in the log: 0
+## qwen3-32b fup-r4 (r4) 05:36:43
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 65.4s, 47 tok in 47 chunks, 10.469 tok/s, finish stop
+  follow-up: 6277 of 6304 prompt tokens from the cache, KL(cold || hit) mean 0.000173 max 0.000719 over 48 steps, part step None
+pass 1 psf__requests-1963 turn 22: context 10189, cached 0, ttft 115.1s, 256 tok in 256 chunks, 16.033 tok/s, finish length
+  follow-up: 10444 of 10472 prompt tokens from the cache, KL(cold || hit) mean 0.000187 max 0.000537 over 11 steps, part step 10
+pass 1 pylint-dev__pylint-5859 turn 4: context 6778, cached 0, ttft 71.4s, 256 tok in 256 chunks, 12.255 tok/s, finish length
+  follow-up: 7033 of 7061 prompt tokens from the cache, KL(cold || hit) mean 0.00026 max 0.000818 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 0, ttft 102.5s, 256 tok in 256 chunks, 13.337 tok/s, finish length
+  follow-up: 9500 of 9528 prompt tokens from the cache, KL(cold || hit) mean 0.000187 max 0.000884 over 27 steps, part step 26
+pooled: 811 tokens, 13.47 tok/s
+7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+46 tokens from 13 drafting, 0 replay-only and 33 ordinary forwards, 0 of 13 drafted tokens kept, 0 rows replayed
+255 tokens from 64 drafting, 0 replay-only and 57 ordinary forwards, 134 of 158 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 117 ordinary forwards, 56 of 146 drafted tokens kept, 0 rows replayed
+255 tokens from 82 drafting, 0 replay-only and 78 ordinary forwards, 95 of 161 drafted tokens kept, 0 rows replayed
+tracebacks in the log: 0
+SERVED_AB_DONE

@@ -1,0 +1,735 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 11fb186b09..0f1684b53a 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -1153,6 +1153,11 @@ class Envs:
+     # those models decode one request at a time and concurrent streams share
+     # one stream's throughput. A single request keeps the model's own forward.
+     SGLANG_MLX_BATCH_MROPE_DECODE = EnvBool(False)
++    # Prompt-lookup drafts for a lone request (hardware_backend/mlx/lookup_decode.py);
++    # pays on dense checkpoints, not on MoE checkpoints.
++    SGLANG_MLX_LOOKUP_DECODE = EnvBool(False)
++    # Most rows one such forward carries: the newest token plus the guesses.
++    SGLANG_MLX_LOOKUP_DECODE_ROWS = EnvInt(4)
+ 
+     # ===================================================================
+     # Ascend NPU
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+index 78e9bac6ae..bfd657e4d9 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+@@ -148,6 +148,13 @@ def lookahead_view(cache: Any) -> FrozenCacheView | WindowedLookaheadView:
+     return FrozenCacheView(cache)
+ 
+ 
++def restore_frozen_view(*, cache: Any, view: FrozenCacheView) -> None:
++    """Put a live layer cache back to the moment ``view`` was taken."""
++    # The view holds exactly the entries its cache had: state first.
++    for name, value in vars(view).items():
++        setattr(cache, name, _clone_tree(value))
++
++
+ def _restore_cache(cache: Any, snapshot: _CacheSnapshot) -> None:
+     cache.state = _clone_tree(snapshot.state)
+     if snapshot.meta_state is not _MISSING and hasattr(cache, "meta_state"):
+diff --git a/python/sglang/srt/hardware_backend/mlx/lookup_decode.py b/python/sglang/srt/hardware_backend/mlx/lookup_decode.py
+new file mode 100644
+index 0000000000..d25833458c
+--- /dev/null
++++ b/python/sglang/srt/hardware_backend/mlx/lookup_decode.py
+@@ -0,0 +1,241 @@
++"""Prompt-lookup drafts for a lone request's decode on the MLX backend.
++
++Opt-in with ``SGLANG_MLX_LOOKUP_DECODE=1``. A coding agent's output repeats
++its own context: a file path it just read, the lines around an edit, a tool
++call's argument names. A lone request therefore guesses its next tokens by
++finding the last few tokens of its context earlier in that context and
++copying what followed there. One forward checks the guess: row ``i`` holds
++the model's distribution after the first ``i`` guessed tokens, and the
++request's own selection rule (arg-max, or its sampler) picks a token from
++each row. The leading guesses that equal their row's pick are kept, one token
++of the model's own follows them, and the rest is rolled back.
++
++Every kept token is what the request's selection rule picks from the model's
++distribution given the tokens before it: greedy text for a greedy request, a
++draw from the same distributions for a sampled one (rows are drawn on
++independent noise; a seeded request reads the noise of its own position, as
++the ordinary loop does). The logits come from a forward of several rows where
++the ordinary loop runs one, and the two round differently in bf16, the way
++two prompt chunk sizes do: greedy text leaves the ordinary loop's only at a
++step whose two best tokens are closer than that noise.
++
++A dense checkpoint pays for a decode step mostly by reading its weights once,
++which is why a forward of two to four rows costs little more than a forward
++of one. An MoE checkpoint routes every row to its own experts and does not
++have that property, so the flag is for dense checkpoints.
++
++This module holds the parts with no MLX state in them: the n-gram index, the
++draft length policy, and the per-request stream. The forward, the rollback
++and the release-time resync live in ``model_runner.py``.
++"""
++
++from __future__ import annotations
++
++from typing import TYPE_CHECKING, Any
++
++import msgspec
++
++if TYPE_CHECKING:
++    from sglang.srt.managers.schedule_batch import Req
++
++# Longest match first: a longer match is a better predictor of what follows.
++NGRAMS = (8, 4, 3, 2)
++# How far back a match is measured; the length is a confidence signal.
++MAX_BACK = 64
++# Shortest backward match that earns a draft.
++MIN_BACK = 2
++# A hybrid model replays the tokens a rolled-back forward had accepted. Past
++# this many waiting tokens the next forward only replays, without a draft.
++CARRY_LIMIT = 6
++# Ceiling for the doubling ladder's exponent.
++MAX_LEVEL = 8
++
++
++class NgramIndex:
++    """Most recent earlier occurrence of a growing sequence's last n-gram."""
++
++    __slots__ = ("seq", "_idx", "_reg")
++
++    def __init__(self, seq: list[int]):
++        self.seq = seq
++        # Per n: hash of an n-gram -> the position right after its most
++        # recent occurrence. Hashes keep a deep prompt's index small; a
++        # lookup compares the tokens themselves.
++        self._idx: dict[int, dict[int, int]] = {n: {} for n in NGRAMS}
++        # n-grams ending before this position are registered.
++        self._reg = 0
++
++    def find(self) -> tuple[int | None, int]:
++        """Where the continuation starts, and how long the backward match is.
++
++        Registers every n-gram that ends before the sequence's last token, so
++        the last n-gram never matches itself.
++        """
++        seq = self.seq
++        end = len(seq)
++        reg = self._reg
++        if reg < end - 1:
++            for n in NGRAMS:
++                idx = self._idx[n]
++                for p in range(max(reg, n - 1), end - 1):
++                    idx[hash(tuple(seq[p + 1 - n : p + 1]))] = p + 1
++            self._reg = end - 1
++        for n in NGRAMS:
++            if end < n:
++                continue
++            tail = seq[end - n : end]
++            p = self._idx[n].get(hash(tuple(tail)))
++            if p is None or seq[p - n : p] != tail:
++                continue
++            back = n
++            while (
++                back < MAX_BACK
++                and p - back - 1 >= 0
++                and seq[p - back - 1] == seq[end - back - 1]
++            ):
++                back += 1
++            return p, back
++        return None, 0
++
++
++def draft_rows(*, back: int, level: int, avail: int, max_rows: int) -> int:
++    """Rows to send: 1 is an ordinary step, ``n`` carries ``n - 1`` guesses.
++
++    Two rows after a miss, doubling after every fully kept draft up to
++    ``max_rows``. ``avail`` is how many tokens follow the match.
++    """
++    if avail <= 0 or back < MIN_BACK or max_rows < 2:
++        return 1
++    return max(2, min(max_rows, 2 ** (level + 1), avail + 1))
++
++
++def request_limits(req: Req) -> tuple[frozenset[int], int]:
++    """Stop token ids and the stream length the request may not pass.
++
++    Mirrors ``Req._check_token_based_finish`` and the ``max_new_tokens`` cap,
++    so a draft never runs past a finish the runner can foresee. Any other
++    finish (stop strings, an abort) is caught by the release-time resync.
++    """
++    params = req.sampling_params
++    stop: set[int] = set()
++    if not params.ignore_eos:
++        stop.update(params.stop_token_ids or ())
++        stop.update(req.eos_token_ids or ())
++        if req.tokenizer is not None:
++            if req.tokenizer.eos_token_id is not None:
++                stop.add(req.tokenizer.eos_token_id)
++            stop.update(req.tokenizer.additional_stop_token_ids or ())
++    max_new = params.max_new_tokens
++    limit = len(req.origin_input_ids) + (max_new if max_new is not None else 1 << 30)
++    return frozenset(int(t) for t in stop), limit
++
++
++class LookupStream:
++    """One request's verified tokens and what its drafts are built from.
++
++    ``stream`` is the prompt plus every token a forward has verified. It runs
++    ahead of the tokens the scheduler has been handed by the tokens still
++    queued. ``mark`` is the hybrid rollback point of the newest drafting
++    forward: the cache position before it and a frozen view per recurrent
++    layer.
++    """
++
++    __slots__ = (
++        "stream",
++        "index",
++        "level",
++        "mark",
++        "stop_ids",
++        "limit",
++        "opened_at",
++        "draft_forward_ct",
++        "replay_forward_ct",
++        "plain_forward_ct",
++        "proposed_draft_ct",
++        "correct_draft_ct",
++        "replay_row_ct",
++    )
++
++    def __init__(self, *, tokens: list[int], stop_ids: frozenset[int], limit: int):
++        self.stream = list(tokens)
++        self.index = NgramIndex(self.stream)
++        self.level = 0
++        self.mark: tuple[int, dict[int, Any]] | None = None
++        self.stop_ids = stop_ids
++        self.limit = limit
++        self.opened_at = len(self.stream)
++        # Forwards by kind: with drafts, replay only, ordinary one-row.
++        self.draft_forward_ct = 0
++        self.replay_forward_ct = 0
++        self.plain_forward_ct = 0
++        self.proposed_draft_ct = 0
++        self.correct_draft_ct = 0
++        # Rows a forward ran again after a hybrid's rollback.
++        self.replay_row_ct = 0
++
++    def propose(self, max_rows: int) -> list[int]:
++        """The guess for the tokens after the stream's end; may be empty."""
++        stream = self.stream
++        p, back = self.index.find()
++        if p is None:
++            return []
++        rows = draft_rows(
++            back=back, level=self.level, avail=len(stream) - p, max_rows=max_rows
++        )
++        return self.clip(stream[p : p + rows - 1])
++
++    def clip(self, drafts: list[int]) -> list[int]:
++        """Cut a guess so its forward cannot run past a foreseeable finish."""
++        # The forward emits one token more than it keeps of the drafts.
++        room = self.limit - len(self.stream) - 1
++        drafts = drafts[: max(room, 0)]
++        for i, tok in enumerate(drafts):
++            if tok in self.stop_ids:
++                return drafts[:i]
++        return drafts
++
++    def accept(self, *, drafts: list[int], picks: list[int]) -> int:
++        """Extend the stream by what a forward verified.
++
++        ``picks[i]`` is the model's token after ``drafts[:i]``. Returns the
++        number of correct drafts; the pick after them is the bonus token.
++        """
++        num_correct_drafts = 0
++        while (
++            num_correct_drafts < len(drafts)
++            and picks[num_correct_drafts] == drafts[num_correct_drafts]
++        ):
++            num_correct_drafts += 1
++        self.stream.extend(drafts[:num_correct_drafts])
++        self.stream.append(picks[num_correct_drafts])
++        if drafts:
++            self.draft_forward_ct += 1
++            self.proposed_draft_ct += len(drafts)
++            self.correct_draft_ct += num_correct_drafts
++            all_correct = num_correct_drafts == len(drafts)
++            self.level = min(self.level + 1, MAX_LEVEL) if all_correct else 0
++        else:
++            self.replay_forward_ct += 1
++        return num_correct_drafts
++
++    def summary(self) -> str:
++        tokens = len(self.stream) - self.opened_at
++        return (
++            f"{tokens} tokens from {self.draft_forward_ct} drafting, "
++            f"{self.replay_forward_ct} replay-only and {self.plain_forward_ct} "
++            f"ordinary forwards, {self.correct_draft_ct} of "
++            f"{self.proposed_draft_ct} drafted tokens kept, "
++            f"{self.replay_row_ct} rows replayed"
++        )
++
++
++class LookupStep(msgspec.Struct):
++    """What one decode step of a lookup request did, carried on its pending."""
++
++    state: LookupStream
++    # The token picked from each row of a drafting or replaying forward, from
++    # the row of the stream's newest token on. None for an ordinary one-row step.
++    lazy_rows: Any = None
++    drafts: tuple[int, ...] = ()
++    # The token was verified by an earlier forward; nothing ran.
++    queued: bool = False
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+index 1a5346fc88..b7b769e310 100644
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -62,7 +62,17 @@ from sglang.srt.hardware_backend.mlx.kv_cache import (
+     set_context,
+     uses_sliding_window_attention,
+ )
+-from sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state import lookahead_view
++from sglang.srt.hardware_backend.mlx.kv_cache.auxiliary_state import (
++    FrozenCacheView,
++    lookahead_view,
++    restore_frozen_view,
++)
++from sglang.srt.hardware_backend.mlx.lookup_decode import (
++    CARRY_LIMIT,
++    LookupStep,
++    LookupStream,
++    request_limits,
++)
+ from sglang.srt.hardware_backend.mlx.remote_code_gate import (
+     ensure_remote_code_allowed,
+     resolve_model_directory,
+@@ -151,6 +161,10 @@ class MlxPendingDecode:
+     # Nonzero for a chained step that recorded a pre-lookahead auxiliary
+     # state (``MlxModelRunner._lookahead_aux_base``) at launch.
+     chain_seq: int = 0
++    # A lookup-decode step (lookup_decode.py): the scheduler must not chain
++    # on it, the request's next input comes from its verified stream.
++    no_chain: bool = False
++    lookup: LookupStep | None = None
+ 
+ 
+ _MLX_QUANTIZATION_PRESETS: dict[str, tuple[int, int]] = {
+@@ -214,6 +228,8 @@ class MlxModelRunner:
+     _deterministic_seeding = False
+     is_vlm = False
+     _mrope_batched_decode = False
++    # Most rows a lookup-decode forward carries; 0 is off.
++    _lookup_rows = 0
+ 
+     def __init__(
+         self,
+@@ -405,6 +421,13 @@ class MlxModelRunner:
+             )
+         # req_id -> _req_rope_delta as a Python int, read once per request.
+         self._req_position_delta: dict[str, int] = {}
++        self._lookup_rows = self._lookup_rows_from_env()
++        # req_id -> (stop token ids, stream length limit), from prefill.
++        self._lookup_limits: dict[str, tuple[frozenset, int]] = {}
++        # req_id -> the stream of a request decoding with lookup drafts.
++        self._lookup_state: dict[str, LookupStream] = {}
++        # Requests that decode with the ordinary loop until they end.
++        self._lookup_off: set[str] = set()
+         # Initial per-request attention-cache capacity. Requests whose known
+         # total length exceeds it are pre-sized at acquisition (reserve());
+         # anything else grows by doubling on overflow.
+@@ -577,6 +600,8 @@ class MlxModelRunner:
+         exactly that many tokens: the caller must then skip the insert, since
+         auxiliary state cannot be shortened with the key.
+         """
++        if self._lookup_rows and not self._lookup_leave(req_id, finishing=True):
++            return False
+         if not self._has_snapshot_state:
+             return True
+         req_pool_idx = self._req_pool_idx.get(req_id)
+@@ -1323,6 +1348,8 @@ class MlxModelRunner:
+         """Sync decode KV only within the first *owned_len* positions (chained
+         decode steps own no slots past it), then forget the row, which the
+         scheduler may reuse once released."""
++        if self._lookup_rows:
++            self._lookup_leave(req_id, finishing=True)
+         if not self.disable_radix_cache:
+             self._sync_decode_kv_to_pool(req_id, end=owned_len)
+             pool_arrays = self.pending_pool_arrays()
+@@ -1404,6 +1431,10 @@ class MlxModelRunner:
+                 if req is not None
+                 else GREEDY_PARAMS
+             )
++        if self._lookup_rows:
++            self._lookup_forget(req_id)
++            if req is not None:
++                self._lookup_limits[req_id] = request_limits(req)
+ 
+         if self.disable_radix_cache:
+             cache = self._acquire_cache(required_len)
+@@ -2231,6 +2262,279 @@ class MlxModelRunner:
+         self._sdpa_block_ladder.apply(ctx.max_len)
+         return ctx
+ 
++    # ------------------------------------------------------------------
++    # Prompt-lookup drafts for a lone request (lookup_decode.py)
++    # ------------------------------------------------------------------
++
++    def _lookup_rows_from_env(self) -> int:
++        """Rows per lookup-decode forward, or 0 when the feature is off."""
++        if not envs.SGLANG_MLX_LOOKUP_DECODE.get():
++            return 0
++        rows = envs.SGLANG_MLX_LOOKUP_DECODE_ROWS.get()
++        reason = None
++        if rows < 2:
++            reason = "SGLANG_MLX_LOOKUP_DECODE_ROWS is below 2"
++        elif self._cache_layout.has_sliding_window_layers:
++            # A windowed cache drops rows as it advances; it cannot be
++            # set back by lowering its offset.
++            reason = "the model has sliding-window attention layers"
++        elif envs.SGLANG_MLX_USE_CUSTOM_ROPE.get():
++            reason = "SGLANG_MLX_USE_CUSTOM_ROPE is set"
++        elif self._sanitize_nan:
++            reason = "SGLANG_SANITIZE_NAN_LOGITS is set"
++        if reason is not None:
++            logger.warning("MLX lookup decode stays off: %s", reason)
++            return 0
++        logger.info(
++            "MLX lookup decode enabled: a lone request drafts up to %d rows "
++            "per forward from its own context",
++            rows,
++        )
++        return rows
++
++    def _lookup_forget(self, req_id: str) -> None:
++        """Drop every lookup record of a request without touching its caches."""
++        self._lookup_close(req_id)
++        self._lookup_limits.pop(req_id, None)
++        self._lookup_off.discard(req_id)
++
++    def _lookup_close(self, req_id: str) -> LookupStream | None:
++        state = self._lookup_state.pop(req_id, None)
++        if state is not None:
++            logger.info("MLX lookup decode, request %s: %s", req_id, state.summary())
++        return state
++
++    def _lookup_open(self, req_id: str) -> LookupStream | None:
++        """The stream for a request's first decode step, if it qualifies."""
++        limits = self._lookup_limits.get(req_id)
++        tokens = self._req_token_ids.get(req_id)
++        cache = self._req_caches.get(req_id)
++        if limits is None or tokens is None or cache is None:
++            return None
++        if self.is_vlm and (
++            self._req_rope_delta.get(req_id) is None
++            or self._position_delta(req_id) != 0
++        ):
++            # mlx_vlm: text prompts on a Qwen-family language model only.
++            return None
++        if any(
++            type(cache[layer_idx]) is not ContiguousAttentionKVCache
++            for layer_idx in self._cache_layout.attention_layer_indices
++        ):
++            return None
++        if self._first_attention_cache(cache).offset != len(tokens) - 1:
++            return None
++        stop_ids, limit = limits
++        return LookupStream(tokens=tokens, stop_ids=stop_ids, limit=limit)
++
++    def _lookup_set_offset(self, *, cache: list[Any], offset: int) -> None:
++        """Shorten the attention caches; rows past the offset are overwritten."""
++        for layer_idx in self._cache_layout.attention_layer_indices:
++            cache[layer_idx].offset = offset
++
++    def _lookup_rewind(
++        self, *, cache: list[Any], mark: tuple[int, dict[int, Any]]
++    ) -> None:
++        """Put a hybrid's caches back to where a drafting forward started."""
++        offset, views = mark
++        for layer_idx, view in views.items():
++            restore_frozen_view(cache=cache[layer_idx], view=view)
++        self._lookup_set_offset(cache=cache, offset=offset)
++
++    def _lookup_forward(
++        self, *, req_id: str, cache: list[Any], rows: list[int], head: bool = True
++    ) -> mx.array | None:
++        """Forward several tokens of one request on its own caches.
++
++        The same call a prompt chunk makes, so positions continue from the
++        cache offset. Returns logits for every row, or nothing useful when
++        ``head`` is False (cache side effects only).
++        """
++        if self._sdpa_block_ladder.enabled:
++            self._sdpa_block_ladder.apply(
++                self._first_attention_cache(cache).offset + len(rows)
++            )
++        self._restore_position_delta(req_id)
++        input_ids = mx.array([rows], dtype=mx.int32)
++        if not head and self._trunk_forward(input_ids, cache) is not None:
++            return None
++        return self._extract_logits(self.model(input_ids, cache=cache))
++
++    def _lookup_select(
++        self, *, req_id: str, rows: mx.array, position: int
++    ) -> mx.array:
++        """One token per row, by the request's own selection rule.
++
++        Row i is the distribution after ``position + i`` tokens. A sampled
++        request draws every row on its own noise (a seeded one on the noise
++        the ordinary loop has at that position), so the draw of a row whose
++        draft prefix was kept is a draw of the ordinary loop.
++        """
++        params = self._req_sampling[req_id] if self._enable_sampling else None
++        if params is None or params.is_greedy:
++            return mx.argmax(rows, axis=-1)
++        n = rows.shape[0]
++        self._rng_key, key = mx.random.split(self._rng_key)
++        return sample_tokens(
++            last_logits=rows,
++            params=[params] * n,
++            positions=[position + i for i in range(n)],
++            key=key,
++        )
++
++    def _lookup_decode_start(
++        self, *, req_ids: list[str], plain_logits: bool
++    ) -> tuple[MlxPendingDecode | None, LookupStream | None]:
++        """One decode step of a lookup request.
++
++        Returns a pending when the step needs no ordinary forward: its token
++        was verified by an earlier forward, or this forward carries a draft
++        or replays tokens a rolled-back forward had kept. Otherwise returns
++        no pending, and the request's stream when the ordinary one-row
++        forward that follows belongs to a lookup request.
++
++        A step of several requests, or one with logit edits, logprobs or a
++        logits hook, ends lookup decode for its requests.
++        """
++        if len(req_ids) != 1 or not plain_logits:
++            for rid in req_ids:
++                self._lookup_leave(rid)
++            return None, None
++        rid = req_ids[0]
++        state = self._lookup_state.get(rid)
++        if state is None:
++            if rid in self._lookup_off:
++                return None, None
++            state = self._lookup_open(rid)
++            if state is None:
++                self._lookup_off.add(rid)
++                return None, None
++            self._lookup_state[rid] = state
++        tokens = self._req_token_ids[rid]
++        cache = self._req_caches[rid]
++        stream = state.stream
++        if len(tokens) < len(stream):
++            return (
++                MlxPendingDecode(
++                    lazy_tokens=mx.array([stream[len(tokens)]], dtype=mx.uint32),
++                    req_ids=[rid],
++                    caches=[cache],
++                    no_chain=True,
++                    lookup=LookupStep(state=state, queued=True),
++                ),
++                state,
++            )
++        # Every verified token has been handed out, so the caches hold no
++        # row past the stream and the last rollback point is spent.
++        state.mark = None
++        consumed = self._first_attention_cache(cache).offset
++        inputs = stream[consumed:]
++        if not inputs:
++            self._lookup_leave(rid)
++            return None, None
++        drafts = state.propose(self._lookup_rows) if len(inputs) <= CARRY_LIMIT else []
++        if not drafts and len(inputs) == 1:
++            return None, state
++        if drafts and self._has_snapshot_state:
++            # Recurrent layers cannot be shortened: keep the state this
++            # forward starts from, to restart from it if a draft is wrong.
++            state.mark = (
++                consumed,
++                {
++                    layer_idx: FrozenCacheView(cache[layer_idx])
++                    for layer_idx in self._snapshot_layer_indices
++                },
++            )
++        logits = self._lookup_forward(req_id=rid, cache=cache, rows=inputs + drafts)
++        base = len(inputs) - 1
++        state.replay_row_ct += base
++        lazy_rows = self._lookup_select(
++            req_id=rid, rows=logits[0, base:, :], position=consumed + base
++        )
++        return (
++            MlxPendingDecode(
++                lazy_tokens=lazy_rows[:1],
++                req_ids=[rid],
++                caches=[cache],
++                no_chain=True,
++                lookup=LookupStep(
++                    state=state, lazy_rows=lazy_rows, drafts=tuple(drafts)
++                ),
++            ),
++            state,
++        )
++
++    def _lookup_finalize(self, *, req_id: str, step: LookupStep) -> list[int]:
++        """Check a drafting forward and roll back what it got wrong."""
++        state = step.state
++        picks = [int(t) for t in step.lazy_rows.tolist()]
++        if self._lookup_state.get(req_id) is not state:
++            # The request left lookup decode with this forward in flight.
++            return picks[:1]
++        drafts = list(step.drafts)
++        first = len(state.stream)
++        num_wrong_drafts = len(drafts) - state.accept(drafts=drafts, picks=picks)
++        if num_wrong_drafts:
++            cache = self._req_caches[req_id]
++            mark, state.mark = state.mark, None
++            if mark is not None:
++                # The correct drafts are replayed by the request's next forward.
++                self._lookup_rewind(cache=cache, mark=mark)
++            else:
++                self._lookup_set_offset(
++                    cache=cache,
++                    offset=self._first_attention_cache(cache).offset - num_wrong_drafts,
++                )
++        return [state.stream[first]]
++
++    def _lookup_leave(self, req_id: str, finishing: bool = False) -> bool:
++        """End lookup decode for a request.
++
++        Puts its caches where the ordinary loop keeps them, holding every
++        token but the newest one the scheduler was handed, and drops the
++        verified tokens not handed out yet. Returns False when a hybrid's
++        recurrent state cannot be put there; the caller skips the radix
++        insert then.
++        """
++        state = self._lookup_close(req_id)
++        if state is not None or not finishing:
++            # Whatever decodes this request next is the ordinary loop.
++            self._lookup_off.add(req_id)
++        if state is None:
++            return True
++        tokens = self._req_token_ids.get(req_id)
++        cache = self._req_caches.get(req_id)
++        if tokens is None or cache is None:
++            return True
++        if finishing and self.disable_radix_cache:
++            # Nothing reads a finished request's caches.
++            return True
++        target = len(tokens) - 1
++        offset = self._first_attention_cache(cache).offset
++        if offset > target:
++            if not self._has_snapshot_state:
++                offset = target
++                self._lookup_set_offset(cache=cache, offset=offset)
++            else:
++                mark = state.mark
++                if mark is None or mark[0] > target:
++                    logger.warning(
++                        "MLX lookup decode: request %s holds %d tokens of "
++                        "recurrent state for a key of %d; its radix insert "
++                        "is skipped",
++                        req_id,
++                        offset,
++                        target,
++                    )
++                    return False
++                self._lookup_rewind(cache=cache, mark=mark)
++                offset = mark[0]
++        if offset < target:
++            self._lookup_forward(
++                req_id=req_id, cache=cache, rows=state.stream[offset:target], head=False
++            )
++        return True
++
+     def decode_batch_start(
+         self,
+         req_ids: list[str],
+@@ -2244,6 +2548,16 @@ class MlxModelRunner:
+         returned ``lazy_tokens`` (and optionally per-cache state arrays)
+         to kick off GPU work before :meth:`decode_batch_finalize`.
+         """
++        lookup_state = None
++        if self._lookup_rows:
++            pending, lookup_state = self._lookup_decode_start(
++                req_ids=req_ids,
++                plain_logits=edit_rows is None
++                and logprob_spec is None
++                and logits_hook is None,
++            )
++            if pending is not None:
++                return pending
+         caches = [self._req_caches[rid] for rid in req_ids]
+         last_tokens = [self._req_token_ids[rid][-1] for rid in req_ids]
+         batched_input = mx.array(last_tokens, dtype=mx.int32)[:, None]
+@@ -2283,6 +2597,8 @@ class MlxModelRunner:
+             lazy_logprobs=lazy_logprobs,
+             logprob_spec=logprob_spec,
+             edit_rows=edit_rows,
++            no_chain=lookup_state is not None,
++            lookup=LookupStep(state=lookup_state) if lookup_state is not None else None,
+         )
+ 
+     def decode_batch_start_chained(
+@@ -2369,10 +2685,22 @@ class MlxModelRunner:
+         to ``mx.async_eval`` (or to a subsequent chained step that will
+         be async_eval'd).
+         """
+-        raw = pending.lazy_tokens.tolist()
+-        if not isinstance(raw, list):
+-            raw = [raw]
+-        next_tokens = [int(t) for t in raw]
++        step = pending.lookup
++        if step is not None and step.lazy_rows is not None:
++            next_tokens = self._lookup_finalize(req_id=pending.req_ids[0], step=step)
++        else:
++            raw = pending.lazy_tokens.tolist()
++            if not isinstance(raw, list):
++                raw = [raw]
++            next_tokens = [int(t) for t in raw]
++            if (
++                step is not None
++                and not step.queued
++                and self._lookup_state.get(pending.req_ids[0]) is step.state
++            ):
++                # An ordinary one-row step of a lookup request.
++                step.state.stream.append(next_tokens[0])
++                step.state.plain_forward_ct += 1
+ 
+         for i, rid in enumerate(pending.req_ids):
+             self._req_token_ids[rid].append(next_tokens[i])
+@@ -2399,6 +2727,8 @@ class MlxModelRunner:
+         only through release_request_row, while the request owns its row."""
+         self._req_token_ids.pop(req_id, None)
+         self._req_sampling.pop(req_id, None)
++        if self._lookup_rows:
++            self._lookup_forget(req_id)
+         if self.is_vlm:
+             self._req_rope_delta.pop(req_id, None)
+             self._req_position_delta.pop(req_id, None)
+@@ -2413,6 +2743,10 @@ class MlxModelRunner:
+         """Clear all request states."""
+         self._req_token_ids.clear()
+         self._req_sampling.clear()
++        if self._lookup_rows:
++            self._lookup_limits.clear()
++            self._lookup_state.clear()
++            self._lookup_off.clear()
+         if self.is_vlm:
+             self._req_rope_delta.clear()
+             self._req_position_delta.clear()
+diff --git a/python/sglang/srt/hardware_backend/mlx/scheduler_mixin.py b/python/sglang/srt/hardware_backend/mlx/scheduler_mixin.py
+index 187f140a3f..47d2cc1744 100644
+--- a/python/sglang/srt/hardware_backend/mlx/scheduler_mixin.py
++++ b/python/sglang/srt/hardware_backend/mlx/scheduler_mixin.py
+@@ -183,7 +183,9 @@ class SchedulerMlxOverlapMixin:
+                 batch_copy=batch.copy(),
+                 schedule_batch=batch,
+                 reqs=list(batch.reqs),
+-                chain_safe=self._mlx_batch_chain_safe(batch),
++                # A lookup-decode step's next input is not its lazy token.
++                chain_safe=self._mlx_batch_chain_safe(batch)
++                and not (launch.decode is not None and launch.decode.no_chain),
+                 extend_input_len_per_req=extend_input_len_per_req,
+                 extend_logprob_start_len_per_req=extend_logprob_start_len_per_req,
+             )

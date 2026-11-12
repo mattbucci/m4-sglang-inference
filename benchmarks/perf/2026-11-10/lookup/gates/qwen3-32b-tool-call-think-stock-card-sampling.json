@@ -1,0 +1,23 @@
+{
+ "no_think": false,
+ "max_tokens": 2500,
+ "sampling": "{\"temperature\": 0.6, \"top_p\": 0.95, \"top_k\": 20}",
+ "rows": [
+  {
+   "finish": "stop",
+   "completion_tokens": 415,
+   "reasoning_chars": 1262,
+   "content_chars": 322,
+   "tool_calls": [],
+   "ok": false
+  },
+  {
+   "finish": "stop",
+   "completion_tokens": 572,
+   "reasoning_chars": 1469,
+   "content_chars": 467,
+   "tool_calls": [],
+   "ok": false
+  }
+ ]
+}

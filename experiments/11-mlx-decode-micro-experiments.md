@@ -9,7 +9,7 @@
 | **Wall clock** | about two days of exclusive serving windows (a cold 251K arm is 24 to 26 minutes of prefill; the mirrored short-context A/B is 6 minutes per arm) |
 | **GPU time** | none separate from the box (Apple unified memory); raw probes and serving arms never overlap |
 | **Depends on** | Patch 028 (the overlap decode loop on hybrid presets); the 256K long-context recipe in `docs/long-context.md`; the R9700 decode lane as the method donor (`~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference`, `CROSS-TEAM.md` and its `benchmarks/perf/` verdict files). |
-| **Provides to** | `scripts/common.sh` defaults; patches 029 to 035; the `qwen35` preset's multi-stream default; the decode curve in `docs/long-context.md`; a cross-team note on which parts of the method survive a change of GPU vendor. |
+| **Provides to** | `scripts/common.sh` defaults; patches 029 to 035 and 040; the `qwen35` preset's multi-stream default; the decode curve in `docs/long-context.md`; a cross-team note on which parts of the method survive a change of GPU vendor. |
 
 ## Objective
 
@@ -130,3 +130,17 @@ Several streams at once, aggregate tok/s in the window where every stream decode
 - Patch 034 is a correctness fix the interleaved probe found: with two live requests the one that prefilled first decoded under the other's position delta. Served on qwen36 with four slots, a text response left its solo run at character 264 of 1,503 and an image response at 133 of 1,304; with the patch every interleaved response equals its solo run.
 - Patch 035 passes the teacher-forced gate on all three checkpoints: batched steps against serial steps read KL 0.0030 (qwen36), 0.0011 (qwen35) and 0.0006 (qwen36-27b), the distance serial steps keep from a prefill forward, against 0.010 to 0.29 for the wrong-delta control. A single stream does not move, wired memory rises 0.4 to 1.5 GB.
 - The batched path changes one guarantee. A batch of one is bit-equal to the model's own forward, and a row gets the same bits at any index, batch size and neighbours, but MLX's matmul rounds one row differently from several (KL 0.0006 on the dense checkpoints, 0.0032 on qwen36). A greedy request's text therefore depends on which of its steps had company, where the serial path repeats its solo run bit for bit. On qwen35-9b-8bit the validator's greedy thinking check, which sits on near-ties (89 steps with the chosen token below 0.52), stops at 1,196 tokens alone, at 1,682 when it joins a running batch, and runs to the 2,048-token cap in 6 of 13 runs that were joined part-way. Decoding a lone request as two rows would remove the dependence at 4.6 ms a token on qwen36 and 7.2 ms on the dense 27B, and is not taken.
+
+A lone request's unused rows on a dense checkpoint (`benchmarks/perf/2026-11-10/lookup/VERDICT.md`). Pooled decode with drafts against the ordinary loop, archived omp agent turns of 6.6K to 10.8K tokens, one server per arm, arms mirrored:
+
+| checkpoint | greedy | greedy at 26K to 27K | sampled, thinking closed | sampled, thinking open | nothing to draft |
+|---|---|---|---|---|---|
+| qwen36-27b | x1.50 | x1.60 | x1.24 | x1.11 | -3.6 % |
+| qwen3-32b | x1.28 | not run | x1.20 | x1.08 | -1.2 % |
+
+- Patch 040 (`SGLANG_MLX_LOOKUP_DECODE=1`) finds the last tokens of a lone request's context earlier in that context, takes what followed as a draft, and checks it in one forward of up to four rows. A forward of two rows costs 1.10 times a pipelined one-row step on the dense 27B and four rows 1.54 times, so every kept draft is a token at a fraction of a step.
+- Retained opt-in for dense checkpoints and set by no preset. A request with nothing to draft loses 1.2 to 3.6 %, and the shape the agentic lane runs (sampled, thinking open) reads x1.08 to x1.11 against a criterion of x1.20 written before the run.
+- The win follows how much of the output is a copy. With thinking closed 54 % of drafted tokens are kept and a forward yields 1.41 to 1.53 tokens; with thinking open 37 to 42 % and 1.23 to 1.31. Reasoning text has nothing to copy, so a larger win there needs a trained drafter.
+- An MoE checkpoint routes every row to its own experts and loses: 16 % with nothing to draft on qwen36, x0.62 at 50K to 82K.
+- A drafted step is a forward of several rows, so it carries the rounding of the batched path above: teacher-forced KL to the one-row loop 0.0002 to 0.0003, greedy text equal to the ordinary loop's on 5 of 8 requests on the 27B and 6 of 8 on the 32B, parting only at near-ties where the stock loop's cold and cached passes also part. A sampled request draws from the same distributions.
+- `SGLANG_MLX_COMMIT_CHAINED=1` on an attention-only preset keys the whole reply in the radix tree (the hybrid presets already set it). On coder-30b a follow-up turn prefills 18 new tokens against 75 to 142 and its TTFT at 4K reads 0.12 s against 0.27 to 0.31; decode does not move. A launcher default waits on the cross-preset arms.

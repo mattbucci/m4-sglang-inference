@@ -1,0 +1,25 @@
+## qwen36-27b sampled, thinking closed
+off           24 requests   4827 tokens   14.59 tok/s x1.000   (off-1-closed 14.61, off-2-closed 14.58)
+rows4         24 requests   4589 tokens   18.04 tok/s x1.236   (r4-1-closed 17.76, r4-2-closed 18.32)
+rows2         24 requests   5120 tokens   17.25 tok/s x1.182   (r2-1-closed 17.25, r2-2-closed 17.27)
+## qwen3-32b sampled, thinking closed
+off           24 requests   5880 tokens   10.99 tok/s x1.000   (off-1-closed 10.97, off-2-closed 11.00)
+rows4         24 requests   5418 tokens   13.18 tok/s x1.200   (r4-1-closed 12.92, r4-2-closed 13.45)
+## qwen36-27b sampled, thinking open
+off           16 requests   4719 tokens   14.57 tok/s x1.000   (off-1-open 14.60, off-2-open 14.54)
+rows4         16 requests   4570 tokens   16.21 tok/s x1.113   (r4-1-open 16.20, r4-2-open 16.21)
+rows2         16 requests   4362 tokens   16.01 tok/s x1.099   (r2-1-open 16.29, r2-2-open 15.78)
+## qwen3-32b sampled, thinking open
+off           16 requests   5812 tokens   10.94 tok/s x1.000   (off-1-open 10.96, off-2-open 10.91)
+rows4         16 requests   6128 tokens   11.85 tok/s x1.084   (r4-1-open 11.50, r4-2-open 12.23)
+## qwen36-27b greedy, deep contexts
+off            8 requests   1872 tokens   13.71 tok/s x1.000   (off-1 13.75, off-2 13.66)
+rows4          8 requests   1872 tokens   21.91 tok/s x1.598   (r4-1 21.92, r4-2 21.89)
+## qwen36-27b greedy
+off           16 requests   2586 tokens   13.98 tok/s x1.000   (off-1 13.94, off-2 14.01)
+rows4         16 requests   2586 tokens   20.99 tok/s x1.502   (r4-1 20.93, r4-2 21.04)
+rows2         16 requests   2586 tokens   18.82 tok/s x1.347   (r2-1 18.79, r2-2 18.86)
+## qwen3-32b greedy
+off           16 requests   3244 tokens   10.48 tok/s x1.000   (off-1 10.45, off-2 10.51)
+rows4         16 requests   3244 tokens   13.43 tok/s x1.282   (r4-1 13.32, r4-2 13.54)
+rows2         16 requests   3244 tokens   12.89 tok/s x1.230   (r2-1 12.73, r2-2 13.06)

@@ -1,0 +1,4 @@
+[2026-11-11 21:23:30] MLX lookup decode enabled: a lone request drafts up to 4 rows per forward from its own context
+[2026-11-11 21:23:33] MLX lookup decode, request 8736099e635447c283f565aaf0935304: 7 tokens from 1 drafting, 0 replay-only and 5 ordinary forwards, 1 of 1 drafted tokens kept, 0 rows replayed
+[2026-11-11 21:23:52] MLX lookup decode, request e38fe3332dff4a3b9d0f9a0bb879ea4f: 204 tokens from 62 drafting, 0 replay-only and 70 ordinary forwards, 72 of 122 drafted tokens kept, 0 rows replayed
+[2026-11-11 21:24:13] MLX lookup decode, request 039e47d1fc5a487cb012a7095bd5a508: 316 tokens from 92 drafting, 0 replay-only and 139 ordinary forwards, 85 of 174 drafted tokens kept, 0 rows replayed

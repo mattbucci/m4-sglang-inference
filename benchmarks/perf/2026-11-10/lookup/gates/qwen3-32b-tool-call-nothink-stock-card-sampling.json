@@ -1,0 +1,43 @@
+{
+ "no_think": true,
+ "max_tokens": 800,
+ "sampling": "{\"temperature\": 0.7, \"top_p\": 0.8, \"top_k\": 20}",
+ "rows": [
+  {
+   "finish": "tool_calls",
+   "completion_tokens": 219,
+   "reasoning_chars": 0,
+   "content_chars": 462,
+   "tool_calls": [
+    "edit"
+   ],
+   "ok": false,
+   "argument_keys": [
+    "new",
+    "old",
+    "path"
+   ],
+   "old_in_file": false,
+   "new_has_line": true,
+   "path": "src/handlers.py"
+  },
+  {
+   "finish": "tool_calls",
+   "completion_tokens": 239,
+   "reasoning_chars": 0,
+   "content_chars": 527,
+   "tool_calls": [
+    "edit"
+   ],
+   "ok": false,
+   "argument_keys": [
+    "new",
+    "old",
+    "path"
+   ],
+   "old_in_file": false,
+   "new_has_line": true,
+   "path": "src/handlers.py"
+  }
+ ]
+}

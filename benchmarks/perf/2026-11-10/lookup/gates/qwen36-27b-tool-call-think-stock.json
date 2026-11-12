@@ -1,0 +1,42 @@
+{
+ "no_think": false,
+ "max_tokens": 2500,
+ "rows": [
+  {
+   "finish": "tool_calls",
+   "completion_tokens": 324,
+   "reasoning_chars": 748,
+   "content_chars": 2,
+   "tool_calls": [
+    "edit"
+   ],
+   "ok": true,
+   "argument_keys": [
+    "new",
+    "old",
+    "path"
+   ],
+   "old_in_file": true,
+   "new_has_line": true,
+   "path": "src/handlers.py"
+  },
+  {
+   "finish": "tool_calls",
+   "completion_tokens": 1144,
+   "reasoning_chars": 3605,
+   "content_chars": 2,
+   "tool_calls": [
+    "edit"
+   ],
+   "ok": true,
+   "argument_keys": [
+    "new",
+    "old",
+    "path"
+   ],
+   "old_in_file": true,
+   "new_has_line": true,
+   "path": "src/handlers.py"
+  }
+ ]
+}

@@ -1,0 +1,62 @@
+## qwen36-27b, flag on 20:40:03
+up
+PGATE qwen36-27b validate rc=0
+PGATE qwen36-27b thinking rc=0
+PGATE qwen36-27b vision rc=0
+PGATE qwen36-27b codegen rc=0
+PGATE qwen36-27b tracebacks 0 flags: 
+enabled lines: 1; drafting requests: 6; tracebacks: 0
+## tool call, qwen36-27b, flag on
+{"finish": "tool_calls", "completion_tokens": 100, "reasoning_chars": 0, "content_chars": 0, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+{"finish": "tool_calls", "completion_tokens": 100, "reasoning_chars": 0, "content_chars": 0, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+TOOL CHECK PASS 2/2
+99 tokens from 40 drafting, 6 replay-only and 7 ordinary forwards, 46 of 82 drafted tokens kept, 26 rows replayed
+{"finish": "tool_calls", "completion_tokens": 290, "reasoning_chars": 620, "content_chars": 2, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+{"finish": "tool_calls", "completion_tokens": 345, "reasoning_chars": 829, "content_chars": 2, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+TOOL CHECK PASS 2/2
+344 tokens from 104 drafting, 20 replay-only and 59 ordinary forwards, 161 of 230 drafted tokens kept, 68 rows replayed
+## depth recall at label 28000, qwen36-27b, flag on 20:43:48
+  rung   28000  in=  32240  verified=True  score=6/6  301s  -> <scratch>/lookup/gates040/rung28000-qwen36-27b-lookup-seed42.json
+== 1 rungs, 0 void/error, 0 at <=3/6 ==
+41 tokens from 20 drafting, 4 replay-only and 2 ordinary forwards, 15 of 32 drafted tokens kept, 26 rows replayed
+enabled lines: 1; drafting requests: 11; tracebacks: 0
+## qwen36-27b, flag off 20:48:49
+up
+## tool call, qwen36-27b, flag off
+{"finish": "tool_calls", "completion_tokens": 100, "reasoning_chars": 0, "content_chars": 0, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+{"finish": "tool_calls", "completion_tokens": 100, "reasoning_chars": 0, "content_chars": 0, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+TOOL CHECK PASS 2/2
+{"finish": "tool_calls", "completion_tokens": 324, "reasoning_chars": 748, "content_chars": 2, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+{"finish": "tool_calls", "completion_tokens": 1144, "reasoning_chars": 3605, "content_chars": 2, "tool_calls": ["edit"], "ok": true, "argument_keys": ["new", "old", "path"], "old_in_file": true, "new_has_line": true, "path": "src/handlers.py"}
+TOOL CHECK PASS 2/2
+## depth recall at label 28000, qwen36-27b, flag off 20:51:12
+  rung   28000  in=  32240  verified=True  score=6/6  319s  -> <scratch>/lookup/gates040/rung28000-qwen36-27b-stock-seed42.json
+== 1 rungs, 0 void/error, 0 at <=3/6 ==
+enabled lines: 0; drafting requests: 0; tracebacks: 0
+## qwen3-32b, flag on 20:56:31
+up
+PGATE qwen3-32b validate rc=0
+PGATE qwen3-32b thinking rc=0
+PGATE qwen3-32b codegen rc=0
+PGATE qwen3-32b tracebacks 0 flags: 
+enabled lines: 1; drafting requests: 7; tracebacks: 0
+## tool call, qwen3-32b, flag on
+{"finish": "length", "completion_tokens": 800, "reasoning_chars": 0, "content_chars": 3878, "tool_calls": [], "ok": false}
+{"finish": "length", "completion_tokens": 800, "reasoning_chars": 0, "content_chars": 4084, "tool_calls": [], "ok": false}
+TOOL CHECK FAIL 0/2
+799 tokens from 0 drafting, 0 replay-only and 799 ordinary forwards, 0 of 0 drafted tokens kept, 0 rows replayed
+{"finish": "stop", "completion_tokens": 81, "reasoning_chars": 386, "content_chars": 0, "tool_calls": [], "ok": false}
+{"finish": "length", "completion_tokens": 2500, "reasoning_chars": 12138, "content_chars": 0, "tool_calls": [], "ok": false}
+TOOL CHECK FAIL 0/2
+2499 tokens from 2 drafting, 0 replay-only and 2497 ordinary forwards, 0 of 2 drafted tokens kept, 0 rows replayed
+## qwen3-32b, flag off 21:04:34
+up
+## tool call, qwen3-32b, flag off
+{"finish": "length", "completion_tokens": 800, "reasoning_chars": 0, "content_chars": 3940, "tool_calls": [], "ok": false}
+{"finish": "length", "completion_tokens": 800, "reasoning_chars": 0, "content_chars": 3937, "tool_calls": [], "ok": false}
+TOOL CHECK FAIL 0/2
+{"finish": "length", "completion_tokens": 2500, "reasoning_chars": 12120, "content_chars": 0, "tool_calls": [], "ok": false}
+{"finish": "length", "completion_tokens": 2500, "reasoning_chars": 12472, "content_chars": 0, "tool_calls": [], "ok": false}
+TOOL CHECK FAIL 0/2
+enabled lines: 0; drafting requests: 0; tracebacks: 0
+GATES040_DONE 21:14:02

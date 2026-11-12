@@ -1,0 +1,103 @@
+## qwen3-32b off-1 (off) 19:38:43
+up
+[off-1] runs 1024:256:3:greedy: prompt 963, decode mean 12.26 median 12.28 tok/s (12.17 to 12.32)
+[off-1] followup    3819 tok: first ttft 41.8341 s (256 tok, finish length); second ttft 0.6961 s, None of 3837 cached, 3837 fresh
+[off-1] followup    7604 tok: first ttft 83.2174 s (256 tok, finish length); second ttft 0.8975 s, None of 7622 cached, 7622 fresh
+wrote <scratch>/lookup/cc-qwen3-32b-off-1.json
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 64.6s, 47 tok in 47 chunks, 11.228 tok/s, finish stop
+  follow-up: 6232 of 6304 prompt tokens from the cache, KL(cold || hit) mean 0.000172 max 0.00063 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 0, ttft 100.9s, 256 tok in 256 chunks, 10.661 tok/s, finish length
+  follow-up: 9246 of 9528 prompt tokens from the cache, KL(cold || hit) mean 0.000235 max 0.001566 over 27 steps, part step 26
+pooled: 301 tokens, 10.74 tok/s
+| cc-qwen3-32b-off-1 | 128 | 808 | 0 | 183 | 99 | 18 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 18, #cached-token: 3819;#new-token: 7601, #cached-token: 3;#new-token: 18, #cached-token: 7604;#new-token: 6231, #cached-token: 0;#new-token: 72, #cached-token: 6232;#new-token: 6304, #cached-token: 0;#new-token: 8192, #cached-token: 0;#new-token: 1053, #cached-token: 0;#new-token: 282, #cached-token: 9246;#new-token: 8192, #cached-token: 0;#new-token: 1336, #cached-token: 0;
+wired 28.6 GB
+tracebacks in the log: 0
+## qwen3-32b cc-1 (cc) 19:49:45
+up
+[cc-1] runs 1024:256:3:greedy: prompt 963, decode mean 12.36 median 12.36 tok/s (12.35 to 12.36)
+[cc-1] followup    3819 tok: first ttft 40.6598 s (256 tok, finish length); second ttft 0.5332 s, None of 3837 cached, 3837 fresh
+[cc-1] followup    7604 tok: first ttft 86.1268 s (256 tok, finish length); second ttft 0.7252 s, None of 7622 cached, 7622 fresh
+wrote <scratch>/lookup/cc-qwen3-32b-cc-1.json
+pass 1 psf__requests-1963 turn 12: context 6231, cached 0, ttft 65.8s, 47 tok in 47 chunks, 11.211 tok/s, finish stop
+  follow-up: 6277 of 6304 prompt tokens from the cache, KL(cold || hit) mean 0.000154 max 0.000475 over 48 steps, part step None
+pass 1 pylint-dev__pylint-5859 turn 9: context 9245, cached 0, ttft 100.9s, 256 tok in 256 chunks, 10.667 tok/s, finish length
+  follow-up: 9500 of 9528 prompt tokens from the cache, KL(cold || hit) mean 0.000206 max 0.000936 over 48 steps, part step None
+pooled: 301 tokens, 10.75 tok/s
+| cc-qwen3-32b-cc-1 | 128 | 789 | 0 | 203 | 97 | 20 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 18, #cached-token: 3819;#new-token: 7601, #cached-token: 3;#new-token: 18, #cached-token: 7604;#new-token: 6231, #cached-token: 0;#new-token: 27, #cached-token: 6277;#new-token: 6304, #cached-token: 0;#new-token: 8192, #cached-token: 0;#new-token: 1053, #cached-token: 0;#new-token: 28, #cached-token: 9500;#new-token: 8192, #cached-token: 0;#new-token: 1336, #cached-token: 0;
+wired 28.6 GB
+tracebacks in the log: 0
+## qwen3-32b cc-2 (cc) 20:00:53
+up
+[cc-2] runs 1024:256:3:greedy: prompt 963, decode mean 12.42 median 12.41 tok/s (12.35 to 12.5)
+[cc-2] followup    3819 tok: first ttft 40.7788 s (256 tok, finish length); second ttft 0.6943 s, None of 3837 cached, 3837 fresh
+[cc-2] followup    7604 tok: first ttft 84.9949 s (256 tok, finish length); second ttft 0.9027 s, None of 7622 cached, 7622 fresh
+wrote <scratch>/lookup/cc-qwen3-32b-cc-2.json
+| cc-qwen3-32b-cc-2 | 51 | 814 | 0 | 173 | 100 | 18 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 18, #cached-token: 3819;#new-token: 7601, #cached-token: 3;#new-token: 18, #cached-token: 7604;
+wired 29.9 GB
+tracebacks in the log: 0
+## qwen3-32b off-2 (off) 20:05:32
+up
+[off-2] runs 1024:256:3:greedy: prompt 963, decode mean 12.29 median 12.31 tok/s (12.2 to 12.35)
+[off-2] followup    3819 tok: first ttft 43.1546 s (256 tok, finish length); second ttft 0.5367 s, None of 3837 cached, 3837 fresh
+[off-2] followup    7604 tok: first ttft 84.0385 s (256 tok, finish length); second ttft 0.7272 s, None of 7622 cached, 7622 fresh
+wrote <scratch>/lookup/cc-qwen3-32b-off-2.json
+| cc-qwen3-32b-off-2 | 52 | 814 | 0 | 167 | 96 | 17 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 18, #cached-token: 3819;#new-token: 7601, #cached-token: 3;#new-token: 18, #cached-token: 7604;
+wired 29.9 GB
+tracebacks in the log: 0
+CHAINED_32B_DONE
+## coder-30b off-1 (off) 20:10:18
+up
+[off-1] runs 1024:256:3:greedy: prompt 963, decode mean 82.81 median 82.78 tok/s (82.76 to 82.88)
+[off-1] followup    3819 tok: first ttft 4.4132 s (101 tok, finish stop); second ttft 0.2685 s, None of 3937 cached, 3937 fresh
+[off-1] followup    7604 tok: first ttft 10.5267 s (117 tok, finish stop); second ttft 0.3884 s, None of 7738 cached, 7738 fresh
+wrote <scratch>/lookup/cc-coder-30b-off-1.json
+pass 1 psf__requests-1963 turn 12: context 6227, cached 0, ttft 8.3s, 93 tok in 93 chunks, 64.909 tok/s, finish stop
+  follow-up: 6228 of 6342 prompt tokens from the cache, KL(cold || hit) mean 0.003713 max 0.009031 over 3 steps, part step 2
+pass 1 pylint-dev__pylint-5859 turn 9: context 9241, cached 0, ttft 14.8s, 112 tok in 112 chunks, 56.613 tok/s, finish stop
+  follow-up: 9242 of 9375 prompt tokens from the cache, KL(cold || hit) mean 0.00171 max 0.01725 over 48 steps, part step None
+pooled: 203 tokens, 60.09 tok/s
+| cc-coder-30b-off-1 | 17 | 845 | 0 | 85 | 93 | 9 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 117, #cached-token: 3820;#new-token: 4096, #cached-token: 3;#new-token: 3505, #cached-token: 0;#new-token: 133, #cached-token: 7605;#new-token: 4096, #cached-token: 0;#new-token: 2131, #cached-token: 0;#new-token: 114, #cached-token: 6228;#new-token: 4096, #cached-token: 0;#new-token: 2246, #cached-token: 0;#new-token: 4096, #cached-token: 0;#new-token: 4096, #cached-token: 0;#new-token: 1049, #cached-token: 0;#new-token: 133, #cached-token: 9242;#new-token: 4096, #cached-token: 0;#new-token: 4096, #cached-token: 0;#new-token: 1183, #cached-token: 0;
+wired 29.1 GB
+tracebacks in the log: 0
+## coder-30b cc-1 (cc) 20:12:11
+up
+[cc-1] runs 1024:256:3:greedy: prompt 963, decode mean 83.8 median 83.79 tok/s (83.41 to 84.21)
+[cc-1] followup    3819 tok: first ttft 4.4171 s (163 tok, finish stop); second ttft 0.1252 s, None of 3999 cached, 3999 fresh
+[cc-1] followup    7604 tok: first ttft 10.6116 s (57 tok, finish stop); second ttft 0.1644 s, None of 7678 cached, 7678 fresh
+wrote <scratch>/lookup/cc-coder-30b-cc-1.json
+pass 1 psf__requests-1963 turn 12: context 6227, cached 0, ttft 8.5s, 93 tok in 93 chunks, 66.284 tok/s, finish stop
+  follow-up: 6319 of 6342 prompt tokens from the cache, KL(cold || hit) mean 0.004811 max 0.012448 over 3 steps, part step 2
+pass 1 pylint-dev__pylint-5859 turn 9: context 9241, cached 0, ttft 14.7s, 112 tok in 112 chunks, 55.302 tok/s, finish stop
+  follow-up: 9352 of 9375 prompt tokens from the cache, KL(cold || hit) mean 0.003407 max 0.011751 over 16 steps, part step 15
+pooled: 203 tokens, 59.79 tok/s
+| cc-coder-30b-cc-1 | 17 | 836 | 0 | 85 | 89 | 8 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 18, #cached-token: 3981;#new-token: 4096, #cached-token: 3;#new-token: 3505, #cached-token: 0;#new-token: 18, #cached-token: 7660;#new-token: 4096, #cached-token: 0;#new-token: 2131, #cached-token: 0;#new-token: 23, #cached-token: 6319;#new-token: 4096, #cached-token: 0;#new-token: 2246, #cached-token: 0;#new-token: 4096, #cached-token: 0;#new-token: 4096, #cached-token: 0;#new-token: 1049, #cached-token: 0;#new-token: 23, #cached-token: 9352;#new-token: 4096, #cached-token: 0;#new-token: 4096, #cached-token: 0;#new-token: 1183, #cached-token: 0;
+wired 28.9 GB
+tracebacks in the log: 0
+## coder-30b cc-2 (cc) 20:13:57
+up
+[cc-2] runs 1024:256:3:greedy: prompt 963, decode mean 83.13 median 83.01 tok/s (82.54 to 83.83)
+[cc-2] followup    3819 tok: first ttft 4.4257 s (80 tok, finish stop); second ttft 0.1216 s, None of 3916 cached, 3916 fresh
+[cc-2] followup    7604 tok: first ttft 10.5903 s (57 tok, finish stop); second ttft 0.1684 s, None of 7678 cached, 7678 fresh
+wrote <scratch>/lookup/cc-coder-30b-cc-2.json
+| cc-coder-30b-cc-2 | 6 | 822 | 0 | 76 | 75 | 8 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 18, #cached-token: 3898;#new-token: 4096, #cached-token: 3;#new-token: 3505, #cached-token: 0;#new-token: 18, #cached-token: 7660;
+wired 28.1 GB
+tracebacks in the log: 0
+## coder-30b off-2 (off) 20:14:49
+up
+[off-2] runs 1024:256:3:greedy: prompt 963, decode mean 83.05 median 83.02 tok/s (82.91 to 83.21)
+[off-2] followup    3819 tok: first ttft 4.4193 s (126 tok, finish stop); second ttft 0.3059 s, None of 3962 cached, 3962 fresh
+[off-2] followup    7604 tok: first ttft 11.0925 s (59 tok, finish stop); second ttft 0.2775 s, None of 7680 cached, 7680 fresh
+wrote <scratch>/lookup/cc-coder-30b-off-2.json
+| cc-coder-30b-off-2 | 6 | 788 | 0 | 59 | 93 | 6 |
+#new-token: 6, #cached-token: 0;#new-token: 1, #cached-token: 0;#new-token: 9, #cached-token: 0;#new-token: 963, #cached-token: 0;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 1, #cached-token: 962;#new-token: 3819, #cached-token: 0;#new-token: 142, #cached-token: 3820;#new-token: 4096, #cached-token: 3;#new-token: 3505, #cached-token: 0;#new-token: 75, #cached-token: 7605;
+wired 28.8 GB
+tracebacks in the log: 0
+CHAINED_DONE
+LOOKUP_SEQUENCE_DONE 20:15:48

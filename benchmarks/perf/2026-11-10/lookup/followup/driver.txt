@@ -1,0 +1,101 @@
+## fup2 off (off, chunk 2048) 05:55:48
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 59.5s, 89 tok in 89 chunks, 14.018 tok/s, finish stop
+  follow-up: 6727 of 6754 prompt tokens from the cache, KL(cold || hit) mean 0.047555 max 0.084034 over 2 steps, part step 1
+pooled: 88 tokens, 14.02 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 60.4s, 24 tok in 24 chunks, 13.033 tok/s, finish length
+  follow-up: 6662 of 6690 prompt tokens from the cache, KL(cold || hit) mean 0.000529 max 0.00287 over 48 steps, part step None
+pooled: 23 tokens, 13.03 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.7s, 48 tok in 48 chunks, 13.641 tok/s, finish length
+  follow-up: 6686 of 6714 prompt tokens from the cache, KL(cold || hit) mean 0.000828 max 0.004953 over 21 steps, part step 20
+pooled: 47 tokens, 13.64 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.0s, 72 tok in 72 chunks, 13.568 tok/s, finish length
+  follow-up: 6710 of 6738 prompt tokens from the cache, KL(cold || hit) mean 0.000875 max 0.015942 over 48 steps, part step None
+pooled: 71 tokens, 13.57 tok/s
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 0, ttft 84.3s, 153 tok in 153 chunks, 13.887 tok/s, finish stop
+  follow-up: 9995 of 10022 prompt tokens from the cache, KL(cold || hit) mean 0.001641 max 0.020367 over 30 steps, part step 29
+pooled: 152 tokens, 13.89 tok/s
+pass 1 psf__requests-1963 turn 22: context 10845, cached 0, ttft 95.5s, 169 tok in 146 chunks, 13.958 tok/s, finish stop
+  follow-up: 11013 of 11041 prompt tokens from the cache, KL(cold || hit) mean 0.001055 max 0.011008 over 48 steps, part step None
+pooled: 168 tokens, 13.96 tok/s
+tracebacks in the log: 0
+## fup2 r4 (r4, chunk 2048) 06:11:32
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.7s, 89 tok in 89 chunks, 17.808 tok/s, finish stop
+  follow-up: 6727 of 6754 prompt tokens from the cache, KL(cold || hit) mean 0.182878 max 0.182878 over 1 steps, part step 0
+pooled: 88 tokens, 17.81 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.7s, 24 tok in 24 chunks, 13.873 tok/s, finish length
+  follow-up: 6662 of 6690 prompt tokens from the cache, KL(cold || hit) mean 0.000564 max 0.004259 over 48 steps, part step None
+pooled: 23 tokens, 13.87 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.6s, 48 tok in 48 chunks, 18.191 tok/s, finish length
+  follow-up: 6686 of 6714 prompt tokens from the cache, KL(cold || hit) mean 0.000649 max 0.00489 over 21 steps, part step 20
+pooled: 47 tokens, 18.19 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.4s, 72 tok in 72 chunks, 17.886 tok/s, finish length
+  follow-up: 6710 of 6738 prompt tokens from the cache, KL(cold || hit) mean 0.000653 max 0.005427 over 48 steps, part step None
+pooled: 71 tokens, 17.89 tok/s
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 0, ttft 84.3s, 153 tok in 153 chunks, 16.173 tok/s, finish stop
+  follow-up: 9995 of 10022 prompt tokens from the cache, KL(cold || hit) mean 0.001262 max 0.009084 over 48 steps, part step None
+pooled: 152 tokens, 16.17 tok/s
+pass 1 psf__requests-1963 turn 22: context 10845, cached 0, ttft 94.6s, 169 tok in 146 chunks, 34.341 tok/s, finish stop
+  follow-up: 11013 of 11041 prompt tokens from the cache, KL(cold || hit) mean 0.000971 max 0.005309 over 48 steps, part step None
+pooled: 168 tokens, 34.34 tok/s
+MLX lookup decode, request 87702e9fcac54ad4be1fa4ee6e8e8e68: 88 tokens from 32 drafting, 7 replay-only and 17 ordinary forwards, 32 of 57 drafted tokens kept, 35 rows replayed
+MLX lookup decode, request 1647b387a05140d2939b881d9de824e7: 23 tokens from 8 drafting, 4 replay-only and 8 ordinary forwards, 3 of 12 drafted tokens kept, 9 rows replayed
+MLX lookup decode, request 720ae89fd3654223a3e6ffc855e03491: 47 tokens from 14 drafting, 4 replay-only and 13 ordinary forwards, 16 of 26 drafted tokens kept, 10 rows replayed
+MLX lookup decode, request af24fe40355142799f6bd353641e8def: 71 tokens from 27 drafting, 6 replay-only and 12 ordinary forwards, 26 of 47 drafted tokens kept, 26 rows replayed
+MLX lookup decode, request d9a65e11d67747bbbe46c7625f0edcf9: 152 tokens from 51 drafting, 17 replay-only and 40 ordinary forwards, 44 of 91 drafted tokens kept, 50 rows replayed
+MLX lookup decode, request a122991b87c24ebd917cb01d88c44dc2: 169 tokens from 43 drafting, 0 replay-only and 3 ordinary forwards, 123 of 125 drafted tokens kept, 2 rows replayed
+tracebacks in the log: 0
+## fup2 off-c1024 (off, chunk 1024) 06:26:53
+up
+enabled lines: 0
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.8s, 47 tok in 47 chunks, 13.865 tok/s, finish stop
+  follow-up: 6685 of 6712 prompt tokens from the cache, KL(cold || hit) mean 0.105437 max 0.105437 over 1 steps, part step 0
+pooled: 46 tokens, 13.86 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.8s, 24 tok in 24 chunks, 13.167 tok/s, finish length
+  follow-up: 6662 of 6690 prompt tokens from the cache, KL(cold || hit) mean 0.001078 max 0.013999 over 48 steps, part step None
+pooled: 23 tokens, 13.17 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.9s, 47 tok in 47 chunks, 13.821 tok/s, finish stop
+  follow-up: 6685 of 6712 prompt tokens from the cache, KL(cold || hit) mean 0.105437 max 0.105437 over 1 steps, part step 0
+pooled: 46 tokens, 13.82 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 56.9s, 47 tok in 47 chunks, 13.769 tok/s, finish stop
+  follow-up: 6685 of 6712 prompt tokens from the cache, KL(cold || hit) mean 0.105437 max 0.105437 over 1 steps, part step 0
+pooled: 46 tokens, 13.77 tok/s
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 0, ttft 86.3s, 153 tok in 153 chunks, 13.641 tok/s, finish stop
+  follow-up: 9995 of 10022 prompt tokens from the cache, KL(cold || hit) mean 0.001583 max 0.021054 over 30 steps, part step 29
+pooled: 152 tokens, 13.64 tok/s
+pass 1 psf__requests-1963 turn 22: context 10845, cached 0, ttft 98.0s, 169 tok in 146 chunks, 12.878 tok/s, finish stop
+  follow-up: 11013 of 11041 prompt tokens from the cache, KL(cold || hit) mean 0.001004 max 0.004546 over 48 steps, part step None
+pooled: 168 tokens, 12.88 tok/s
+tracebacks in the log: 0
+## fup2 r4-c1024 (r4, chunk 1024) 06:42:32
+up
+enabled lines: 1
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.6s, 47 tok in 47 chunks, 27.916 tok/s, finish stop
+  follow-up: 6685 of 6712 prompt tokens from the cache, KL(cold || hit) mean 0.001156 max 0.022654 over 48 steps, part step None
+pooled: 46 tokens, 27.92 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.8s, 24 tok in 24 chunks, 27.135 tok/s, finish length
+  follow-up: 6662 of 6690 prompt tokens from the cache, KL(cold || hit) mean 0.001596 max 0.039797 over 48 steps, part step None
+pooled: 23 tokens, 27.14 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.9s, 47 tok in 47 chunks, 27.767 tok/s, finish stop
+  follow-up: 6685 of 6712 prompt tokens from the cache, KL(cold || hit) mean 0.001156 max 0.022654 over 48 steps, part step None
+pooled: 46 tokens, 27.77 tok/s
+pass 1 psf__requests-1963 turn 12: context 6639, cached 0, ttft 57.5s, 47 tok in 47 chunks, 27.735 tok/s, finish stop
+  follow-up: 6685 of 6712 prompt tokens from the cache, KL(cold || hit) mean 0.001156 max 0.022654 over 48 steps, part step None
+pooled: 46 tokens, 27.74 tok/s
+pass 1 pylint-dev__pylint-5859 turn 9: context 9843, cached 0, ttft 86.1s, 153 tok in 153 chunks, 16.05 tok/s, finish stop
+  follow-up: 9995 of 10022 prompt tokens from the cache, KL(cold || hit) mean 0.001109 max 0.007803 over 30 steps, part step 29
+pooled: 152 tokens, 16.05 tok/s
+pass 1 psf__requests-1963 turn 22: context 10845, cached 0, ttft 95.8s, 169 tok in 146 chunks, 33.777 tok/s, finish stop
+  follow-up: 11013 of 11041 prompt tokens from the cache, KL(cold || hit) mean 0.001439 max 0.01791 over 48 steps, part step None
+pooled: 168 tokens, 33.78 tok/s
+MLX lookup decode, request 59ef3ed9ed8742e4b06f77f929c11d4f: 46 tokens from 13 drafting, 1 replay-only and 3 ordinary forwards, 29 of 33 drafted tokens kept, 4 rows replayed
+MLX lookup decode, request 363b693cfafc4f6dbce2a89b6274e5bd: 23 tokens from 7 drafting, 0 replay-only and 2 ordinary forwards, 14 of 17 drafted tokens kept, 1 rows replayed
+MLX lookup decode, request c976b902a7a04ed0a2e6be90ec5fa801: 46 tokens from 13 drafting, 1 replay-only and 3 ordinary forwards, 29 of 33 drafted tokens kept, 4 rows replayed
+MLX lookup decode, request 19c87a97799444f48e9e4c0207b618a8: 46 tokens from 13 drafting, 1 replay-only and 3 ordinary forwards, 29 of 33 drafted tokens kept, 4 rows replayed
+MLX lookup decode, request b1bf0a0c9c6e423b991c39a340c0ded9: 152 tokens from 51 drafting, 17 replay-only and 40 ordinary forwards, 44 of 91 drafted tokens kept, 50 rows replayed
+MLX lookup decode, request 24e72f7c9e8042cf908323f9bb7ae18c: 169 tokens from 43 drafting, 0 replay-only and 3 ordinary forwards, 123 of 125 drafted tokens kept, 2 rows replayed
+tracebacks in the log: 0
+FUP2_DONE

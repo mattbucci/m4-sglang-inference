@@ -1,0 +1,9 @@
+loaded mlx-community/Qwen3.6-27B-4bit vlm=True layers=64 active=14.95 GB fusions={}
+
+== depth 32768: prefill 293.1s
+rows   1:    80.38 ms per cycle,  80.378 ms per row, x1.000 of 1 one-row cycles
+rows   2:    87.88 ms per cycle,  43.938 ms per row, x0.547 of 2 one-row cycles
+rows   3:   100.05 ms per cycle,  33.351 ms per row, x0.415 of 3 one-row cycles
+rows   4:   122.90 ms per cycle,  30.724 ms per row, x0.382 of 4 one-row cycles
+rows   8:   298.78 ms per cycle,  37.348 ms per row, x0.465 of 8 one-row cycles
+one-row pipelined step 76.59 ms; cache ends at 33602 tokens

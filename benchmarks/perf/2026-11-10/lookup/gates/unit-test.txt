@@ -1,0 +1,171 @@
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/awq/awq.py:53: UserWarning: Only CUDA, HIP and XPU support AWQ currently.
+  warnings.warn(f"Only CUDA, HIP and XPU support AWQ currently.")
+~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/layers/quantization/gguf.py:76: UserWarning: Only CUDA, MUSA and NPU support GGUF quantization currently.
+  warnings.warn(f"Only CUDA, MUSA and NPU support GGUF quantization currently.")
+MLX lookup decode: request a holds 43 tokens of recurrent state for a key of 40; its radix insert is skipped
+module: ~/AI/m4-sglang-inference/components/sglang/python/sglang/srt/hardware_backend/mlx/model_runner.py
+PASS index: agrees with the offline replay's lookup (6000/6000)
+PASS index: the last n-gram finds its earlier occurrence
+PASS index: no earlier occurrence, no match
+PASS index: the last n-gram does not match itself
+PASS policy: two rows after a miss, doubling to the cap ([2, 4, 4, 4])
+PASS policy: a cap of two stays at two
+PASS policy: rows never pass what follows the match
+PASS policy: a backward match under two tokens drafts nothing
+PASS propose: copies what followed the match ([4, 5, 6])
+PASS propose: the draft stops before a stop token
+PASS propose: the draft leaves room for the forward's own token
+PASS propose: one token left, no draft
+PASS accept: keeps the matching drafts and the model's next token
+PASS accept: a fully kept draft raises the ladder
+PASS limits: every stop id the scheduler checks, and prompt plus budget
+PASS limits: ignore_eos has no stop ids, no budget is unbounded
+PASS models: one with recurrent layers, one attention only
+PASS hybrid, every draft right: 48 tokens equal the ordinary loop's (13 drafting forwards, 0 replay-only, 0 ordinary, 35 queued, 36/36 kept, 0 replayed)
+PASS hybrid, every draft right: every step is accounted for
+PASS hybrid, every draft right: every step is a lookup step and none is chainable
+PASS hybrid: right drafts take fewer forwards than tokens (13 forwards)
+PASS hybrid: the request summary reads back (49 tokens from 13 drafting, 0 replay-only and 0 ordinary forwards, 36 of 36 drafted tokens kept, 0 rows replayed)
+PASS hybrid: right drafts replay nothing
+PASS hybrid, every draft right: caches after leaving match the ordinary loop's (max abs diff 5.25e-06 of 9.04)
+PASS hybrid, every draft wrong at once: 48 tokens equal the ordinary loop's (42 drafting forwards, 6 replay-only, 0 ordinary, 0 queued, 0/42 kept, 141 replayed)
+PASS hybrid, every draft wrong at once: every step is accounted for
+PASS hybrid, every draft wrong at once: every step is a lookup step and none is chainable
+PASS hybrid, every draft wrong at once: caches after leaving match the ordinary loop's (max abs diff 5.25e-06 of 9.04)
+PASS hybrid, right, then wrong at the second token: 48 tokens equal the ordinary loop's (24 drafting forwards, 0 replay-only, 0 ordinary, 24 queued, 24/47 kept, 22 replayed)
+PASS hybrid, right, then wrong at the second token: every step is accounted for
+PASS hybrid, right, then wrong at the second token: every step is a lookup step and none is chainable
+PASS hybrid: a hybrid replays the tokens a missed forward kept (22 rows)
+PASS hybrid, right, then wrong at the second token: caches after leaving match the ordinary loop's (max abs diff 5.25e-06 of 9.04)
+PASS hybrid, right twice, then wrong at the third token: 48 tokens equal the ordinary loop's (17 drafting forwards, 0 replay-only, 0 ordinary, 31 queued, 32/37 kept, 15 replayed)
+PASS hybrid, right twice, then wrong at the third token: every step is accounted for
+PASS hybrid, right twice, then wrong at the third token: every step is a lookup step and none is chainable
+PASS hybrid, right twice, then wrong at the third token: caches after leaving match the ordinary loop's (max abs diff 5.36e-06 of 9.04)
+PASS hybrid, mixed, with undrafted steps: 48 tokens equal the ordinary loop's (17 drafting forwards, 5 replay-only, 0 ordinary, 26 queued, 27/39 kept, 8 replayed)
+PASS hybrid, mixed, with undrafted steps: every step is accounted for
+PASS hybrid, mixed, with undrafted steps: every step is a lookup step and none is chainable
+PASS hybrid, mixed, with undrafted steps: caches after leaving match the ordinary loop's (max abs diff 5.25e-06 of 9.04)
+PASS hybrid: a kept draft leaves the caches ahead of the handed out tokens
+PASS hybrid: the rollback point is held while tokens are queued
+PASS hybrid, left ahead: caches hold all but the newest token and match (offset 40 for 41 tokens, max abs diff 7.87e-06)
+PASS hybrid, left ahead: the request stays on the ordinary loop
+PASS hybrid, left ahead: the ordinary loop carries on with the same tokens (5 tokens at the switch)
+PASS hybrid, left behind: caches hold all but the newest token and match (offset 40 for 41 tokens, max abs diff 7.87e-06)
+PASS hybrid, left behind: the request stays on the ordinary loop
+PASS hybrid, left level: caches hold all but the newest token and match (offset 44 for 45 tokens, max abs diff 6.32e-06)
+PASS hybrid, left level: the request stays on the ordinary loop
+PASS hybrid, store for the radix insert: caches hold all but the newest token and match (offset 40 for 41 tokens, max abs diff 7.87e-06)
+PASS hybrid, store for the radix insert: the request stays on the ordinary loop
+PASS hybrid: the store sees the settled caches ([(3, 40)])
+PASS hybrid: the row release settles before it syncs
+PASS hybrid: with the radix cache off a finished request is left as is
+PASS hybrid: recurrent state that cannot be set back skips the radix insert
+PASS hybrid: no forward verifies a token past prompt plus max_new_tokens (drafts of [1, 3, 3], stream 12 outputs for a budget of 12)
+PASS hybrid: no forward runs past a drafted stop token (stop token at output 7, stream holds 8 outputs)
+PASS hybrid: verified tokens are queued when a second request joins
+PASS hybrid: a step of two requests ends lookup decode for both
+PASS hybrid: the first request keeps its tokens through the switch (4 tokens before the switch)
+PASS hybrid: the joining request decodes its own tokens
+PASS hybrid: caches are level with the tokens after the switch
+PASS hybrid: a step with logit edits leaves lookup decode for good
+PASS hybrid: a step with a logprob request leaves lookup decode for good
+PASS hybrid: a sampled request opens a stream
+PASS hybrid: a greedy request does
+PASS hybrid: a request whose limits are unknown does not
+PASS hybrid: caches out of step with the tokens do not
+PASS hybrid: flag off, the ordinary step is untouched
+PASS hybrid: removing a request drops every lookup record
+PASS hybrid: clear drops every lookup record
+PASS hybrid, seeded: the ordinary loop repeats its own draw
+PASS hybrid, seeded: the draw is not the greedy text (parts at token 1)
+PASS hybrid, seeded, every draft right: 48 sampled tokens equal the ordinary loop's (13 drafting forwards, 36/36 kept, 0 replayed)
+PASS hybrid, seeded, every draft wrong at once: 48 sampled tokens equal the ordinary loop's (42 drafting forwards, 0/42 kept, 141 replayed)
+PASS hybrid, seeded, right, then wrong at the second token: 48 sampled tokens equal the ordinary loop's (24 drafting forwards, 24/47 kept, 22 replayed)
+PASS hybrid, seeded, right twice, then wrong at the third token: 48 sampled tokens equal the ordinary loop's (17 drafting forwards, 32/37 kept, 15 replayed)
+PASS hybrid, seeded, mixed, with undrafted steps: 48 sampled tokens equal the ordinary loop's (17 drafting forwards, 27/39 kept, 8 replayed)
+PASS hybrid, unseeded, every draft right: every token is inside the top-k of its own position (worst rank 19, 0/42 drafted tokens kept)
+PASS hybrid, unseeded, every draft right: control, read against the row before, tokens fall outside it (worst rank 199)
+PASS hybrid, unseeded, mixed: every token is inside the top-k of its own position (worst rank 17, 1/39 drafted tokens kept)
+PASS hybrid, unseeded, mixed: control, read against the row before, tokens fall outside it (worst rank 209)
+PASS hybrid, unseeded, low temperature, mixed: every token is inside the top-k of its own position (worst rank 1, 7/40 drafted tokens kept)
+PASS hybrid, unseeded, low temperature, mixed: control, read against the row before, tokens fall outside it (worst rank 207)
+PASS hybrid, real index: a prompt whose decode the index can match (attempt 1, 1 steps with a match)
+PASS hybrid, real index: tokens equal the ordinary loop's (64 tokens from 1 drafting, 1 replay-only and 62 ordinary forwards, 0 of 1 drafted tokens kept, 1 rows replayed)
+PASS hybrid, real index: drafts were made and checked
+PASS dense, every draft right: 48 tokens equal the ordinary loop's (13 drafting forwards, 0 replay-only, 0 ordinary, 35 queued, 36/36 kept, 0 replayed)
+PASS dense, every draft right: every step is accounted for
+PASS dense, every draft right: every step is a lookup step and none is chainable
+PASS dense: right drafts take fewer forwards than tokens (13 forwards)
+PASS dense: the request summary reads back (49 tokens from 13 drafting, 0 replay-only and 0 ordinary forwards, 36 of 36 drafted tokens kept, 0 rows replayed)
+PASS dense: right drafts replay nothing
+PASS dense, every draft right: caches after leaving match the ordinary loop's (max abs diff 3.81e-06 of 9.21)
+PASS dense, every draft wrong at once: 48 tokens equal the ordinary loop's (48 drafting forwards, 0 replay-only, 0 ordinary, 0 queued, 0/48 kept, 0 replayed)
+PASS dense, every draft wrong at once: every step is accounted for
+PASS dense, every draft wrong at once: every step is a lookup step and none is chainable
+PASS dense, every draft wrong at once: caches after leaving match the ordinary loop's (max abs diff 2.98e-06 of 9.21)
+PASS dense, right, then wrong at the second token: 48 tokens equal the ordinary loop's (24 drafting forwards, 0 replay-only, 0 ordinary, 24 queued, 24/47 kept, 0 replayed)
+PASS dense, right, then wrong at the second token: every step is accounted for
+PASS dense, right, then wrong at the second token: every step is a lookup step and none is chainable
+PASS dense: attention-only caches are trimmed, nothing replays
+PASS dense, right, then wrong at the second token: caches after leaving match the ordinary loop's (max abs diff 3.81e-06 of 9.21)
+PASS dense, right twice, then wrong at the third token: 48 tokens equal the ordinary loop's (17 drafting forwards, 0 replay-only, 0 ordinary, 31 queued, 32/37 kept, 0 replayed)
+PASS dense, right twice, then wrong at the third token: every step is accounted for
+PASS dense, right twice, then wrong at the third token: every step is a lookup step and none is chainable
+PASS dense, right twice, then wrong at the third token: caches after leaving match the ordinary loop's (max abs diff 3.70e-06 of 9.21)
+PASS dense, mixed, with undrafted steps: 48 tokens equal the ordinary loop's (17 drafting forwards, 0 replay-only, 5 ordinary, 26 queued, 27/39 kept, 0 replayed)
+PASS dense, mixed, with undrafted steps: every step is accounted for
+PASS dense, mixed, with undrafted steps: every step is a lookup step and none is chainable
+PASS dense, mixed, with undrafted steps: caches after leaving match the ordinary loop's (max abs diff 3.70e-06 of 9.21)
+PASS dense: a kept draft leaves the caches ahead of the handed out tokens
+PASS dense, left ahead: caches hold all but the newest token and match (offset 40 for 41 tokens, max abs diff 3.46e-06)
+PASS dense, left ahead: the request stays on the ordinary loop
+PASS dense, left ahead: the ordinary loop carries on with the same tokens (5 tokens at the switch)
+PASS dense: attention-only caches never fall behind
+PASS dense, left level: caches hold all but the newest token and match (offset 43 for 44 tokens, max abs diff 2.62e-06)
+PASS dense, left level: the request stays on the ordinary loop
+PASS dense, store for the radix insert: caches hold all but the newest token and match (offset 40 for 41 tokens, max abs diff 3.46e-06)
+PASS dense, store for the radix insert: the request stays on the ordinary loop
+PASS dense: nothing to store without recurrent state
+PASS dense: the row release settles before it syncs
+PASS dense: with the radix cache off a finished request is left as is
+PASS dense: no forward verifies a token past prompt plus max_new_tokens (drafts of [1, 3, 3], stream 12 outputs for a budget of 12)
+PASS dense: no forward runs past a drafted stop token (stop token at output 9, stream holds 10 outputs)
+PASS dense: verified tokens are queued when a second request joins
+PASS dense: a step of two requests ends lookup decode for both
+PASS dense: the first request keeps its tokens through the switch (4 tokens before the switch)
+PASS dense: the joining request decodes its own tokens
+PASS dense: caches are level with the tokens after the switch
+PASS dense: a step with logit edits leaves lookup decode for good
+PASS dense: a step with a logprob request leaves lookup decode for good
+PASS dense: a sampled request opens a stream
+PASS dense: a greedy request does
+PASS dense: a request whose limits are unknown does not
+PASS dense: caches out of step with the tokens do not
+PASS dense: flag off, the ordinary step is untouched
+PASS dense: removing a request drops every lookup record
+PASS dense: clear drops every lookup record
+PASS dense, seeded: the ordinary loop repeats its own draw
+PASS dense, seeded: the draw is not the greedy text (parts at token 1)
+PASS dense, seeded, every draft right: 48 sampled tokens equal the ordinary loop's (13 drafting forwards, 36/36 kept, 0 replayed)
+PASS dense, seeded, every draft wrong at once: 48 sampled tokens equal the ordinary loop's (48 drafting forwards, 0/48 kept, 0 replayed)
+PASS dense, seeded, right, then wrong at the second token: 48 sampled tokens equal the ordinary loop's (24 drafting forwards, 24/47 kept, 0 replayed)
+PASS dense, seeded, right twice, then wrong at the third token: 48 sampled tokens equal the ordinary loop's (17 drafting forwards, 32/37 kept, 0 replayed)
+PASS dense, seeded, mixed, with undrafted steps: 48 sampled tokens equal the ordinary loop's (17 drafting forwards, 27/39 kept, 0 replayed)
+PASS dense, unseeded, every draft right: every token is inside the top-k of its own position (worst rank 19, 2/50 drafted tokens kept)
+PASS dense, unseeded, every draft right: control, read against the row before, tokens fall outside it (worst rank 210)
+PASS dense, unseeded, mixed: every token is inside the top-k of its own position (worst rank 17, 0/37 drafted tokens kept)
+PASS dense, unseeded, mixed: control, read against the row before, tokens fall outside it (worst rank 199)
+PASS dense, unseeded, low temperature, mixed: every token is inside the top-k of its own position (worst rank 1, 16/40 drafted tokens kept)
+PASS dense, unseeded, low temperature, mixed: control, read against the row before, tokens fall outside it (worst rank 201)
+PASS dense, real index: a prompt whose decode the index can match (attempt 1, 49 steps with a match)
+PASS dense, real index: tokens equal the ordinary loop's (65 tokens from 30 drafting, 0 replay-only and 15 ordinary forwards, 20 of 49 drafted tokens kept, 0 rows replayed)
+PASS dense, real index: drafts were made and checked
+PASS hybrid: an image request does not open a stream
+PASS hybrid: an image request decodes on the ordinary loop
+PASS mlx: evaluating the first row's token evaluates the forward's other rows (5.5 ms for the slice, 0.033 ms for the rest)
+PASS flag: a bare runner has lookup decode off
+PASS flag: off unless set, four rows by default
+PASS scheduler: a fresh launch reads no_chain into chain_safe
+PASS pending: no_chain and lookup default off
+
+all passed

@@ -1,0 +1,104 @@
+[03:16:58] fidelity qwen36 rc=0
+  plain       107 tok    12.46 ms/tok   80.27 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        107 tok    14.70 ms/tok   68.03 tok/s x0.848  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      112 tok    13.40 ms/tok   74.62 tok/s x0.930  drafts  48 accepted     48/88 replayed  54  vs plain: differs at 29
+  fixed2-m4   107 tok    12.75 ms/tok   78.42 tok/s x0.977  drafts  34 accepted     25/34 replayed  10  vs plain: same
+  fidelity adapt4     KL(one-row || drafting) mean 0.00084 max 0.0386 same token 111/112 | KL(one-row || one forward) mean 0.00076 max 0.0187 same token 112/112  leaves plain at 29: plain's two best are 0.250 apart, arm token 0.250 below the best
+  fidelity fixed2-m4  KL(one-row || drafting) mean 0.00054 max 0.0174 same token 107/107 | KL(one-row || one forward) mean 0.00083 max 0.0204 same token 107/107
+  plain       205 tok    12.35 ms/tok   80.98 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        205 tok    14.84 ms/tok   67.37 tok/s x0.832  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      206 tok    15.90 ms/tok   62.88 tok/s x0.776  drafts  70 accepted    31/108 replayed  71  vs plain: differs at 172
+  fixed2-m4   239 tok    14.03 ms/tok   71.28 tok/s x0.880  drafts  31 accepted     24/31 replayed   8  vs plain: differs at 48
+  fidelity adapt4     KL(one-row || drafting) mean 0.00115 max 0.0151 same token 205/206 | KL(one-row || one forward) mean 0.00121 max 0.0305 same token 202/206  leaves plain at 172: plain's two best are 0.250 apart, arm token 0.250 below the best
+  fidelity fixed2-m4  KL(one-row || drafting) mean 0.00151 max 0.0451 same token 234/239 | KL(one-row || one forward) mean 0.00129 max 0.0406 same token 235/239  leaves plain at 48: plain's two best are 0.125 apart, arm token 0.125 below the best
+  plain       249 tok    12.79 ms/tok   78.21 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        249 tok    15.46 ms/tok   64.70 tok/s x0.827  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      249 tok    11.49 ms/tok   87.01 tok/s x1.113  drafts  78 accepted   118/170 replayed  44  vs plain: same
+  fixed2-m4   256 tok    12.40 ms/tok   80.67 tok/s x1.031  drafts  80 accepted     71/80 replayed  10  vs plain: differs at 186
+  fidelity adapt4     KL(one-row || drafting) mean 0.00044 max 0.0078 same token 249/249 | KL(one-row || one forward) mean 0.00066 max 0.0209 same token 246/249
+  fidelity fixed2-m4  KL(one-row || drafting) mean 0.00084 max 0.0523 same token 255/256 | KL(one-row || one forward) mean 0.00076 max 0.0328 same token 253/256  leaves plain at 186: plain's two best are 0.000 apart, arm token 0.000 below the best
+== pooled over turns
+  plain        1122 tok   79.59 tok/s x1.000
+  sync         1122 tok   66.28 tok/s x0.833
+  adapt4       1134 tok   74.23 tok/s x0.933
+  fixed2-m4    1204 tok   76.29 tok/s x0.958
+== fidelity pooled over turns (token-weighted mean, worst token)
+  adapt4       567 tok  drafting 0.00078 / 0.0386 same token 565/567 | one forward 0.00088 / 0.0305 same token 560/567
+  fixed2-m4    602 tok  drafting 0.00105 / 0.0523 same token 596/602 | one forward 0.00098 / 0.0406 same token 595/602
+[03:23:41] deep qwen36 rc=0
+loaded mlx-community/Qwen3.6-35B-A3B-4bit vlm=True layers=40 active=19.00 GB arms=['plain', 'sync', 'adapt4', 'fixed2', 'fixed2-m4', 'len-m8']
+
+== mwaskom__seaborn-2848 turn 44: context 49902 tokens, prefill 97.0s, pure_kv=False
+  plain       256 tok    16.84 ms/tok   59.36 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    19.21 ms/tok   52.05 tok/s x0.877  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    23.21 ms/tok   43.08 tok/s x0.726  drafts 106 accepted   124/208 replayed 118  vs plain: same
+  fixed2      256 tok    19.71 ms/tok   50.73 tok/s x0.855  drafts 139 accepted    91/139 replayed  74  vs plain: same
+  fixed2-m4   256 tok    17.42 ms/tok   57.41 tok/s x0.967  drafts 101 accepted    81/101 replayed  29  vs plain: same
+  len-m8      256 tok    19.87 ms/tok   50.33 tok/s x0.848  drafts  36 accepted    88/114 replayed  51  vs plain: same
+
+== mwaskom__seaborn-2848 turn 76: context 61100 tokens, prefill 30.0s, pure_kv=False
+  plain       256 tok    17.81 ms/tok   56.15 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    20.21 ms/tok   49.48 tok/s x0.881  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    25.21 ms/tok   39.67 tok/s x0.707  drafts 101 accepted   133/203 replayed 114  vs plain: differs at 145
+  fixed2      256 tok    22.43 ms/tok   44.59 tok/s x0.794  drafts 137 accepted    95/137 replayed  78  vs plain: differs at 145
+  fixed2-m4   256 tok    19.24 ms/tok   51.98 tok/s x0.926  drafts  78 accepted     54/78 replayed  25  vs plain: differs at 83
+  len-m8      256 tok    20.13 ms/tok   49.68 tok/s x0.885  drafts  36 accepted    99/122 replayed  14  vs plain: differs at 145
+
+== mwaskom__seaborn-2848 turn 108: context 81997 tokens, prefill 64.0s, pure_kv=False
+  plain       256 tok    19.96 ms/tok   50.10 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    22.28 ms/tok   44.88 tok/s x0.896  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    39.12 ms/tok   25.57 tok/s x0.510  drafts 121 accepted    88/205 replayed 184  vs plain: differs at 43
+  fixed2      256 tok    35.16 ms/tok   28.44 tok/s x0.568  drafts 142 accepted    67/142 replayed 159  vs plain: differs at 43
+  fixed2-m4   256 tok    21.25 ms/tok   47.07 tok/s x0.940  drafts  82 accepted     61/82 replayed  24  vs plain: differs at 185
+  len-m8      256 tok    24.50 ms/tok   40.81 tok/s x0.815  drafts  25 accepted     33/62 replayed  21  vs plain: differs at 43
+
+== pooled over turns
+  plain        1536 tok   54.93 tok/s x1.000
+  sync         1536 tok   48.62 tok/s x0.885
+  adapt4       1536 tok   34.27 tok/s x0.624
+  fixed2       1536 tok   38.81 tok/s x0.707
+  fixed2-m4    1536 tok   51.81 tok/s x0.943
+  len-m8       1536 tok   46.51 tok/s x0.847
+[03:30:26] fidelity qwen3-32b rc=0
+  plain        47 tok    91.16 ms/tok   10.97 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         47 tok    91.27 ms/tok   10.96 tok/s x0.999  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       60 tok    86.11 ms/tok   11.61 tok/s x1.058  drafts  17 accepted      9/31 replayed   0  vs plain: differs at 6
+  fixed2       60 tok    80.87 ms/tok   12.37 tok/s x1.128  drafts  17 accepted      9/17 replayed   0  vs plain: differs at 6
+  fidelity adapt4     KL(one-row || drafting) mean 0.00030 max 0.0019 same token 59/60 | KL(one-row || one forward) mean 0.00027 max 0.0011 same token 59/60  leaves plain at 6: plain's two best are 0.062 apart, arm token 0.062 below the best
+  fidelity fixed2     KL(one-row || drafting) mean 0.00030 max 0.0019 same token 59/60 | KL(one-row || one forward) mean 0.00027 max 0.0011 same token 59/60  leaves plain at 6: plain's two best are 0.062 apart, arm token 0.062 below the best
+  plain       128 tok    97.69 ms/tok   10.24 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        128 tok    97.95 ms/tok   10.21 tok/s x0.997  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      128 tok    88.96 ms/tok   11.24 tok/s x1.098  drafts  40 accepted     26/68 replayed   0  vs plain: differs at 20
+  fixed2      128 tok    87.53 ms/tok   11.43 tok/s x1.116  drafts  45 accepted     21/45 replayed   0  vs plain: differs at 20
+  fidelity adapt4     KL(one-row || drafting) mean 0.00023 max 0.0013 same token 127/128 | KL(one-row || one forward) mean 0.00025 max 0.0017 same token 127/128  leaves plain at 20: plain's two best are 0.062 apart, arm token 0.062 below the best
+  fidelity fixed2     KL(one-row || drafting) mean 0.00023 max 0.0013 same token 127/128 | KL(one-row || one forward) mean 0.00025 max 0.0017 same token 127/128  leaves plain at 20: plain's two best are 0.062 apart, arm token 0.062 below the best
+== pooled over turns
+  plain         350 tok   10.42 tok/s x1.000
+  sync          350 tok   10.40 tok/s x0.998
+  adapt4        376 tok   11.36 tok/s x1.090
+  fixed2        376 tok   11.71 tok/s x1.123
+== fidelity pooled over turns (token-weighted mean, worst token)
+  adapt4       188 tok  drafting 0.00026 / 0.0019 same token 186/188 | one forward 0.00026 / 0.0017 same token 186/188
+  fixed2       188 tok  drafting 0.00026 / 0.0019 same token 186/188 | one forward 0.00026 / 0.0017 same token 186/188
+[03:35:50] fidelity qwen36-27b rc=0
+  plain        89 tok    70.56 ms/tok   14.17 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         89 tok    72.41 ms/tok   13.81 tok/s x0.975  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       89 tok    55.45 ms/tok   18.03 tok/s x1.272  drafts  32 accepted     33/58 replayed  35  vs plain: same
+  fixed2       89 tok    59.24 ms/tok   16.88 tok/s x1.191  drafts  41 accepted     24/41 replayed  27  vs plain: same
+  fidelity adapt4     KL(one-row || drafting) mean 0.00018 max 0.0020 same token 89/89 | KL(one-row || one forward) mean 0.00016 max 0.0020 same token 88/89
+  fidelity fixed2     KL(one-row || drafting) mean 0.00013 max 0.0021 same token 89/89 | KL(one-row || one forward) mean 0.00016 max 0.0020 same token 88/89
+  plain       128 tok    71.07 ms/tok   14.07 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        128 tok    74.23 ms/tok   13.47 tok/s x0.957  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      128 tok    66.75 ms/tok   14.98 tok/s x1.065  drafts  44 accepted     28/70 replayed  50  vs plain: differs at 57
+  fixed2      128 tok    66.86 ms/tok   14.96 tok/s x1.063  drafts  51 accepted     21/51 replayed  44  vs plain: differs at 57
+  fidelity adapt4     KL(one-row || drafting) mean 0.00023 max 0.0034 same token 127/128 | KL(one-row || one forward) mean 0.00022 max 0.0020 same token 128/128  leaves plain at 57: plain's two best are 0.125 apart, arm token 0.125 below the best
+  fidelity fixed2     KL(one-row || drafting) mean 0.00023 max 0.0034 same token 127/128 | KL(one-row || one forward) mean 0.00022 max 0.0020 same token 128/128  leaves plain at 57: plain's two best are 0.125 apart, arm token 0.125 below the best
+== pooled over turns
+  plain         434 tok   14.11 tok/s x1.000
+  sync          434 tok   13.61 tok/s x0.964
+  adapt4        434 tok   16.10 tok/s x1.141
+  fixed2        434 tok   15.69 tok/s x1.112
+== fidelity pooled over turns (token-weighted mean, worst token)
+  adapt4       217 tok  drafting 0.00021 / 0.0034 same token 216/217 | one forward 0.00019 / 0.0020 same token 216/217
+  fixed2       217 tok  drafting 0.00019 / 0.0034 same token 216/217 | one forward 0.00019 / 0.0020 same token 216/217
+LOOKUP_RUN2_DONE

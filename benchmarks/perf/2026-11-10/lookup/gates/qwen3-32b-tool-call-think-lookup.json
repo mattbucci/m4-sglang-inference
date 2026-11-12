@@ -1,0 +1,22 @@
+{
+ "no_think": false,
+ "max_tokens": 2500,
+ "rows": [
+  {
+   "finish": "stop",
+   "completion_tokens": 81,
+   "reasoning_chars": 386,
+   "content_chars": 0,
+   "tool_calls": [],
+   "ok": false
+  },
+  {
+   "finish": "length",
+   "completion_tokens": 2500,
+   "reasoning_chars": 12138,
+   "content_chars": 0,
+   "tool_calls": [],
+   "ok": false
+  }
+ ]
+}

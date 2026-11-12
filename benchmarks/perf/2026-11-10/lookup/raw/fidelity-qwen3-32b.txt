@@ -1,0 +1,29 @@
+loaded mlx-community/Qwen3-32B-4bit-DWQ vlm=False layers=64 active=17.16 GB arms=['plain', 'sync', 'adapt4', 'fixed2']
+
+== psf__requests-1963 turn 12: context 6231 tokens, prefill 70.1s, pure_kv=True
+  plain        47 tok    91.16 ms/tok   10.97 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         47 tok    91.27 ms/tok   10.96 tok/s x0.999  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       60 tok    86.11 ms/tok   11.61 tok/s x1.058  drafts  17 accepted      9/31 replayed   0  vs plain: differs at 6
+  fixed2       60 tok    80.87 ms/tok   12.37 tok/s x1.128  drafts  17 accepted      9/17 replayed   0  vs plain: differs at 6
+  text: "The fix is now applied. Let's verify it by running the relevant tests. I'll run the full test suite to ensure no regressions are introduced, but focus on the redirect-related tests.\n\nLet's run the tests now."
+  fidelity adapt4     KL(one-row || drafting) mean 0.00030 max 0.0019 same token 59/60 | KL(one-row || one forward) mean 0.00027 max 0.0011 same token 59/60  leaves plain at 6: plain's two best are 0.062 apart, arm token 0.062 below the best
+  fidelity fixed2     KL(one-row || drafting) mean 0.00030 max 0.0019 same token 59/60 | KL(one-row || one forward) mean 0.00027 max 0.0011 same token 59/60  leaves plain at 6: plain's two best are 0.062 apart, arm token 0.062 below the best
+
+== pylint-dev__pylint-5859 turn 9: context 9245 tokens, prefill 104.2s, pure_kv=True
+  plain       128 tok    97.69 ms/tok   10.24 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        128 tok    97.95 ms/tok   10.21 tok/s x0.997  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      128 tok    88.96 ms/tok   11.24 tok/s x1.098  drafts  40 accepted     26/68 replayed   0  vs plain: differs at 20
+  fixed2      128 tok    87.53 ms/tok   11.43 tok/s x1.116  drafts  45 accepted     21/45 replayed   0  vs plain: differs at 20
+  text: "The issue is the `\\b` at the end of the regex pattern. For note tags that are entirely punctuation (like `???`), the `\\b` fails to match because there's no word boundary between the punctuation and the following space or colon.\n\n### Solution\n\nWe need to **remove the `\\b`** at the end of the regex pa"
+  fidelity adapt4     KL(one-row || drafting) mean 0.00023 max 0.0013 same token 127/128 | KL(one-row || one forward) mean 0.00025 max 0.0017 same token 127/128  leaves plain at 20: plain's two best are 0.062 apart, arm token 0.062 below the best
+  fidelity fixed2     KL(one-row || drafting) mean 0.00023 max 0.0013 same token 127/128 | KL(one-row || one forward) mean 0.00025 max 0.0017 same token 127/128  leaves plain at 20: plain's two best are 0.062 apart, arm token 0.062 below the best
+
+== pooled over turns
+  plain         350 tok   10.42 tok/s x1.000
+  sync          350 tok   10.40 tok/s x0.998
+  adapt4        376 tok   11.36 tok/s x1.090
+  fixed2        376 tok   11.71 tok/s x1.123
+
+== fidelity pooled over turns (token-weighted mean, worst token)
+  adapt4       188 tok  drafting 0.00026 / 0.0019 same token 186/188 | one forward 0.00026 / 0.0017 same token 186/188
+  fixed2       188 tok  drafting 0.00026 / 0.0019 same token 186/188 | one forward 0.00026 / 0.0017 same token 186/188

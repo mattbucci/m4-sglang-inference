@@ -1,0 +1,107 @@
+{
+ "model": "mlx-community/Qwen3.6-35B-A3B-4bit",
+ "mlx": "0.32.4",
+ "fusions": {},
+ "shape": "seq",
+ "rows_kernel": "",
+ "iters": 16,
+ "warmup": 4,
+ "depths": [
+  {
+   "depth": 32768,
+   "prefill_s": 47.74,
+   "rows": {
+    "1": {
+     "median_ms": 17.484,
+     "p10_ms": 17.152,
+     "p90_ms": 18.221,
+     "tok_s": 57.2,
+     "ms_per_row": 17.484,
+     "against_k_single_cycles": 1.0
+    },
+    "2": {
+     "median_ms": 23.345,
+     "p10_ms": 22.584,
+     "p90_ms": 24.473,
+     "tok_s": 42.84,
+     "ms_per_row": 11.672,
+     "against_k_single_cycles": 0.668
+    },
+    "3": {
+     "median_ms": 28.472,
+     "p10_ms": 27.576,
+     "p90_ms": 29.694,
+     "tok_s": 35.12,
+     "ms_per_row": 9.491,
+     "against_k_single_cycles": 0.543
+    },
+    "4": {
+     "median_ms": 35.282,
+     "p10_ms": 34.389,
+     "p90_ms": 36.336,
+     "tok_s": 28.34,
+     "ms_per_row": 8.82,
+     "against_k_single_cycles": 0.504
+    },
+    "8": {
+     "median_ms": 92.118,
+     "p10_ms": 91.443,
+     "p90_ms": 93.099,
+     "tok_s": 10.86,
+     "ms_per_row": 11.515,
+     "against_k_single_cycles": 0.659
+    }
+   },
+   "one_row_pipelined_ms": 14.612,
+   "cache_tokens_at_end": 33602
+  },
+  {
+   "depth": 131072,
+   "prefill_s": 381.17,
+   "rows": {
+    "1": {
+     "median_ms": 26.84,
+     "p10_ms": 25.984,
+     "p90_ms": 27.555,
+     "tok_s": 37.26,
+     "ms_per_row": 26.84,
+     "against_k_single_cycles": 1.0
+    },
+    "2": {
+     "median_ms": 41.21,
+     "p10_ms": 40.713,
+     "p90_ms": 42.339,
+     "tok_s": 24.27,
+     "ms_per_row": 20.605,
+     "against_k_single_cycles": 0.768
+    },
+    "3": {
+     "median_ms": 53.17,
+     "p10_ms": 52.371,
+     "p90_ms": 54.264,
+     "tok_s": 18.81,
+     "ms_per_row": 17.723,
+     "against_k_single_cycles": 0.66
+    },
+    "4": {
+     "median_ms": 68.734,
+     "p10_ms": 67.511,
+     "p90_ms": 70.664,
+     "tok_s": 14.55,
+     "ms_per_row": 17.183,
+     "against_k_single_cycles": 0.64
+    },
+    "8": {
+     "median_ms": 256.275,
+     "p10_ms": 254.513,
+     "p90_ms": 258.222,
+     "tok_s": 3.9,
+     "ms_per_row": 32.034,
+     "against_k_single_cycles": 1.194
+    }
+   },
+   "one_row_pipelined_ms": 24.28,
+   "cache_tokens_at_end": 131906
+  }
+ ]
+}

@@ -1,0 +1,29 @@
+loaded mlx-community/Qwen3.6-27B-4bit vlm=True layers=64 active=14.95 GB arms=['plain', 'sync', 'adapt4', 'fixed2']
+
+== psf__requests-1963 turn 12: context 6639 tokens, prefill 54.4s, pure_kv=False
+  plain        89 tok    70.56 ms/tok   14.17 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         89 tok    72.41 ms/tok   13.81 tok/s x0.975  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       89 tok    55.45 ms/tok   18.03 tok/s x1.272  drafts  32 accepted     33/58 replayed  35  vs plain: same
+  fixed2       89 tok    59.24 ms/tok   16.88 tok/s x1.191  drafts  41 accepted     24/41 replayed  27  vs plain: same
+  text: "Now I also need to fix line 102 (which is now line 105 after the edit) to use `prepared_request.method` instead of `req.method`:\n\n\n\n<tool_call>\n<function=read>\n<parameter=path>\nrequests/sessions.py:100-110\n</parameter>\n<parameter=i>\nCheck current state of method line\n</parameter>\n</function>\n</tool_"
+  fidelity adapt4     KL(one-row || drafting) mean 0.00018 max 0.0020 same token 89/89 | KL(one-row || one forward) mean 0.00016 max 0.0020 same token 88/89
+  fidelity fixed2     KL(one-row || drafting) mean 0.00013 max 0.0021 same token 89/89 | KL(one-row || one forward) mean 0.00016 max 0.0020 same token 88/89
+
+== pylint-dev__pylint-5859 turn 9: context 9843 tokens, prefill 80.1s, pure_kv=False
+  plain       128 tok    71.07 ms/tok   14.07 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        128 tok    74.23 ms/tok   13.47 tok/s x0.957  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      128 tok    66.75 ms/tok   14.98 tok/s x1.065  drafts  44 accepted     28/70 replayed  50  vs plain: differs at 57
+  fixed2      128 tok    66.86 ms/tok   14.96 tok/s x1.063  drafts  51 accepted     21/51 replayed  44  vs plain: differs at 57
+  text: "Confirmed! The pattern `#\\s*(YES|\\?\\?\\?)\\b` matches `# YES` but not `# ???` because `\\b` (word boundary) requires a transition between word and non-word characters. After `???`, the next character is a space, and since `?` is not a word character, there's no word boundary.\n\nThe fix is to remove the "
+  fidelity adapt4     KL(one-row || drafting) mean 0.00023 max 0.0034 same token 127/128 | KL(one-row || one forward) mean 0.00022 max 0.0020 same token 128/128  leaves plain at 57: plain's two best are 0.125 apart, arm token 0.125 below the best
+  fidelity fixed2     KL(one-row || drafting) mean 0.00023 max 0.0034 same token 127/128 | KL(one-row || one forward) mean 0.00022 max 0.0020 same token 128/128  leaves plain at 57: plain's two best are 0.125 apart, arm token 0.125 below the best
+
+== pooled over turns
+  plain         434 tok   14.11 tok/s x1.000
+  sync          434 tok   13.61 tok/s x0.964
+  adapt4        434 tok   16.10 tok/s x1.141
+  fixed2        434 tok   15.69 tok/s x1.112
+
+== fidelity pooled over turns (token-weighted mean, worst token)
+  adapt4       217 tok  drafting 0.00021 / 0.0034 same token 216/217 | one forward 0.00019 / 0.0020 same token 216/217
+  fixed2       217 tok  drafting 0.00019 / 0.0034 same token 216/217 | one forward 0.00019 / 0.0020 same token 216/217

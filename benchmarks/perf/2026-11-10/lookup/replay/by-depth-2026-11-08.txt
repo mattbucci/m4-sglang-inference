@@ -1,0 +1,83 @@
+26 sessions, 1286 assistant turns, 198720 output tokens of 772864 conversation tokens, n-grams [2, 3, 4, 8]
+re-rendered turns vs served output-token counts: 1278/1286 equal, 1286/1286 within 2 tokens, sum 198720 vs 198717 served
+positions with a match 158848/198720 = 79.9%; first guess right 115873/158848 = 72.9%; a right first guess at 58.3% of all positions
+share of positions whose guess holds for at least n tokens: 1: 58.3%, 2: 47.8%, 3: 40.8%, 4: 35.5%, 8: 24.3%, 16: 14.1%, 32: 7.1%
+
+qwen36@32k: cost in steps at rows 1/2/3/4/8/16 = 1.20 / 1.60 / 1.95 / 2.41 / 6.30 / 14.08
+  policy                             rollback   piped   waits forwards  accepted/drafted first ok tokens from drafts
+  fixed 2 rows                       free       1.034   0.994    95303       64616/95303    67.8%              32.5%
+  fixed 2 rows                       carry      0.965   0.940    95303       64616/95303    67.8%              32.5%
+  fixed 2 rows, match >= 4           free       1.068   0.983    65735       52928/65735    80.5%              26.6%
+  fixed 2 rows, match >= 4           carry      1.033   0.960    65735       52928/65735    80.5%              26.6%
+  fixed 4 rows                       free       1.006   0.967    65338      94628/196001    60.0%              47.6%
+  fixed 4 rows                       carry      0.817   0.801    65338      94628/196001    60.0%              47.6%
+  fixed 4 rows, match >= 4           free       1.112   1.021    40411      78162/121233    77.4%              39.3%
+  fixed 4 rows, match >= 4           carry      0.993   0.928    40411      78162/121233    77.4%              39.3%
+  adaptive to 4                      free       1.080   1.036    71810      88052/143868    62.1%              44.3%
+  adaptive to 4                      carry      0.970   0.945    71810      88052/143868    62.1%              44.3%
+  adaptive to 16                     free       0.875   0.846    62733      97268/182834    57.9%              48.9%
+  adaptive to 16                     carry      0.768   0.753    62733      97268/182834    57.9%              48.9%
+  adaptive to 16, match >= 4         free       0.919   0.856    37125      81620/138033    73.1%              41.1%
+  adaptive to 16, match >= 4         carry      0.839   0.791    37125      81620/138033    73.1%              41.1%
+  adaptive to 16, match >= 8         free       0.954   0.859    21388       61724/95288    82.9%              31.1%
+  adaptive to 16, match >= 8         carry      0.897   0.816    21388       61724/95288    82.9%              31.1%
+  by match length 4/8/16             free       0.938   0.905    63116      96752/173242    58.0%              48.7%
+  by match length 4/8/16             carry      0.806   0.789    63116      96752/173242    58.0%              48.7%
+  by match length, match >= 4        free       1.009   0.933    37027      81729/127958    74.9%              41.1%
+  by match length, match >= 4        carry      0.908   0.853    37027      81729/127958    74.9%              41.1%
+  by match length, match >= 8        free       1.052   0.938    23322       59103/79514    83.2%              29.7%
+  by match length, match >= 8        carry      1.003   0.902    23322       59103/79514    83.2%              29.7%
+  oracle (knows the match length)    free       1.316
+
+qwen36@128k: cost in steps at rows 1/2/3/4/8/16 = 1.11 / 1.70 / 2.19 / 2.83 / 10.55 / 26.00
+  policy                             rollback   piped   waits forwards  accepted/drafted first ok tokens from drafts
+  fixed 2 rows                       free       0.986   0.965    95303       64616/95303    67.8%              32.5%
+  fixed 2 rows                       carry      0.907   0.895    95303       64616/95303    67.8%              32.5%
+  fixed 2 rows, match >= 4           free       1.031   0.987    65735       52928/65735    80.5%              26.6%
+  fixed 2 rows, match >= 4           carry      0.991   0.954    65735       52928/65735    80.5%              26.6%
+  fixed 4 rows                       free       0.884   0.868    65338      94628/196001    60.0%              47.6%
+  fixed 4 rows                       carry      0.648   0.643    65338      94628/196001    60.0%              47.6%
+  fixed 4 rows, match >= 4           free       1.016   0.974    40411      78162/121233    77.4%              39.3%
+  fixed 4 rows, match >= 4           carry      0.857   0.830    40411      78162/121233    77.4%              39.3%
+  adaptive to 4                      free       0.981   0.961    71810      88052/143868    62.1%              44.3%
+  adaptive to 4                      carry      0.860   0.849    71810      88052/143868    62.1%              44.3%
+  adaptive to 16                     free       0.649   0.641    62733      97268/182834    57.9%              48.9%
+  adaptive to 16                     carry      0.560   0.555    62733      97268/182834    57.9%              48.9%
+  adaptive to 16, match >= 4         free       0.697   0.677    37125      81620/138033    73.1%              41.1%
+  adaptive to 16, match >= 4         carry      0.624   0.610    37125      81620/138033    73.1%              41.1%
+  adaptive to 16, match >= 8         free       0.762   0.728    21388       61724/95288    82.9%              31.1%
+  adaptive to 16, match >= 8         carry      0.702   0.674    21388       61724/95288    82.9%              31.1%
+  by match length 4/8/16             free       0.729   0.718    63116      96752/173242    58.0%              48.7%
+  by match length 4/8/16             carry      0.601   0.596    63116      96752/173242    58.0%              48.7%
+  by match length, match >= 4        free       0.814   0.786    37027      81729/127958    74.9%              41.1%
+  by match length, match >= 4        carry      0.708   0.689    37027      81729/127958    74.9%              41.1%
+  by match length, match >= 8        free       0.913   0.864    23322       59103/79514    83.2%              29.7%
+  by match length, match >= 8        carry      0.853   0.811    23322       59103/79514    83.2%              29.7%
+  oracle (knows the match length)    free       1.214
+
+27b@32k: cost in steps at rows 1/2/3/4/8/16 = 1.05 / 1.15 / 1.31 / 1.60 / 3.90 / 8.49
+  policy                             rollback   piped   waits forwards  accepted/drafted first ok tokens from drafts
+  fixed 2 rows                       free       1.332   1.314    95303       64616/95303    67.8%              32.5%
+  fixed 2 rows                       carry      1.291   1.279    95303       64616/95303    67.8%              32.5%
+  fixed 2 rows, match >= 4           free       1.269   1.238    65735       52928/65735    80.5%              26.6%
+  fixed 2 rows, match >= 4           carry      1.254   1.226    65735       52928/65735    80.5%              26.6%
+  fixed 4 rows                       free       1.373   1.355    65338      94628/196001    60.0%              47.6%
+  fixed 4 rows                       carry      1.181   1.172    65338      94628/196001    60.0%              47.6%
+  fixed 4 rows, match >= 4           free       1.361   1.325    40411      78162/121233    77.4%              39.3%
+  fixed 4 rows, match >= 4           carry      1.270   1.242    40411      78162/121233    77.4%              39.3%
+  adaptive to 4                      free       1.432   1.412    71810      88052/143868    62.1%              44.3%
+  adaptive to 4                      carry      1.348   1.336    71810      88052/143868    62.1%              44.3%
+  adaptive to 16                     free       1.223   1.208    62733      97268/182834    57.9%              48.9%
+  adaptive to 16                     carry      1.120   1.112    62733      97268/182834    57.9%              48.9%
+  adaptive to 16, match >= 4         free       1.183   1.155    37125      81620/138033    73.1%              41.1%
+  adaptive to 16, match >= 4         carry      1.116   1.094    37125      81620/138033    73.1%              41.1%
+  adaptive to 16, match >= 8         free       1.136   1.100    21388       61724/95288    82.9%              31.1%
+  adaptive to 16, match >= 8         carry      1.094   1.062    21388       61724/95288    82.9%              31.1%
+  by match length 4/8/16             free       1.295   1.278    63116      96752/173242    58.0%              48.7%
+  by match length 4/8/16             carry      1.166   1.157    63116      96752/173242    58.0%              48.7%
+  by match length, match >= 4        free       1.276   1.244    37027      81729/127958    74.9%              41.1%
+  by match length, match >= 4        carry      1.193   1.168    37027      81729/127958    74.9%              41.1%
+  by match length, match >= 8        free       1.218   1.176    23322       59103/79514    83.2%              29.7%
+  by match length, match >= 8        carry      1.185   1.147    23322       59103/79514    83.2%              29.7%
+  oracle (knows the match length)    free       1.611
+wrote <scratch>/lookup/replay-depth-qwen36-26inst-omp-2026-11-08.json

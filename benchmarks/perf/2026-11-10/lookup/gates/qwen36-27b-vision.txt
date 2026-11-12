@@ -1,0 +1,22 @@
+============================================================
+finish_reason: stop
+usage: {'prompt_tokens': 84, 'total_tokens': 244, 'completion_tokens': 160, 'prompt_tokens_details': {'cached_tokens': 0, 'image_tokens': 64}, 'reasoning_tokens': 146, 'completion_tokens_details': {'reasoning_tokens': 146}}
+
+--- content ---
+'\n\nA red circle with a black outline on a white background.'
+
+--- reasoning_content ---
+'1.  **Analyze the Request:** The user wants a one-sentence description of the provided image.\n2.  **Analyze the Image:** The image shows a simple red circle with a black outline on a white background.\n3.  **Draft Descriptions:**\n    *   It is a red circle.\n    *   A red circle with a black outline.\n    *   This is a red circle on a white background.\n4.  **Refine for Conciseness:** "A red circle with a black outline on a white background" is accurate and descriptive.\n5.  **Final Polish:** "A red circle with a black outline on a white background."\n'
+
+=== content checks ===
+color hit (red/crimson/...)    : True
+shape hit (circle/round/...)   : True
+degradation keywords found     : none
+
+VERDICT: STRONG
+
+Notes:
+- STRONG = real content recognition.
+- DEGRADED = keyword grep passes but content reads 'pixels/scatter/
+  gradient' style (Gemma 4 calibration-side issue on Ampere).
+- FAIL = vision tower not engaging or model emits unrelated text.

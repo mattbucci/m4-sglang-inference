@@ -1,0 +1,49 @@
+## deep qwen36-27b off-1 (off) 18:20:34
+up
+enabled lines: 0
+pass 1 astropy__astropy-7746 turn 34: context 26114, cached 0, ttft 241.5s, 256 tok in 256 chunks, 13.755 tok/s, finish length
+pass 1 astropy__astropy-7746 turn 36: context 27220, cached 24576, ttft 24.8s, 214 tok in 214 chunks, 13.776 tok/s, finish stop
+pass 2 astropy__astropy-7746 turn 34: context 26114, cached 26112, ttft 0.2s, 256 tok in 256 chunks, 13.737 tok/s, finish length
+pass 2 astropy__astropy-7746 turn 36: context 27220, cached 27200, ttft 0.5s, 214 tok in 214 chunks, 13.737 tok/s, finish stop
+pooled: 936 tokens, 13.75 tok/s
+| deep-off-1 | 66 | 910 | 0 | 84 | 89 | 8 |
+tracebacks in the log: 0
+## deep qwen36-27b r4-1 (r4) 18:26:29
+up
+enabled lines: 1
+pass 1 astropy__astropy-7746 turn 34: context 26114, cached 0, ttft 237.5s, 256 tok in 256 chunks, 19.825 tok/s, finish length
+pass 1 astropy__astropy-7746 turn 36: context 27220, cached 24576, ttft 24.9s, 214 tok in 214 chunks, 24.782 tok/s, finish stop
+pass 2 astropy__astropy-7746 turn 34: context 26114, cached 26112, ttft 0.2s, 256 tok in 256 chunks, 19.903 tok/s, finish length
+pass 2 astropy__astropy-7746 turn 36: context 27220, cached 27200, ttft 0.5s, 214 tok in 214 chunks, 25.288 tok/s, finish stop
+pooled: 936 tokens, 21.92 tok/s
+| deep-r4-1 | 61 | 844 | 0 | 139 | 99 | 14 |
+255 tokens from 101 drafting, 7 replay-only and 10 ordinary forwards, 137 of 215 drafted tokens kept, 81 rows replayed
+213 tokens from 70 drafting, 3 replay-only and 2 ordinary forwards, 138 of 172 drafted tokens kept, 36 rows replayed
+255 tokens from 101 drafting, 7 replay-only and 10 ordinary forwards, 137 of 215 drafted tokens kept, 81 rows replayed
+213 tokens from 69 drafting, 2 replay-only and 2 ordinary forwards, 140 of 171 drafted tokens kept, 37 rows replayed
+tracebacks in the log: 0
+## deep qwen36-27b r4-2 (r4) 18:31:59
+up
+enabled lines: 1
+pass 1 astropy__astropy-7746 turn 34: context 26114, cached 0, ttft 232.9s, 256 tok in 256 chunks, 19.862 tok/s, finish length
+pass 1 astropy__astropy-7746 turn 36: context 27220, cached 24576, ttft 24.9s, 214 tok in 214 chunks, 24.801 tok/s, finish stop
+pass 2 astropy__astropy-7746 turn 34: context 26114, cached 26112, ttft 0.2s, 256 tok in 256 chunks, 19.838 tok/s, finish length
+pass 2 astropy__astropy-7746 turn 36: context 27220, cached 27200, ttft 0.5s, 214 tok in 214 chunks, 25.111 tok/s, finish stop
+pooled: 936 tokens, 21.89 tok/s
+| deep-r4-2 | 59 | 788 | 0 | 204 | 99 | 22 |
+255 tokens from 101 drafting, 7 replay-only and 10 ordinary forwards, 137 of 215 drafted tokens kept, 81 rows replayed
+213 tokens from 70 drafting, 3 replay-only and 2 ordinary forwards, 138 of 172 drafted tokens kept, 36 rows replayed
+255 tokens from 101 drafting, 7 replay-only and 10 ordinary forwards, 137 of 215 drafted tokens kept, 81 rows replayed
+213 tokens from 69 drafting, 2 replay-only and 2 ordinary forwards, 140 of 171 drafted tokens kept, 37 rows replayed
+tracebacks in the log: 0
+## deep qwen36-27b off-2 (off) 18:37:24
+up
+enabled lines: 0
+pass 1 astropy__astropy-7746 turn 34: context 26114, cached 0, ttft 232.3s, 256 tok in 256 chunks, 13.704 tok/s, finish length
+pass 1 astropy__astropy-7746 turn 36: context 27220, cached 24576, ttft 24.9s, 214 tok in 214 chunks, 13.646 tok/s, finish stop
+pass 2 astropy__astropy-7746 turn 34: context 26114, cached 26112, ttft 0.2s, 256 tok in 256 chunks, 13.682 tok/s, finish length
+pass 2 astropy__astropy-7746 turn 36: context 27220, cached 27200, ttft 0.5s, 214 tok in 214 chunks, 13.616 tok/s, finish stop
+pooled: 936 tokens, 13.66 tok/s
+| deep-off-2 | 65 | 822 | 0 | 170 | 100 | 18 |
+tracebacks in the log: 0
+DEEP_DONE

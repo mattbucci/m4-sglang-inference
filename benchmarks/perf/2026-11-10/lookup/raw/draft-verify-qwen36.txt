@@ -1,0 +1,56 @@
+loaded mlx-community/Qwen3.6-35B-A3B-4bit vlm=True layers=40 active=19.00 GB arms=['plain', 'sync', 'adapt4', 'fixed2-m4', 'len-m8']
+
+== psf__requests-1963 turn 12: context 6639 tokens, prefill 7.5s, pure_kv=False
+  plain       107 tok    13.04 ms/tok   76.68 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        107 tok    15.12 ms/tok   66.14 tok/s x0.863  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      112 tok    13.36 ms/tok   74.86 tok/s x0.976  drafts  48 accepted     48/88 replayed  54  vs plain: differs at 29
+  fixed2-m4   107 tok    12.86 ms/tok   77.77 tok/s x1.014  drafts  34 accepted     25/34 replayed  10  vs plain: same
+  len-m8      107 tok    12.85 ms/tok   77.81 tok/s x1.015  drafts  10 accepted     20/23 replayed   1  vs plain: same
+  text: "Now I also need to fix line 102 which reads `method = req.method` - it should read from `prepared_request.method` on subsequent iterations:\n\n<tool_call>\n<function=edit>\n<parameter=i>\nFix resolve_redirects: read method from prepared_request instead of req\n</parameter>\n<parameter=input>\n[requests/sess"
+
+== psf__requests-1963 turn 20: context 9316 tokens, prefill 3.5s, pure_kv=False
+  plain        42 tok    13.58 ms/tok   73.63 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync         42 tok    15.77 ms/tok   63.41 tok/s x0.861  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4       42 tok     8.10 ms/tok  123.44 tok/s x1.676  drafts  11 accepted     31/31 replayed   0  vs plain: same
+  fixed2-m4    42 tok    10.90 ms/tok   91.74 tok/s x1.246  drafts  18 accepted     18/18 replayed   0  vs plain: same
+  len-m8       42 tok    11.24 ms/tok   88.94 tok/s x1.208  drafts   7 accepted     20/22 replayed   6  vs plain: same
+  text: "<tool_call>\n<function=grep>\n<parameter=path>\ntest_requests.py\n</parameter>\n<parameter=pattern>\ndef test.*redirect\n</parameter>\n</function>\n</tool_call>"
+
+== psf__requests-1963 turn 22: context 10845 tokens, prefill 2.3s, pure_kv=False
+  plain       256 tok    13.04 ms/tok   76.68 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    15.35 ms/tok   65.17 tok/s x0.850  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok     8.09 ms/tok  123.68 tok/s x1.613  drafts  72 accepted   180/196 replayed  17  vs plain: same
+  fixed2-m4   256 tok    10.04 ms/tok   99.65 tok/s x1.300  drafts 125 accepted   121/125 replayed   4  vs plain: same
+  len-m8      256 tok     8.56 ms/tok  116.84 tok/s x1.524  drafts  37 accepted   196/208 replayed  14  vs plain: same
+  text: "<tool_call>\n<function=bash>\n<parameter=command>\npython -c \"\nfrom requests.models import PreparedRequest\nfrom requests.status_codes import codes\n\n# Test the fix: POST -> 303 (method becomes GET) -> 307 (should preserve GET, not reset to POST)\n\n# Create original POST request\nreq = PreparedRequest()\nre"
+
+== pylint-dev__pylint-5859 turn 4: context 7192 tokens, prefill 9.5s, pure_kv=False
+  plain       205 tok    12.44 ms/tok   80.39 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        205 tok    15.57 ms/tok   64.24 tok/s x0.799  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      206 tok    15.74 ms/tok   63.53 tok/s x0.790  drafts  70 accepted    31/108 replayed  71  vs plain: differs at 172
+  fixed2-m4   239 tok    13.82 ms/tok   72.36 tok/s x0.900  drafts  31 accepted     24/31 replayed   8  vs plain: differs at 48
+  len-m8      205 tok    14.79 ms/tok   67.63 tok/s x0.841  drafts   4 accepted       2/8 replayed   4  vs plain: same
+  text: "Now I understand the flow:\n\n1. `open()` builds a regex pattern from `self.config.notes` by joining `re.escape(note)` for each note.\n2. `process_tokens()` uses `self._fixme_pattern.search()` to find matches.\n\nThe bug is in `open()`. When `self.config.notes` contains `???`, `re.escape(\"???\")` produces"
+
+== pylint-dev__pylint-5859 turn 6: context 8774 tokens, prefill 2.3s, pure_kv=False
+  plain       256 tok    12.81 ms/tok   78.05 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    15.19 ms/tok   65.83 tok/s x0.843  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    15.48 ms/tok   64.59 tok/s x0.828  drafts  93 accepted    64/157 replayed 101  vs plain: differs at 180
+  fixed2-m4   256 tok    14.54 ms/tok   68.79 tok/s x0.881  drafts  48 accepted     29/48 replayed  21  vs plain: differs at 130
+  len-m8      256 tok    15.00 ms/tok   66.68 tok/s x0.854  drafts  10 accepted     14/24 replayed   6  vs plain: differs at 166
+  text: "Now I see the issue! Look at line 122:\n\n```python\nnotes = \"|\".join(re.escape(note) for note in self.config.notes)\n```\n\nWhen `self.config.notes` is `(\"YES\", \"???\")`, this becomes:\n- `re.escape(\"YES\")` \u2192 `\"YES\"`\n- `re.escape(\"???\")` \u2192 `\"\\?\\?\\?\"`\n\nSo `notes` becomes `\"YES|\\?\\?\\?\"`.\n\nThen line 126:\n```p"
+
+== pylint-dev__pylint-5859 turn 9: context 9843 tokens, prefill 1.6s, pure_kv=False
+  plain       256 tok    12.72 ms/tok   78.62 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        256 tok    15.17 ms/tok   65.93 tok/s x0.839  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      256 tok    11.68 ms/tok   85.64 tok/s x1.089  drafts  84 accepted   116/178 replayed  51  vs plain: differs at 148
+  fixed2-m4   256 tok    12.21 ms/tok   81.87 tok/s x1.041  drafts  80 accepted     71/80 replayed  10  vs plain: differs at 148
+  len-m8      256 tok    12.04 ms/tok   83.06 tok/s x1.056  drafts  28 accepted    91/108 replayed  13  vs plain: differs at 148
+  text: "Confirmed! The `\\b` word boundary fails when the note is entirely punctuation (like `???`) because there's no word boundary between the last `?` and the following space.\n\nThe fix is to remove the `\\b` from the regex pattern, or replace it with a non-word character check. Let me look at what the orig"
+
+== pooled over turns
+  plain        2244 tok   77.97 tok/s x1.000
+  sync         2244 tok   65.34 tok/s x0.838
+  adapt4       2256 tok   79.99 tok/s x1.026
+  fixed2-m4    2312 tok   79.43 tok/s x1.019
+  len-m8       2244 tok   80.19 tok/s x1.029

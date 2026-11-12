@@ -1,0 +1,38 @@
+loaded mlx-community/Qwen3.6-35B-A3B-4bit vlm=True layers=40 active=19.00 GB arms=['plain', 'sync', 'adapt4', 'fixed2-m4']
+
+== psf__requests-1963 turn 12: context 6639 tokens, prefill 7.5s, pure_kv=False
+  plain       107 tok    12.46 ms/tok   80.27 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        107 tok    14.70 ms/tok   68.03 tok/s x0.848  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      112 tok    13.40 ms/tok   74.62 tok/s x0.930  drafts  48 accepted     48/88 replayed  54  vs plain: differs at 29
+  fixed2-m4   107 tok    12.75 ms/tok   78.42 tok/s x0.977  drafts  34 accepted     25/34 replayed  10  vs plain: same
+  text: "Now I also need to fix line 102 which reads `method = req.method` - it should read from `prepared_request.method` on subsequent iterations:\n\n<tool_call>\n<function=edit>\n<parameter=i>\nFix resolve_redirects: read method from prepared_request instead of req\n</parameter>\n<parameter=input>\n[requests/sess"
+  fidelity adapt4     KL(one-row || drafting) mean 0.00084 max 0.0386 same token 111/112 | KL(one-row || one forward) mean 0.00076 max 0.0187 same token 112/112  leaves plain at 29: plain's two best are 0.250 apart, arm token 0.250 below the best
+  fidelity fixed2-m4  KL(one-row || drafting) mean 0.00054 max 0.0174 same token 107/107 | KL(one-row || one forward) mean 0.00083 max 0.0204 same token 107/107
+
+== pylint-dev__pylint-5859 turn 4: context 7192 tokens, prefill 8.2s, pure_kv=False
+  plain       205 tok    12.35 ms/tok   80.98 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        205 tok    14.84 ms/tok   67.37 tok/s x0.832  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      206 tok    15.90 ms/tok   62.88 tok/s x0.776  drafts  70 accepted    31/108 replayed  71  vs plain: differs at 172
+  fixed2-m4   239 tok    14.03 ms/tok   71.28 tok/s x0.880  drafts  31 accepted     24/31 replayed   8  vs plain: differs at 48
+  text: "Now I understand the flow:\n\n1. `open()` builds a regex pattern from `self.config.notes` by joining `re.escape(note)` for each note.\n2. `process_tokens()` uses `self._fixme_pattern.search()` to find matches.\n\nThe bug is in `open()`. When `self.config.notes` contains `???`, `re.escape(\"???\")` produces"
+  fidelity adapt4     KL(one-row || drafting) mean 0.00115 max 0.0151 same token 205/206 | KL(one-row || one forward) mean 0.00121 max 0.0305 same token 202/206  leaves plain at 172: plain's two best are 0.250 apart, arm token 0.250 below the best
+  fidelity fixed2-m4  KL(one-row || drafting) mean 0.00151 max 0.0451 same token 234/239 | KL(one-row || one forward) mean 0.00129 max 0.0406 same token 235/239  leaves plain at 48: plain's two best are 0.125 apart, arm token 0.125 below the best
+
+== pylint-dev__pylint-5859 turn 9: context 9843 tokens, prefill 3.5s, pure_kv=False
+  plain       249 tok    12.79 ms/tok   78.21 tok/s x1.000  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  sync        249 tok    15.46 ms/tok   64.70 tok/s x0.827  drafts   0 accepted       0/0 replayed   0  vs plain: same
+  adapt4      249 tok    11.49 ms/tok   87.01 tok/s x1.113  drafts  78 accepted   118/170 replayed  44  vs plain: same
+  fixed2-m4   256 tok    12.40 ms/tok   80.67 tok/s x1.031  drafts  80 accepted     71/80 replayed  10  vs plain: differs at 186
+  text: "Confirmed! The `\\b` word boundary fails when the note is entirely punctuation (like `???`) because there's no word boundary between the last `?` and the following space.\n\nThe fix is to remove the `\\b` from the regex pattern, or replace it with a non-word character check. Let me look at what the orig"
+  fidelity adapt4     KL(one-row || drafting) mean 0.00044 max 0.0078 same token 249/249 | KL(one-row || one forward) mean 0.00066 max 0.0209 same token 246/249
+  fidelity fixed2-m4  KL(one-row || drafting) mean 0.00084 max 0.0523 same token 255/256 | KL(one-row || one forward) mean 0.00076 max 0.0328 same token 253/256  leaves plain at 186: plain's two best are 0.000 apart, arm token 0.000 below the best
+
+== pooled over turns
+  plain        1122 tok   79.59 tok/s x1.000
+  sync         1122 tok   66.28 tok/s x0.833
+  adapt4       1134 tok   74.23 tok/s x0.933
+  fixed2-m4    1204 tok   76.29 tok/s x0.958
+
+== fidelity pooled over turns (token-weighted mean, worst token)
+  adapt4       567 tok  drafting 0.00078 / 0.0386 same token 565/567 | one forward 0.00088 / 0.0305 same token 560/567
+  fixed2-m4    602 tok  drafting 0.00105 / 0.0523 same token 596/602 | one forward 0.00098 / 0.0406 same token 595/602
