@@ -141,10 +141,10 @@ Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error
 ### Methodology
 - Use `sglang.bench_serving` for accurate TPOT measurement when possible
 - `bench_all_unified.py` runs the context and concurrency sweeps through `sglang.bench_serving`
-- Concurrency sweep: 1, 2, 4, 8, 16
+- Concurrency sweep: 1, 2, 4, 8, 16 (level c sends 4c prompts, uncapped; stream charts draw `concurrent_decode_probe.py` receipts)
 - Context sweep: powers of 2 from 128 to model max
 - Save to `benchmarks/{model}/results.json`
-- Regenerate charts: `python scripts/bench/generate_charts.py`
+- Regenerate charts: `python scripts/bench/generate_charts.py` (`--group-by quant|none` regroups the fleet panels)
 - Run regression test before committing: `./scripts/bench/bench_regression.sh <model>`
 - Regression threshold: >10% deviation triggers alert
 

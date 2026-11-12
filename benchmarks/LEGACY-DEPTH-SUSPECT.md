@@ -35,8 +35,12 @@ recorded — and carry `"legacy_depth_suspect": true`:
   runs send ~2× the tokens of these rows; comparing against them emits false
   REGRESSION verdicts (especially TTFT). `bench_regression.sh` reads only
   `baselines.json`, which is re-saved post-pin.
-- Charts `all_models_context.png` / `all_models_concurrency.png` render
-  `results.json` sweeps and are suspect wherever the underlying rows are.
+- Charts: `scripts/bench/generate_charts.py` never draws a `results.json` that
+  carries the marker. The fleet charts (`all_models_*.png`) draw the
+  `baselines.json` rungs, cold-request receipts and stream receipts. A
+  `throughput_sweep` row of a `results.json` is not drawn either: level c of
+  that sweep sent 4c prompts with no concurrency cap, so it is a load level,
+  not c concurrent requests.
 
 Re-measured post-pin rows drop the marker and carry `sglang_version` per file —
 they move two variables vs legacy rows (the pin AND the stack pin), so they are

@@ -40,9 +40,16 @@ compares a live server against them).
 † The 0.45 pool caps `qwen3-32b` requests at 25,241 tokens, so its 32K point is served at
 `MEM_FRAC=0.5`. **DeltaNet holds decode flat at depth** (the hybrids retain 85–88% of their
 short-context speed at 32K) while full-attention models halve or worse. Full curves (128→32K,
-9 points) and concurrency rows: `benchmarks/<slug>/results.json`; regression receipts:
+9 points): `benchmarks/<slug>/results.json`; regression receipts:
 `benchmarks/regression/`. Flint checkpoints, the published M4 Pro engine targets and tool-call
 behaviour: [docs/flint.md](docs/flint.md).
+
+![Decode tok/s per model: fastest point and deepest measured input](benchmarks/all_models_decode.png)
+
+![Decode tok/s against context, one panel per model class](benchmarks/all_models_context.png)
+
+[`generate_charts.py`](scripts/bench/generate_charts.py) draws these rows plus the cold receipts
+for deeper input; a hatched bar stops short of 128K.
 
 ### Probe matrix (radix on)
 
