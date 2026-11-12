@@ -29,18 +29,19 @@ probe sweep need exclusive serving windows; the repo-only items don't.
 
 | From | To | What moves |
 |---|---|---|
-| M4-D | 3090-B | Executable Docker-scoring callout in the 3090 README (corrected score_docker.py command, runtime bound, result-return path). Shared drop-dir: `evals/swebench/m4-imports/qwen36-m4/` (3090-B's name wins as the executor). |
-| 3090-B | M4-D | `scores-docker-summary.json` (first full-26 official resolve rate) committed back to this repo (`exports/qwen36-docker-summary.json` + README headline update), replacing the 5/13-local-subset cell. |
+| M4-D | 3090-B | Delivered: executable Docker-scoring callout in the 3090 README (score_docker.py command, runtime bound, result-return path). Shared drop-dir: `evals/swebench/m4-imports/qwen36-m4/` (3090-B's name wins as the executor). |
+| 3090-B | M4-D | Delivered: `scores-docker-summary.json` (full-26 official resolve rate, 9/26 = 34.6%) lives in this repo as `evals/swebench/exports/qwen36-docker-summary.json` and backs the README headline. New exports go through the same drop-dir. |
 | beyond-128k | 3090 / R9700 | Buffer-cache-cap method note — delivered in the sister READMEs' cross-team notes (grep `M4→R9700 (2026-07-20)` / `M4→3090 (2026-07-20)`). |
 | agentic-endurance-and-extend-tax | 3090 / R9700 | Turn-tax comparison — delivered in the same cross-team notes (85x does not reproduce on MLX: 2.6x@8K, 5.4x@32K). |
 | flint-agentic | 3090 / R9700 | Flint availability note: Recursive's own SGLang kit (`flint_sglang` wheel, SGLang 0.5.16) targets one ≥141 GB GPU per replica in bf16, so the 2×24 GB rigs need a quantized variant (the Hub lists NVFP4/AWQ-class conversions) plus the kit's FlintConfig / parsers — patch 019 re-implements those as plain SGLang registrations (config registry, reasoning + tool-call parsers), which port as-is; only the MLX loader/attention pieces are Apple-specific. Two harness findings port with the model, not the hardware: under opencode Flint omits the `bash` tool's required `description` argument on nearly every call whatever the prompt says (the proxy backfill in `evals/swebench/no_thinking_proxy.py` fixes it), and under opencode's full tool set it mangles multi-argument `edit` calls and occasionally runs away inside a tool call under its own sampling — the bash-only harness shape (`DISABLE_TOOLS` + `PROMPT_STYLE=bash`) matches its training harnesses. Neither sister repo carries Flint work yet (both are on v0.5.15). |
 
 ## Fleet sync points involving this rig
 
-- **docker-scoring-handoff** — participants: M4-D, 3090-B; trigger: the callout
-  is committed with the resolved drop-dir; action: 3090-B runs score_docker.py
-  under their score lock and commits the summary back here.
+- **docker-scoring-handoff** — participants: M4-D, 3090-B; closed for the qwen36
+  export (9/26 official). A new export re-opens it: commit predictions to the
+  drop-dir, 3090-B runs score_docker.py under their score lock and commits the
+  summary back here.
 - **baseline-schema-v2-to-sister-rearm** — participants: 3090-D, R9700, M4;
-  trigger: 3090-D commits schema v2 and arms `benchmarks/baselines.json`;
-  action: this rig re-arms its baselines on its own depth-verified instrument
-  (~32K with oom_guard).
+  this rig's leg is armed: `benchmarks/baselines.json` is schema 2, eight presets,
+  on its own depth-verified instrument (~32K with oom_guard). Re-arm after any
+  preset default change.
