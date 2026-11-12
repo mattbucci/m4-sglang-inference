@@ -1,0 +1,41 @@
+{
+  "tag": "q36deep-fuse-sub5-b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 70000,
+      "cold": {
+        "prompt_tokens": 64919,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 132.7904,
+        "total_s": 136.9366,
+        "text_sha": "26d3beccb1d6d93a",
+        "tpot_ms": 16.2594,
+        "decode_tok_s": 61.5
+      },
+      "prefill_tok_s": 488.9
+    },
+    {
+      "target": 140000,
+      "cold": {
+        "prompt_tokens": 129887,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 397.3871,
+        "total_s": 402.98,
+        "text_sha": "f22303bd71253b44",
+        "tpot_ms": 21.9327,
+        "decode_tok_s": 45.59
+      },
+      "prefill_tok_s": 326.9
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

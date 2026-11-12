@@ -10,14 +10,15 @@ patch's checkpoint-layout adapter.
 ## Checkpoints
 
 The preset as it ships (radix cache on, `MAX_RUNNING=4`, `CHUNKED=1024`, 2 GB MLX buffer
-cache, patches 036 to 038, display on), one cold request per depth with a 256-token reply
-at the checkpoint's own sampling (`benchmarks/perf/2026-11-10/flint/preset/`):
+cache), display asleep, one cold request per depth with a 256-token reply at the
+checkpoint's own sampling, mean of two servers per checkpoint
+(`benchmarks/perf/2026-11-10/flint/quiet-settings/`):
 
 | Checkpoint | bpw | On disk | Wired peak | Decode tok/s @1K / 7.6K / 30.4K | Prefill tok/s @1K / 7.6K / 30.4K | TTFT @30.4K | Follow-up TTFT @3.8K | KL to oQ8e / same argmax |
 |------------|:---:|:-------:|:----------:|:-------------------------------:|:--------------------------------:|:-----------:|:--------------------:|:------------------------:|
-| **`mlx-community/flint-oQ8e`** (default) | 8.5 | 42.3 GB | 52.2 GB | 62.7 / 58.4 / 49.2 | 795 / 675 / 487 | 62 s | 0.22 s | reference |
-| `mlx-community/flint-oQ6e` | 6.6 | 32.8 GB | 42.7 GB | 66.8 / 62.4 / 52.0 | 833 / 744 / 528 | 58 s | 0.22 s | 0.051 / 93.7 % |
-| `RecursiveSI/flint-int4` | 4.54 | 22.6 GB | 32.6 GB | 96.2 / 88.8 / 67.0 | 883 / 795 / 540 | 56 s | 0.17 s | 0.218 / 83.0 % |
+| **`mlx-community/flint-oQ8e`** (default) | 8.5 | 42.3 GB | 51.5 GB | 65.5 / 62.0 / 51.7 | 877 / 844 / 567 | 54 s | 0.21 s | reference |
+| `mlx-community/flint-oQ6e` | 6.6 | 32.8 GB | 42.0 GB | 69.7 / 64.9 / 53.6 | 868 / 837 / 569 | 54 s | 0.21 s | 0.051 / 93.7 % |
+| `RecursiveSI/flint-int4` | 4.54 | 22.6 GB | 31.8 GB | 101.9 / 93.2 / 72.3 | 945 / 878 / 606 | 50 s | 0.16 s | 0.218 / 83.0 % |
 
 - **Gates:** every checkpoint passes validator 3/3, codegen STRONG and thinking VERIFIED;
   receipts for int4 and oQ8e on the shipping flags are in
@@ -25,8 +26,8 @@ at the checkpoint's own sampling (`benchmarks/perf/2026-11-10/flint/preset/`):
   identical to mlx-lm's. `mlx-community/flint-oQ4e` (4.7 bpw, 23.5 GB) passes the same
   gates and has no row on the shipping flags; int4 is the 4-bit checkpoint the published
   engines use.
-- **Choosing one:** `MODEL=RecursiveSI/flint-int4 scripts/launch.sh flint` decodes 55 %
-  faster than oQ8e at 1K and 36 % faster at 30K and wires 19.6 GB less. Teacher-forced NLL
+- **Choosing one:** `MODEL=RecursiveSI/flint-int4 scripts/launch.sh flint` decodes 56 %
+  faster than oQ8e at 1K and 40 % faster at 30K and wires 19.7 GB less. Teacher-forced NLL
   on held-out prose and code is equal on the three (2.133 to 2.146, inside one standard
   error). oQ6e is a close copy of oQ8e, inside the band of the 4-bit Qwen builds against
   their 8-bit references. int4 is a different quantization: it disagrees with oQ8e on 17 %

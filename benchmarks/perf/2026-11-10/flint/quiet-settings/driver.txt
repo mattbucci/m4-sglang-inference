@@ -1,0 +1,480 @@
+display asleep: yes; keyboard and mouse idle 451514 s
+## part A: flint checkpoints on the preset 14:26:09
+## arm ck-int4-swap (flint MODEL=RecursiveSI/flint-int4) 14:26:09
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-int4-swap] cold    1025 tok: cached None, ttft 1.0573 s, prefill 969.5 tok/s, decode 107.94 tok/s
+[ck-int4-swap] cold    8202 tok: cached None, ttft 9.3663 s, prefill 875.7 tok/s, decode 91.62 tok/s
+wrote <scratch>/flint/q2-ck-int4-swap.json
+| ck-int4-swap | 2 | 776 | 0 | 39 | 98 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27:  3252 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.78 GB over 13 samples; window 14:26:30-14:26:42
+tracebacks in the log: 0
+## arm ck-int4-a (flint MODEL=RecursiveSI/flint-int4) 14:26:42
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-int4-a] cold     959 tok: cached None, ttft 1.0135 s, prefill 946.2 tok/s, decode 102.77 tok/s; repeat cached None, ttft 0.1632 s, decode 103.92 tok/s
+[ck-int4-a] cold    7601 tok: cached None, ttft 8.6464 s, prefill 879.1 tok/s, decode 93.55 tok/s; repeat cached None, ttft 0.1605 s, decode 94.04 tok/s
+[ck-int4-a] cold   30422 tok: cached None, ttft 48.8931 s, prefill 622.2 tok/s, decode 71.79 tok/s; repeat cached None, ttft 0.2003 s, decode 71.95 tok/s
+[ck-int4-a] runs 1024:512:5:sampled: prompt 963, decode mean 101.95 median 102.03 tok/s (101.67 to 102.16)
+[ck-int4-a] runs 1024:512:5:greedy: prompt 963, decode mean 104.5 median 104.42 tok/s (104.12 to 104.92)
+[ck-int4-a] followup    3813 tok: first ttft 4.7068 s (256 tok, finish length); second ttft 0.1612 s, None of 3823 cached, 3823 fresh
+[ck-int4-a] followup   15228 tok: first ttft 21.7588 s (256 tok, finish length); second ttft 0.2972 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/q2-ck-int4-a.json
+| ck-int4-a | 32 | 932 | 0 | 47 | 97 | 5 |
+<scratch>/flint/quiet_lib.sh: line 27:  3570 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 31.84 GB over 162 samples; window 14:27:05-14:29:48
+tracebacks in the log: 0
+## arm ck-int4-b (flint MODEL=RecursiveSI/flint-int4) 14:29:48
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-int4-b] cold     959 tok: cached None, ttft 1.0157 s, prefill 944.2 tok/s, decode 101.01 tok/s; repeat cached None, ttft 0.1469 s, decode 101.82 tok/s
+[ck-int4-b] cold    7601 tok: cached None, ttft 8.6677 s, prefill 876.9 tok/s, decode 92.85 tok/s; repeat cached None, ttft 0.1613 s, decode 93.44 tok/s
+[ck-int4-b] cold   30422 tok: cached None, ttft 51.5063 s, prefill 590.6 tok/s, decode 72.72 tok/s; repeat cached None, ttft 0.199 s, decode 72.18 tok/s
+[ck-int4-b] runs 1024:512:5:sampled: prompt 963, decode mean 102.03 median 101.83 tok/s (101.69 to 102.47)
+[ck-int4-b] runs 1024:512:5:greedy: prompt 963, decode mean 104.44 median 104.38 tok/s (104.21 to 104.89)
+[ck-int4-b] followup    3813 tok: first ttft 4.5028 s (256 tok, finish length); second ttft 0.1586 s, None of 3823 cached, 3823 fresh
+[ck-int4-b] followup   15228 tok: first ttft 21.5412 s (256 tok, finish length); second ttft 0.2975 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/q2-ck-int4-b.json
+| ck-int4-b | 32 | 918 | 0 | 62 | 98 | 7 |
+<scratch>/flint/quiet_lib.sh: line 27:  5167 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 31.84 GB over 164 samples; window 14:30:11-14:32:56
+tracebacks in the log: 0
+## arm ck-oq6e-swap (flint MODEL=mlx-community/flint-oQ6e) 14:32:56
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-oq6e-swap] cold    1025 tok: cached None, ttft 1.0559 s, prefill 970.7 tok/s, decode 68.3 tok/s
+[ck-oq6e-swap] cold    8202 tok: cached None, ttft 9.7612 s, prefill 840.3 tok/s, decode 65.44 tok/s
+wrote <scratch>/flint/q2-ck-oq6e-swap.json
+| ck-oq6e-swap | 3 | 626 | 0 | 45 | 79 | 5 |
+<scratch>/flint/quiet_lib.sh: line 27:  6858 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 41.23 GB over 14 samples; window 14:33:27-14:33:40
+tracebacks in the log: 0
+## arm ck-oq6e-a (flint MODEL=mlx-community/flint-oQ6e) 14:33:40
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-oq6e-a] cold     959 tok: cached None, ttft 1.0891 s, prefill 880.5 tok/s, decode 69.63 tok/s; repeat cached None, ttft 0.1961 s, decode 69.46 tok/s
+[ck-oq6e-a] cold    7601 tok: cached None, ttft 9.2373 s, prefill 822.9 tok/s, decode 64.93 tok/s; repeat cached None, ttft 0.1996 s, decode 65.28 tok/s
+[ck-oq6e-a] cold   30422 tok: cached None, ttft 55.062 s, prefill 552.5 tok/s, decode 53.16 tok/s; repeat cached None, ttft 0.2309 s, decode 54.13 tok/s
+[ck-oq6e-a] runs 1024:512:5:sampled: prompt 963, decode mean 69.75 median 69.94 tok/s (68.96 to 70.06)
+[ck-oq6e-a] runs 1024:512:5:greedy: prompt 963, decode mean 70.24 median 70.19 tok/s (69.97 to 70.56)
+[ck-oq6e-a] followup    3813 tok: first ttft 4.8065 s (256 tok, finish length); second ttft 0.2073 s, None of 3823 cached, 3823 fresh
+[ck-oq6e-a] followup   15228 tok: first ttft 22.2567 s (256 tok, finish length); second ttft 0.3635 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/q2-ck-oq6e-a.json
+| ck-oq6e-a | 40 | 935 | 0 | 46 | 99 | 5 |
+<scratch>/flint/quiet_lib.sh: line 27:  7206 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 42.02 GB over 203 samples; window 14:34:08-14:37:33
+tracebacks in the log: 0
+## arm ck-oq6e-b (flint MODEL=mlx-community/flint-oQ6e) 14:37:33
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-oq6e-b] cold     959 tok: cached None, ttft 1.1217 s, prefill 855.0 tok/s, decode 69.78 tok/s; repeat cached None, ttft 0.1967 s, decode 69.11 tok/s
+[ck-oq6e-b] cold    7601 tok: cached None, ttft 8.9317 s, prefill 851.0 tok/s, decode 64.82 tok/s; repeat cached None, ttft 0.2013 s, decode 65.07 tok/s
+[ck-oq6e-b] cold   30422 tok: cached None, ttft 52.0484 s, prefill 584.5 tok/s, decode 54.04 tok/s; repeat cached None, ttft 0.2171 s, decode 54.2 tok/s
+[ck-oq6e-b] runs 1024:512:5:sampled: prompt 963, decode mean 69.07 median 69.09 tok/s (68.88 to 69.22)
+[ck-oq6e-b] runs 1024:512:5:greedy: prompt 963, decode mean 70.24 median 70.27 tok/s (70.09 to 70.31)
+[ck-oq6e-b] followup    3813 tok: first ttft 4.9541 s (256 tok, finish length); second ttft 0.2089 s, None of 3823 cached, 3823 fresh
+[ck-oq6e-b] followup   15228 tok: first ttft 22.5227 s (256 tok, finish length); second ttft 0.3634 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/q2-ck-oq6e-b.json
+| ck-oq6e-b | 40 | 928 | 0 | 51 | 95 | 6 |
+<scratch>/flint/quiet_lib.sh: line 27:  9246 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 42.03 GB over 200 samples; window 14:38:05-14:41:27
+tracebacks in the log: 0
+## arm ck-oq8e-swap (flint MODEL=mlx-community/flint-oQ8e) 14:41:28
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-oq8e-swap] cold    1025 tok: cached None, ttft 1.0996 s, prefill 932.2 tok/s, decode 67.8 tok/s
+[ck-oq8e-swap] cold    8202 tok: cached None, ttft 9.5943 s, prefill 854.9 tok/s, decode 60.47 tok/s
+wrote <scratch>/flint/q2-ck-oq8e-swap.json
+| ck-oq8e-swap | 3 | 604 | 0 | 49 | 64 | 6 |
+<scratch>/flint/quiet_lib.sh: line 27: 11295 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 50.66 GB over 14 samples; window 14:42:07-14:42:20
+tracebacks in the log: 0
+## arm ck-oq8e-a (flint MODEL=mlx-community/flint-oQ8e) 14:42:20
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-oq8e-a] cold     959 tok: cached None, ttft 1.1055 s, prefill 867.5 tok/s, decode 65.38 tok/s; repeat cached None, ttft 0.216 s, decode 65.99 tok/s
+[ck-oq8e-a] cold    7601 tok: cached None, ttft 9.1517 s, prefill 830.6 tok/s, decode 62.15 tok/s; repeat cached None, ttft 0.2237 s, decode 62.39 tok/s
+[ck-oq8e-a] cold   30422 tok: cached None, ttft 54.9812 s, prefill 553.3 tok/s, decode 51.46 tok/s; repeat cached None, ttft 0.2263 s, decode 51.84 tok/s
+[ck-oq8e-a] runs 1024:512:5:sampled: prompt 963, decode mean 65.7 median 65.7 tok/s (65.52 to 65.85)
+[ck-oq8e-a] runs 1024:512:5:greedy: prompt 963, decode mean 66.41 median 66.34 tok/s (66.23 to 66.66)
+[ck-oq8e-a] followup    3813 tok: first ttft 4.9362 s (256 tok, finish length); second ttft 0.2084 s, None of 3823 cached, 3823 fresh
+[ck-oq8e-a] followup   15228 tok: first ttft 22.7139 s (256 tok, finish length); second ttft 0.3629 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/q2-ck-oq8e-a.json
+| ck-oq8e-a | 42 | 907 | 0 | 56 | 97 | 6 |
+<scratch>/flint/quiet_lib.sh: line 27: 11707 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 51.51 GB over 209 samples; window 14:42:57-14:46:28
+tracebacks in the log: 0
+## arm ck-oq8e-b (flint MODEL=mlx-community/flint-oQ8e) 14:46:28
+up
+MLX buffer cache limit set to 2.0 GB
+Flint fused MoE: 47 blocks, 47 router kernels, steps of up to 4 requests
+MLX fused Flint MoE enabled: patched 47 blocks
+MLX decode submission in parts enabled: 4 of 49 layers submit early
+tree: 
+[ck-oq8e-b] cold     959 tok: cached None, ttft 1.0811 s, prefill 887.1 tok/s, decode 65.63 tok/s; repeat cached None, ttft 0.2155 s, decode 66.17 tok/s
+[ck-oq8e-b] cold    7601 tok: cached None, ttft 8.8673 s, prefill 857.2 tok/s, decode 61.84 tok/s; repeat cached None, ttft 0.1931 s, decode 62.18 tok/s
+[ck-oq8e-b] cold   30422 tok: cached None, ttft 52.4432 s, prefill 580.1 tok/s, decode 51.84 tok/s; repeat cached None, ttft 0.2225 s, decode 52.07 tok/s
+[ck-oq8e-b] runs 1024:512:5:sampled: prompt 963, decode mean 65.8 median 65.77 tok/s (65.7 to 65.97)
+[ck-oq8e-b] runs 1024:512:5:greedy: prompt 963, decode mean 66.66 median 66.6 tok/s (66.42 to 66.94)
+[ck-oq8e-b] followup    3813 tok: first ttft 4.9635 s (256 tok, finish length); second ttft 0.2066 s, None of 3823 cached, 3823 fresh
+[ck-oq8e-b] followup   15228 tok: first ttft 22.6247 s (256 tok, finish length); second ttft 0.3683 s, None of 15238 cached, 15238 fresh
+wrote <scratch>/flint/q2-ck-oq8e-b.json
+| ck-oq8e-b | 41 | 924 | 0 | 48 | 99 | 5 |
+<scratch>/flint/quiet_lib.sh: line 27: 13852 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 51.50 GB over 206 samples; window 14:47:07-14:50:35
+tracebacks in the log: 0
+QUIET2_CKPT_DONE 14:50:35
+## part B: qwen36, five settings 14:50:35
+## arm q36-swap (qwen36 ) 14:50:35
+up
+MLX buffer cache limit set to 4.0 GB
+tree: 
+[q36-swap] cold    1025 tok: cached None, ttft 1.0379 s, prefill 987.6 tok/s, decode 84.04 tok/s
+[q36-swap] cold    8202 tok: cached None, ttft 10.2745 s, prefill 798.3 tok/s, decode 81.9 tok/s
+wrote <scratch>/flint/q2-q36-swap.json
+| q36-swap | 3 | 571 | 0 | 65 | 76 | 6 |
+<scratch>/flint/quiet_lib.sh: line 27: 15893 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.13 GB over 14 samples; window 14:51:01-14:51:15
+tracebacks in the log: 0
+## arm q36d-base-a (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 14:51:15
+up
+MLX buffer cache limit set to 4.0 GB
+tree: 
+[q36d-base-a] cold     959 tok: cached None, ttft 1.078 s, prefill 889.6 tok/s, decode 85.87 tok/s; repeat cached None, ttft 0.1631 s, decode 85.35 tok/s
+[q36d-base-a] cold    7601 tok: cached None, ttft 8.8376 s, prefill 860.1 tok/s, decode 80.37 tok/s; repeat cached None, ttft 0.1821 s, decode 81.53 tok/s
+[q36d-base-a] cold   30408 tok: cached None, ttft 52.1035 s, prefill 583.6 tok/s, decode 68.39 tok/s; repeat cached None, ttft 0.1401 s, decode 68.26 tok/s
+[q36d-base-a] runs 1024:512:5:sampled: prompt 963, decode mean 85.69 median 85.75 tok/s (85.43 to 85.79)
+[q36d-base-a] runs 1024:512:5:greedy: prompt 963, decode mean 87.12 median 87.06 tok/s (86.66 to 87.48)
+[q36d-base-a] followup    3821 tok: first ttft 4.4255 s (256 tok, finish length); second ttft 0.1784 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-base-a.json
+| q36d-base-a | 30 | 919 | 0 | 58 | 59 | 6 |
+<scratch>/flint/quiet_lib.sh: line 27: 16206 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.93 GB over 152 samples; window 14:51:37-14:54:11
+tracebacks in the log: 0
+## arm q36d-sub5-a (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 14:54:11
+up
+MLX buffer cache limit set to 4.0 GB
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36d-sub5-a] cold     959 tok: cached None, ttft 1.0473 s, prefill 915.7 tok/s, decode 86.93 tok/s; repeat cached None, ttft 0.1613 s, decode 87.3 tok/s
+[q36d-sub5-a] cold    7601 tok: cached None, ttft 9.1503 s, prefill 830.7 tok/s, decode 82.62 tok/s; repeat cached None, ttft 0.1809 s, decode 83.41 tok/s
+[q36d-sub5-a] cold   30408 tok: cached None, ttft 51.1983 s, prefill 593.9 tok/s, decode 69.58 tok/s; repeat cached None, ttft 0.139 s, decode 69.66 tok/s
+[q36d-sub5-a] runs 1024:512:5:sampled: prompt 963, decode mean 87.14 median 87.12 tok/s (86.91 to 87.42)
+[q36d-sub5-a] runs 1024:512:5:greedy: prompt 963, decode mean 89.19 median 89.19 tok/s (89.1 to 89.31)
+[q36d-sub5-a] followup    3821 tok: first ttft 4.0335 s (256 tok, finish length); second ttft 0.1703 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-sub5-a.json
+| q36d-sub5-a | 30 | 909 | 0 | 62 | 63 | 6 |
+<scratch>/flint/quiet_lib.sh: line 27: 17746 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.87 GB over 149 samples; window 14:54:35-14:57:06
+tracebacks in the log: 0
+## arm q36d-fuse-a (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=1 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1) 14:57:06
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+tree: 
+[q36d-fuse-a] cold     959 tok: cached None, ttft 1.0357 s, prefill 925.9 tok/s, decode 90.54 tok/s; repeat cached None, ttft 0.1602 s, decode 92.54 tok/s
+[q36d-fuse-a] cold    7601 tok: cached None, ttft 9.3697 s, prefill 811.2 tok/s, decode 88.13 tok/s; repeat cached None, ttft 0.1618 s, decode 87.72 tok/s
+[q36d-fuse-a] cold   30408 tok: cached None, ttft 52.6951 s, prefill 577.1 tok/s, decode 74.71 tok/s; repeat cached None, ttft 0.1413 s, decode 74.74 tok/s
+[q36d-fuse-a] runs 1024:512:5:sampled: prompt 963, decode mean 93.9 median 94.11 tok/s (93.12 to 94.2)
+[q36d-fuse-a] runs 1024:512:5:greedy: prompt 963, decode mean 95.73 median 95.8 tok/s (95.27 to 95.99)
+[q36d-fuse-a] followup    3821 tok: first ttft 4.2163 s (256 tok, finish length); second ttft 0.1735 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-fuse-a.json
+| q36d-fuse-a | 29 | 919 | 0 | 39 | 47 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 19254 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.89 GB over 146 samples; window 14:57:31-14:59:58
+tracebacks in the log: 0
+## arm q36d-fuse-sub5-a (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=5 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1) 14:59:58
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36d-fuse-sub5-a] cold     959 tok: cached None, ttft 1.0383 s, prefill 923.6 tok/s, decode 97.47 tok/s; repeat cached None, ttft 0.1617 s, decode 97.51 tok/s
+[q36d-fuse-sub5-a] cold    7601 tok: cached None, ttft 8.9704 s, prefill 847.3 tok/s, decode 91.58 tok/s; repeat cached None, ttft 0.1786 s, decode 92.29 tok/s
+[q36d-fuse-sub5-a] cold   30408 tok: cached None, ttft 51.1802 s, prefill 594.1 tok/s, decode 76.9 tok/s; repeat cached None, ttft 0.1654 s, decode 77.02 tok/s
+[q36d-fuse-sub5-a] runs 1024:512:5:sampled: prompt 963, decode mean 97.82 median 97.82 tok/s (97.62 to 98.06)
+[q36d-fuse-sub5-a] runs 1024:512:5:greedy: prompt 963, decode mean 100.36 median 100.35 tok/s (100.27 to 100.45)
+[q36d-fuse-sub5-a] followup    3821 tok: first ttft 3.9271 s (256 tok, finish length); second ttft 0.17 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-fuse-sub5-a.json
+| q36d-fuse-sub5-a | 29 | 911 | 0 | 40 | 69 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 20730 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.88 GB over 140 samples; window 15:00:20-15:02:42
+tracebacks in the log: 0
+## arm q36d-fuse-sub5-buf-a (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=5 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1 MLX_MAX_MB_PER_BUFFER=200) 15:02:42
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36d-fuse-sub5-buf-a] cold     959 tok: cached None, ttft 1.0237 s, prefill 936.8 tok/s, decode 99.25 tok/s; repeat cached None, ttft 0.1759 s, decode 99.75 tok/s
+[q36d-fuse-sub5-buf-a] cold    7601 tok: cached None, ttft 8.8757 s, prefill 856.4 tok/s, decode 93.66 tok/s; repeat cached None, ttft 0.1919 s, decode 94.63 tok/s
+[q36d-fuse-sub5-buf-a] cold   30408 tok: cached None, ttft 51.5464 s, prefill 589.9 tok/s, decode 79.7 tok/s; repeat cached None, ttft 0.147 s, decode 76.19 tok/s
+[q36d-fuse-sub5-buf-a] runs 1024:512:5:sampled: prompt 963, decode mean 99.9 median 99.88 tok/s (99.79 to 100.03)
+[q36d-fuse-sub5-buf-a] runs 1024:512:5:greedy: prompt 963, decode mean 102.02 median 102.01 tok/s (101.96 to 102.07)
+[q36d-fuse-sub5-buf-a] followup    3821 tok: first ttft 4.0353 s (256 tok, finish length); second ttft 0.1859 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-fuse-sub5-buf-a.json
+| q36d-fuse-sub5-buf-a | 28 | 927 | 0 | 41 | 99 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 22173 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 32.47 GB over 140 samples; window 15:03:04-15:05:25
+tracebacks in the log: 0
+## arm q36d-fuse-sub5-buf-b (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=5 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1 MLX_MAX_MB_PER_BUFFER=200) 15:05:25
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36d-fuse-sub5-buf-b] cold     959 tok: cached None, ttft 1.026 s, prefill 934.7 tok/s, decode 99.44 tok/s; repeat cached None, ttft 0.1758 s, decode 99.85 tok/s
+[q36d-fuse-sub5-buf-b] cold    7601 tok: cached None, ttft 8.924 s, prefill 851.7 tok/s, decode 94.26 tok/s; repeat cached None, ttft 0.1906 s, decode 94.63 tok/s
+[q36d-fuse-sub5-buf-b] cold   30408 tok: cached None, ttft 51.5211 s, prefill 590.2 tok/s, decode 78.75 tok/s; repeat cached None, ttft 0.1693 s, decode 78.65 tok/s
+[q36d-fuse-sub5-buf-b] runs 1024:512:5:sampled: prompt 963, decode mean 99.79 median 99.81 tok/s (99.56 to 99.97)
+[q36d-fuse-sub5-buf-b] runs 1024:512:5:greedy: prompt 963, decode mean 101.95 median 101.89 tok/s (101.82 to 102.18)
+[q36d-fuse-sub5-buf-b] followup    3821 tok: first ttft 4.0049 s (256 tok, finish length); second ttft 0.1858 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-fuse-sub5-buf-b.json
+| q36d-fuse-sub5-buf-b | 28 | 928 | 0 | 41 | 99 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 23604 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 32.48 GB over 140 samples; window 15:05:50-15:08:11
+tracebacks in the log: 0
+## arm q36d-fuse-sub5-b (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=5 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1) 15:08:11
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36d-fuse-sub5-b] cold     959 tok: cached None, ttft 1.0391 s, prefill 922.9 tok/s, decode 97.62 tok/s; repeat cached None, ttft 0.1613 s, decode 97.72 tok/s
+[q36d-fuse-sub5-b] cold    7601 tok: cached None, ttft 8.944 s, prefill 849.8 tok/s, decode 91.57 tok/s; repeat cached None, ttft 0.1778 s, decode 92.48 tok/s
+[q36d-fuse-sub5-b] cold   30408 tok: cached None, ttft 51.895 s, prefill 586.0 tok/s, decode 75.98 tok/s; repeat cached None, ttft 0.1659 s, decode 76.33 tok/s
+[q36d-fuse-sub5-b] runs 1024:512:5:sampled: prompt 963, decode mean 97.71 median 97.73 tok/s (97.63 to 97.79)
+[q36d-fuse-sub5-b] runs 1024:512:5:greedy: prompt 963, decode mean 100.4 median 100.4 tok/s (100.34 to 100.46)
+[q36d-fuse-sub5-b] followup    3821 tok: first ttft 4.0561 s (256 tok, finish length); second ttft 0.1708 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-fuse-sub5-b.json
+| q36d-fuse-sub5-b | 28 | 928 | 0 | 41 | 80 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 25042 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.82 GB over 141 samples; window 15:08:36-15:10:59
+tracebacks in the log: 0
+## arm q36d-fuse-b (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=1 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1) 15:10:59
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+tree: 
+[q36d-fuse-b] cold     959 tok: cached None, ttft 1.0385 s, prefill 923.4 tok/s, decode 92.26 tok/s; repeat cached None, ttft 0.1618 s, decode 94.19 tok/s
+[q36d-fuse-b] cold    7601 tok: cached None, ttft 9.0114 s, prefill 843.5 tok/s, decode 88.77 tok/s; repeat cached None, ttft 0.1815 s, decode 88.87 tok/s
+[q36d-fuse-b] cold   30408 tok: cached None, ttft 51.7793 s, prefill 587.3 tok/s, decode 75.38 tok/s; repeat cached None, ttft 0.1667 s, decode 75.84 tok/s
+[q36d-fuse-b] runs 1024:512:5:sampled: prompt 963, decode mean 93.65 median 93.73 tok/s (93.09 to 93.99)
+[q36d-fuse-b] runs 1024:512:5:greedy: prompt 963, decode mean 95.18 median 95.42 tok/s (94.63 to 95.47)
+[q36d-fuse-b] followup    3821 tok: first ttft 3.905 s (256 tok, finish length); second ttft 0.1692 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-fuse-b.json
+| q36d-fuse-b | 29 | 927 | 0 | 39 | 32 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 26467 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.89 GB over 144 samples; window 15:11:21-15:13:47
+tracebacks in the log: 0
+## arm q36d-sub5-b (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 15:13:47
+up
+MLX buffer cache limit set to 4.0 GB
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36d-sub5-b] cold     959 tok: cached None, ttft 1.0474 s, prefill 915.6 tok/s, decode 86.7 tok/s; repeat cached None, ttft 0.1625 s, decode 86.53 tok/s
+[q36d-sub5-b] cold    7601 tok: cached None, ttft 9.0031 s, prefill 844.3 tok/s, decode 82.71 tok/s; repeat cached None, ttft 0.1814 s, decode 82.89 tok/s
+[q36d-sub5-b] cold   30408 tok: cached None, ttft 52.4132 s, prefill 580.2 tok/s, decode 69.53 tok/s; repeat cached None, ttft 0.1662 s, decode 70.17 tok/s
+[q36d-sub5-b] runs 1024:512:5:sampled: prompt 963, decode mean 87.32 median 87.21 tok/s (87.03 to 87.94)
+[q36d-sub5-b] runs 1024:512:5:greedy: prompt 963, decode mean 88.99 median 88.96 tok/s (88.93 to 89.14)
+[q36d-sub5-b] followup    3821 tok: first ttft 4.1814 s (256 tok, finish length); second ttft 0.1764 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-sub5-b.json
+| q36d-sub5-b | 31 | 921 | 0 | 39 | 61 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 27941 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.72 GB over 151 samples; window 15:14:11-15:16:43
+tracebacks in the log: 0
+## arm q36d-base-b (qwen36 SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 15:16:43
+up
+MLX buffer cache limit set to 4.0 GB
+tree: 
+[q36d-base-b] cold     959 tok: cached None, ttft 1.0478 s, prefill 915.3 tok/s, decode 84.53 tok/s; repeat cached None, ttft 0.1629 s, decode 85.78 tok/s
+[q36d-base-b] cold    7601 tok: cached None, ttft 9.3948 s, prefill 809.1 tok/s, decode 80.61 tok/s; repeat cached None, ttft 0.1861 s, decode 81.38 tok/s
+[q36d-base-b] cold   30408 tok: cached None, ttft 51.712 s, prefill 588.0 tok/s, decode 69.55 tok/s; repeat cached None, ttft 0.1682 s, decode 69.76 tok/s
+[q36d-base-b] runs 1024:512:5:sampled: prompt 963, decode mean 85.83 median 85.82 tok/s (85.74 to 85.91)
+[q36d-base-b] runs 1024:512:5:greedy: prompt 963, decode mean 87.37 median 87.4 tok/s (87.14 to 87.51)
+[q36d-base-b] followup    3821 tok: first ttft 3.956 s (256 tok, finish length); second ttft 0.1703 s, None of 3839 cached, 3839 fresh
+wrote <scratch>/flint/q2-q36d-base-b.json
+| q36d-base-b | 30 | 931 | 0 | 38 | 58 | 4 |
+<scratch>/flint/quiet_lib.sh: line 27: 29451 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 30.71 GB over 151 samples; window 15:17:05-15:19:38
+tracebacks in the log: 0
+QUIET2_Q36_DONE 15:19:38
+## part C: qwen36 at depth 15:19:38
+oom guard running
+## arm q36deep-base-a (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 15:19:38
+up
+MLX buffer cache limit set to 4.0 GB
+tree: 
+[q36deep-base-a] cold   64919 tok: cached None, ttft 141.581 s, prefill 458.5 tok/s, decode 57.21 tok/s
+[q36deep-base-a] cold  129887 tok: cached None, ttft 398.3915 s, prefill 326.0 tok/s, decode 42.86 tok/s
+wrote <scratch>/flint/q2-q36deep-base-a.json
+| q36deep-base-a | 110 | 909 | 0 | 72 | 98 | 7 |
+<scratch>/flint/quiet_lib.sh: line 27: 30973 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 29.31 GB over 545 samples; window 15:19:59-15:29:11
+tracebacks in the log: 0
+## arm q36deep-sub5-a (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 15:29:11
+up
+MLX buffer cache limit set to 4.0 GB
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36deep-sub5-a] cold   64919 tok: cached None, ttft 133.3333 s, prefill 486.9 tok/s, decode 57.23 tok/s
+[q36deep-sub5-a] cold  129887 tok: cached None, ttft 397.9673 s, prefill 326.4 tok/s, decode 42.97 tok/s
+wrote <scratch>/flint/q2-q36deep-sub5-a.json
+| q36deep-sub5-a | 108 | 909 | 0 | 71 | 97 | 7 |
+<scratch>/flint/quiet_lib.sh: line 27: 35896 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 28.56 GB over 537 samples; window 15:29:34-15:38:37
+tracebacks in the log: 0
+## arm q36deep-fuse-sub5-a (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_DECODE_SUBMIT_PARTS=5 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1) 15:38:37
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36deep-fuse-sub5-a] cold   64919 tok: cached None, ttft 133.2343 s, prefill 487.3 tok/s, decode 62.18 tok/s
+[q36deep-fuse-sub5-a] cold  129887 tok: cached None, ttft 396.4641 s, prefill 327.6 tok/s, decode 45.27 tok/s
+wrote <scratch>/flint/q2-q36deep-fuse-sub5-a.json
+| q36deep-fuse-sub5-a | 108 | 908 | 0 | 72 | 98 | 7 |
+<scratch>/flint/quiet_lib.sh: line 27: 40744 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 29.26 GB over 535 samples; window 15:38:58-15:47:59
+tracebacks in the log: 0
+## arm q36deep-fuse-sub5-b (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_DECODE_SUBMIT_PARTS=5 SGLANG_MLX_FUSE_MOE_ROUTER=1 SGLANG_MLX_FUSE_GDN_FRONT=1 SGLANG_MLX_FUSE_DECODE_LINEARS=1) 15:47:59
+up
+MLX buffer cache limit set to 4.0 GB
+MLX fused MoE router enabled: patched 40 blocks
+MLX fused GatedDeltaNet front enabled: patched 30 layers
+MLX grouped decode linears enabled: hooked 1 modules
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36deep-fuse-sub5-b] cold   64919 tok: cached None, ttft 132.7904 s, prefill 488.9 tok/s, decode 61.5 tok/s
+[q36deep-fuse-sub5-b] cold  129887 tok: cached None, ttft 397.3871 s, prefill 326.9 tok/s, decode 45.59 tok/s
+wrote <scratch>/flint/q2-q36deep-fuse-sub5-b.json
+| q36deep-fuse-sub5-b | 107 | 915 | 0 | 73 | 99 | 7 |
+<scratch>/flint/quiet_lib.sh: line 27: 45619 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 29.33 GB over 535 samples; window 15:48:23-15:57:24
+tracebacks in the log: 0
+## arm q36deep-sub5-b (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_DECODE_SUBMIT_PARTS=5) 15:57:24
+up
+MLX buffer cache limit set to 4.0 GB
+MLX decode submission in parts enabled: 4 of 40 layers submit early
+tree: 
+[q36deep-sub5-b] cold   64919 tok: cached None, ttft 133.016 s, prefill 488.1 tok/s, decode 57.89 tok/s
+[q36deep-sub5-b] cold  129887 tok: cached None, ttft 397.486 s, prefill 326.8 tok/s, decode 42.41 tok/s
+wrote <scratch>/flint/q2-q36deep-sub5-b.json
+| q36deep-sub5-b | 108 | 912 | 0 | 72 | 96 | 7 |
+<scratch>/flint/quiet_lib.sh: line 27: 50479 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 29.25 GB over 536 samples; window 15:57:49-16:06:51
+tracebacks in the log: 0
+## arm q36deep-base-b (qwen36 CTX=131136 MEM_FRAC=0.5 CHUNKED=1024 EXTRA_ARGS=--disable-radix-cache SGLANG_MLX_DECODE_SUBMIT_PARTS=1) 16:06:51
+up
+MLX buffer cache limit set to 4.0 GB
+tree: 
+[q36deep-base-b] cold   64919 tok: cached None, ttft 133.2453 s, prefill 487.2 tok/s, decode 56.51 tok/s
+[q36deep-base-b] cold  129887 tok: cached None, ttft 399.1252 s, prefill 325.4 tok/s, decode 42.65 tok/s
+wrote <scratch>/flint/q2-q36deep-base-b.json
+| q36deep-base-b | 107 | 904 | 0 | 85 | 98 | 9 |
+<scratch>/flint/quiet_lib.sh: line 27: 55350 Terminated: 15          ( while :; do
+    vm_stat | awk '/Pages wired down/ {printf "%.2f\n", $4 * 16384 / 1e9}'; /bin/sleep 1;
+done ) > $F/q2-$name.wired
+wired peak 28.95 GB over 538 samples; window 16:07:16-16:16:19
+tracebacks in the log: 0
+QUIET2_DEEP_DONE 16:16:19
+display asleep at the end: yes
+quiet2.sh: line 77:  3056 Terminated: 15          quiet_keeper
+QUIET2_DONE 16:16:25

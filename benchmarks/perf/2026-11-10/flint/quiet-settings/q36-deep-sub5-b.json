@@ -1,0 +1,41 @@
+{
+  "tag": "q36deep-sub5-b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 70000,
+      "cold": {
+        "prompt_tokens": 64919,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 133.016,
+        "total_s": 137.4207,
+        "text_sha": "32aa5f9d592800d2",
+        "tpot_ms": 17.2729,
+        "decode_tok_s": 57.89
+      },
+      "prefill_tok_s": 488.1
+    },
+    {
+      "target": 140000,
+      "cold": {
+        "prompt_tokens": 129887,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 397.486,
+        "total_s": 403.5231,
+        "text_sha": "494deb1de75e0da4",
+        "tpot_ms": 23.5813,
+        "decode_tok_s": 42.41
+      },
+      "prefill_tok_s": 326.8
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

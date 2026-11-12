@@ -1,0 +1,41 @@
+{
+  "tag": "q36deep-base-a",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20
+  },
+  "max_tokens": 256,
+  "cold": [
+    {
+      "target": 70000,
+      "cold": {
+        "prompt_tokens": 64919,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 141.581,
+        "total_s": 146.0382,
+        "text_sha": "760bcee170a2ba3b",
+        "tpot_ms": 17.4786,
+        "decode_tok_s": 57.21
+      },
+      "prefill_tok_s": 458.5
+    },
+    {
+      "target": 140000,
+      "cold": {
+        "prompt_tokens": 129887,
+        "cached_tokens": null,
+        "completion_tokens": 256,
+        "ttft_s": 398.3915,
+        "total_s": 404.3409,
+        "text_sha": "4d61e2d67981a6e8",
+        "tpot_ms": 23.3304,
+        "decode_tok_s": 42.86
+      },
+      "prefill_tok_s": 326.0
+    }
+  ],
+  "runs": [],
+  "followup": []
+}

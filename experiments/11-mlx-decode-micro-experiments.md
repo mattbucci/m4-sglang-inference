@@ -4,7 +4,7 @@
 | | |
 |---|---|
 | **Type** | experiment lane |
-| **Status** | measured; flags opt-in. The buffer limit, the block ladder and the three launch-folding patches are retained behind environment variables, patches 033 and 034 are always on, patch 035 (one forward per decode step of several requests on the mRoPE hybrids) is a flag the `qwen35` preset sets by default, further launch folding on qwen36 is closed. Defaults in `scripts/common.sh` wait on the cross-preset arms (`benchmarks/perf/2026-11-10/micro/VERDICT.md`, `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`) |
+| **Status** | measured; the three launch-folding patches are on in the `qwen36` preset, together with five decode parts (patch 038, experiment 12). The buffer limit and the block ladder are retained behind environment variables, patches 033 and 034 are always on, patch 035 (one forward per decode step of several requests on the mRoPE hybrids) is a flag the `qwen35` preset sets by default, further launch folding on qwen36 is closed. Defaults for the other presets wait on the cross-preset arms (`benchmarks/perf/2026-11-10/micro/VERDICT.md`, `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`) |
 | **Execution host** | m4-box |
 | **Wall clock** | about two days of exclusive serving windows (a cold 251K arm is 24 to 26 minutes of prefill; the mirrored short-context A/B is 6 minutes per arm) |
 | **GPU time** | none separate from the box (Apple unified memory); raw probes and serving arms never overlap |
@@ -110,6 +110,7 @@ Receipts and the full disposition table: `benchmarks/perf/2026-11-10/micro/VERDI
 | how many launches there are | `SGLANG_MLX_FUSE_MOE_ROUTER=1`, `SGLANG_MLX_FUSE_GDN_FRONT=1`, `SGLANG_MLX_FUSE_DECODE_LINEARS=1` (patches 030, 031, 032) | +11.6 / +11.0 / +10.1 % at 948 / 7,583 / 30,391 prompt tokens on top of the buffer limit: 95.9 / 90.0 / 75.1 tok/s against 85.9 / 81.1 / 68.2 |
 | how attention partitions a deep cache | `SGLANG_MLX_SDPA_BLOCK_LADDER=1` (patch 029) | 37.3 against 40.8 ms per token at 251,474 prompt tokens, depth recall 6/6, stock block counts through 196,608 keys |
 
+- The `qwen36` preset sets the three launch-folding flags and five decode parts (patch 038). On a quiet GPU, five settings in mirrored order: 97.6 / 91.6 / 76.4 tok/s cold at 959 / 7,601 / 30,408 prompt tokens against 85.2 / 80.5 / 69.0 with none of them, 61.8 against 56.9 at 65K and 45.4 against 42.8 at 130K, prefill, TTFT and wired memory equal (`benchmarks/perf/2026-11-10/flint/quiet-settings/`). The capability gates pass on that setting (`benchmarks/perf/2026-11-10/flint/gates/q36-fuse-sub5/`).
 - The three launch-folding patches pass the teacher-forced fidelity gate: KL to the float32 yardstick 0.0189 (030), 0.0206 (031), bit-identical (032), 0.0211 together, against 0.0165 for the stock decode path and 0.0194 for the stock prefill path.
 - Patch 032 pays only next to the other two (+1.6 to +3.1 % over three mirrored pairs) and is neutral alone.
 - With the three patches installed a raw step is 1,850 primitives and 10.15 ms against 7.9 to 8.2 ms of weight and state traffic at 220 GB/s. No module family holds more than 1 ms above its reads, the 80 layer norms knock out to zero, and the head sits on its read. Further launch folding on this checkpoint is closed; the dense presets sit on the memory wall and have no such margin.

@@ -253,6 +253,22 @@ apply_preset() {
             # for a red-circle-on-white prompt). Adding --enable-multimodal
             # routes image bytes into the patch 013 pixel_values plumbing —
             # same path that's been STRONG on Qwen3.5-9B-8bit since 2026-05-13.
+            # Patches 030 to 032 (on by default for this preset, =0 restores
+            # the stock ops): the MoE router, the DeltaNet front and the
+            # decode projections of a one-token step run as fused launches.
+            # 030 and 031 round once from float32 (teacher-forced KL 0.0211
+            # to a float32 yardstick against 0.0165 stock), 032 is
+            # bit-identical.
+            export SGLANG_MLX_FUSE_MOE_ROUTER="${SGLANG_MLX_FUSE_MOE_ROUTER:-1}"
+            export SGLANG_MLX_FUSE_GDN_FRONT="${SGLANG_MLX_FUSE_GDN_FRONT:-1}"
+            export SGLANG_MLX_FUSE_DECODE_LINEARS="${SGLANG_MLX_FUSE_DECODE_LINEARS:-1}"
+            # Patch 038 (on by default for this preset, =1 restores the single
+            # submission): a decode step reaches the GPU in five parts.
+            # Together with the fusions: 97.6 / 91.6 / 76.4 tok/s at 1K / 8K /
+            # 30K against 85.2 / 80.5 / 69.0, +8.8 % at 65K, +6.3 % at 130K,
+            # prefill and wired memory unchanged
+            # (benchmarks/perf/2026-11-10/flint/VERDICT.md).
+            export SGLANG_MLX_DECODE_SUBMIT_PARTS="${SGLANG_MLX_DECODE_SUBMIT_PARTS:-5}"
             CTX=32768; MAX_RUNNING=1; CHUNKED=4096
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --tool-call-parser qwen3_coder"

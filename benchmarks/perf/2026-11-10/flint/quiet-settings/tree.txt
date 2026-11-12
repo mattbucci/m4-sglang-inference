@@ -1,0 +1,28 @@
+Server tree per arm: module paths in each server log.
+wt042 is the pristine v0.5.23 checkout with patches 001-039 applied.
+q2-ck-int4-a.log wt042-paths 2 live-tree-paths 0
+q2-ck-int4-b.log wt042-paths 2 live-tree-paths 0
+q2-ck-int4-swap.log wt042-paths 2 live-tree-paths 0
+q2-ck-oq6e-a.log wt042-paths 2 live-tree-paths 0
+q2-ck-oq6e-b.log wt042-paths 2 live-tree-paths 0
+q2-ck-oq6e-swap.log wt042-paths 2 live-tree-paths 0
+q2-ck-oq8e-a.log wt042-paths 2 live-tree-paths 0
+q2-ck-oq8e-b.log wt042-paths 2 live-tree-paths 0
+q2-ck-oq8e-swap.log wt042-paths 2 live-tree-paths 0
+q2-q36-swap.log wt042-paths 4 live-tree-paths 0
+q2-q36d-base-a.log wt042-paths 4 live-tree-paths 0
+q2-q36d-base-b.log wt042-paths 4 live-tree-paths 0
+q2-q36d-fuse-a.log wt042-paths 4 live-tree-paths 0
+q2-q36d-fuse-b.log wt042-paths 4 live-tree-paths 0
+q2-q36d-fuse-sub5-a.log wt042-paths 4 live-tree-paths 0
+q2-q36d-fuse-sub5-b.log wt042-paths 4 live-tree-paths 0
+q2-q36d-fuse-sub5-buf-a.log wt042-paths 4 live-tree-paths 0
+q2-q36d-fuse-sub5-buf-b.log wt042-paths 4 live-tree-paths 0
+q2-q36d-sub5-a.log wt042-paths 4 live-tree-paths 0
+q2-q36d-sub5-b.log wt042-paths 4 live-tree-paths 0
+q2-q36deep-base-a.log wt042-paths 4 live-tree-paths 0
+q2-q36deep-base-b.log wt042-paths 4 live-tree-paths 0
+q2-q36deep-fuse-sub5-a.log wt042-paths 4 live-tree-paths 0
+q2-q36deep-fuse-sub5-b.log wt042-paths 4 live-tree-paths 0
+q2-q36deep-sub5-a.log wt042-paths 4 live-tree-paths 0
+q2-q36deep-sub5-b.log wt042-paths 4 live-tree-paths 0

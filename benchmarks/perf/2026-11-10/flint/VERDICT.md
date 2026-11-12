@@ -90,13 +90,16 @@ retained, a disposition per experiment, a kill criterion up front), plus:
 | one-launch routing (`route1`) | launches | router logits and routing of a block in one Metal kernel, bit-identical: 10.76 to 10.81 against 9.91 to 9.96 ms raw at 1K and 11.91 to 11.98 against 11.04 to 11.09 at 8K, at 2,136 against 2,183 primitives; with a 256-thread group 10.88 to 10.91 and 12.07 to 12.10; the replay bound reads 9.14 to 9.16 and 10.16 to 10.24 | rejected: 8 to 10 % slower than the two launches it replaces. The 0.78 ms a step the routing launches cost at 1K (0.87 at 8K) stays unclaimed |
 | radix cache off | host | 82.5 against 74.9 tok/s greedy before patch 036, 92.4 against 91.0 with both patches; a repeat of a 30K prompt answers in 51.5 s against 0.21 s | radix stays on: patch 036 removed the reason to turn it off |
 | command-buffer limits | host slack | raw: stock limits lose 2.0 ms of step time to a 2 ms host delay, `MLX_MAX_MB_PER_BUFFER=200` loses 0.5, 100 operations with 400 MB loses none, 200 operations with 1,000 MB is slower than stock; served, eight mirrored arms: +9.9 / +10.3 / +11.1 % greedy at 1K for 200 MB / 100 operations and 400 MB / 100 operations and 1,000 MB, +5.2 to +5.5 % decode at 32K, cold prefill 6.5 to 7.9 % slower at 8K and 3.7 to 6.0 % slower at 32K, 0.5 to 1.2 GB more wired; on top of patch 038, six mirrored arms: 100 / 150 MB +2.2 / +1.7 % greedy at 1K for 3.8 / 4.9 % of the cold prefill at 8K | not a preset default: a trade, decode for cold prefill. The three settings tie in decode and 200 MB costs the least prefill and memory. Patch 038 takes three quarters of the same gain for free, so the limit stays an opt-in for decode-heavy work |
-| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone; qwen36, four mirrored arms: five parts +4.4 % greedy, +3.4 % sampled, +5.0 / +5.0 / +1.5 % cold decode at 1K / 8K / 32K, prefill and memory equal, same greedy text | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset. Clears the criterion on qwen36, and with patches 030 to 032 and five parts qwen36 passes the validator 3/3, thinking VERIFIED, vision, codegen and video STRONG (`gates/q36-fuse-sub5/`); open there: a mirrored pair at 64K and 128K, then the preset default |
+| decode submission in parts (patch 038) | host slack | raw: four early submissions recover 1.0 ms of a 1 ms host delay on stock limits and nothing once the limits are 100 operations and 400 MB; served, nine arms: five parts +7.5 % greedy and +7.8 % sampled at 1K, +8.2 / +8.9 / +2.7 % cold decode at 1K / 8K / 32K, +8.8 / +6.0 / +2.1 % at 1 / 2 / 4 streams, prefill inside the arm spread, wired memory equal, same greedy text; nine parts +8.1 % on one arm; five parts with 200 MB buffers +10.3 %, equal to the buffers alone; qwen36, four mirrored arms: five parts +4.4 % greedy, +3.4 % sampled, +5.0 / +5.0 / +1.5 % cold decode at 1K / 8K / 32K, prefill and memory equal, same greedy text | retained, flag `SGLANG_MLX_DECODE_SUBMIT_PARTS`, 5 in the `flint` preset. Clears the criterion on qwen36, and with patches 030 to 032 and five parts qwen36 passes the validator 3/3, thinking VERIFIED, vision, codegen and video STRONG (`gates/q36-fuse-sub5/`); 5 in the `qwen36` preset as well, see the next row |
 | attention parts (knock-out census) | launches | at 1K attention costs 4.29 ms of the 11.47 ms raw mlx-lm step and its reads cost 3.12 ms at 200 GB/s; the query and output projections run at 218 to 243 GB/s, their read cost; head norms, the rotary embedding and a non-additive rest hold 1.17 ms | no fold carried: the folds over these operations (`qkv`, `front`, `mid`) measured inside noise. Recorded as the attention floor of this graph |
 | deep ladder through 128K | like for like | on a quiet GPU decode is 102.5 tok/s at 1K to 37.5 at 128K: 81 to 90 % of rec through 32K, 98 % at 64K, 106 % at 128K, 78 to 84 % of Kapitsa at every depth; prefill 1,022 to 296 tok/s, 102 to 131 % of rec and 91 to 99 % of Kapitsa past 1K; with the display on the same arm read 98.9 to 35.5 tok/s decode; per token of context a step costs 0.131 µs here, 0.159 for rec, 0.107 for Kapitsa | measured. The fixed 1.7 to 1.9 ms per step is this graph's launches; the per-token term is the read rate of the shared keys and values, and a raw probe of the attention kernel at 32K to 128K is the next experiment |
 | served prefill chunk (census) | host | host time is 3 to 4 ms of a 1.1 to 1.8 s chunk; with the radix cache on the tracked snapshot evaluates its 35 layers one at a time and the chunk costs 75.5 ms more at 8K (796 against 850 tok/s) and 51 to 87 ms more at 32K (573 to 585 against 602); the decode flags do not run on prefill chunks | measured. Served prefill is not host-bound; the per-layer evaluations are the radix-on cost, and patch 039 removes their waits |
 | scheduled snapshot evaluation (patch 039, `snapshot-eval/`) | prefill under the radix cache | the snapshot of the tracked state schedules its arrays instead of waiting for each layer: Flint cold TTFT -3.5 % at 7.6K and -4.0 % at 30.4K, follow-up TTFT -3.4 to -5.0 %, extend -2.3 to -4.0 %, repeat -2.8 %, all with the arms of the two settings apart; served prefill 879 to 881 tok/s at 7.6K and 637 to 642 at 30.4K against 849 and 611 to 618; qwen36 cold -0.9 % at 7.6K, repeat -2.9 to -5.7 %, the rest inside the arm spread; decode unchanged; greedy text equal run for run | retained, always on, no flag. Cold follow-ups equal the previous tree's at KL 0 on both models and every capability gate passes |
 | decode flags against prefill, by arm position (`slot/`) | prefill | six arms, base and shipping flags in mirrored order, six depths to 32K: prefill 983 / 933 / 917 / 832 / 705 / 565 tok/s on the shipping flags against 970 / 936 / 913 / 834 / 709 / 578 on base, with up to 9 % between two arms of one setting; decode +19 to +21 % to 8K, +16 % at 16K, +13 % at 32K | measured: the flags are prefill-neutral, and the deep prefill scatter follows neither the flags nor the position after a boot |
 | display and session GPU share (`display/`, `gpu-time/`) | instrument | the compositor of the lit display holds 160 to 200 ms of GPU time per second and this session's terminal up to 43; display asleep with the session idle in both arms reads +3.5 to +4.6 % decode at every depth and +2.1 to +3.4 % cold prefill; a foreground wait in the session costs prefill at 8K to 32K a further 6 to 10 % | adopted as the protocol: timed arms run with the display asleep and the session idle, and each arm's GPU share is recorded |
+| qwen36 preset settings (`quiet-settings/`) | launches and host slack | quiet GPU, five settings in mirrored order to 30K and three to 130K: patches 030 to 032 with five parts read 97.55 / 91.57 / 76.44 tok/s cold at 959 / 7,601 / 30,408 prompt tokens against 85.20 / 80.49 / 68.97 (+14.5 / +13.8 / +10.8 %), +14.0 % sampled and +15.0 % greedy at 1K, 61.84 against 56.86 at 65K (+8.8 %) and 45.43 against 42.75 at 130K (+6.3 %); the fusions alone +7.3 / +9.9 / +8.8 %, five parts alone +1.9 / +2.7 / +0.9 % and +1.2 / -0.1 % at depth; prefill, TTFT, follow-up TTFT and wired memory equal | the `qwen36` preset sets the three fusion flags and five parts; gates, teacher-forced fidelity and depth recall were already on file for the setting |
+| 200 MB command buffers on the qwen36 preset (`quiet-settings/`) | host slack | on top of the fusions and five parts: +1.8 / +2.6 / +3.6 % cold decode at 1K / 7.6K / 30K, +2.1 % sampled, +1.6 % greedy, prefill not lower, 32.5 against 30.9 GB wired, follow-up TTFT 0.186 against 0.171 s | candidate: no arm at 65K and 130K yet |
+| Flint checkpoints, quiet (`quiet-settings/`) | weight reads | the shipping preset with patches 036 to 039, two servers per checkpoint: int4 101.89 / 93.20 / 72.25 tok/s cold at 1K / 7.6K / 30.4K, oQ6e 69.70 / 64.88 / 53.60, oQ8e 65.50 / 62.00 / 51.65; wired peaks 31.84 / 42.03 / 51.51 GB | these are the rows of `docs/flint.md`; the default checkpoint still waits for an agentic cell on int4 |
 
 ## Baseline
 
@@ -886,7 +889,8 @@ on, both models:
 ## Checkpoints
 
 `gates/`, `preset/`, `fidelity/`. The preset as it ships (radix on, four
-slots, 32K label, patches 037 and 038 on), one server per checkpoint.
+slots, 32K label, patches 037 and 038 on), one server per checkpoint, display
+on. The same table on a quiet GPU with patch 039 is in the next section.
 
 | checkpoint | bits per weight | on disk | cold decode 959 / 7,601 / 30,422 | same request again | cold prefill | sampled 1K | greedy 1K | follow-up TTFT 3.8K | wired peak |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
@@ -936,6 +940,105 @@ oQ8e is the reference dump):
   and wires 9.5 GB less. The default stays oQ8e because the agentic cell
   was scored on it. An agentic cell on int4 is what decides a switch.
 
+## Quiet settings: Flint checkpoints and the qwen36 preset
+
+`quiet-settings/`. Display asleep and session idle for the whole queue, one
+server per arm, 26 arms in 1 h 50 min, zero tracebacks. Every arm booted from
+the tree with patches 001 to 039 (`tree.txt`). The compositor holds 0 ms of
+GPU time per second in every arm and the server 904 to 935 (`driver.txt`,
+the row after each arm). `table.txt` is the summary these tables are cut
+from. Each Flint checkpoint and the qwen36 preset open with one arm that pages
+the checkpoint in and is not in the tables; the deep part has none.
+
+Flint checkpoints on the shipping preset, mean of two servers per checkpoint
+(prompts of 959 / 7,601 / 30,422 tokens, 256-token replies at the
+checkpoint's own sampling):
+
+| checkpoint | cold decode tok/s | cold prefill tok/s | TTFT s | sampled 1K | greedy 1K | follow-up TTFT 3.8K / 15.2K | same request again, TTFT | wired peak |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| int4 | 101.89 / 93.20 / 72.25 | 945.2 / 878.0 / 606.4 | 1.01 / 8.66 / 50.20 | 101.99 | 104.47 | 0.160 / 0.297 s | 0.16 / 0.16 / 0.20 s | 31.84 GB |
+| oQ6e | 69.70 / 64.88 / 53.60 | 867.8 / 837.0 / 568.5 | 1.11 / 9.08 / 53.56 | 69.41 | 70.24 | 0.208 / 0.363 s | 0.20 / 0.20 / 0.22 s | 42.03 GB |
+| oQ8e (default) | 65.50 / 62.00 / 51.65 | 877.3 / 843.9 / 566.7 | 1.09 / 9.01 / 53.71 | 65.75 | 66.53 | 0.208 / 0.366 s | 0.22 / 0.21 / 0.22 s | 51.51 GB |
+
+- Decode per arm: int4 102.77 / 93.55 / 71.79 and 101.01 / 92.85 / 72.72,
+  oQ6e 69.63 / 64.93 / 53.16 and 69.78 / 64.82 / 54.04, oQ8e 65.38 / 62.15 /
+  51.46 and 65.63 / 61.84 / 51.84. Two servers of one checkpoint agree inside
+  1.7 % on decode. Cold prefill at 30K scatters 5 to 6 % between two
+  servers (622.2 and 590.6 on int4), so the TTFT column is good to that.
+- int4 against oQ8e: 56 % faster at 1K, 50 % at 7.6K, 40 % at 30K, in 19.7 GB
+  less wired memory. oQ6e against oQ8e: 6.4 % faster at 1K in 9.5 GB less.
+- Against the display-on table of the Checkpoints section every checkpoint
+  reads higher: the quiet GPU and patch 039 together are worth 3 to 8 % of
+  decode and 4 to 25 % of cold prefill, most on oQ8e's prefill (10 / 25 /
+  16 %).
+
+The `qwen36` preset as it ships (radix on, one slot, 4,096-token chunks),
+five settings in the order base, parts, fusions, both, both with 200 MB
+buffers, then the same five reversed. Prompts of 959 / 7,601 / 30,408
+tokens; means of the two arms:
+
+| setting | cold decode tok/s | against base | sampled 1K | greedy 1K | cold prefill tok/s | TTFT 30K | follow-up TTFT 3.8K | wired peak, both arms |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| base: one submission, stock ops | 85.20 / 80.49 / 68.97 | | 85.76 | 87.25 | 902.5 / 834.6 / 585.8 | 51.91 s | 0.174 s | 30.93, 30.71 GB |
+| five parts (patch 038) | 86.81 / 82.66 / 69.56 | +1.9 / +2.7 / +0.9 % | 87.23 | 89.09 | 915.7 / 837.5 / 587.1 | 51.81 s | 0.173 s | 30.87, 30.72 GB |
+| fusions (patches 030 to 032) | 91.40 / 88.45 / 75.04 | +7.3 / +9.9 / +8.8 % | 93.78 | 95.46 | 924.7 / 827.4 / 582.2 | 52.24 s | 0.171 s | 30.89, 30.89 GB |
+| fusions and five parts | 97.55 / 91.57 / 76.44 | +14.5 / +13.8 / +10.8 % | 97.76 | 100.38 | 923.3 / 848.6 / 590.1 | 51.54 s | 0.171 s | 30.88, 30.82 GB |
+| fusions, five parts, `MLX_MAX_MB_PER_BUFFER=200` | 99.34 / 93.96 / 79.22 | +16.6 / +16.7 / +14.9 % | 99.84 | 101.98 | 935.8 / 854.1 / 590.1 | 51.53 s | 0.186 s | 32.47, 32.48 GB |
+
+| setting | arm a, cold decode | arm b, cold decode | sampled a, b | greedy a, b |
+|---|--:|--:|--:|--:|
+| base | 85.87 / 80.37 / 68.39 | 84.53 / 80.61 / 69.55 | 85.69, 85.83 | 87.12, 87.37 |
+| five parts | 86.93 / 82.62 / 69.58 | 86.70 / 82.71 / 69.53 | 87.14, 87.32 | 89.19, 88.99 |
+| fusions | 90.54 / 88.13 / 74.71 | 92.26 / 88.77 / 75.38 | 93.90, 93.65 | 95.73, 95.18 |
+| fusions and five parts | 97.47 / 91.58 / 76.90 | 97.62 / 91.57 / 75.98 | 97.82, 97.71 | 100.36, 100.40 |
+| with 200 MB buffers | 99.25 / 93.66 / 79.70 | 99.44 / 94.26 / 78.75 | 99.90, 99.79 | 102.02, 101.95 |
+
+qwen36 at depth (`CTX=131136 MEM_FRAC=0.5 CHUNKED=1024`, radix off, prompts
+of 64,919 and 129,887 tokens, 256-token replies), order base, parts, both,
+both, parts, base:
+
+| setting | decode 65K / 130K | against base | arm a | arm b | cold prefill tok/s | TTFT s | wired peak, both arms |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| base | 56.86 / 42.75 | | 57.21 / 42.86 | 56.51 / 42.65 | 472.9 / 325.7 | 137.4 / 398.8 | 29.31, 28.95 GB |
+| five parts | 57.56 / 42.69 | +1.2 / -0.1 % | 57.23 / 42.97 | 57.89 / 42.41 | 487.5 / 326.6 | 133.2 / 397.7 | 28.56, 29.25 GB |
+| fusions and five parts | 61.84 / 45.43 | +8.8 / +6.3 % | 62.18 / 45.27 | 61.50 / 45.59 | 488.1 / 327.3 | 133.0 / 396.9 | 29.26, 29.33 GB |
+
+- The fusions and five parts together win at every depth and in both arm
+  orders, and their lower arm is above the higher base arm everywhere:
+  +14.5 / +13.8 /
+  +10.8 % cold decode to 30K, +14.0 % sampled and +15.0 % greedy at 1K,
+  +8.8 % at 65K, +6.3 % at 130K. A sampled step at 1K goes from 11.66 to
+  10.23 ms.
+- The two levers compound. Five parts alone are worth +1.9 / +2.7 / +0.9 %
+  and nothing at depth; on top of the fusions they are worth +6.7 / +3.5 /
+  +1.9 %, because the host work between two submissions is a larger share of
+  a shorter step. The display-on pair of the Served A/B section read +5.0 /
+  +5.0 / +1.5 % for five parts alone, so that slack is smaller on a quiet GPU.
+- Prefill does not move. Per arm at 1K the five settings read 889.6 to 936.8
+  tok/s with 25.7 between the two base arms, at 30K 577.1 to 594.1; the deep
+  base arm that opens the window reads 458.5 tok/s at 65K against 486.9 to
+  488.9 for the five arms after it, a first-in-window effect and not a
+  setting. Mean TTFT at 30K is 51.5 to 52.2 s in every setting, and the
+  follow-up starts in 0.17 s in the first four.
+- Wired memory is equal across the first four settings (30.7 to 30.9 GB to
+  30K, 28.6 to 29.3 GB at depth).
+- 200 MB command buffers on top add +1.8 / +2.6 / +3.6 % cold decode, +2.1 %
+  sampled and +1.6 % greedy, with prefill not lower (unlike Flint, where the
+  same limit costs 6.5 % of the cold prefill at 8K). They cost 1.6 GB of
+  wired memory, 15 ms on a follow-up's TTFT and 13 to 14 ms on a repeated
+  request at 1K and 8K. No arm at 65K and 130K yet, so they stay a
+  candidate.
+
+Decision: the `qwen36` preset sets `SGLANG_MLX_FUSE_MOE_ROUTER`,
+`SGLANG_MLX_FUSE_GDN_FRONT`, `SGLANG_MLX_FUSE_DECODE_LINEARS` and five decode
+parts. What a default needs was on file for this setting: the five
+capability gates (`gates/q36-fuse-sub5/`), teacher-forced fidelity of the
+fusions (KL 0.0211 to a float32 yardstick against 0.0165 for the stock
+decode path and 0.0194 for the stock prefill path, perplexity 5.227 against
+5.244 through the server) and depth recall 6/6 at 251K
+(`../micro/VERDICT.md`); five parts are bit-identical. `=0` on a fusion flag
+and `SGLANG_MLX_DECODE_SUBMIT_PARTS=1` restore the stock step.
+
 ## The gap at 1K
 
 | | ms per token | tok/s |
@@ -970,6 +1073,7 @@ the preset's sampled step at 1K is 9.76 ms, 102.5 tok/s, 81 % of rec.
 | `buffers/` | host slack and the two-kernel fold under each command-buffer limit, with the middle limits; raw prefill by limit, by buffer-cache limit and inside one process, with driver logs; the eight served arms, their streams and the driver log; the six middle-limit arms on top of the preset with wired samples and their driver log |
 | `submit/` | the nine served arms for decode submission in parts (alone, with 200 MB buffers, with 100 operations and 400 MB), their streams and the driver log; the four qwen36 arms |
 | `gates/` | validator, thinking probe and codegen probe on int4 and oQ8e with the preset's flags, and the driver log; `q36-fuse-sub5/`: the five gates on qwen36 with patches 030 to 032 and five decode parts |
+| `quiet-settings/` | quiet GPU: two arms per Flint checkpoint on the shipping preset, ten arms of five settings on the `qwen36` preset, six deep arms of three settings at 65K and 130K, one-second wired memory samples per arm, `table.txt`, `tree.txt`, the driver log |
 | `preset/` | the shipped preset on int4, oQ6e and oQ8e, oQ8e with one decode submission, and one-second wired memory samples of each arm |
 | `deep/` | the published context sweep through 128K on int4 with radix off and one slot, shipping flags against base flags, and the per-chunk prefill rates of both |
 | `fidelity/` | teacher-forced dumps of oQ8e (the reference), oQ6e and int4 |
