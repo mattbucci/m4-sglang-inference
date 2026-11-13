@@ -1,0 +1,13 @@
+{
+  "key": "qwen36-omp",
+  "label": "qwen36, omp",
+  "preset": "qwen36",
+  "scaffold": "omp",
+  "total_predictions": 26,
+  "non_empty": 26,
+  "resolved_local": 4,
+  "resolved_docker": null,
+  "wall_min": 81,
+  "source": "evals/swebench/runs/qwen36-omp-final-26inst-2026-11-12",
+  "order": 0
+}

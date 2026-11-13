@@ -71,6 +71,7 @@ FLEET_DEFAULT_GROUPING = "class"
 _FLINT = "perf/2026-11-10/flint"
 _STREAMS = "perf/2026-11-10/concurrent"
 _STAGEB = "perf/2026-11-12/stage-b"
+_RERUN = "perf/2026-11-13/rerun"
 
 
 def _model(label, cls, quant, color, marker, baseline=None, cold=(), streams=(), results=None):
@@ -90,17 +91,21 @@ MODELS = {
     "qwen36": _model(
         "Qwen3.6-35B-A3B 4-bit (MoE + DeltaNet)", "moe", "4bit", "blue", "o", baseline="qwen36",
         cold=[f"{_FLINT}/quiet-rearm/q36-deep-preset-a.json", f"{_FLINT}/quiet-rearm/q36-deep-preset-b.json"],
-        streams=[f"{_STREAMS}/batched/q36-serial-fused-p1.json", f"{_STREAMS}/batched/q36-serial-fused-p2.json"],
+        streams=[f"{_RERUN}/qwen36.streams-p1.json", f"{_RERUN}/qwen36.streams-p2.json"],
         results="qwen36-35b-a3b-4bit"),
     "coder-30b": _model("Coder-30B-A3B 4-bit DWQ (MoE)", "moe", "4bit", "green", "^",
-                        baseline="coder-30b", results="coder-30b-4bit",
-        streams=[f"{_STAGEB}/ab-coder-30b-router-sub5-a.streams.json", f"{_STAGEB}/ab-coder-30b-router-sub5-b.streams.json"]),
+                        baseline="coder-30b", results="coder-30b-4bit", cold=[f"{_RERUN}/coder.json"],
+                        streams=[f"{_RERUN}/coder.streams-p1.json", f"{_RERUN}/coder.streams-p2.json"]),
     "qwen3-moe": _model("Qwen3-30B-A3B 4-bit DWQ (MoE)", "moe", "4bit", "pink", "s",
-                        baseline="qwen3-moe", results="qwen3-30b-moe-4bit",
-        streams=[f"{_STAGEB}/ab-qwen3-moe-router-sub5-a.streams.json", f"{_STAGEB}/ab-qwen3-moe-router-sub5-b.streams.json"]),
+                        baseline="qwen3-moe", results="qwen3-30b-moe-4bit", cold=[f"{_RERUN}/moe.json"],
+                        streams=[f"{_RERUN}/moe.streams-p1.json", f"{_RERUN}/moe.streams-p2.json"]),
+    "nemotron-30b": _model("Nemotron-3-Nano-30B 4-bit (MoE + Mamba2)", "moe", "4bit", "white", "p",
+                           cold=[f"{_RERUN}/nemotron.json"],
+                           streams=[f"{_RERUN}/nemotron.streams-p1.json", f"{_RERUN}/nemotron.streams-p2.json"]),
     "flint-oq8e": _model(
         "Flint oQ8e (MoE, SWA + sinks)", "moe", "8bit", "tan", ">",
-        cold=[f"{_FLINT}/quiet-settings/flint-oq8e-a.json", f"{_FLINT}/quiet-settings/flint-oq8e-b.json"]),
+        cold=[f"{_FLINT}/quiet-settings/flint-oq8e-a.json", f"{_FLINT}/quiet-settings/flint-oq8e-b.json"],
+        streams=[f"{_RERUN}/flint.streams-p1.json", f"{_RERUN}/flint.streams-p2.json"]),
     "flint-int4": _model("Flint int4 (MoE, SWA + sinks)", "moe", "4bit", "yellow", "D",
                          cold=[f"{_FLINT}/quiet/ladder.json"], streams=[f"{_FLINT}/submit/sub5-b.streams.json"]),
     "qwen35-9b-8bit": _model("Qwen3.5-9B 8-bit (DeltaNet)", "dense", "8bit", "pink", "h",
@@ -568,6 +573,64 @@ def make_decode_bar_chart(all_data, group_by=FLEET_DEFAULT_GROUPING, out_path=No
     return out_path
 
 
+# SWE-bench chart: one row per archived 26-instance cell, a bar per count the cell has a receipt for.
+SWEBENCH_SERIES = (
+    ("non_empty", "non-empty patch", FLEET_PALETTE["blue"]),
+    ("resolved_local", "resolved, local scorer", FLEET_PALETTE["green"]),
+    ("resolved_docker", "resolved, official Docker harness (3090 rig)", FLEET_PALETTE["yellow"]),
+)
+SWEBENCH_NOTE = (
+    "26 SWE-bench Lite instances across 12 repositories, one attempt each, SGLang + MLX on an M4 Pro 64 GB. "
+    "A cell draws only the counts it has a receipt for: the dense 27B cells are unscored, and the Docker "
+    "count belongs to the export the 3090 rig scored. Per-cell summaries: benchmarks/quality/bakeoff-*.json.")
+
+
+def swebench_cells(bench_dir=BENCH_DIR):
+    quality = os.path.join(bench_dir, "quality")
+    names = sorted(n for n in os.listdir(quality) if n.startswith("bakeoff-") and n.endswith(".json"))
+    cells = [_read_json(os.path.join(quality, n)) for n in names]
+    return sorted((c for c in cells if c), key=lambda c: c["order"])
+
+
+def make_swebench_chart(out_path=None, bench_dir=BENCH_DIR):
+    cells = swebench_cells(bench_dir)
+    if not cells:
+        print("  SKIP SWE-bench chart (no cells)")
+        return None
+    total = max(c["total_predictions"] for c in cells)
+    height = 0.26
+    fig, ax = plt.subplots(figsize=(11, 0.95 * len(cells) + 2.3))
+    for row, cell in enumerate(cells):
+        mine = [(field, color) for field, _, color in SWEBENCH_SERIES if cell.get(field) is not None]
+        for slot, (field, color) in enumerate(mine):
+            y = row + (slot - (len(mine) - 1) / 2) * height
+            value = cell[field]
+            ax.barh(y, value, height * 0.86, color=color, zorder=5)
+            ax.text(value + total * 0.008, y, f"{value}/{cell['total_predictions']}", va="center",
+                    fontsize=9, color=INK)
+    labels = [c["label"] + (f"\n{c['wall_min']} min" if c.get("wall_min") else "") for c in cells]
+    ax.set_yticks(range(len(cells)))
+    ax.set_yticklabels(labels, fontsize=10, color=INK)
+    ax.set_ylim(len(cells) - 0.45, -0.55)
+    ax.set_xlim(0, total * 1.07)
+    ax.set_xticks(range(0, total + 1, 2 if total <= 30 else 50))
+    ax.tick_params(axis="y", length=0)
+    ax.set_xlabel(f"instances of {total} (higher is better)")
+    ax.set_title("SWE-bench Lite, 26-instance cells: patches written and patches that resolve",
+                 fontsize=13, fontweight="bold", pad=10)
+    ax.grid(True, axis="x")
+    ax.set_axisbelow(True)
+    ax.legend(handles=[Patch(facecolor=color, label=label) for _, label, color in SWEBENCH_SERIES],
+              loc="lower right", framealpha=0.6, edgecolor=EDGE, facecolor=PANEL, fontsize=9)
+    ax.text(0.0, -0.78 / max(len(cells), 1), textwrap.fill(SWEBENCH_NOTE, 150), transform=ax.transAxes,
+            va="top", fontsize=8, color=MUTED)
+    out_path = out_path or os.path.join(bench_dir, "bakeoff_swebench_lite.png")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out_path}")
+    return out_path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Regenerate the benchmark charts under benchmarks/.")
     parser.add_argument("--group-by", choices=sorted(FLEET_GROUPINGS), default=FLEET_DEFAULT_GROUPING,
@@ -590,6 +653,7 @@ def main():
     make_combined_context_chart(all_data, args.group_by)
     make_combined_concurrency_chart(all_data, args.group_by)
     make_decode_bar_chart(all_data, args.group_by)
+    make_swebench_chart()
 
 
 if __name__ == "__main__":

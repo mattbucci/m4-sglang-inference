@@ -1,0 +1,36 @@
+{
+  "model": "coder-30b",
+  "model_id": "coder-30b",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-11-13 10:52:28",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.23-18-g99e3ad7e01",
+  "kv_cache_mode": "auto",
+  "output_tokens": 64,
+  "context_max": 32768,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "tpot_ms": 11.3,
+      "tok_per_sec": 88.6,
+      "ttft_ms": 1044.0,
+      "actual_input_tokens": 1024
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 17.3,
+      "tok_per_sec": 57.7,
+      "ttft_ms": 11848.3,
+      "actual_input_tokens": 8192
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 30.3,
+      "tok_per_sec": 33.0,
+      "ttft_ms": 98435.9,
+      "actual_input_tokens": 32768
+    }
+  ],
+  "throughput_sweep": []
+}

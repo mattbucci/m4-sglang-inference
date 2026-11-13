@@ -1,0 +1,14 @@
+{
+  "key": "qwen36-opencode-docker",
+  "label": "qwen36, opencode (Docker-scored export)",
+  "preset": "qwen36",
+  "scaffold": "opencode",
+  "total_predictions": 26,
+  "non_empty": 21,
+  "resolved_local": null,
+  "resolved_docker": 9,
+  "wall_min": null,
+  "source": "evals/swebench/exports/qwen36-predictions.jsonl",
+  "docker_source": "evals/swebench/exports/qwen36-docker-summary.json",
+  "order": 2
+}

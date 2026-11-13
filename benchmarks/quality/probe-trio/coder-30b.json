@@ -1,10 +1,14 @@
 {
   "preset": "coder-30b",
-  "timestamp": "2026-07-27T02:24:39",
+  "timestamp": "2026-11-13T10:39:04",
   "probes": {
+    "defaults": {
+      "verdict": "STRONG",
+      "log": "<scratch>/full/probe-logs/coder-30b-defaults.log"
+    },
     "codegen": {
       "verdict": "STRONG",
-      "log": "/tmp/probe-trio-logs/coder-30b-codegen.log"
+      "log": "<scratch>/full/probe-logs/coder-30b-codegen.log"
     }
   }
 }

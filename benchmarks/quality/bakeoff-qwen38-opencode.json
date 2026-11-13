@@ -1,0 +1,13 @@
+{
+  "key": "qwen38-opencode",
+  "label": "Qwen3.8-27B, opencode",
+  "preset": "qwen36-27b",
+  "scaffold": "opencode",
+  "total_predictions": 26,
+  "non_empty": 22,
+  "resolved_local": null,
+  "resolved_docker": null,
+  "wall_min": null,
+  "source": "evals/swebench/runs/qwen38-27b-community-26inst-sealed-2026-11-02",
+  "order": 4
+}

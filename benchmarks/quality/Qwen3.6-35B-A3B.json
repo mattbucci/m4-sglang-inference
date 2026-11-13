@@ -1,11 +1,11 @@
 {
   "tag": "Qwen3.6-35B-A3B",
-  "timestamp": "2026-05-18 09:12",
-  "max_context": 32768,
+  "timestamp": "2026-11-13 08:03",
+  "max_context": 36000,
   "mmlu": {
-    "correct": 80,
+    "correct": 85,
     "total": 100,
-    "accuracy": 0.8
+    "accuracy": 0.85
   },
   "humaneval": {
     "passed": 17,
@@ -15,9 +15,9 @@
   },
   "labbench": {
     "LitQA2": {
-      "correct": 11,
+      "correct": 12,
       "total": 25,
-      "accuracy": 0.44
+      "accuracy": 0.48
     },
     "DbQA": {
       "correct": 3,
@@ -25,9 +25,9 @@
       "accuracy": 0.12
     },
     "SuppQA": {
-      "correct": 13,
+      "correct": 9,
       "total": 25,
-      "accuracy": 0.52
+      "accuracy": 0.36
     },
     "TableQA": {
       "correct": 8,
@@ -35,24 +35,24 @@
       "accuracy": 0.32
     },
     "ProtocolQA": {
-      "correct": 6,
+      "correct": 9,
       "total": 25,
-      "accuracy": 0.24
+      "accuracy": 0.36
     },
     "SeqQA": {
-      "correct": 13,
+      "correct": 12,
       "total": 25,
-      "accuracy": 0.52
+      "accuracy": 0.48
     },
     "CloningScenarios": {
-      "correct": 6,
+      "correct": 4,
       "total": 25,
-      "accuracy": 0.24
+      "accuracy": 0.16
     },
     "_overall": {
-      "correct": 60,
+      "correct": 57,
       "total": 175,
-      "accuracy": 0.34285714285714286
+      "accuracy": 0.32571428571428573
     }
   },
   "needle": {

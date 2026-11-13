@@ -1,16 +1,59 @@
 {
   "tag": "Qwen3-30B-A3B-DWQ",
-  "timestamp": "2026-05-11 18:01",
-  "max_context": 32768,
+  "timestamp": "2026-11-13 08:20",
+  "max_context": 36000,
   "mmlu": {
     "correct": 85,
     "total": 100,
     "accuracy": 0.85
   },
   "humaneval": {
-    "passed": 14,
+    "passed": 15,
     "total": 20,
-    "pass_rate": 0.7
+    "pass_rate": 0.75,
+    "mode": "completions"
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 11,
+      "total": 25,
+      "accuracy": 0.44
+    },
+    "DbQA": {
+      "correct": 6,
+      "total": 25,
+      "accuracy": 0.24
+    },
+    "SuppQA": {
+      "correct": 5,
+      "total": 25,
+      "accuracy": 0.2
+    },
+    "TableQA": {
+      "correct": 6,
+      "total": 25,
+      "accuracy": 0.24
+    },
+    "ProtocolQA": {
+      "correct": 11,
+      "total": 25,
+      "accuracy": 0.44
+    },
+    "SeqQA": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "CloningScenarios": {
+      "correct": 5,
+      "total": 25,
+      "accuracy": 0.2
+    },
+    "_overall": {
+      "correct": 52,
+      "total": 175,
+      "accuracy": 0.29714285714285715
+    }
   },
   "needle": {
     "results": [
@@ -27,48 +70,7 @@
         "found": true
       }
     ],
-    "score": 1.0
-  },
-  "labbench": {
-    "LitQA2": {
-      "correct": 10,
-      "total": 25,
-      "accuracy": 0.4
-    },
-    "DbQA": {
-      "correct": 5,
-      "total": 25,
-      "accuracy": 0.2
-    },
-    "SuppQA": {
-      "correct": 5,
-      "total": 25,
-      "accuracy": 0.2
-    },
-    "TableQA": {
-      "correct": 7,
-      "total": 25,
-      "accuracy": 0.28
-    },
-    "ProtocolQA": {
-      "correct": 7,
-      "total": 25,
-      "accuracy": 0.28
-    },
-    "SeqQA": {
-      "correct": 14,
-      "total": 25,
-      "accuracy": 0.56
-    },
-    "CloningScenarios": {
-      "correct": 7,
-      "total": 25,
-      "accuracy": 0.28
-    },
-    "_overall": {
-      "correct": 55,
-      "total": 175,
-      "accuracy": 0.3142857142857143
-    }
+    "score": 1.0,
+    "server_dead": false
   }
 }

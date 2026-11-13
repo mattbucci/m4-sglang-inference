@@ -1,0 +1,326 @@
+{
+ "tag": "nemotron-p1",
+ "model": "nemotron-30b",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4,8",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "nemotron-p1",
+  "out": "<scratch>/full/p-nemotron.streams-p1.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 93.34,
+   "aggregate_tok_s": 93.34,
+   "tpot_ms": 10.71,
+   "ttft_s": 0.42
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 54.34,
+   "aggregate_tok_s": 108.69,
+   "tpot_ms": 18.4,
+   "ttft_s": 0.62
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 29.17,
+   "aggregate_tok_s": 116.68,
+   "tpot_ms": 34.28,
+   "ttft_s": 1.38
+  },
+  {
+   "streams": 8,
+   "per_stream_tok_s": 11.49,
+   "aggregate_tok_s": 91.9,
+   "tpot_ms": 87.05,
+   "ttft_s": 2.68
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 93.27030528831645,
+   "aggregate_tok_s": 93.27030528831645,
+   "tpot_ms": 10.721525965941762,
+   "ttft_s": 0.42240808298811316,
+   "window_s": 2.1335836672224104,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 93.27030528831645,
+   "wall_tok_s": 78.24751389887196,
+   "prompt_tokens": [
+    237
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "43ba0de33619"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 54.296824952223105,
+   "aggregate_tok_s": 108.59364990444621,
+   "tpot_ms": 18.417283163056414,
+   "ttft_s": 0.6252908750902861,
+   "window_s": 3.6558307078666985,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 51.73154687573103,
+   "wall_tok_s": 89.23249347569072,
+   "prompt_tokens": [
+    226,
+    227
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "43ba0de33619",
+    "1bb865d40efc"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 29.120915218098656,
+   "aggregate_tok_s": 116.48366087239462,
+   "tpot_ms": 34.33958007537139,
+   "ttft_s": 1.3745858852635138,
+   "window_s": 6.807821749942377,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 28.138926901998794,
+   "wall_tok_s": 94.32115882921717,
+   "prompt_tokens": [
+    222,
+    231,
+    227,
+    222
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "ce45135757f0",
+    "b24ab5354957",
+    "a4c7319ef263",
+    "f96b75143cc2"
+   ]
+  },
+  {
+   "streams": 8,
+   "per_stream_tok_s": 11.507825729146791,
+   "aggregate_tok_s": 92.06260583317433,
+   "tpot_ms": 86.89738822401698,
+   "ttft_s": 2.900343786692247,
+   "window_s": 17.216545041883364,
+   "window_tokens": 1585.0,
+   "first_to_last_tok_s": 11.354353535098946,
+   "wall_tok_s": 78.15696831798746,
+   "prompt_tokens": [
+    226,
+    229,
+    229,
+    219,
+    235,
+    231,
+    228,
+    221
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    8010000,
+    8010001,
+    8010002,
+    8010003,
+    8010004,
+    8010005,
+    8010006,
+    8010007
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "ca884699460f",
+    "5d84d9a71781",
+    "d2cab083b0a1",
+    "c4c70e91b2d9",
+    "102e68031e36",
+    "1ca14f46010d",
+    "3e618f8c6046",
+    "07818af539d2"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 93.40346807192742,
+   "aggregate_tok_s": 93.40346807192742,
+   "tpot_ms": 10.70624057802573,
+   "ttft_s": 0.41170041682198644,
+   "window_s": 2.13054187502712,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 93.40346807192742,
+   "wall_tok_s": 78.67070760377032,
+   "prompt_tokens": [
+    229
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "03c2423b523e"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 54.39135960769449,
+   "aggregate_tok_s": 108.78271921538898,
+   "tpot_ms": 18.38527308772283,
+   "ttft_s": 0.6095421251375228,
+   "window_s": 3.6494767079129815,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 51.998017879279686,
+   "wall_tok_s": 89.97337209031382,
+   "prompt_tokens": [
+    224,
+    227
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "c7c1c5ddfd79",
+    "bcd728c2967c"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 29.22078574394389,
+   "aggregate_tok_s": 116.88314297577556,
+   "tpot_ms": 34.222214582551175,
+   "ttft_s": 1.382184874964878,
+   "window_s": 6.78455404099077,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 28.23464961938296,
+   "wall_tok_s": 94.50485057478339,
+   "prompt_tokens": [
+    235,
+    226,
+    232,
+    221
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "1b2a34cfaa6a",
+    "e5cddcac035c",
+    "bb6c999e1816",
+    "04cc37f06521"
+   ]
+  },
+  {
+   "streams": 8,
+   "per_stream_tok_s": 11.466284373339121,
+   "aggregate_tok_s": 91.73027498671297,
+   "tpot_ms": 87.21220994005296,
+   "ttft_s": 2.4545960261602886,
+   "window_s": 17.275661166990176,
+   "window_tokens": 1584.7011494252874,
+   "first_to_last_tok_s": 11.052359895893092,
+   "wall_tok_s": 78.12770725548798,
+   "prompt_tokens": [
+    222,
+    224,
+    229,
+    229,
+    237,
+    225,
+    219,
+    223
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    8020000,
+    8020001,
+    8020002,
+    8020003,
+    8020004,
+    8020005,
+    8020006,
+    8020007
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "74252586684f",
+    "cbc8fa3f8fd1",
+    "c157c9b94726",
+    "43ba0de33619",
+    "1b8fea6b735a",
+    "edba3d1fda51",
+    "08961fd9c716",
+    "0efd78c64cc2"
+   ]
+  }
+ ]
+}

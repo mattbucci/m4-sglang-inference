@@ -1,0 +1,13 @@
+{
+  "key": "flint-omp",
+  "label": "Flint oQ8e, omp bash-only",
+  "preset": "flint",
+  "scaffold": "omp",
+  "total_predictions": 26,
+  "non_empty": 5,
+  "resolved_local": 0,
+  "resolved_docker": null,
+  "wall_min": 780,
+  "source": "evals/swebench/runs/flint-oQ8e-26inst-omp-bashonly-remap-sealed-2026-11-08",
+  "order": 5
+}

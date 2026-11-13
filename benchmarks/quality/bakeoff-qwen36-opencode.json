@@ -1,0 +1,14 @@
+{
+  "key": "qwen36-opencode",
+  "label": "qwen36, opencode",
+  "preset": "qwen36",
+  "scaffold": "opencode",
+  "total_predictions": 26,
+  "non_empty": 26,
+  "resolved_local": 5,
+  "resolved_docker": null,
+  "wall_min": 87,
+  "source": "evals/swebench/runs/qwen36-26inst-p023-2026-10-31",
+  "local_source": "evals/swebench/runs/qwen36-26inst-omp-2026-11-08/README.md",
+  "order": 1
+}

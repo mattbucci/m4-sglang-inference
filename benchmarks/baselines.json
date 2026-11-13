@@ -3,7 +3,7 @@
     "hardware": "Apple M4 Pro 64GB",
     "instrument": "scripts/bench/bench_all_unified.py --context-list",
     "output_tokens": 64,
-    "saved": "2026-11-12",
+    "saved": "2026-11-13",
     "schema": 2,
     "serving_recipe": "CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache --kv-cache turboquant",
     "stack": "v0.5.23-18-g99e3ad7e01"
@@ -11,21 +11,21 @@
   "coder-30b": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 88.3,
+      "tok_per_sec": 88.6,
       "tpot_ms": 11.3,
-      "ttft_ms": 1048.3
+      "ttft_ms": 1044.0
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 33.2,
-      "tpot_ms": 30.1,
-      "ttft_ms": 101153.5
+      "tok_per_sec": 33.0,
+      "tpot_ms": 30.3,
+      "ttft_ms": 98435.9
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 57.5,
-      "tpot_ms": 17.4,
-      "ttft_ms": 12146.2
+      "tok_per_sec": 57.7,
+      "tpot_ms": 17.3,
+      "ttft_ms": 11848.3
     }
   },
   "devstral": {
@@ -71,21 +71,21 @@
   "qwen3-moe": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 88.4,
+      "tok_per_sec": 88.3,
       "tpot_ms": 11.3,
-      "ttft_ms": 1063.4
+      "ttft_ms": 1047.5
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 32.5,
-      "tpot_ms": 30.8,
-      "ttft_ms": 98149.3
+      "tok_per_sec": 33.5,
+      "tpot_ms": 29.9,
+      "ttft_ms": 99081.8
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 57.7,
-      "tpot_ms": 17.3,
-      "ttft_ms": 11513.2
+      "tok_per_sec": 57.5,
+      "tpot_ms": 17.4,
+      "ttft_ms": 11318.6
     }
   },
   "qwen35": {
@@ -131,21 +131,21 @@
   "qwen36": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 97.4,
-      "tpot_ms": 10.3,
-      "ttft_ms": 1197.2
+      "tok_per_sec": 99.6,
+      "tpot_ms": 10.0,
+      "ttft_ms": 1195.0
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 65.0,
+      "tok_per_sec": 65.1,
       "tpot_ms": 15.4,
-      "ttft_ms": 55803.7
+      "ttft_ms": 58216.9
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 80.8,
+      "tok_per_sec": 80.5,
       "tpot_ms": 12.4,
-      "ttft_ms": 10057.6
+      "ttft_ms": 10799.1
     },
     "recall_32k": {
       "label": 28000,
@@ -157,21 +157,21 @@
   "qwen36-27b": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 14.5,
-      "tpot_ms": 68.8,
-      "ttft_ms": 8374.6
+      "tok_per_sec": 15.0,
+      "tpot_ms": 66.8,
+      "ttft_ms": 8246.9
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 12.9,
-      "tpot_ms": 77.7,
-      "ttft_ms": 301077.4
+      "tok_per_sec": 13.1,
+      "tpot_ms": 76.5,
+      "ttft_ms": 298359.0
     },
     "8192": {
       "actual_input_tokens": 8192,
-      "tok_per_sec": 14.1,
-      "tpot_ms": 71.0,
-      "ttft_ms": 74014.1
+      "tok_per_sec": 14.4,
+      "tpot_ms": 69.5,
+      "ttft_ms": 72657.4
     }
   }
 }

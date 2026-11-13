@@ -1,0 +1,36 @@
+{
+  "model": "qwen3-moe",
+  "model_id": "qwen3-moe",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-11-13 10:57:11",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.23-18-g99e3ad7e01",
+  "kv_cache_mode": "auto",
+  "output_tokens": 64,
+  "context_max": 32768,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "tpot_ms": 11.3,
+      "tok_per_sec": 88.3,
+      "ttft_ms": 1047.5,
+      "actual_input_tokens": 1024
+    },
+    {
+      "context": 8192,
+      "tpot_ms": 17.4,
+      "tok_per_sec": 57.5,
+      "ttft_ms": 11318.6,
+      "actual_input_tokens": 8192
+    },
+    {
+      "context": 32768,
+      "tpot_ms": 29.9,
+      "tok_per_sec": 33.5,
+      "ttft_ms": 99081.8,
+      "actual_input_tokens": 32768
+    }
+  ],
+  "throughput_sweep": []
+}

@@ -1,10 +1,14 @@
 {
   "preset": "qwen3-moe",
-  "timestamp": "2026-10-31T00:58:52",
+  "timestamp": "2026-11-13T10:39:43",
   "probes": {
+    "defaults": {
+      "verdict": "STRONG",
+      "log": "<scratch>/full/probe-logs/qwen3-moe-defaults.log"
+    },
     "codegen": {
       "verdict": "STRONG",
-      "log": "/tmp/probe-trio-logs/qwen3-moe-codegen.log"
+      "log": "<scratch>/full/probe-logs/qwen3-moe-codegen.log"
     }
   }
 }

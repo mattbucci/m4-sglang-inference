@@ -1,0 +1,13 @@
+{
+  "key": "qwopus38-opencode",
+  "label": "Qwopus3.8-27B-Coder-Flash, opencode",
+  "preset": "qwen36-27b",
+  "scaffold": "opencode",
+  "total_predictions": 26,
+  "non_empty": 23,
+  "resolved_local": null,
+  "resolved_docker": null,
+  "wall_min": null,
+  "source": "evals/swebench/runs/qwopus38-27b-coder-flash-26inst-sealed-2026-11-02",
+  "order": 3
+}
