@@ -1,11 +1,11 @@
 {
   "tag": "Nemotron-3-Nano-30B",
-  "timestamp": "2026-05-11 21:14",
-  "max_context": 32768,
+  "timestamp": "2026-11-13 12:18",
+  "max_context": 36000,
   "mmlu": {
-    "correct": 77,
+    "correct": 80,
     "total": 100,
-    "accuracy": 0.77
+    "accuracy": 0.8
   },
   "humaneval": {
     "passed": 2,
@@ -20,39 +20,39 @@
       "accuracy": 0.28
     },
     "DbQA": {
-      "correct": 1,
+      "correct": 2,
       "total": 25,
-      "accuracy": 0.04
+      "accuracy": 0.08
     },
     "SuppQA": {
-      "correct": 7,
+      "correct": 6,
       "total": 25,
-      "accuracy": 0.28
+      "accuracy": 0.24
     },
     "TableQA": {
-      "correct": 7,
+      "correct": 5,
       "total": 25,
-      "accuracy": 0.28
+      "accuracy": 0.2
     },
     "ProtocolQA": {
-      "correct": 8,
-      "total": 25,
-      "accuracy": 0.32
-    },
-    "SeqQA": {
-      "correct": 1,
-      "total": 25,
-      "accuracy": 0.04
-    },
-    "CloningScenarios": {
       "correct": 3,
       "total": 25,
       "accuracy": 0.12
     },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
     "_overall": {
-      "correct": 34,
+      "correct": 23,
       "total": 175,
-      "accuracy": 0.19428571428571428
+      "accuracy": 0.13142857142857142
     }
   },
   "needle": {
@@ -70,6 +70,7 @@
         "found": true
       }
     ],
-    "score": 1.0
+    "score": 1.0,
+    "server_dead": false
   }
 }

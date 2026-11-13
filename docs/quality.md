@@ -2,32 +2,34 @@
 
 ## Quality table (100-sample MMLU + 20 HE + LAB-Bench + Needle@{1K,4K,16K})
 
-Qwen3 family runs `--no-thinking`; Gemma 4 runs `--humaneval-mode chat`. The Qwen3.8-27B row
-and the Qwopus3.8-27B-Coder-Flash row are from the current stack
-(`benchmarks/quality/Qwen38-27B-community-2026-10-31.json`, full 333-sample LAB-Bench;
-`Qwopus38-27B-Coder-Flash-2026-11-02.json`, 50 per LAB-Bench category); the other rows predate it (re-run tracked in the issue tracker).
+Qwen3 family runs `--no-thinking`; Gemma 4 runs `--humaneval-mode chat`. Rows marked § are
+from the fleet rerun on the current stack (`benchmarks/quality/<tag>.json`, 25 questions per
+LAB-Bench category, 175 in all); the other rows predate it.
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |:------|:----:|:---------:|:---------:|:------:|
 | Gemma 4 31B-it-mxfp4 | **92%** | 50%‡ | partial | **100%** |
 | Qwen3.5-27B-4bit | **90%** | **100%** | 53/125 (clean cats) | **100%** |
 | Qwen3-32B-4bit-DWQ | **90%** | 95% | 33.1% | 100% |
-| Qwen3.6-27B-4bit | 86% | **100%** | 42/125 | **100%** |
-| Qwen3.8-27B-4bit | 84% | 90% | 38.7% | **100%** |
-| Qwopus3.8-27B-Coder-Flash MLX-4bit (in-house, published) | 83% | 90% | 37.5% | **100%** |
-| Qwen3-30B-A3B-4bit-DWQ | 85% | 70% | 31.4% | 100% |
+| Qwen3.6-27B-4bit § | 89% | **100%** | 35.4% | **100%** |
+| Qwen3.8-27B-4bit § | 86% | 90% | **43.4%** | **100%** |
+| Qwopus3.8-27B-Coder-Flash MLX-4bit (in-house, published) § | 84% | 90% | 40.0% | **100%** |
+| Qwen3-30B-A3B-4bit-DWQ § | 85% | 75% | 29.7% | 100% |
 | Gemma 4 26B-A4B-it-4bit | 85% | 60%‡ | partial | 100% |
-| Coder-30B-A3B-4bit-DWQ | 84% | 95% | 30.9% | 100% |
+| Coder-30B-A3B-4bit-DWQ § | 84% | **100%** | 32.0% | 100% |
 | Qwen3.5-9B-MLX-8bit | 81% | 80% | 52/150 (clean cats) | **100%** |
-| Qwen3.6-35B-A3B-4bit | 80% | 85% | 60/175 | 100% |
+| Qwen3.6-35B-A3B-4bit § | 85% | 85% | 32.6% | 100% |
+| Flint oQ8e § | 76% | 75% | 5.1%◊ | 100% |
 | Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit | 82% | 65% | 8.6% | 100% |
-| NVIDIA Nemotron-3-Nano-30B-A3B-4bit | 77% | 10%¶ | 19.4%¶ | 100% |
+| NVIDIA Nemotron-3-Nano-30B-A3B-4bit § | 80% | 10%¶ | 13.1% | 100% |
 | Devstral-24B-4bit | 71% | 55% | 34.3% | 100% |
 
 ‡ Chat-mode HumanEval, not comparable to base-completion HE. "N/M (clean cats)" and
 "partial" are LAB-Bench subsets where the server died mid-run (full LAB-Bench needs a restart
-between categories). ¶ Pre-reasoning-parser numbers; the `nemotron_3` parser is wired into
-the preset. Static HumanEval/MMLU does not predict agentic-coding ability on this stack.
+between categories). ¶ Thinking on (60% MMLU with `--no-thinking`); HumanEval
+is base-completion mode, which a reasoning checkpoint does not follow. ◊ Below the multiple-choice chance rate, which
+points at answer extraction and not knowledge (unexamined).
+Static HumanEval/MMLU does not predict agentic-coding ability on this stack.
 
 ## In-house 4-bit builds
 

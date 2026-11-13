@@ -11,117 +11,100 @@ with the `known-issue` label; experiment specs and open work live in
 
 ## Results
 
-**`qwen36`** (Qwen3.6-35B-A3B MoE+DeltaNet+VL) is the primary model: codegen, vision and
-video STRONG, thinking VERIFIED, and a 256K single-user context validated with 6/6
-multi-needle recall at every rung to 245K realized tokens ([docs/long-context.md](docs/long-context.md)).
+- **`qwen36`** (Qwen3.6-35B-A3B MoE+DeltaNet+VL) is the primary model: 99.6 / 80.5 / 65.1 tok/s
+  at 1K / 8K / 32K, codegen, vision and video STRONG, thinking VERIFIED.
+- **256K single-user context validated**: 6/6 multi-needle recall at every rung to 245K realized
+  tokens, 45 tok/s decode at 130K ([docs/long-context.md](docs/long-context.md)).
+- **SWE-bench Lite**: qwen36 engages 26/26 sealed instances and resolves 9/26 = 34.6 % on the
+  official Docker harness ([docs/agentic.md](docs/agentic.md)).
+- **Against the hardware ceiling**: dense presets decode at 82–95 % of what the memory bus
+  allows, MoE presets at 60–77 % ([docs/performance-ceiling.md](docs/performance-ceiling.md)).
 
-### Decode at genuine depth
-
-Single user, 64 output tokens, server-verified depth (`actual_input_tokens` == label), served
-with `CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache`. These rows
-are the regression baselines (`benchmarks/baselines.json`; `scripts/bench/bench_regression.sh <preset>`
-compares a live server against them).
-
-| Preset | Checkpoint (mlx-community) | Type | Wts | tok/s @1K / 8K / 32K | TTFT @32K | Context |
-|--------|---------------------------|------|:---:|:--------------------:|:---------:|:--------|
-| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 97.4 / 80.8 / 65.0 | 56 s | **256K validated** |
-| `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 88.3 / 57.5 / 33.2 | 101 s | 32K measured, 256K label |
-| `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 88.4 / 57.7 / 32.5 | 98 s | 32K measured, 256K label |
-| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | 26.8 / 25.9 / 23.4 | 100 s | 32K measured |
-| `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 16.1 / 15.1 / 11.9 | 282 s | 32K measured |
-| `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.5 / 14.1 / 12.8 | 310 s | 32K measured, 256K label |
-| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | 14.5 / 14.1 / 12.9 | 301 s | 32K measured, 256K label |
-| `qwen36-27b` + `MODEL=…/Qwen3.8-27B-4bit` | `Qwen3.8-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.1 @1K | — | 131K served (SWE-bench) |
-| `qwen36-27b` + `MODEL=mattbucci/Qwopus3.8-27B-Coder-Flash-MLX-4bit` | `Qwopus3.8-27B-Coder-Flash-MLX-4bit` (in-house build, published) | DeltaNet hybrid+VL | 15 GB | 14.6 / 14.2 / 13.2 | 302 s | 32K measured, 131K served (SWE-bench) |
-| `flint` | `flint-oQ8e` (`MODEL=RecursiveSI/flint-int4` for the fast 4-bit) | MoE 40B-A2.5B, SWA + sinks | 42 GB | 65.5 / 62.0 / 51.7 (int4: 101.9 / 93.2 / 72.3) | 54 s | 32K preset, 128K measured, 262K label |
-| `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.0 / 10.5 / 7.5† | 494 s | 32K at `MEM_FRAC=0.5` |
-| `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | — | — | 32K probe |
-
-† The 0.45 pool caps `qwen3-32b` requests at 25,241 tokens, so its 32K point is served at
-`MEM_FRAC=0.5`. **DeltaNet holds decode flat at depth** (the hybrids retain 85–88% of their
-short-context speed at 32K) while full-attention models halve or worse. Full curves (128→32K,
-9 points): `benchmarks/<slug>/results.json`; regression receipts:
-`benchmarks/regression/`. Flint checkpoints, the published M4 Pro engine targets and tool-call
-behaviour: [docs/flint.md](docs/flint.md).
+### Single-user decode across the fleet
 
 ![Decode tok/s per model: fastest point and deepest measured input](benchmarks/all_models_decode.png)
 
 ![Decode tok/s against context, one panel per model class](benchmarks/all_models_context.png)
 
-[`generate_charts.py`](scripts/bench/generate_charts.py) draws these rows plus the cold receipts
-for deeper input; a hatched bar stops short of 128K.
+Single user, 64 output tokens, server-verified depth (`actual_input_tokens` == label), served
+with `CTX=36000 MEM_FRAC=0.45 SGLANG_MLX_CACHE_LIMIT_GB=2 --disable-radix-cache`. These rows
+are the regression baselines (`benchmarks/baselines.json`; `scripts/bench/bench_regression.sh <preset>`
+compares a live server against them). [`generate_charts.py`](scripts/bench/generate_charts.py)
+draws them plus the cold receipts for deeper input; a hatched bar stops short of 128K.
 
-### Probe matrix (radix on)
+| Preset | Checkpoint (mlx-community) | Type | Wts | tok/s @1K / 8K / 32K | TTFT @32K | Context |
+|--------|---------------------------|------|:---:|:--------------------:|:---------:|:--------|
+| `qwen36` | `Qwen3.6-35B-A3B-4bit` | MoE+DeltaNet+VL | 17 GB | 99.6 / 80.5 / 65.1 | 58 s | **256K validated** |
+| `coder-30b` | `Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ` | MoE (3B active) | 16 GB | 88.6 / 57.7 / 33.0 | 98 s | 32K measured, 256K label |
+| `qwen3-moe` | `Qwen3-30B-A3B-4bit-DWQ` | MoE (3B active) | 16 GB | 88.3 / 57.5 / 33.5 | 99 s | 32K measured, 256K label |
+| `nemotron-30b` | `NVIDIA-Nemotron-3-Nano-30B-A3B-4bit` | NemotronH (Mamba2+Attn+MoE) | 17 GB | 91.8 / 90.2 / 78.8‡ | 48 s | 32K measured |
+| `flint` | `flint-oQ8e` (`MODEL=RecursiveSI/flint-int4` for the fast 4-bit) | MoE 40B-A2.5B, SWA + sinks | 42 GB | 65.5 / 62.0 / 51.7 (int4: 101.9 / 93.2 / 72.3) | 54 s | 32K preset, 128K measured |
+| `qwen35-9b-8bit` | `Qwen3.5-9B-MLX-8bit` | DeltaNet hybrid+VL | 10 GB | 26.8 / 25.9 / 23.4 | 100 s | 32K measured |
+| `devstral` | `Devstral-Small-2-24B-Instruct-2512-4bit` | Dense+VL (Mistral3) | 14 GB | 16.1 / 15.1 / 11.9 | 282 s | 32K measured |
+| `qwen36-27b` | `Qwen3.6-27B-4bit` | DeltaNet hybrid+VL | 14 GB | 15.0 / 14.4 / 13.1 | 298 s | 32K measured, 256K label |
+| `qwen36-27b` + `MODEL=…/Qwen3.8-27B-4bit` | `Qwen3.8-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 15.2 / 14.7 / 13.5‡ | 279 s | 32K measured, 131K served |
+| `qwen36-27b` + `MODEL=mattbucci/Qwopus3.8-27B-Coder-Flash-MLX-4bit` | in-house build, published | DeltaNet hybrid+VL | 15 GB | 14.6 / 14.2 / 13.2 | 302 s | 32K measured, 131K served |
+| `qwen35` | `Qwen3.5-27B-4bit` | DeltaNet hybrid+VL | 15 GB | 14.5 / 14.1 / 12.8 | 310 s | 32K measured, 256K label |
+| `qwen3-32b` | `Qwen3-32B-4bit-DWQ` | Dense | 18 GB | 12.0 / 10.5 / 7.5† | 494 s | 32K at `MEM_FRAC=0.5` |
 
-| Preset | codegen | vision | video | thinking |
-|--------|:-------:|:------:|:-----:|:--------:|
-| `qwen36` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen36-27b` (Qwen3.6-27B) | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen36-27b` + `MODEL=mlx-community/Qwen3.8-27B-4bit` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen36-27b` + `MODEL=mattbucci/Qwopus3.8-27B-Coder-Flash-MLX-4bit` | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
-| `qwen35` | **STRONG** | **STRONG** | PARTIAL | **VERIFIED** |
-| `qwen35-9b-8bit` | **STRONG** | **STRONG** | **STRONG** | pass validate gate |
-| `devstral` | **STRONG** | **STRONG** | PARTIAL | n/a |
-| `nemotron-30b` | **STRONG** | n/a | n/a | **VERIFIED** |
-| `flint` (oQ8e / oQ6e / oQ4e / int4) | **STRONG** | n/a | n/a | **VERIFIED** |
-| `coder-30b` / `qwen3-moe` / `qwen3-32b` | **STRONG** | n/a | n/a | pass validate gate |
+† The 0.45 pool caps `qwen3-32b` requests at 25,241 tokens, so its 32K point is served at
+`MEM_FRAC=0.5`. ‡ Cold-sweep receipt on the preset defaults (`benchmarks/perf/2026-11-13/rerun/`).
+**DeltaNet and Mamba2 hold decode flat at depth** (85–88 % of short-context speed at 32K)
+while full-attention models halve or worse. Flint checkpoints and the published M4 Pro engine
+targets: [docs/flint.md](docs/flint.md).
 
-Per-preset JSON: [`benchmarks/quality/probe-trio/`](benchmarks/quality/probe-trio/). Qwen3.8-27B,
-Qwopus3.8-27B-Coder-Flash, Qwen3.6-27B and Qwen3.5-9B-8bit chat templates ignore `enable_thinking` (thinking always on).
-Static scores (MMLU, HumanEval, LAB-Bench, needle), checkpoint audits and the in-house 4-bit
-builds: [docs/quality.md](docs/quality.md).
+### Hardware ceiling, prefill and several streams
 
-### Agentic coding (SWE-bench Lite)
+![Measured tok/s as a share of the hardware ceiling](benchmarks/all_models_ceiling.png)
 
-**`qwen36` is the only configuration that completes the agentic loop on M4 reproducibly
-across all 12 ecosystems in the 26-instance test set.**
+Decode is bound by the memory bus (243 GB/s measured), prefill by GPU arithmetic (7,534 GFLOPS).
+Dense presets are on the wall; MoE presets carry 3–5 ms of fixed work per step that no byte
+accounts for. Method, gap breakdown and levers: [docs/performance-ceiling.md](docs/performance-ceiling.md).
 
-- **Patch engagement 26/26** (`evals/swebench/runs/qwen36-26inst-p023-2026-10-31/`): a
-  non-empty patch targeting the canonical issue file on every instance.
-- **Resolved 9/26 = 34.6%** on the official Docker harness, scored on the 3090 rig
-  ([`exports/qwen36-docker-summary.json`](evals/swebench/exports/qwen36-docker-summary.json));
-  above the 14–30% band typical of ~30B models on SWE-bench Lite.
-- **Harness:** one scaffold lane, omp (oh-my-pi) 18.12.2, the 3090's pin; the 3090's
-  scaffold bake-off puts every opencode / pi-family pair within noise (McNemar ties on 300
-  isolated instances), so harness variants are not a lever. The M4 validation cell agrees:
-  qwen36 under omp engages 26/26 with 25 patches on the file the opencode cell patched, 0
-  timeouts, 99 min against 87, and the local scorer resolves 6/26 against 5/26 for the
-  opencode lane (`evals/swebench/runs/qwen36-26inst-omp-2026-11-08/`). The omp cell on
-  the fused-decode defaults (`evals/swebench/runs/qwen36-omp-final-26inst-2026-11-12/`): 26/26,
-  local scorer 4/26, 81 min, served decode 72 tok/s pooled over 1124 turns. opencode
-  stays selectable (`SCAFFOLD=opencode`) to reproduce the archived cells, which ran on it.
-- **Sealed harness:** web tools off, the scaffold and its bash children under a localhost-only
-  network sandbox, ancestor-only checkout (no branch, tag or commit past the base commit);
-  `evals/swebench/audit_rollouts.py` scans the archive for leak channels, and no scored
-  prediction came from a session that saw the fix. Under the seal Qwen3.8-27B writes the
-  upstream change on all three smoke instances in 4–8 min each, the Qwopus3.8-27B-Coder-Flash
-  build patches the same three (two the upstream change, one its regex half;
-  `evals/swebench/runs/qwopus38-27b-coder-flash-sealed-131k-2026-11-02/`), and Flint bash-only
-  at 64K engages 5/26 with every instance at the 1800 s cap
-  ([evals/swebench/README.md](evals/swebench/README.md)).
-- **Dense 27B comparators on the same 26 instances, sealed, 1800 s cap:** the
-  Qwopus3.8-27B-Coder-Flash build engages 23/26 (22 on the canonical file) and stock
-  Qwen3.8-27B 22/26 (21), against qwen36's 26/26 at a 900 s cap; the two dense builds trade
-  instances (stock patches django-10924 and pytest-11148 where Qwopus times out empty; Qwopus
-  patches xarray-3364, pylint-6506 and sphinx-10451 where stock does), and each cell takes
-  9–10 h where qwen36's took 87 min at 13 vs 57 tok/s decode
-  (`evals/swebench/runs/{qwopus38-27b-coder-flash,qwen38-27b-community}-26inst-sealed-2026-11-02/`;
-  both exports await Docker scoring).
-- **Calibration:** the engagement-to-resolve gap is the model characterization. qwen36
-  patches look right (correct file, valid syntax, usually no regressions) but miss the
-  semantic intent in most cases. Trust it for first-pass exploration; verify with tests.
+![Aggregate decode tok/s against concurrent streams](benchmarks/all_models_concurrency.png)
 
-| Rank | Preset | Why | Agentic verdict |
-|:----:|--------|-----|-----------------|
-| **1** | **`qwen36`** (Qwen3.6-35B-A3B-4bit) | Only model to complete the agentic loop on M4 in a 9-model bake-off; MoE 3B-active decode speed appears load-bearing. Use with [`no_thinking_proxy`](evals/swebench/no_thinking_proxy.py). | engagement 26/26; **Docker 9/26 = 34.6%** |
-| 2 | `qwen36-27b` + Qwopus3.8-27B-Coder-Flash or stock Qwen3.8-27B | Dense DeltaNet 27B at 13 tok/s with thinking always on: finds the right file nearly as often as qwen36 but half the instances hit a 30-minute cap; the coding fine-tune and its base trade instances rather than one dominating. | engagement 23/26 (Qwopus), 22/26 (stock); Docker scoring pending |
-| 3 | `qwen35` (Qwen3.5-27B-4bit) | Capability-equivalent to qwen36 at ~15× the wall time: same patches where qwen36 succeeds, same misses where it fails. | SWE-bench Lite 1/3 |
-| 4 | `flint` (Recursive Flint 40B-A2.5B oQ8e) | Trained for coding agents, but under omp it never ends its turn: 26-instance sealed cell, bash-only at 64K, 5/26 non-empty with every instance at the 1800 s cap (13 h), 0/26 on the local scorer; on 14 of the 21 empties it never attempts an edit. | engagement 5/26; local 0/26 |
-| 5 | `coder-30b` (Qwen3-Coder-30B-A3B-DWQ) | Best static HumanEval (95) and decode speed; use for direct chat-completion codegen. Under opencode the loop gives up after one `glob`. | 0 edits |
-| 6 | `gemma4-31b` | Top MMLU (92). Blocked at boot; zero tokens under opencode tool-call prompts when it did run. | 0 tool calls |
+Aggregate tok/s at 1 / 2 / 4 / 8 streams on the preset defaults (`MAX_RUNNING=8`): coder-30b
+and qwen3-moe 95 / 120 / 149 / 181, flint 68 / 91 / 127 / 151, nemotron-30b 93 / 109 / 117 / 92,
+qwen36 100 / 104 / 107 / 103 (205 at 8 with batched decode, see Presets).
 
-Session endurance, the append-turn cost and the radix prefix cache on hybrids:
-[docs/long-context.md](docs/long-context.md).
+### SWE-bench Lite (26 sealed instances)
+
+![SWE-bench Lite, 26 sealed instances per cell](benchmarks/bakeoff_swebench_lite.png)
+
+| Cell | Scaffold | Non-empty | Resolved | Wall |
+|------|----------|:---------:|:--------:|-----:|
+| **`qwen36`** | omp | 26/26 | local 4/26 | 81 min |
+| `qwen36` | opencode | 26/26 | local 5/26; **Docker 9/26 = 34.6 %** (21 scored) | 87 min |
+| Qwopus3.8-27B-Coder-Flash | opencode | 23/26 | awaits Docker scoring | 9–10 h |
+| Qwen3.8-27B | opencode | 22/26 | awaits Docker scoring | 9–10 h |
+| `flint` (oQ8e, bash-only) | omp | 5/26 | local 0/26 | 13 h |
+
+One scaffold lane, omp 18.12.2 (the 3090's pin); harness variants are within noise, so the
+opencode cells stay comparable. The Docker score comes from the 3090 rig's harness. Sealed
+harness, per-cell notes and the model ranking: [docs/agentic.md](docs/agentic.md).
+
+### Quality
+
+| Preset | MMLU | HumanEval | LAB-Bench | Needle | codegen | vision | video | thinking |
+|--------|:----:|:---------:|:---------:|:------:|:-------:|:------:|:-----:|:--------:|
+| `qwen36` | 85 | 85 | 32.6 | 100 | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen36-27b` (Qwen3.6-27B) | 89 | 100 | 35.4 | 100 | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen36-27b` + Qwen3.8-27B | 86 | 90 | 43.4 | 100 | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `qwen36-27b` + Qwopus3.8-27B-Coder-Flash | 84 | 90 | 40.0 | 100 | **STRONG** | **STRONG** | **STRONG** | **VERIFIED** |
+| `coder-30b` | 84 | 100 | 32.0 | 100 | **STRONG** | n/a | n/a | validate gate |
+| `qwen3-moe` | 85 | 75 | 29.7 | 100 | **STRONG** | n/a | n/a | validate gate |
+| `flint` (oQ8e) | 76 | 75 | 5.1 | 100 | **STRONG** | n/a | n/a | **VERIFIED** |
+| `nemotron-30b` | 80 | 10 | 13.1 | 100 | **STRONG** | n/a | n/a | **VERIFIED** |
+| `qwen35` | 90 | 100 | 53/125 | 100 | **STRONG** | **STRONG** | PARTIAL | **VERIFIED** |
+| `qwen35-9b-8bit` | 81 | 80 | 52/150 | 100 | **STRONG** | **STRONG** | **STRONG** | validate gate |
+| `qwen3-32b` | 90 | 95 | 33.1 | 100 | **STRONG** | n/a | n/a | validate gate |
+| `devstral` | 71 | 55 | 34.3 | 100 | **STRONG** | **STRONG** | PARTIAL | n/a |
+
+Percent; MMLU 100 questions, HumanEval 20 tasks, LAB-Bench 7 categories x 25, needle to 16K
+(`benchmarks/quality/`). Probes run with the radix cache on (`benchmarks/quality/probe-trio/`).
+Qwen3.8-27B, Qwopus3.8-27B-Coder-Flash, Qwen3.6-27B and Qwen3.5-9B-8bit chat templates ignore
+`enable_thinking` (thinking always on). Checkpoint audits and the in-house 4-bit builds:
+[docs/quality.md](docs/quality.md).
 
 ## Presets
 
@@ -264,8 +247,8 @@ chat-template fixes: the 3090 pair (NVIDIA, AWQ_Marlin) and the R9700 pair (AMD 
 ## Repo map
 
 ```
-patches/                    # 17 numbered patches; see patches/README.md
-docs/                       # flint.md, quality.md, long-context.md
+patches/                    # 31 numbered patches; see patches/README.md
+docs/                       # agentic, flint, long-context, performance-ceiling, quality
 experiments/                # Experiment specs and the open queue
 benchmarks/                 # Per-model JSON, regression baselines, dated receipts
   quality/                  #   MMLU / HumanEval / needle / probe-trio verdicts / fidelity
