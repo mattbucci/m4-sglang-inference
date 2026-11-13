@@ -1,0 +1,135 @@
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..aa93cdc1d8 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -59,22 +59,11 @@ class Media:
+ 
+     @property
+     def _css(self):
+-        css = self._css_lists[0]
+-        # filter(None, ...) avoids calling merge with empty dicts.
+-        for obj in filter(None, self._css_lists[1:]):
+-            css = {
+-                medium: self.merge(css.get(medium, []), obj.get(medium, []))
+-                for medium in css.keys() | obj.keys()
+-            }
+-        return css
++        return self._merge_lists(self._css_lists)
+ 
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        return self._merge_lists(self._js_lists)
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))
+@@ -114,6 +103,105 @@ class Media:
+             return Media(**{str(name): getattr(self, '_' + name)})
+         raise KeyError('Unknown media type "%s"' % name)
+ 
++    def _merge_lists(self, sublists):
++        """
++        Merge multiple sublists into one, preserving relative ordering constraints.
++
++        This is a graph-based merge: build a dependency graph from all sublists,
++        then produce a topological sort that preserves the first-seen order of
++        elements. This avoids the issue where sequential pairwise merging
++        introduces ordering constraints that none of the original sublists had.
++
++        For dicts (CSS), the merge is done per-medium.
++        """
++        if isinstance(sublists[0], dict):
++            # CSS: merge per-medium
++            all_media_keys = set()
++            for sublist in sublists:
++                if sublist:
++                    all_media_keys |= sublist.keys()
++            result = {}
++            for medium in all_media_keys:
++                medium_lists = [
++                    sublist.get(medium, [])
++                    for sublist in sublists
++                ]
++                result[medium] = self._merge_list(medium_lists)
++            return result
++        else:
++            # JS
++            return self._merge_list(sublists)
++
++    def _merge_list(self, sublists):
++        """
++        Merge multiple JS/CSS sublists into a single list, preserving
++        relative ordering constraints using dependency graph resolution.
++
++        Sublists that don't declare ordering (empty) are filtered out.
++        """
++        # Filter out empty sublists.
++        non_empty = filter(None, sublists)
++
++        # Build a deduplicated list preserving first-seen order.
++        # Also build a dependency graph: for each adjacent pair (a, b) in a
++        # sublist, b depends on a (a must come before b).
++        seen = set()
++        order = []
++        dependencies = {}  # item -> list of items that must precede it (its predecessors)
++
++        for lst in non_empty:
++            for item in lst:
++                if item not in seen:
++                    seen.add(item)
++                    order.append(item)
++                    if item not in dependencies:
++                        dependencies[item] = []
++            for i in range(len(lst) - 1):
++                a, b = lst[i], lst[i + 1]
++                if b not in dependencies:
++                    dependencies[b] = []
++                # Add edge: a must come before b (a is a predecessor of b)
++                if a not in dependencies[b]:
++                    dependencies[b].append(a)
++
++        if not order:
++            return []
++
++        # Topological sort preserving first-seen order using backtracking.
++        # Work from the first-seen order, handling predecessors before each item,
++        # using DFS with a stack to track the current path (for cycle detection).
++        result = []
++        visited = set()  # fully processed (output to result)
++        in_stack = set()  # items on the current DFS path (for cycle detection)
++
++        def dfs(item):
++            if item in in_stack:
++                # Cycle detected
++                idx = order.index(item)
++                warnings.warn(
++                    'Detected duplicate Media files in an opposite order:\n'
++                    '%s\n%s' % (
++                        item,
++                        order[idx - 1] if idx > 0 else '',
++                    ),
++                    MediaOrderConflictWarning,
++                )
++                return
++            if item in visited:
++                return
++            in_stack.add(item)
++            # Process all predecessors (items that must come before this one)
++            for pred in dependencies.get(item, []):
++                dfs(pred)
++            in_stack.remove(item)
++            visited.add(item)
++            result.append(item)
++
++        for item in order:
++            dfs(item)
++
++        return result
++
+     @staticmethod
+     def merge(list_1, list_2):
+         """

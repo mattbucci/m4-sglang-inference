@@ -1,0 +1,38 @@
+diff --git a/seaborn/axisgrid.py b/seaborn/axisgrid.py
+index 8526f44..8d996b6 100644
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1464,6 +1464,10 @@ class PairGrid(Grid):
+                 if hue is not None:
+                     hue = hue[not_na]
+ 
++            if hue is not None and self._hue_order is not None:
++                mask = hue.isin(self._hue_order)
++                vector = vector[mask]
++                hue = hue[mask]
+             plot_kwargs.setdefault("hue", hue)
+             plot_kwargs.setdefault("hue_order", self._hue_order)
+             plot_kwargs.setdefault("palette", self._orig_palette)
+@@ -1565,11 +1569,17 @@ class PairGrid(Grid):
+         else:
+             hue = data.get(self._hue_var)
+ 
+-        if "hue" not in kwargs:
+-            kwargs.update({
+-                "hue": hue, "hue_order": self._hue_order, "palette": self._orig_palette,
+-            })
+-        func(x=x, y=y, **kwargs)
++            if "hue" not in kwargs:
++                hue_data = hue.copy() if hue is not None else None
++                if self._hue_order is not None and hue_data is not None:
++                    mask = hue_data.isin(self._hue_order)
++                    x = x[mask]
++                    y = y[mask]
++                    hue_data = hue_data[mask]
++                kwargs.update({
++                    "hue": hue_data, "hue_order": self._hue_order, "palette": self._orig_palette,
++                })
++            func(x=x, y=y, **kwargs)
+ 
+         self._update_legend_data(ax)
+ 

@@ -1,0 +1,111 @@
+diff --git a/sympy/assumptions/sathandlers.py b/sympy/assumptions/sathandlers.py
+index 61d62d04c..881a5f9ba 100644
+--- a/sympy/assumptions/sathandlers.py
++++ b/sympy/assumptions/sathandlers.py
+@@ -1,6 +1,7 @@
+ from __future__ import print_function, division
+ 
+-from collections import MutableMapping, defaultdict
++from collections.abc import MutableMapping
++from collections import defaultdict
+ 
+ from sympy.core import (Add, Mul, Pow, Integer, Number, NumberSymbol,)
+ from sympy.core.numbers import ImaginaryUnit
+diff --git a/sympy/core/basic.py b/sympy/core/basic.py
+index 2ad720d35..b86ad6e69 100644
+--- a/sympy/core/basic.py
++++ b/sympy/core/basic.py
+@@ -1,6 +1,7 @@
+ """Base class for all the objects in SymPy"""
+ from __future__ import print_function, division
+-from collections import Mapping, defaultdict
++from collections.abc import Mapping
++from collections import defaultdict
+ from itertools import chain
+ 
+ from .assumptions import BasicMeta, ManagedProperties
+diff --git a/sympy/core/containers.py b/sympy/core/containers.py
+index 15abd93e3..7713af135 100644
+--- a/sympy/core/containers.py
++++ b/sympy/core/containers.py
+@@ -13,7 +13,8 @@
+ from sympy.core.sympify import sympify, converter
+ from sympy.utilities.iterables import iterable
+ 
+-import collections
++import collections.abc
++from collections import OrderedDict
+ 
+ 
+ class Tuple(Basic):
+@@ -268,12 +269,12 @@ def _sorted_args(self):
+         return tuple(sorted(self.args, key=default_sort_key))
+ 
+ 
+-class OrderedSet(collections.MutableSet):
++class OrderedSet(collections.abc.MutableSet):
+     def __init__(self, iterable=None):
+         if iterable:
+-            self.map = collections.OrderedDict((item, None) for item in iterable)
++            self.map = OrderedDict((item, None) for item in iterable)
+         else:
+-            self.map = collections.OrderedDict()
++            self.map = OrderedDict()
+ 
+     def __len__(self):
+         return len(self.map)
+diff --git a/sympy/plotting/plot.py b/sympy/plotting/plot.py
+index d5abe84da..a04226a14 100644
+--- a/sympy/plotting/plot.py
++++ b/sympy/plotting/plot.py
+@@ -25,7 +25,7 @@
+ from __future__ import print_function, division
+ 
+ import inspect
+-from collections import Callable
++from collections.abc import Callable
+ import warnings
+ import sys
+ 
+diff --git a/sympy/simplify/trigsimp.py b/sympy/simplify/trigsimp.py
+index 34a3bab3f..269e01234 100644
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -470,6 +470,16 @@ def trigsimp(expr, **opts):
+     >>> trigsimp(t)
+     tanh(x)**7
+ 
++    The simplification of exponential expressions to trigonometric functions
++    is also handled when the expression contains exp but no trigonometric
++    functions::
++
++        >>> from sympy import trigsimp, exp, I, symbols, S
++        >>> k = symbols('k', real=True)
++        >>> f = S(1)/2 * (-I*exp(I*k) + I*exp(-I*k))
++        >>> trigsimp(f)
++        sin(k)
++
+     """
+     from sympy.simplify.fu import fu
+ 
+@@ -510,7 +520,19 @@ def traverse(e):
+         'old': lambda x: trigsimp_old(x, **opts),
+                    }[method]
+ 
+-    return trigsimpfunc(expr)
++    result = trigsimpfunc(expr)
++    # If the matching method didn't simplify and the expression has exp
++    # but no trig functions, try rewriting exp to trig functions and
++    # then simplifying.  This handles expressions like
++    # (exp(I*x) - exp(-I*x))/(2*I) --> sin(x).
++    if result is expr or result == expr:
++        if expr.has(exp) and not expr.has(TrigonometricFunction):
++            trig_result = expr.rewrite(sin)
++            if trig_result != expr:
++                trig_simplified = trigsimpfunc(trig_result)
++                if count_ops(trig_simplified) < count_ops(expr):
++                    result = trig_simplified
++    return result
+ 
+ 
+ def exptrigsimp(expr):

@@ -1,0 +1,40 @@
+diff --git a/sympy/core/basic.py b/sympy/core/basic.py
+index 005b8f849..2b3eb4238 100644
+--- a/sympy/core/basic.py
++++ b/sympy/core/basic.py
+@@ -1,6 +1,6 @@
+ """Base class for all the objects in SymPy"""
+ from __future__ import print_function, division
+-from collections import Mapping
++from collections.abc import Mapping
+ 
+ from .assumptions import BasicMeta, ManagedProperties
+ from .cache import cacheit
+diff --git a/sympy/plotting/plot.py b/sympy/plotting/plot.py
+index b1ead153e..f3dc7f60f 100644
+--- a/sympy/plotting/plot.py
++++ b/sympy/plotting/plot.py
+@@ -25,7 +25,7 @@
+ from __future__ import print_function, division
+ 
+ import inspect
+-from collections import Callable
++from collections.abc import Callable
+ import warnings
+ import sys
+ 
+diff --git a/sympy/printing/ccode.py b/sympy/printing/ccode.py
+index 30a07a7b5..330e779e2 100644
+--- a/sympy/printing/ccode.py
++++ b/sympy/printing/ccode.py
+@@ -251,6 +251,10 @@ def _print_For(self, expr):
+     def _print_sign(self, func):
+         return '((({0}) > 0) - (({0}) < 0))'.format(self._print(func.args[0]))
+ 
++    def _print_sinc(self, func):
++        arg = self._print(func.args[0])
++        return 'sin(%s)/(%s)' % (arg, arg)
++
+     def indent_code(self, code):
+         """Accepts a string of code or a list of code lines"""
+ 

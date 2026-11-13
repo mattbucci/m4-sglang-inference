@@ -1,0 +1,22 @@
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..a57232b04 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -524,6 +524,17 @@ def import_path(
+     if mode is ImportMode.importlib:
+         module_name = module_name_from_path(path, root)
+ 
++        # Check if the module is already loaded in sys.modules (possibly under a different name).
++        # This can happen when a module is imported during exec_module of another module via
++        # the standard import mechanism, and then import_path is called for the same file.
++        # Without this check, a duplicate module object would be created, leading to different
++        # module objects for the same .py file in sys.modules.
++        for _existing_name, _existing_mod in sys.modules.items():
++            if getattr(_existing_mod, '__file__', None) == str(path):
++                # Reuse the already-loaded module instead of creating a duplicate.
++                # Register the generated module name as an alias to the existing module.
++                sys.modules[module_name] = _existing_mod
++                return _existing_mod
+         for meta_importer in sys.meta_path:
+             spec = meta_importer.find_spec(module_name, [str(path.parent)])
+             if spec is not None:

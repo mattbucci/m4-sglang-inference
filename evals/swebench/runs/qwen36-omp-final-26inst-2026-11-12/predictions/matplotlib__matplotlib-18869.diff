@@ -1,0 +1,35 @@
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index b657a35cf..ab831f8c0 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -148,6 +148,30 @@ def __getattr__(name):
+         else:  # Get the version from the _version.py setuptools_scm file.
+             __version__ = _version.version
+         return __version__
++    if name == "__version_info__":
++        return _get_version_info()
++
++def _get_version_info():
++    """
++    Return a tuple of the major, minor and micro version numbers.
++
++    If the version string cannot be parsed, all three components default
++    to 0.
++    """
++    # The "post-release" and "local" versioning schemes used by setuptools_scm
++    # can result in version strings that `packaging.version.parse` does not
++    # recognise as a `Version` instance (it returns `UnparsedVersion` instead).
++    # In that case, fall back to a simple heuristic: try to extract the first
++    # three groups of digits separated by dots from the version string.
++    ver = parse_version(__getattr__('__version__'))
++    try:
++        return (ver.major, ver.minor, ver.micro)
++    except AttributeError:
++        import re
++        m = re.search(r'(\d+)\.(\d+)\.(\d+)', __getattr__('__version__'))
++        if m:
++            return tuple(int(x) for x in m.groups())
++        return (0, 0, 0)
+     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+ 
+ 

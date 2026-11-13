@@ -1,0 +1,37 @@
+diff --git a/sklearn/linear_model/ridge.py b/sklearn/linear_model/ridge.py
+index 911c74ae3..b1fccc2e9 100644
+--- a/sklearn/linear_model/ridge.py
++++ b/sklearn/linear_model/ridge.py
+@@ -1333,10 +1333,11 @@ class RidgeClassifierCV(LinearClassifierMixin, _BaseRidgeCV):
+     advantage of the multi-variate response support in Ridge.
+     """
+     def __init__(self, alphas=(0.1, 1.0, 10.0), fit_intercept=True,
+-                 normalize=False, scoring=None, cv=None, class_weight=None):
++                 normalize=False, scoring=None, cv=None, class_weight=None,
++                 store_cv_values=False):
+         super(RidgeClassifierCV, self).__init__(
+             alphas=alphas, fit_intercept=fit_intercept, normalize=normalize,
+-            scoring=scoring, cv=cv)
++            scoring=scoring, cv=cv, store_cv_values=store_cv_values)
+         self.class_weight = class_weight
+ 
+     def fit(self, X, y, sample_weight=None):
+diff --git a/sklearn/linear_model/tests/test_ridge.py b/sklearn/linear_model/tests/test_ridge.py
+index ee44da5d5..d6540005e 100644
+--- a/sklearn/linear_model/tests/test_ridge.py
++++ b/sklearn/linear_model/tests/test_ridge.py
+@@ -444,8 +444,14 @@ def _test_ridge_classifiers(filter_):
+     reg = RidgeClassifierCV(cv=cv)
+     reg.fit(filter_(X_iris), y_iris)
+     y_pred = reg.predict(filter_(X_iris))
++
+     assert_true(np.mean(y_iris == y_pred) >= 0.8)
+ 
++    # Test store_cv_values parameter for RidgeClassifierCV
++    reg = RidgeClassifierCV(alphas=[0.1, 1.0], store_cv_values=True)
++    reg.fit(filter_(X_iris), y_iris)
++    assert_equal(reg.cv_values_.shape, (X_iris.shape[0], n_classes,
++                                        len(reg.alphas)))
+ 
+ def _test_tolerance(filter_):
+     ridge = Ridge(tol=1e-5, fit_intercept=False)

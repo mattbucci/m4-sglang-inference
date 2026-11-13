@@ -39,6 +39,9 @@ predictions.jsonl    ────────►   score_docker.py --predictions
   through the omp scaffold and the sealed harness
   (`runs/qwen36-26inst-omp-2026-11-08/`, 26/26 non-empty, 6/26 on the local
   scorer, model name `sglang/qwen36-omp`); the opencode-vs-omp pair for Docker scoring.
+- `qwen36-omp-final-26inst-predictions.jsonl` — the same 26 instances on qwen36
+  under omp with the fused-decode preset defaults (`runs/qwen36-omp-final-26inst-2026-11-12/`,
+  model name `sglang/qwen36-omp-final`); awaits Docker scoring.
 - `qwen36-omp-p033-26inst-predictions.jsonl` — the same 26 instances on qwen36
   under omp on the 25-patch tree (`runs/qwen36-26inst-omp-p033-2026-11-11/`,
   26/26 non-empty, 5/26 on the local scorer, model name

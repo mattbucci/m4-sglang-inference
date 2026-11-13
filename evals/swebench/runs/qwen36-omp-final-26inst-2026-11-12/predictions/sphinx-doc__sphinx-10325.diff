@@ -1,0 +1,79 @@
+diff --git a/doc/usage/extensions/autodoc.rst b/doc/usage/extensions/autodoc.rst
+index e3d551dd4..0adc8ad99 100644
+--- a/doc/usage/extensions/autodoc.rst
++++ b/doc/usage/extensions/autodoc.rst
+@@ -252,15 +252,22 @@ inserting them into the page source under a suitable :rst:dir:`py:module`,
+      This can be combined with ``undoc-members`` to document *all* available
+      members of the class or module.
+ 
+-     It can take an ancestor class not to document inherited members from it.
++     It can take an ancestor class name not to document inherited members from it.
+      By default, members of ``object`` class are not documented.  To show them
+      all, give ``None`` to the option.
+ 
+      For example; If your class ``Foo`` is derived from ``list`` class and
+-     you don't want to document ``list.__len__()``, you should specify a
++     you don't want to document ``list.__len__()`` , you should specify a
+      option ``:inherited-members: list`` to avoid special members of list
+      class.
+ 
++     It can also take a comma-separated list of ancestor class names to avoid
++     documenting inherited members from multiple classes. For example, if a
++     class inherits from both ``Parent1`` and ``Parent2`` but you only want
++     to skip members from ``Parent2``, you can use
++     ``:inherited-members: Parent2``. If you want to skip members from both
++     ``Parent1`` and ``Parent2``, use ``:inherited-members: Parent1,Parent2``.
++
+      Another example; If your class Foo has ``__str__`` special method and
+      autodoc directive has both ``inherited-members`` and ``special-members``,
+      ``__str__`` will be documented as in the past, but other special method
+@@ -271,9 +278,13 @@ inserting them into the page source under a suitable :rst:dir:`py:module`,
+ 
+      .. versionadded:: 0.3
+ 
+-     .. versionchanged:: 3.0
++    .. versionchanged:: 3.0
++
++       It takes an ancestor class name as an argument.
++
++    .. versionchanged:: NEXT_RELEASE
+ 
+-        It takes an ancestor class name as an argument.
++       It can also take a comma-separated list of ancestor class names.
+ 
+    * It's possible to override the signature for explicitly documented callable
+      objects (functions, methods, classes) with the regular syntax that will
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 62631f7ff..29dd7c2ed 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -110,9 +110,15 @@ def exclude_members_option(arg: Any) -> Union[object, Set[str]]:
+ 
+ 
+ def inherited_members_option(arg: Any) -> Union[object, Set[str]]:
+-    """Used to convert the :members: option to auto directives."""
++    """Used to convert the :inherited-members: option to auto directives.
++
++    If *arg* is *None* or *True*, returns 'object'.
++    If *arg* is a string, splits it by commas and returns a set of class names.
++    """
+     if arg in (None, True):
+         return 'object'
++    elif isinstance(arg, str):
++        return {x.strip() for x in arg.split(',') if x.strip()}
+     else:
+         return arg
+ 
+@@ -682,7 +688,11 @@ class Documenter:
+         def is_filtered_inherited_member(name: str, obj: Any) -> bool:
+             if inspect.isclass(self.object):
+                 for cls in self.object.__mro__:
+-                    if cls.__name__ == self.options.inherited_members and cls != self.object:
++                    if isinstance(self.options.inherited_members, set):
++                        if cls.__name__ in self.options.inherited_members and cls != self.object:
++                            # given member is a member of specified *super class*
++                            return True
++                    elif cls.__name__ == self.options.inherited_members and cls != self.object:
+                         # given member is a member of specified *super class*
+                         return True
+                     elif name in cls.__dict__:
