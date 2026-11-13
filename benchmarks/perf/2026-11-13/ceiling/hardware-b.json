@@ -1,0 +1,166 @@
+{
+ "mlx": "0.32.4",
+ "array_gb": 4.0,
+ "repeats": 5,
+ "peak_memory_gb": 7.13,
+ "bandwidth": [
+  {
+   "case": "gpu reduce (max over uint32)",
+   "bytes": 4000000000,
+   "seconds": 0.016509749926626682,
+   "gb_per_s": 242.3
+  },
+  {
+   "case": "gpu reduce (sum over uint32)",
+   "bytes": 4000000000,
+   "seconds": 0.01653708308003843,
+   "gb_per_s": 241.9
+  },
+  {
+   "case": "gpu map (read half, write half)",
+   "bytes": 4000000000,
+   "seconds": 0.01723300013691187,
+   "gb_per_s": 232.1
+  },
+  {
+   "case": "gpu reduce (sum over bf16)",
+   "bytes": 4000000000,
+   "seconds": 0.01724404189735651,
+   "gb_per_s": 232.0
+  },
+  {
+   "case": "qmm one row, 256 x 2048x2048 4-bit, chained",
+   "bytes": 603979776,
+   "seconds": 0.004948250018060207,
+   "gb_per_s": 122.1
+  },
+  {
+   "case": "qmm one row, 256 x 2048x2048 4-bit, independent",
+   "bytes": 603979776,
+   "seconds": 0.003757165977731347,
+   "gb_per_s": 160.8
+  },
+  {
+   "case": "qmm one row, 96 x 4096x4096 4-bit, chained",
+   "bytes": 905969664,
+   "seconds": 0.005382833071053028,
+   "gb_per_s": 168.3
+  },
+  {
+   "case": "qmm one row, 96 x 4096x4096 4-bit, independent",
+   "bytes": 905969664,
+   "seconds": 0.005524417152628303,
+   "gb_per_s": 164.0
+  },
+  {
+   "case": "qmm one row, 24 x 8192x8192 4-bit, chained",
+   "bytes": 905969664,
+   "seconds": 0.005075333872810006,
+   "gb_per_s": 178.5
+  },
+  {
+   "case": "qmm one row, 24 x 8192x8192 4-bit, independent",
+   "bytes": 905969664,
+   "seconds": 0.0053857918828725815,
+   "gb_per_s": 168.2
+  },
+  {
+   "case": "cpu reduce, 1 thread",
+   "bytes": 4000000000,
+   "seconds": 0.05909308302216232,
+   "gb_per_s": 67.7
+  },
+  {
+   "case": "cpu reduce, 4 threads",
+   "bytes": 4000000000,
+   "seconds": 0.0180972081143409,
+   "gb_per_s": 221.0
+  },
+  {
+   "case": "cpu reduce, 10 threads",
+   "bytes": 4000000000,
+   "seconds": 0.016657917061820626,
+   "gb_per_s": 240.1
+  },
+  {
+   "case": "cpu reduce, 14 threads",
+   "bytes": 4000000000,
+   "seconds": 0.0166406671050936,
+   "gb_per_s": 240.4
+  }
+ ],
+ "compute": [
+  {
+   "case": "matmul 4096x4096 @ 4096x4096 float32",
+   "flops": 137438953472.0,
+   "seconds": 0.02064133412204683,
+   "gflops": 6658.4
+  },
+  {
+   "case": "matmul 4096x4096 @ 4096x4096 float16",
+   "flops": 137438953472.0,
+   "seconds": 0.018241999903693795,
+   "gflops": 7534.2
+  },
+  {
+   "case": "matmul 4096x4096 @ 4096x4096 bfloat16",
+   "flops": 137438953472.0,
+   "seconds": 0.01824616687372327,
+   "gflops": 7532.5
+  },
+  {
+   "case": "matmul 1024x2048 @ 2048x2048 bfloat16",
+   "flops": 8589934592.0,
+   "seconds": 0.0013531669974327087,
+   "gflops": 6348.0
+  },
+  {
+   "case": "matmul 1024x5120 @ 5120x5120 bfloat16",
+   "flops": 53687091200.0,
+   "seconds": 0.00733204185962677,
+   "gflops": 7322.3
+  },
+  {
+   "case": "qmm 1024 rows, 2048x2048 4-bit",
+   "flops": 8589934592.0,
+   "seconds": 0.001657332992181182,
+   "gflops": 5183.0
+  },
+  {
+   "case": "qmm 1024 rows, 5120x5120 4-bit",
+   "flops": 53687091200.0,
+   "seconds": 0.009230875177308917,
+   "gflops": 5816.0
+  },
+  {
+   "case": "qmm 2048 rows, 2048x2048 4-bit",
+   "flops": 17179869184.0,
+   "seconds": 0.0030981251038610935,
+   "gflops": 5545.2
+  },
+  {
+   "case": "qmm 2048 rows, 5120x5120 4-bit",
+   "flops": 107374182400.0,
+   "seconds": 0.018258624942973256,
+   "gflops": 5880.7
+  },
+  {
+   "case": "qmm 4096 rows, 2048x2048 4-bit",
+   "flops": 34359738368.0,
+   "seconds": 0.006038667168468237,
+   "gflops": 5690.0
+  },
+  {
+   "case": "qmm 4096 rows, 5120x5120 4-bit",
+   "flops": 214748364800.0,
+   "seconds": 0.0364030001219362,
+   "gflops": 5899.2
+  },
+  {
+   "case": "qmm 1024 rows, 2048x2048 8-bit",
+   "flops": 8589934592.0,
+   "seconds": 0.0016402080655097961,
+   "gflops": 5237.1
+  }
+ ]
+}

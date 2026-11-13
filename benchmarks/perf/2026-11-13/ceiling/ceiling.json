@@ -1,0 +1,578 @@
+{
+ "hardware": {
+  "read_gb_s": 242.9,
+  "one_row_qmm_gb_s": 178.6,
+  "prefill_gflops": 7534.2,
+  "many_row_qmm_gflops": 5899.2,
+  "receipts": [
+   "benchmarks/perf/2026-11-13/ceiling/hardware-a.json",
+   "benchmarks/perf/2026-11-13/ceiling/hardware-b.json"
+  ]
+ },
+ "kv_dtype_bytes": 2,
+ "models": [
+  {
+   "key": "qwen36",
+   "label": "Qwen3.6-35B-A3B 4-bit (MoE + DeltaNet)",
+   "cls": "moe",
+   "checkpoint": "mlx-community/Qwen3.6-35B-A3B-4bit",
+   "read_mb_per_token": 1669.6,
+   "read_mb_by_family": {
+    "recurrent mixer": 570.4,
+    "routed experts": 566.2,
+    "lm_head": 286.1,
+    "attention": 153.4,
+    "shared expert": 70.9,
+    "router gate": 22.3,
+    "other": 0.3
+   },
+   "kv_kb_per_context_token": 20.48,
+   "attention_layers": 10,
+   "prefill_gflop_per_token": 4.88,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 99.6,
+     "decode_ceiling_tok_s": 143.7,
+     "decode_pct": 69.3,
+     "kv_read_mb": 21.0,
+     "prefill_tok_s": 856.9,
+     "prefill_ceiling_tok_s": 1519.2,
+     "prefill_pct": 56.4
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 80.5,
+     "decode_ceiling_tok_s": 132.2,
+     "decode_pct": 60.9,
+     "kv_read_mb": 167.8,
+     "prefill_tok_s": 758.6,
+     "prefill_ceiling_tok_s": 1358.4,
+     "prefill_pct": 55.8
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 65.1,
+     "decode_ceiling_tok_s": 103.8,
+     "decode_pct": 62.7,
+     "kv_read_mb": 671.1,
+     "prefill_tok_s": 562.9,
+     "prefill_ceiling_tok_s": 996.6,
+     "prefill_pct": 56.5
+    },
+    "131072": {
+     "input_tokens": 129887,
+     "decode_tok_s": 44.7,
+     "decode_ceiling_tok_s": 56.1,
+     "decode_pct": 79.7,
+     "kv_read_mb": 2660.1,
+     "prefill_tok_s": 326.6,
+     "prefill_ceiling_tok_s": 485.6,
+     "prefill_pct": 67.3
+    }
+   }
+  },
+  {
+   "key": "coder-30b",
+   "label": "Coder-30B-A3B 4-bit DWQ (MoE)",
+   "cls": "moe",
+   "checkpoint": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit-DWQ",
+   "read_mb_per_token": 1711.4,
+   "read_mb_by_family": {
+    "routed experts": 1019.2,
+    "attention": 509.6,
+    "lm_head": 175.0,
+    "router gate": 7.1,
+    "other": 0.4
+   },
+   "kv_kb_per_context_token": 98.3,
+   "attention_layers": 48,
+   "prefill_gflop_per_token": 5.46,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 88.6,
+     "decode_ceiling_tok_s": 134.0,
+     "decode_pct": 66.1,
+     "kv_read_mb": 100.7,
+     "prefill_tok_s": 980.8,
+     "prefill_ceiling_tok_s": 1284.9,
+     "prefill_pct": 76.3
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 57.7,
+     "decode_ceiling_tok_s": 96.5,
+     "decode_pct": 59.8,
+     "kv_read_mb": 805.3,
+     "prefill_tok_s": 691.4,
+     "prefill_ceiling_tok_s": 867.8,
+     "prefill_pct": 79.7
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 33.0,
+     "decode_ceiling_tok_s": 49.2,
+     "decode_pct": 67.0,
+     "kv_read_mb": 3221.2,
+     "prefill_tok_s": 332.9,
+     "prefill_ceiling_tok_s": 410.7,
+     "prefill_pct": 81.1
+    }
+   }
+  },
+  {
+   "key": "qwen3-moe",
+   "label": "Qwen3-30B-A3B 4-bit DWQ (MoE)",
+   "cls": "moe",
+   "checkpoint": "mlx-community/Qwen3-30B-A3B-4bit-DWQ",
+   "read_mb_per_token": 1711.4,
+   "read_mb_by_family": {
+    "routed experts": 1019.2,
+    "attention": 509.6,
+    "lm_head": 175.0,
+    "router gate": 7.1,
+    "other": 0.4
+   },
+   "kv_kb_per_context_token": 98.3,
+   "attention_layers": 48,
+   "prefill_gflop_per_token": 5.46,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 88.3,
+     "decode_ceiling_tok_s": 134.0,
+     "decode_pct": 65.9,
+     "kv_read_mb": 100.7,
+     "prefill_tok_s": 977.6,
+     "prefill_ceiling_tok_s": 1284.9,
+     "prefill_pct": 76.1
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 57.5,
+     "decode_ceiling_tok_s": 96.5,
+     "decode_pct": 59.6,
+     "kv_read_mb": 805.3,
+     "prefill_tok_s": 723.8,
+     "prefill_ceiling_tok_s": 867.8,
+     "prefill_pct": 83.4
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 33.5,
+     "decode_ceiling_tok_s": 49.2,
+     "decode_pct": 68.0,
+     "kv_read_mb": 3221.2,
+     "prefill_tok_s": 330.7,
+     "prefill_ceiling_tok_s": 410.7,
+     "prefill_pct": 80.5
+    }
+   }
+  },
+  {
+   "key": "nemotron-30b",
+   "label": "Nemotron-3-Nano-30B 4-bit (MoE + Mamba2)",
+   "cls": "moe",
+   "checkpoint": "mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit",
+   "read_mb_per_token": 2026.5,
+   "read_mb_by_family": {
+    "routed experts": 774.5,
+    "recurrent mixer": 597.2,
+    "shared expert": 258.2,
+    "other": 198.5,
+    "lm_head": 198.2
+   },
+   "kv_kb_per_context_token": 6.14,
+   "attention_layers": 6,
+   "prefill_gflop_per_token": 6.45,
+   "depths": {
+    "1024": {
+     "input_tokens": 959,
+     "decode_tok_s": 91.8,
+     "decode_ceiling_tok_s": 119.5,
+     "decode_pct": 76.8,
+     "kv_read_mb": 5.9,
+     "prefill_tok_s": 763.2,
+     "prefill_ceiling_tok_s": 1158.8,
+     "prefill_pct": 65.9
+    },
+    "8192": {
+     "input_tokens": 7602,
+     "decode_tok_s": 90.2,
+     "decode_ceiling_tok_s": 117.2,
+     "decode_pct": 77.0,
+     "kv_read_mb": 46.7,
+     "prefill_tok_s": 782.4,
+     "prefill_ceiling_tok_s": 1103.4,
+     "prefill_pct": 70.9
+    },
+    "32768": {
+     "input_tokens": 30381,
+     "decode_tok_s": 78.8,
+     "decode_ceiling_tok_s": 109.8,
+     "decode_pct": 71.8,
+     "kv_read_mb": 186.7,
+     "prefill_tok_s": 632.2,
+     "prefill_ceiling_tok_s": 947.9,
+     "prefill_pct": 66.7
+    }
+   }
+  },
+  {
+   "key": "flint-oq8e",
+   "label": "Flint oQ8e (MoE, SWA + sinks)",
+   "cls": "moe",
+   "checkpoint": "mlx-community/flint-oQ8e",
+   "read_mb_per_token": 2672.5,
+   "read_mb_by_family": {
+    "attention": 978.7,
+    "routed experts": 942.5,
+    "lm_head": 317.1,
+    "shared expert": 304.9,
+    "dense mlp": 79.5,
+    "router gate": 49.3,
+    "other": 0.4
+   },
+   "kv_kb_per_context_token": 100.35,
+   "attention_layers": 49,
+   "prefill_gflop_per_token": 4.42,
+   "depths": {
+    "1024": {
+     "input_tokens": 959,
+     "decode_tok_s": 65.5,
+     "decode_ceiling_tok_s": 88.8,
+     "decode_pct": 73.8,
+     "kv_read_mb": 64.3,
+     "prefill_tok_s": 877.3,
+     "prefill_ceiling_tok_s": 1569.5,
+     "prefill_pct": 55.9
+    },
+    "8192": {
+     "input_tokens": 7601,
+     "decode_tok_s": 62.0,
+     "decode_ceiling_tok_s": 83.0,
+     "decode_pct": 74.7,
+     "kv_read_mb": 254.7,
+     "prefill_tok_s": 843.9,
+     "prefill_ceiling_tok_s": 1349.9,
+     "prefill_pct": 62.5
+    },
+    "32768": {
+     "input_tokens": 30422,
+     "decode_tok_s": 51.7,
+     "decode_ceiling_tok_s": 67.8,
+     "decode_pct": 76.2,
+     "kv_read_mb": 909.0,
+     "prefill_tok_s": 566.7,
+     "prefill_ceiling_tok_s": 918.9,
+     "prefill_pct": 61.7
+    }
+   }
+  },
+  {
+   "key": "flint-int4",
+   "label": "Flint int4 (MoE, SWA + sinks)",
+   "cls": "moe",
+   "checkpoint": "RecursiveSI/flint-int4",
+   "read_mb_per_token": 1450.7,
+   "read_mb_by_family": {
+    "attention": 520.3,
+    "routed experts": 499.0,
+    "lm_head": 173.0,
+    "shared expert": 166.3,
+    "router gate": 49.3,
+    "dense mlp": 42.5,
+    "other": 0.4
+   },
+   "kv_kb_per_context_token": 100.35,
+   "attention_layers": 49,
+   "prefill_gflop_per_token": 4.42,
+   "depths": {
+    "1024": {
+     "input_tokens": 1025,
+     "decode_tok_s": 102.5,
+     "decode_ceiling_tok_s": 160.1,
+     "decode_pct": 64.0,
+     "kv_read_mb": 66.2,
+     "prefill_tok_s": 1022.5,
+     "prefill_ceiling_tok_s": 1560.8,
+     "prefill_pct": 65.5
+    },
+    "8192": {
+     "input_tokens": 8202,
+     "decode_tok_s": 92.8,
+     "decode_ceiling_tok_s": 141.0,
+     "decode_pct": 65.8,
+     "kv_read_mb": 271.9,
+     "prefill_tok_s": 878.7,
+     "prefill_ceiling_tok_s": 1333.4,
+     "prefill_pct": 65.9
+    },
+    "32768": {
+     "input_tokens": 32799,
+     "decode_tok_s": 71.4,
+     "decode_ceiling_tok_s": 100.0,
+     "decode_pct": 71.4,
+     "kv_read_mb": 977.2,
+     "prefill_tok_s": 593.5,
+     "prefill_ceiling_tok_s": 889.4,
+     "prefill_pct": 66.7
+    },
+    "131072": {
+     "input_tokens": 129953,
+     "decode_tok_s": 37.5,
+     "decode_ceiling_tok_s": 46.6,
+     "decode_pct": 80.5,
+     "kv_read_mb": 3762.8,
+     "prefill_tok_s": 296.1,
+     "prefill_ceiling_tok_s": 384.1,
+     "prefill_pct": 77.1
+    }
+   }
+  },
+  {
+   "key": "qwen35-9b-8bit",
+   "label": "Qwen3.5-9B 8-bit (DeltaNet)",
+   "cls": "dense",
+   "checkpoint": "mlx-community/Qwen3.5-9B-MLX-8bit",
+   "read_mb_per_token": 8433.7,
+   "read_mb_by_family": {
+    "dense mlp": 5133.8,
+    "recurrent mixer": 1719.5,
+    "lm_head": 1080.7,
+    "attention": 499.1,
+    "other": 0.5
+   },
+   "kv_kb_per_context_token": 32.77,
+   "attention_layers": 8,
+   "prefill_gflop_per_token": 13.84,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 26.8,
+     "decode_ceiling_tok_s": 28.7,
+     "decode_pct": 93.4,
+     "kv_read_mb": 33.6,
+     "prefill_tok_s": 399.9,
+     "prefill_ceiling_tok_s": 541.8,
+     "prefill_pct": 73.8
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 25.9,
+     "decode_ceiling_tok_s": 27.9,
+     "decode_pct": 92.8,
+     "kv_read_mb": 268.4,
+     "prefill_tok_s": 375.8,
+     "prefill_ceiling_tok_s": 524.1,
+     "prefill_pct": 71.7
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 23.4,
+     "decode_ceiling_tok_s": 25.5,
+     "decode_pct": 91.6,
+     "kv_read_mb": 1073.7,
+     "prefill_tok_s": 328.5,
+     "prefill_ceiling_tok_s": 471.3,
+     "prefill_pct": 69.7
+    }
+   }
+  },
+  {
+   "key": "devstral",
+   "label": "Devstral-24B 4-bit (Dense)",
+   "cls": "dense",
+   "checkpoint": "mlx-community/Devstral-Small-2-24B-Instruct-2512-4bit",
+   "read_mb_per_token": 13918.6,
+   "read_mb_by_family": {
+    "dense mlp": 11324.6,
+    "lm_head": 1342.2,
+    "attention": 1179.6,
+    "other": 72.1
+   },
+   "kv_kb_per_context_token": 163.84,
+   "attention_layers": 40,
+   "prefill_gflop_per_token": 44.53,
+   "depths": {
+    "1024": {
+     "input_tokens": 1023,
+     "decode_tok_s": 16.1,
+     "decode_ceiling_tok_s": 17.2,
+     "decode_pct": 93.4,
+     "kv_read_mb": 167.6,
+     "prefill_tok_s": 133.3,
+     "prefill_ceiling_tok_s": 167.9,
+     "prefill_pct": 79.4
+    },
+    "8192": {
+     "input_tokens": 8191,
+     "decode_tok_s": 15.1,
+     "decode_ceiling_tok_s": 15.9,
+     "decode_pct": 94.9,
+     "kv_read_mb": 1342.0,
+     "prefill_tok_s": 122.9,
+     "prefill_ceiling_tok_s": 159.6,
+     "prefill_pct": 77.0
+    },
+    "32768": {
+     "input_tokens": 32767,
+     "decode_tok_s": 11.9,
+     "decode_ceiling_tok_s": 12.6,
+     "decode_pct": 94.5,
+     "kv_read_mb": 5368.5,
+     "prefill_tok_s": 116.3,
+     "prefill_ceiling_tok_s": 136.3,
+     "prefill_pct": 85.3
+    }
+   }
+  },
+  {
+   "key": "qwen36-27b",
+   "label": "Qwen3.6-27B 4-bit (DeltaNet)",
+   "cls": "dense",
+   "checkpoint": "mlx-community/Qwen3.6-27B-4bit",
+   "read_mb_per_token": 14417.6,
+   "read_mb_by_family": {
+    "dense mlp": 9625.9,
+    "recurrent mixer": 3131.5,
+    "attention": 943.7,
+    "lm_head": 715.2,
+    "other": 1.3
+   },
+   "kv_kb_per_context_token": 65.54,
+   "attention_layers": 16,
+   "prefill_gflop_per_token": 48.71,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 15.0,
+     "decode_ceiling_tok_s": 16.8,
+     "decode_pct": 89.4,
+     "kv_read_mb": 67.1,
+     "prefill_tok_s": 124.2,
+     "prefill_ceiling_tok_s": 154.1,
+     "prefill_pct": 80.6
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 14.4,
+     "decode_ceiling_tok_s": 16.2,
+     "decode_pct": 88.7,
+     "kv_read_mb": 536.9,
+     "prefill_tok_s": 112.7,
+     "prefill_ceiling_tok_s": 149.7,
+     "prefill_pct": 75.3
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 13.1,
+     "decode_ceiling_tok_s": 14.7,
+     "decode_pct": 89.3,
+     "kv_read_mb": 2147.5,
+     "prefill_tok_s": 109.8,
+     "prefill_ceiling_tok_s": 136.6,
+     "prefill_pct": 80.4
+    }
+   }
+  },
+  {
+   "key": "qwen35",
+   "label": "Qwen3.5-27B 4-bit (DeltaNet)",
+   "cls": "dense",
+   "checkpoint": "mlx-community/Qwen3.5-27B-4bit",
+   "read_mb_per_token": 14417.6,
+   "read_mb_by_family": {
+    "dense mlp": 9625.9,
+    "recurrent mixer": 3131.5,
+    "attention": 943.7,
+    "lm_head": 715.2,
+    "other": 1.3
+   },
+   "kv_kb_per_context_token": 65.54,
+   "attention_layers": 16,
+   "prefill_gflop_per_token": 48.71,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 14.5,
+     "decode_ceiling_tok_s": 16.8,
+     "decode_pct": 86.5,
+     "kv_read_mb": 67.1,
+     "prefill_tok_s": 119.1,
+     "prefill_ceiling_tok_s": 154.1,
+     "prefill_pct": 77.3
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 14.1,
+     "decode_ceiling_tok_s": 16.2,
+     "decode_pct": 86.8,
+     "kv_read_mb": 536.9,
+     "prefill_tok_s": 109.0,
+     "prefill_ceiling_tok_s": 149.7,
+     "prefill_pct": 72.8
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 12.8,
+     "decode_ceiling_tok_s": 14.7,
+     "decode_pct": 87.3,
+     "kv_read_mb": 2147.5,
+     "prefill_tok_s": 105.6,
+     "prefill_ceiling_tok_s": 136.6,
+     "prefill_pct": 77.3
+    }
+   }
+  },
+  {
+   "key": "qwen3-32b",
+   "label": "Qwen3-32B 4-bit DWQ (Dense)",
+   "cls": "dense",
+   "checkpoint": "mlx-community/Qwen3-32B-4bit-DWQ",
+   "read_mb_per_token": 17992.1,
+   "read_mb_by_family": {
+    "dense mlp": 14155.8,
+    "attention": 3397.4,
+    "lm_head": 437.6,
+    "other": 1.3
+   },
+   "kv_kb_per_context_token": 262.14,
+   "attention_layers": 64,
+   "prefill_gflop_per_token": 62.41,
+   "depths": {
+    "1024": {
+     "input_tokens": 1024,
+     "decode_tok_s": 12.0,
+     "decode_ceiling_tok_s": 13.3,
+     "decode_pct": 90.2,
+     "kv_read_mb": 268.4,
+     "prefill_tok_s": 104.3,
+     "prefill_ceiling_tok_s": 118.7,
+     "prefill_pct": 87.9
+    },
+    "8192": {
+     "input_tokens": 8192,
+     "decode_tok_s": 10.5,
+     "decode_ceiling_tok_s": 12.1,
+     "decode_pct": 87.1,
+     "kv_read_mb": 2147.5,
+     "prefill_tok_s": 89.0,
+     "prefill_ceiling_tok_s": 106.1,
+     "prefill_pct": 83.9
+    },
+    "32768": {
+     "input_tokens": 32768,
+     "decode_tok_s": 7.5,
+     "decode_ceiling_tok_s": 9.1,
+     "decode_pct": 82.1,
+     "kv_read_mb": 8589.9,
+     "prefill_tok_s": 66.4,
+     "prefill_ceiling_tok_s": 77.9,
+     "prefill_pct": 85.3
+    }
+   }
+  }
+ ]
+}
