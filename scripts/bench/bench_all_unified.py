@@ -32,7 +32,7 @@ sys.stdout.reconfigure(line_buffering=True)
 
 
 def run_bench_serving(base_url, model, input_len, output_len, num_prompts,
-                      request_rate="inf", timeout=300):
+                      request_rate="inf", timeout=300, max_concurrency=None):
     """Run sglang.bench_serving and parse TPOT/TTFT/throughput."""
     cmd = [
         sys.executable, "-m", "sglang.benchmark.serving",
@@ -50,6 +50,8 @@ def run_bench_serving(base_url, model, input_len, output_len, num_prompts,
         "--request-rate", str(request_rate),
         "--disable-tqdm",
     ]
+    if max_concurrency:
+        cmd += ["--max-concurrency", str(max_concurrency)]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True,
                                 timeout=timeout)
@@ -220,10 +222,10 @@ def main():
             print("-" * 45)
 
             for conc in conc_levels:
+                # 4c prompts with at most c in flight: the row is c live streams.
                 np = max(conc * 4, 4)
-                rr = 1 if conc == 1 else "inf"
                 r = run_bench_serving(base_url, model, 256, 256, np,
-                                      request_rate=rr, timeout=600)
+                                      request_rate="inf", timeout=600, max_concurrency=conc)
                 if r is None:
                     print(f"{conc:>5}  {'ERR':>10}  {'—':>8}  {'—':>10}")
                     throughput_results.append({
@@ -241,6 +243,8 @@ def main():
                 print(f"{conc:>5}  {tpot:>10.1f}  {tp:>8.1f}  {ttft:>10.1f}")
                 point = {
                     "concurrency": conc,
+                    "max_concurrency": conc,
+                    "num_prompts": np,
                     "tpot_ms": round(tpot, 1),
                     "tok_per_sec": round(tp, 1),
                     "ttft_ms": round(ttft, 1),

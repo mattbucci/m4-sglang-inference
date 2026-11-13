@@ -1,0 +1,51 @@
+{
+  "model": "q36-capped-sweep",
+  "model_id": "qwen36",
+  "engine": "SGLang + MLX",
+  "hardware": "Apple M4 Pro 64GB",
+  "timestamp": "2026-11-12 21:04:38",
+  "method": "sglang.benchmark.serving --random-range-ratio 1 (server-verified input tokens)",
+  "sglang_version": "v0.5.23-18-g99e3ad7e01",
+  "kv_cache_mode": "auto",
+  "output_tokens": 64,
+  "context_max": 32768,
+  "context_sweep": [],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "max_concurrency": 1,
+      "num_prompts": 4,
+      "tpot_ms": 9.9,
+      "tok_per_sec": 88.0,
+      "ttft_ms": 391.9,
+      "actual_input_tokens": 1024
+    },
+    {
+      "concurrency": 2,
+      "max_concurrency": 2,
+      "num_prompts": 8,
+      "tpot_ms": 19.9,
+      "tok_per_sec": 92.4,
+      "ttft_ms": 453.9,
+      "actual_input_tokens": 2048
+    },
+    {
+      "concurrency": 4,
+      "max_concurrency": 4,
+      "num_prompts": 16,
+      "tpot_ms": 38.1,
+      "tok_per_sec": 95.2,
+      "ttft_ms": 1022.1,
+      "actual_input_tokens": 4096
+    },
+    {
+      "concurrency": 8,
+      "max_concurrency": 8,
+      "num_prompts": 32,
+      "tpot_ms": 78.2,
+      "tok_per_sec": 91.8,
+      "ttft_ms": 2362.7,
+      "actual_input_tokens": 8192
+    }
+  ]
+}
