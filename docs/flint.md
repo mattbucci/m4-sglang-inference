@@ -33,7 +33,7 @@ checkpoint's own sampling, mean of two servers per checkpoint
   their 8-bit references. int4 is a different quantization: it disagrees with oQ8e on 17 %
   of greedy tokens on text it predicts equally well, and the BF16 weights that would say
   which is closer do not fit in 64 GB. The default stays oQ8e because the agentic cell
-  below was scored on it; an agentic cell on int4 decides a switch.
+  below was scored on it; the int4 agentic smoke engages 0/3 against 1/3.
 - **Concurrency:** int4 decodes at 103 / 136 / 182 tok/s aggregate for 1 / 2 / 4 streams
   (batched output is not bit-identical to single-request output, the usual
   non-batch-invariance of batched kernels).
@@ -147,5 +147,5 @@ Turn 2 of a 13.4K-token conversation starts in 0.6 s instead of 19 s
   smoke (`…/flint-oQ8e-omp-ilast-64k-sealed-2026-11-09/`, `i` moved last, no rewrites)
   is the lane configuration going forward: 366 of 366 calls well-formed, 0 omp
   rejections, 10 of 22 edits applied, same 1/3 engagement with every instance at the
-  cap. An agentic cell on int4 is the remaining Flint item: it decides the default
-  checkpoint.
+  cap. The same smoke on int4 (`…/flint-int4-omp-ilast-64k-sealed-2026-11-12/`) engages
+  0/3 with no `edit` call, so oQ8e stays the default checkpoint.

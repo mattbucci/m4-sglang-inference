@@ -1,0 +1,3 @@
+{"instance_id": "astropy__astropy-12907", "model_name_or_path": "sglang/flint", "model_patch": "", "rollout_returncode": 124, "rollout_seconds": 1206.5, "scaffold": "omp/18.12.2"}
+{"instance_id": "astropy__astropy-14182", "model_name_or_path": "sglang/flint", "model_patch": "", "rollout_returncode": 124, "rollout_seconds": 1205.8, "scaffold": "omp/18.12.2"}
+{"instance_id": "astropy__astropy-14365", "model_name_or_path": "sglang/flint", "model_patch": "", "rollout_returncode": 124, "rollout_seconds": 1230.5, "scaffold": "omp/18.12.2"}
