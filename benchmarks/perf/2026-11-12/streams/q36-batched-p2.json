@@ -1,0 +1,326 @@
+{
+ "tag": "q36-batched-p2",
+ "model": "qwen36",
+ "args": {
+  "port": 23334,
+  "streams": "1,2,4,8",
+  "prompt_words": 180,
+  "max_tokens": 200,
+  "repeats": 2,
+  "timeout": 1800,
+  "tag": "q36-batched-p2",
+  "out": "benchmarks/perf/2026-11-12/streams/q36-batched-p2.json"
+ },
+ "summary": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 100.07,
+   "aggregate_tok_s": 100.07,
+   "tpot_ms": 9.99,
+   "ttft_s": 0.34
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 70.24,
+   "aggregate_tok_s": 140.49,
+   "tpot_ms": 14.24,
+   "ttft_s": 0.52
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.15,
+   "aggregate_tok_s": 176.6,
+   "tpot_ms": 22.65,
+   "ttft_s": 1.11
+  },
+  {
+   "streams": 8,
+   "per_stream_tok_s": 25.02,
+   "aggregate_tok_s": 200.14,
+   "tpot_ms": 39.98,
+   "ttft_s": 2.43
+  }
+ ],
+ "rows": [
+  {
+   "streams": 1,
+   "per_stream_tok_s": 99.88899060520174,
+   "aggregate_tok_s": 99.88899060520174,
+   "tpot_ms": 10.011113276260545,
+   "ttft_s": 0.3439303330378607,
+   "window_s": 1.9922115419758484,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 99.88899060520174,
+   "wall_tok_s": 85.61123882890304,
+   "prompt_tokens": [
+    220
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1010000
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "73a220208ee7"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 71.38479184774869,
+   "aggregate_tok_s": 142.76958369549737,
+   "tpot_ms": 14.008586060358985,
+   "ttft_s": 0.5291675630141981,
+   "window_s": 2.7807043329812586,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 67.68412428857829,
+   "wall_tok_s": 114.9737307579016,
+   "prompt_tokens": [
+    223,
+    213
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2010000,
+    2010001
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "8d4c753c806f",
+    "152ebc2d4002"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 43.99372807024686,
+   "aggregate_tok_s": 175.97491228098744,
+   "tpot_ms": 22.73051282226532,
+   "ttft_s": 1.1028754272847436,
+   "window_s": 4.5063241670141,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 42.11749592773442,
+   "wall_tok_s": 136.40010400920585,
+   "prompt_tokens": [
+    213,
+    214,
+    216,
+    213
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4010000,
+    4010001,
+    4010002,
+    4010003
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "7934cad95f5e",
+    "2f40b000d65a",
+    "31215638c20a",
+    "d89aabaa9a53"
+   ]
+  },
+  {
+   "streams": 8,
+   "per_stream_tok_s": 25.26233956535318,
+   "aggregate_tok_s": 202.09871652282544,
+   "tpot_ms": 39.584615566306496,
+   "ttft_s": 2.4488194268924417,
+   "window_s": 7.842701959074475,
+   "window_tokens": 1585.0,
+   "first_to_last_tok_s": 24.626084316322746,
+   "wall_tok_s": 151.02781804116162,
+   "prompt_tokens": [
+    218,
+    215,
+    218,
+    212,
+    217,
+    220,
+    221,
+    215
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    8010000,
+    8010001,
+    8010002,
+    8010003,
+    8010004,
+    8010005,
+    8010006,
+    8010007
+   ],
+   "repeat": 0,
+   "text_sha": [
+    "7c0c7934b7af",
+    "b8f4b58746dc",
+    "733b7c7f0b23",
+    "fbedc62f204b",
+    "a3887ff6179d",
+    "d5ec8f919ecf",
+    "70a915b0fe6a",
+    "b47a78862e8b"
+   ]
+  },
+  {
+   "streams": 1,
+   "per_stream_tok_s": 100.25688726132367,
+   "aggregate_tok_s": 100.25688726132367,
+   "tpot_ms": 9.97437709584439,
+   "ttft_s": 0.32916870794724673,
+   "window_s": 1.9849010420730338,
+   "window_tokens": 199.0,
+   "first_to_last_tok_s": 100.25688726132367,
+   "wall_tok_s": 86.42781834827892,
+   "prompt_tokens": [
+    215
+   ],
+   "completion_tokens": [
+    200
+   ],
+   "seeds": [
+    1020000
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "249664f1681d"
+   ]
+  },
+  {
+   "streams": 2,
+   "per_stream_tok_s": 69.10030175649081,
+   "aggregate_tok_s": 138.20060351298162,
+   "tpot_ms": 14.471716831628262,
+   "ttft_s": 0.5018484584870748,
+   "window_s": 2.87263579107821,
+   "window_tokens": 397.0,
+   "first_to_last_tok_s": 65.7168136264636,
+   "wall_tok_s": 113.02726733448232,
+   "prompt_tokens": [
+    216,
+    212
+   ],
+   "completion_tokens": [
+    200,
+    200
+   ],
+   "seeds": [
+    2020000,
+    2020001
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "ab594c165f70",
+    "47d9e15271c2"
+   ]
+  },
+  {
+   "streams": 4,
+   "per_stream_tok_s": 44.308502952922325,
+   "aggregate_tok_s": 177.2340118116893,
+   "tpot_ms": 22.569031525675726,
+   "ttft_s": 1.116383083513938,
+   "window_s": 4.474310499965213,
+   "window_tokens": 793.0,
+   "first_to_last_tok_s": 42.36163158951602,
+   "wall_tok_s": 136.67094991043547,
+   "prompt_tokens": [
+    216,
+    220,
+    217,
+    215
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    4020000,
+    4020001,
+    4020002,
+    4020003
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "4965b8263814",
+    "4f4d8d829fa1",
+    "40d3e7447309",
+    "f1c1515826d6"
+   ]
+  },
+  {
+   "streams": 8,
+   "per_stream_tok_s": 24.77175807259222,
+   "aggregate_tok_s": 198.17406458073776,
+   "tpot_ms": 40.368551843173876,
+   "ttft_s": 2.4124217603966827,
+   "window_s": 7.9980193339288235,
+   "window_tokens": 1585.0,
+   "first_to_last_tok_s": 24.168239384432056,
+   "wall_tok_s": 149.42296179548876,
+   "prompt_tokens": [
+    221,
+    215,
+    219,
+    219,
+    223,
+    214,
+    213,
+    217
+   ],
+   "completion_tokens": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+   ],
+   "seeds": [
+    8020000,
+    8020001,
+    8020002,
+    8020003,
+    8020004,
+    8020005,
+    8020006,
+    8020007
+   ],
+   "repeat": 1,
+   "text_sha": [
+    "2d76e191fca2",
+    "291b09721c43",
+    "60bc10b086f4",
+    "815538ce0783",
+    "3db4a4d9f682",
+    "9a8ac7abcf7c",
+    "b5a0ee128a12",
+    "0c4a331c7ff8"
+   ]
+  }
+ ]
+}
