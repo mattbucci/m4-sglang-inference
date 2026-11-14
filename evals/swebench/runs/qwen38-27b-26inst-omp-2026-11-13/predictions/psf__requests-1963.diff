@@ -1,0 +1,97 @@
+diff --git a/_smoke_1963.py b/_smoke_1963.py
+new file mode 100644
+index 0000000..b18c44f
+--- /dev/null
++++ b/_smoke_1963.py
+@@ -0,0 +1,69 @@
++"""Smoke test for issue 1963: redirect chain method persistence.
++
++POST /do_something
++  -> 303 See Other /new_thing_1513        (must become GET)
++  -> 307 Temporary Redirect //failover... (must stay GET, not revert to POST)
++  -> 200
++
++Also verifies a plain 301 POST -> GET chain still works.
++"""
++from unittest import mock
++import requests
++from requests import Request, Session
++
++
++def _resp(code, location=None):
++    r = requests.Response()
++    r.status_code = code
++    if location:
++        r.headers['location'] = location
++    r.url = 'http://server.example.com/do_something'
++    if location and not location.startswith('//'):
++        r.url = 'http://server.example.com' + location
++    r._content = b''
++    r.raw = mock.Mock(release_conn=lambda: None)
++    r._original_response = None
++    r.request = None
++    return r
++
++
++def run_chain(statuses, initial='POST'):
++    STATE = {'sends': []}
++
++    def fake_send(self, prepared_request, **kwargs):
++        STATE['sends'].append(prepared_request.method)
++        idx = len(STATE['sends']) - 1
++        status = statuses[idx] if idx < len(statuses) else 200
++        loc = None
++        if status == 303:
++            loc = '/new_thing_1513'
++        elif status == 307:
++            loc = '//failover.example.com/new_thing_1513'
++        elif status == 301:
++            loc = '/moved_thing'
++        return _resp(status, loc)
++
++    with mock.patch.object(Session, 'send', fake_send):
++        s = Session()
++        req = Request(initial, 'http://server.example.com/do_something',
++                      data={'k': 'v'}).prepare()
++        resp = _resp(statuses[0], '/new_thing_1513')
++        for r in s.resolve_redirects(resp, req):
++            pass
++    return STATE['sends']
++
++
++m = run_chain([303, 307])
++print("303->307 methods:", m)
++assert m == ['POST', 'GET', 'GET'], "FAIL: %r" % m
++print("PASS: 303 converted POST->GET; subsequent 307 preserved GET")
++
++m = run_chain([301])
++print("301 methods:", m)
++assert m == ['POST', 'GET'], "FAIL: %r" % m
++print("PASS: 301 still converts POST->GET")
++
++m = run_chain([307, 301])
++print("307->301 methods:", m)
++assert m == ['POST', 'POST', 'GET'], "FAIL: %r" % m
++print("PASS: 307 preserves POST; 301 then converts POST->GET")
+diff --git a/requests/sessions.py b/requests/sessions.py
+index 425db22..4b4e3f2 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -101,7 +101,7 @@ class SessionRedirectMixin(object):
+             url = resp.headers['location']
+             method = req.method
+ 
+-            # Handle redirection without scheme (see: RFC 1808 Section 4)
++
+             if url.startswith('//'):
+                 parsed_rurl = urlparse(resp.url)
+                 url = '%s:%s' % (parsed_rurl.scheme, url)
+@@ -136,6 +136,8 @@ class SessionRedirectMixin(object):
+                 method = 'GET'
+ 
+             prepared_request.method = method
++            # persist across redirects (e.g. 303 → GET, then 307 preserves GET)
++            req.method = method
+ 
+             # https://github.com/kennethreitz/requests/issues/1084
+             if resp.status_code not in (codes.temporary, codes.resume):

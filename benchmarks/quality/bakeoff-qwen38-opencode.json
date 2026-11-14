@@ -9,5 +9,5 @@
   "resolved_docker": null,
   "wall_min": null,
   "source": "evals/swebench/runs/qwen38-27b-community-26inst-sealed-2026-11-02",
-  "order": 4
+  "order": 8
 }

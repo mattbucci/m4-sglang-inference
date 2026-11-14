@@ -1,0 +1,72 @@
+diff --git a/src/_pytest/assertion/rewrite.py b/src/_pytest/assertion/rewrite.py
+index 157903faf..e6aa6dbad 100644
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -677,8 +677,9 @@ class AssertionRewriter(ast.NodeVisitor):
+                 and isinstance(item, ast.Expr)
+                 and isinstance(item.value, ast.Constant)
+             ):
++                # Only treat constant values as docstrings if they are strings
+                 doc = item.value.value
+-                if self.is_rewrite_disabled(doc):
++                if isinstance(doc, str) and self.is_rewrite_disabled(doc):
+                     return
+                 expect_docstring = False
+             elif (
+diff --git a/test_bug_reproduction.py b/test_bug_reproduction.py
+new file mode 100644
+index 000000000..c22708346
+--- /dev/null
++++ b/test_bug_reproduction.py
+@@ -0,0 +1 @@
++0
+\ No newline at end of file
+diff --git a/test_dont_rewrite.py b/test_dont_rewrite.py
+new file mode 100644
+index 000000000..4a501fa70
+--- /dev/null
++++ b/test_dont_rewrite.py
+@@ -0,0 +1,3 @@
++"""PYTEST_DONT_REWRITE"""
++def test_something():
++    assert True
+\ No newline at end of file
+diff --git a/test_integer_first.py b/test_integer_first.py
+new file mode 100644
+index 000000000..8d02f9e1e
+--- /dev/null
++++ b/test_integer_first.py
+@@ -0,0 +1,4 @@
++0
++
++def test_something():
++    assert True
+\ No newline at end of file
+diff --git a/test_string_first.py b/test_string_first.py
+new file mode 100644
+index 000000000..be27ac2b4
+--- /dev/null
++++ b/test_string_first.py
+@@ -0,0 +1,3 @@
++"""This is a docstring"""
++def test_something():
++    assert True
+\ No newline at end of file
+diff --git a/test_various_first.py b/test_various_first.py
+new file mode 100644
+index 000000000..bf357884b
+--- /dev/null
++++ b/test_various_first.py
+@@ -0,0 +1,11 @@
++123
++def test_number():
++    assert True
++
++"""This is a string docstring"""
++def test_string():
++    assert True
++
++# This should not cause issues
++42
++# Another integer
+\ No newline at end of file

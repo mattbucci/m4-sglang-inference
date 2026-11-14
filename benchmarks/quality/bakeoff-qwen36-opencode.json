@@ -10,5 +10,5 @@
   "wall_min": 87,
   "source": "evals/swebench/runs/qwen36-26inst-p023-2026-10-31",
   "local_source": "evals/swebench/runs/qwen36-26inst-omp-2026-11-08/README.md",
-  "order": 1
+  "order": 5
 }

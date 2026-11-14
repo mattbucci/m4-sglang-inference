@@ -1,0 +1,13 @@
+{
+  "key": "qwen3-moe-omp",
+  "label": "qwen3-moe, omp",
+  "preset": "qwen3-moe",
+  "scaffold": "omp",
+  "total_predictions": 26,
+  "non_empty": 11,
+  "resolved_local": 1,
+  "resolved_docker": null,
+  "wall_min": 58,
+  "source": "evals/swebench/runs/qwen3-moe-26inst-omp-2026-11-13",
+  "order": 3
+}

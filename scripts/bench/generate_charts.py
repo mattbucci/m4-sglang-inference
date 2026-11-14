@@ -581,7 +581,7 @@ SWEBENCH_SERIES = (
 )
 SWEBENCH_NOTE = (
     "26 SWE-bench Lite instances across 12 repositories, one attempt each, SGLang + MLX on an M4 Pro 64 GB. "
-    "A cell draws only the counts it has a receipt for: the dense 27B cells are unscored, and the Docker "
+    "A cell draws only the counts it has a receipt for: the opencode dense 27B cells are unscored, and the Docker "
     "count belongs to the export the 3090 rig scored. Per-cell summaries: benchmarks/quality/bakeoff-*.json.")
 
 

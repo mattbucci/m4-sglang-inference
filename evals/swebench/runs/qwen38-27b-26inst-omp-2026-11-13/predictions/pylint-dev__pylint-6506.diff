@@ -1,0 +1,70 @@
+diff --git a/pylint/__init__.py b/pylint/__init__.py
+index 3aa4b7f9..827c5419 100644
+--- a/pylint/__init__.py
++++ b/pylint/__init__.py
+@@ -10,6 +10,7 @@ from collections.abc import Sequence
+ from typing import NoReturn
+ 
+ from pylint.__pkginfo__ import __version__
++from pylint.config.exceptions import _UnrecognizedOptionError
+ 
+ # pylint: disable=import-outside-toplevel
+ 
+@@ -25,6 +26,8 @@ def run_pylint(argv: Sequence[str] | None = None) -> None:
+         PylintRun(argv or sys.argv[1:])
+     except KeyboardInterrupt:
+         sys.exit(1)
++    except _UnrecognizedOptionError:
++        sys.exit(32)
+ 
+ 
+ def run_epylint(argv: Sequence[str] | None = None) -> NoReturn:
+diff --git a/pylint/config/arguments_manager.py b/pylint/config/arguments_manager.py
+index f5bd88e3..21c96afc 100644
+--- a/pylint/config/arguments_manager.py
++++ b/pylint/config/arguments_manager.py
+@@ -259,6 +259,15 @@ class _ArgumentsManager:
+             arguments, self.config
+         )
+ 
++        unrecognized_options: list[str] = []
++        for opt in parsed_args:
++            if opt.startswith("--"):
++                unrecognized_options.append(opt[2:])
++            elif opt.startswith("-"):
++                unrecognized_options.append(opt[1:])
++        if unrecognized_options:
++            raise _UnrecognizedOptionError(options=unrecognized_options)
++
+         return parsed_args
+ 
+     def reset_parsers(self, usage: str = "") -> None:  # pragma: no cover
+diff --git a/pylint/config/config_initialization.py b/pylint/config/config_initialization.py
+index 24e453a7..41fe653d 100644
+--- a/pylint/config/config_initialization.py
++++ b/pylint/config/config_initialization.py
+@@ -70,19 +70,12 @@ def _config_initialization(
+ 
+     # Now we parse any options from the command line, so they can override
+     # the configuration file
+-    parsed_args_list = linter._parse_command_line_configuration(args_list)
+-
+-    # Check if there are any options that we do not recognize
+-    unrecognized_options: list[str] = []
+-    for opt in parsed_args_list:
+-        if opt.startswith("--"):
+-            unrecognized_options.append(opt[2:])
+-        elif opt.startswith("-"):
+-            unrecognized_options.append(opt[1:])
+-    if unrecognized_options:
+-        msg = ", ".join(unrecognized_options)
++    try:
++        parsed_args_list = linter._parse_command_line_configuration(args_list)
++    except _UnrecognizedOptionError as exc:
++        msg = ", ".join(exc.options)
+         linter.add_message("unrecognized-option", line=0, args=msg)
+-        raise _UnrecognizedOptionError(options=unrecognized_options)
++        raise
+ 
+     # Set the current module to configuration as we don't know where
+     # the --load-plugins key is coming from

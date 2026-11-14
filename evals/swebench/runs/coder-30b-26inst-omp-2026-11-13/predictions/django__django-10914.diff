@@ -1,0 +1,41 @@
+diff --git a/django/conf/global_settings.py b/django/conf/global_settings.py
+index acee9887d2..85cf2e94fa 100644
+--- a/django/conf/global_settings.py
++++ b/django/conf/global_settings.py
+@@ -304,12 +304,12 @@ FILE_UPLOAD_TEMP_DIR = None
+ 
+ # The numeric mode to set newly-uploaded files to. The value should be a mode
+ # you'd pass directly to os.chmod; see https://docs.python.org/library/os.html#files-and-directories.
+-FILE_UPLOAD_PERMISSIONS = None
++FILE_UPLOAD_PERMISSIONS = 0o644
+ 
+ # The numeric mode to assign to newly-created directories, when uploading files.
+ # The value should be a mode as you'd pass to os.chmod;
+ # see https://docs.python.org/library/os.html#files-and-directories.
+-FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
++FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o644
+ 
+ # Python module path where user will place custom format definition.
+ # The directory where this setting is pointing should contain subdirectories
+diff --git a/docs/ref/settings.txt b/docs/ref/settings.txt
+index 46e99af993..61c24bbe74 100644
+--- a/docs/ref/settings.txt
++++ b/docs/ref/settings.txt
+@@ -1467,7 +1467,7 @@ See also :setting:`DATA_UPLOAD_MAX_MEMORY_SIZE`.
+ ``FILE_UPLOAD_DIRECTORY_PERMISSIONS``
+ -------------------------------------
+ 
+-Default: ``None``
++Default: ``0o644``
+ 
+ The numeric mode to apply to directories created in the process of uploading
+ files.
+@@ -1484,7 +1484,7 @@ This value mirrors the functionality and caveats of the
+ ``FILE_UPLOAD_PERMISSIONS``
+ ---------------------------
+ 
+-Default: ``None``
++Default: ``0o644``
+ 
+ The numeric mode (i.e. ``0o644``) to set newly uploaded files to. For
+ more information about what these modes mean, see the documentation for

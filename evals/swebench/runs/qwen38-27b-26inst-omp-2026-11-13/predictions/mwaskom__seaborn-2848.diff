@@ -1,0 +1,67 @@
+diff --git a/seaborn/_oldcore.py b/seaborn/_oldcore.py
+index c9218c1..f7af703 100644
+--- a/seaborn/_oldcore.py
++++ b/seaborn/_oldcore.py
+@@ -121,6 +121,10 @@ class HueMapping(SemanticMapping):
+             elif map_type == "categorical":
+ 
+                 cmap = norm = None
++                # If an `order` has been specified, reduce the levels of the
++                # data so that only the listed values are mapped (GH2848)
++                if order is not None:
++                    data = data[remove_na(data.isin(list(order)))]
+                 levels, lookup_table = self.categorical_mapping(
+                     data, palette, order,
+                 )
+diff --git a/seaborn/relational.py b/seaborn/relational.py
+index b1762ca..2b925e6 100644
+--- a/seaborn/relational.py
++++ b/seaborn/relational.py
+@@ -622,11 +622,16 @@ def lineplot(
+         sort=sort, err_style=err_style, err_kws=err_kws, legend=legend,
+         errorbar=errorbar,
+     )
+-
+     p.map_hue(palette=palette, order=hue_order, norm=hue_norm)
+     p.map_size(sizes=sizes, order=size_order, norm=size_norm)
+     p.map_style(markers=markers, dashes=dashes, order=style_order)
+ 
++    if hue is None:
++        # Filter out hue values that are not explicitly requested so that
++        # the user can represent a subset of the levels in the data (GH2848)
++        if hue_order is not None:
++            hue = hue[hue.isin(list(hue_order))]
++
+     if ax is None:
+         ax = plt.gca()
+ 
+@@ -747,11 +752,16 @@ def scatterplot(
+         estimator=estimator, ci=ci, n_boot=n_boot,
+         alpha=alpha, x_jitter=x_jitter, y_jitter=y_jitter, legend=legend,
+     )
+-
+     p.map_hue(palette=palette, order=hue_order, norm=hue_norm)
+     p.map_size(sizes=sizes, order=size_order, norm=size_norm)
+     p.map_style(markers=markers, order=style_order)
+ 
++    if hue is None:
++        # Filter out hue values that are not explicitly requested so that
++        # the user can represent a subset of the levels in the data (GH2848)
++        if hue_order is not None:
++            hue = hue[hue.isin(list(hue_order))]
++
+     if ax is None:
+         ax = plt.gca()
+ 
+@@ -889,6 +899,11 @@ def relplot(
+     p.map_size(sizes=sizes, order=size_order, norm=size_norm)
+     p.map_style(markers=markers, dashes=dashes, order=style_order)
+ 
++    if "hue" in p.variables and hue is None and hue_order is not None:
++        # Filter out hue values that are not explicitly requested so that
++        # the user can represent a subset of the levels in the data (GH2848)
++        hue = hue[hue.isin(list(hue_order))]
++
+     # Extract the semantic mappings
+     if "hue" in p.variables:
+         palette = p._hue_map.lookup_table

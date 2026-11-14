@@ -1,0 +1,67 @@
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index b657a35cf..74372eba4 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -130,7 +130,6 @@ __bibtex__ = r"""@Article{Hunter:2007,
+ }"""
+ 
+ 
+-def __getattr__(name):
+     if name == "__version__":
+         import setuptools_scm
+         global __version__  # cache it.
+@@ -148,6 +147,20 @@ def __getattr__(name):
+         else:  # Get the version from the _version.py setuptools_scm file.
+             __version__ = _version.version
+         return __version__
++    elif name == "__version_info__":
++        # Parse version string into comparable tuple
++        import re
++        version_str = __getattr__("__version__")
++        # Handle version patterns like "3.5.0", "3.5.0.post1", "3.5.0rc1", etc.
++        version_parts = re.match(r'(\d+)\.(\d+)\.(\d+)(?:\.post(\d+))?(?:rc(\d+))?', version_str)
++        if version_parts:
++            major, minor, patch = version_parts.groups()[:3]
++            post = version_parts.group(4) or "0"
++            rc = version_parts.group(5) or "0"
++            return tuple(map(int, [major, minor, patch, post, rc]))
++        else:
++            # Fallback to a safe tuple
++            return tuple(map(int, version_str.split('.')[:3])) + (0, 0)
+     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+ 
+ 
+diff --git a/test_version_info.py b/test_version_info.py
+new file mode 100755
+index 000000000..f6a0188d0
+--- /dev/null
++++ b/test_version_info.py
+@@ -0,0 +1,27 @@
++#!/usr/bin/env python3
++"""Test script to verify __version_info__ implementation in matplotlib."""
++
++import sys
++sys.path.insert(0, 'lib')
++
++# Import matplotlib to test our changes
++import matplotlib
++
++# Test __version__
++version = matplotlib.__version__
++print(f"Version: {version}")
++
++# Test __version_info__
++version_info = matplotlib.__version_info__
++print(f"Version info: {version_info}")
++
++# Test that version_info can be compared
++print(f"Version info as tuple: {tuple(version_info)}")
++
++# Test comparison operations
++print(f"Version info > (3, 5, 0): {version_info > (3, 5, 0)}")
++print(f"Version info == (3, 5, 0): {version_info == (3, 5, 0)}")
++
++# Test with a version string that has post-release info
++# This should work with the regex pattern we implemented
++print("Test completed successfully!")
+\ No newline at end of file

@@ -1,0 +1,19 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 62631f7ff..6d3c1a537 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -109,10 +109,10 @@ def exclude_members_option(arg: Any) -> Union[object, Set[str]]:
+     return {x.strip() for x in arg.split(',') if x.strip()}
+ 
+ 
+-def inherited_members_option(arg: Any) -> Union[object, Set[str]]:
+-    """Used to convert the :members: option to auto directives."""
+-    if arg in (None, True):
+-        return 'object'
++    if isinstance(arg, str):
++        return {x.strip() for x in arg.split(',') if x.strip()}
++    elif isinstance(arg, list):
++        return {x.strip() for x in arg if x.strip()}
+     else:
+         return arg
+ 

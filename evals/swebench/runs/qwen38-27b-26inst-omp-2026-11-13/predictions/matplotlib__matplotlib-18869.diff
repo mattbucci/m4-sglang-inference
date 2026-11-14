@@ -1,0 +1,79 @@
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index b657a35cf..a7408fc3c 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -130,6 +130,61 @@ __bibtex__ = r"""@Article{Hunter:2007,
+ }"""
+ 
+ 
++_version_info = namedtuple(
++    "version_info",
++    "major minor micro micro_release status serial")
++
++
++def _parse_version_info(version: str) -> _version_info:
++    """Convert a version string to a version tuple."""
++    # Remove the local version identifier (e.g., +g1234567.20210101).
++    version = version.split("+")[0].split(".")
++    if version[0] == "0":
++        # 0.1, 0.2, ...
++        if len(version) == 1:
++            return _version_info(int(version[0]), 0, 0, 0, "final", 0)
++        return _version_info(int(version[0]), int(version[1]), 0, 0, "final", 0)
++    elif len(version) == 3:
++        # 1.0, 2.0, 3.0, ...
++        if version[2].isdigit():
++            return _version_info(int(version[0]), int(version[1]), int(version[2]),
++                                 0, "final", 0)
++        else:
++            # 1.0rc1, 2.0rc2, 1.0.post1, 2.0.dev1, ...
++            match = re.match(r"(\d*)([a-z.]*)(\d*)", version[2])
++            if match:
++                micro, status, serial = match.groups()
++                return _version_info(int(version[0]), int(version[1]),
++                                     int(micro) if micro else 0,
++                                     int(serial) if serial else 0,
++                                     status.strip(".") or "final",
++                                     int(serial) if serial else 0)
++            else:
++                return _version_info(int(version[0]), int(version[1]),
++                                     0, 0, version[2], 0)
++    elif len(version) == 4:
++        # 1.0.1, 2.0.1, ...
++        if version[3].isdigit():
++            return _version_info(int(version[0]), int(version[1]), int(version[2]),
++                                 int(version[3]), "final", 0)
++        else:
++            # 1.0.1rc1, 2.0.1rc2, 1.0.1.post1, 2.0.1.dev1, ...
++            match = re.match(r"(\d*)([a-z.]*)(\d*)", version[3])
++            if match:
++                micro_release, status, serial = match.groups()
++                return _version_info(int(version[0]), int(version[1]), int(version[2]),
++                                     int(micro_release) if micro_release else 0,
++                                     status.strip(".") or "final",
++                                     int(serial) if serial else 0)
++            else:
++                return _version_info(int(version[0]), int(version[1]), int(version[2]),
++                                     0, version[3], 0)
++    else:
++        # 1.0.1.post1, 2.0.1.post2, ...
++        return _version_info(int(version[0]), int(version[1]), int(version[2]),
++                             0, ".".join(version[3:]), 0)
++
++
+ def __getattr__(name):
+     if name == "__version__":
+         import setuptools_scm
+@@ -148,6 +203,12 @@ def __getattr__(name):
+         else:  # Get the version from the _version.py setuptools_scm file.
+             __version__ = _version.version
+         return __version__
++    if name == "__version_info__":
++        version = globals().get("__version__", _version.version)
++        if "__version_info__" not in globals():
++            global __version_info__  # cache it.
++            __version_info__ = _parse_version_info(version)
++        return globals()["__version_info__"]
+     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+ 
+ 

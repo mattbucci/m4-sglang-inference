@@ -1,0 +1,67 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..94a0469a4a 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1661,12 +1661,8 @@ class EmailField(CharField):
+ class FilePathField(Field):
+     description = _("File path")
+ 
+-    def __init__(self, verbose_name=None, name=None, path='', match=None,
+-                 recursive=False, allow_files=True, allow_folders=False, **kwargs):
+-        self.path, self.match, self.recursive = path, match, recursive
+-        self.allow_files, self.allow_folders = allow_files, allow_folders
+-        kwargs.setdefault('max_length', 100)
+-        super().__init__(verbose_name, name, **kwargs)
++        if callable(self.path):
++            self.path = self.path()
+ 
+     def check(self, **kwargs):
+         return [
+@@ -1708,15 +1704,8 @@ class FilePathField(Field):
+         return str(value)
+ 
+     def formfield(self, **kwargs):
+-        return super().formfield(**{
+-            'path': self.path,
+-            'match': self.match,
+-            'recursive': self.recursive,
+-            'form_class': forms.FilePathField,
+-            'allow_files': self.allow_files,
+-            'allow_folders': self.allow_folders,
+-            **kwargs,
+-        })
++        if callable(self.path):
++            self.path = self.path()
+ 
+     def get_internal_type(self):
+         return "FilePathField"
+diff --git a/patches/10924.patch b/patches/10924.patch
+new file mode 100644
+index 0000000000..5f534b563c
+--- /dev/null
++++ b/patches/10924.patch
+@@ -0,0 +1,24 @@
++diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
++index 643f009253..1f482c3a34 100644
++--- a/django/db/models/fields/__init__.py
+++++ b/django/db/models/fields/__init__.py
++@@ -1663,6 +1663,10 @@ class FilePathField(Field):
++         recursive=False, allow_files=True, allow_folders=False, **kwargs):
++         self.path, self.match, self.recursive = path, match, recursive
++         self.allow_files, self.allow_folders = allow_files, allow_folders
+++        if callable(self.path):
+++            self.path = self.path()
+++
++         kwargs.setdefault('max_length', 100)
++         super().__init__(verbose_name, name, **kwargs)
++
++@@ -1710,6 +1714,10 @@ class FilePathField(Field):
++         return "FilePathField"
++
++     def formfield(self, **kwargs):
+++        if callable(self.path):
+++            self.path = self.path()
+++
++         return super().formfield(**{
++             'path': self.path,
++             'match': self.match,

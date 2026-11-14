@@ -46,11 +46,12 @@ across all 12 ecosystems in the 26-instance test set.**
 | Rank | Preset | Why | Agentic verdict |
 |:----:|--------|-----|-----------------|
 | **1** | **`qwen36`** (Qwen3.6-35B-A3B-4bit) | Only model to complete the agentic loop on M4 in a 9-model bake-off; MoE 3B-active decode speed appears load-bearing. Use with [`no_thinking_proxy`](../evals/swebench/no_thinking_proxy.py). | engagement 26/26; **Docker 9/26 = 34.6%** |
-| 2 | `qwen36-27b` + Qwopus3.8-27B-Coder-Flash or stock Qwen3.8-27B | Dense DeltaNet 27B at 13 tok/s with thinking always on: finds the right file nearly as often as qwen36 but half the instances hit a 30-minute cap; the coding fine-tune and its base trade instances rather than one dominating. | engagement 23/26 (Qwopus), 22/26 (stock); Docker scoring pending |
+| 2 | `qwen36-27b` + Qwopus3.8-27B-Coder-Flash or stock Qwen3.8-27B | Dense DeltaNet 27B at 13 tok/s with thinking always on: finds the right file nearly as often as qwen36 but half the instances hit a 30-minute cap; the coding fine-tune and its base trade instances rather than one dominating. Stock Qwen3.8-27B under omp writes 24/26 patches and resolves the most on the local scorer, in 476 min against 81. | omp: engagement 24/26, local 6/26 (stock); opencode: 23/26 (Qwopus), 22/26 (stock); Docker scoring pending |
 | 3 | `qwen35` (Qwen3.5-27B-4bit) | Capability-equivalent to qwen36 at ~15× the wall time: same patches where qwen36 succeeds, same misses where it fails. | SWE-bench Lite 1/3 |
 | 4 | `flint` (Recursive Flint 40B-A2.5B oQ8e) | Trained for coding agents, but under omp it never ends its turn: 26-instance sealed cell, bash-only at 64K, 5/26 non-empty with every instance at the 1800 s cap (13 h), 0/26 on the local scorer; on 14 of the 21 empties it never attempts an edit. | engagement 5/26; local 0/26 |
-| 5 | `coder-30b` (Qwen3-Coder-30B-A3B-DWQ) | Best static HumanEval (95) and decode speed; use for direct chat-completion codegen. Under opencode the loop gives up after one `glob`. | 0 edits |
-| 6 | `gemma4-31b` | Top MMLU (92). Blocked at boot; zero tokens under opencode tool-call prompts when it did run. | 0 tool calls |
+| 5 | `coder-30b` (Qwen3-Coder-30B-A3B-DWQ) | Best static HumanEval (95) and decode speed; use for direct chat-completion codegen. Under omp it writes 25/26 patches (24 on the file qwen36 patches) but one resolves; under opencode the loop gives up after one `glob`. | omp: engagement 25/26, local 1/26 |
+| 6 | `qwen3-moe`, `nemotron-30b` | Fast decode, but under omp most sessions end without an edit: 11/26 and 10/26 non-empty patches. | local 1/26 each |
+| 7 | `gemma4-31b` | Top MMLU (92). Blocked at boot; zero tokens under opencode tool-call prompts when it did run. | 0 tool calls |
 
 Session endurance, the append-turn cost and the radix prefix cache on hybrids:
 [docs/long-context.md](long-context.md).

@@ -1,0 +1,23 @@
+diff --git a/requests/models.py b/requests/models.py
+index 0dc5556..b91640b 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -631,16 +631,8 @@ class Response(object):
+         available encoding based on the response.
+         """
+         def generate():
+-            try:
+-                # Special case for urllib3.
+-                try:
+-                    for chunk in self.raw.stream(chunk_size, decode_content=True):
+-                        yield chunk
+-                except IncompleteRead as e:
+-                    raise ChunkedEncodingError(e)
+-                except DecodeError as e:
+-                    raise ContentDecodingError(e)
+-            except AttributeError:
++            except socket.error as e:
++                raise requests.exceptions.ConnectionError(e)
+                 # Standard file-like object.
+                 while True:
+                     chunk = self.raw.read(chunk_size)

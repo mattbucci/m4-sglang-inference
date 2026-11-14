@@ -1,0 +1,28 @@
+diff --git a/requests/sessions.py b/requests/sessions.py
+index 425db22..e961367 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -148,9 +148,8 @@ class SessionRedirectMixin(object):
+             try:
+                 del headers['Cookie']
+             except KeyError:
+-                pass
+-
+-            extract_cookies_to_jar(prepared_request._cookies, prepared_request, resp.raw)
++        prepared_request.url = url
++        prepared_request.method = method
+             prepared_request._cookies.update(self.cookies)
+             prepared_request.prepare_cookies(prepared_request._cookies)
+ 
+diff --git a/setup.py b/setup.py
+index 879d94a..9dbb88b 100755
+--- a/setup.py
++++ b/setup.py
+@@ -22,6 +22,7 @@ packages = [
+     'requests.packages.urllib3.packages',
+     'requests.packages.urllib3.contrib',
+     'requests.packages.urllib3.packages.ssl_match_hostname'
++    'tests',
+ ]
+ 
+ requires = []

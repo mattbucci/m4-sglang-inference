@@ -1,0 +1,66 @@
+diff --git a/django/db/models/sql/compiler.py b/django/db/models/sql/compiler.py
+index 7649c39262..3d50978937 100644
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -20,20 +20,9 @@ FORCE = object()
+ 
+ 
+ class SQLCompiler:
+-    def __init__(self, query, connection, using):
+-        self.query = query
+-        self.connection = connection
+-        self.using = using
+-        self.quote_cache = {'*': '*'}
+-        # The select, klass_info, and annotations are needed by QuerySet.iterator()
+-        # these are set as a side-effect of executing the query. Note that we calculate
+-        # separately a list of extra select columns needed for grammatical correctness
+-        # of the query, but these columns are not included in self.select.
+-        self.select = None
+-        self.annotation_col_map = None
+-        self.klass_info = None
++        # Handle multiline SQL properly by removing newlines for duplicate detection
++        # but preserving the original SQL for actual execution
+         self.ordering_parts = re.compile(r'(.*)\s(ASC|DESC)(.*)')
+-        self._meta_ordering = None
+ 
+     def setup_query(self):
+         if all(self.query.alias_refcount[a] == 0 for a in self.query.alias_map):
+@@ -331,34 +320,14 @@ class SQLCompiler:
+         result = []
+         seen = set()
+ 
+-        for expr, is_ref in order_by:
+-            resolved = expr.resolve_expression(self.query, allow_joins=True, reuse=None)
+-            if self.query.combinator:
+-                src = resolved.get_source_expressions()[0]
+-                # Relabel order by columns to raw numbers if this is a combined
+-                # query; necessary since the columns can't be referenced by the
+-                # fully qualified name and the simple column names may collide.
+-                for idx, (sel_expr, _, col_alias) in enumerate(self.select):
+-                    if is_ref and col_alias == src.refs:
+-                        src = src.source
+-                    elif col_alias:
+-                        continue
+-                    if src == sel_expr:
+-                        resolved.set_source_expressions([RawSQL('%d' % (idx + 1), ())])
+-                        break
+-                else:
+-                    raise DatabaseError('ORDER BY term does not match any column in the result set.')
+-            sql, params = self.compile(resolved)
+             # Don't add the same column twice, but the order direction is
+             # not taken into account so we strip it. When this entire method
+             # is refactored into expressions, then we can check each part as we
+             # generate it.
+-            without_ordering = self.ordering_parts.search(sql).group(1)
+-            params_hash = make_hashable(params)
+-            if (without_ordering, params_hash) in seen:
+-                continue
+-            seen.add((without_ordering, params_hash))
+-            result.append((resolved, (sql, params, is_ref)))
++            # For multiline SQL (like RawSQL), normalize newlines to avoid
++            # incorrect duplicate detection
++            clean_sql = sql.replace('\n', ' ').replace('\r', ' ')
++            without_ordering = self.ordering_parts.search(clean_sql).group(1)
+         return result
+ 
+     def get_extra_select(self, order_by, select):

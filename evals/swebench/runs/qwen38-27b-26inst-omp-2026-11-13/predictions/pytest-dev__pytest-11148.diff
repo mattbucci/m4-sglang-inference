@@ -1,0 +1,88 @@
+diff --git a/changelog/11148.bugfix.rst b/changelog/11148.bugfix.rst
+new file mode 100644
+index 000000000..644682bbd
+--- /dev/null
++++ b/changelog/11148.bugfix.rst
+@@ -0,0 +1,4 @@
++Fixed an issue in ``--import-mode=importlib`` which would cause a module to be
++imported twice when running ``--doctest-modules``, and the module was already
++imported under its canonical name (for example when using PEP 420 namespace
++packages).
+diff --git a/src/_pytest/doctest.py b/src/_pytest/doctest.py
+index 455ad62cc..f4f6f8218 100644
+--- a/src/_pytest/doctest.py
++++ b/src/_pytest/doctest.py
+@@ -39,6 +39,7 @@ from _pytest.outcomes import OutcomeException
+ from _pytest.outcomes import skip
+ from _pytest.pathlib import fnmatch_ex
+ from _pytest.pathlib import import_path
++from _pytest.pathlib import module_name_from_path
+ from _pytest.python import Module
+ from _pytest.python_api import approx
+ from _pytest.warning_types import PytestWarning
+@@ -536,7 +537,13 @@ class DoctestModule(Module):
+                         tests, obj, name, module, source_lines, globs, seen
+                     )
+ 
+-        if self.path.name == "conftest.py":
++        module_name = module_name_from_path(self.path, self.config.rootpath)
++        if module_name in sys.modules:
++            # The module is already imported, most likely because we want to run the doctests
++            # of a module imported by a test module. Just use the existing module, to avoid
++            # importing it again under a different name (see #11148).
++            module = sys.modules[module_name]
++        elif self.path.name == "conftest.py":
+             module = self.config.pluginmanager._importconftest(
+                 self.path,
+                 self.config.getoption("importmode"),
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..11da33043 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -1,7 +1,7 @@
+ import atexit
+ import contextlib
+ import fnmatch
+-import importlib.util
++import importlib
+ import itertools
+ import os
+ import shutil
+@@ -639,18 +639,25 @@ def insert_missing_modules(modules: Dict[str, ModuleType], module_name: str) ->
+     while module_name:
+         if module_name not in modules:
+             try:
+-                # If sys.meta_path is empty, calling import_module will issue
+-                # a warning and raise ModuleNotFoundError. To avoid the
+-                # warning, we check sys.meta_path explicitly and raise the error
+-                # ourselves to fall back to creating a dummy module.
+-                if not sys.meta_path:
+-                    raise ModuleNotFoundError
+-                module = importlib.import_module(module_name)
+-            except ModuleNotFoundError:
+-                module = ModuleType(
+-                    module_name,
+-                    doc="Empty module created by pytest's importmode=importlib.",
+-                )
++                module = sys.modules[module_name]
++            except KeyError:
++                try:
++                    # If the module is not in sys.modules, try to import it. This will pick up
++                    # a module already imported under a different name, for example when using
++                    # an installed namespace package, and prevent it from being imported twice.
++                    if not sys.meta_path:
++                        # If sys.meta_path is empty, calling import_module will issue
++                        # a warning and raise ModuleNotFoundError. To avoid the
++                        # warning, we check sys.meta_path explicitly and raise the error
++                        # ourselves to fall back to creating a dummy module.
++                        raise ModuleNotFoundError
++                    module = importlib.import_module(module_name)
++                except ModuleNotFoundError:
++                    module = ModuleType(
++                        module_name,
++                        doc="Empty module created by pytest's importmode=importlib.",
++                    )
++                    sys.modules[module_name] = module
+         else:
+             module = modules[module_name]
+         if child_module:

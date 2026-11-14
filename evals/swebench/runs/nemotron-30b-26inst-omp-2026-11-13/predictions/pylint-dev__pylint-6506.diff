@@ -1,0 +1,297 @@
+diff --git a/pylint/__init__.py b/pylint/__init__.py
+index 3aa4b7f9..476e6a6d 100644
+--- a/pylint/__init__.py
++++ b/pylint/__init__.py
+@@ -15,6 +15,7 @@ from pylint.__pkginfo__ import __version__
+ 
+ 
+ def run_pylint(argv: Sequence[str] | None = None) -> None:
++    from pylint.config.exceptions import _UnrecognizedOptionError
+     """Run pylint.
+ 
+     argv can be a sequence of strings normally supplied as arguments on the command line
+@@ -25,6 +26,10 @@ def run_pylint(argv: Sequence[str] | None = None) -> None:
+         PylintRun(argv or sys.argv[1:])
+     except KeyboardInterrupt:
+         sys.exit(1)
++    except _UnrecognizedOptionError as exc:
++        # Print a user-friendly error message without traceback
++        print("pylint: error: unrecognized arguments: " + ", ".join(exc.options))
++        sys.exit(2)
+ 
+ 
+ def run_epylint(argv: Sequence[str] | None = None) -> NoReturn:
+@@ -82,8 +87,7 @@ def modify_sys_path() -> None:
+     if env_pythonpath.startswith(":") and env_pythonpath not in (f":{cwd}", ":."):
+         sys.path.pop(0)
+     elif env_pythonpath.endswith(":") and env_pythonpath not in (f"{cwd}:", ".:"):
+-        sys.path.pop(1)
+-
+-
+-version = __version__
+-__all__ = ["__version__", "version", "modify_sys_path"]
++        # Print a user-friendly error message without traceback
++        print(f"pylint: error: unrecognized arguments: {,
++"exc.options}")
++        sys.exit(2)
+diff --git a/pylint/__init__.py.backup b/pylint/__init__.py.backup
+new file mode 100644
+index 00000000..2d5e1b33
+--- /dev/null
++++ b/pylint/__init__.py.backup
+@@ -0,0 +1,94 @@
++# Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
++# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
++# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
++
++from __future__ import annotations
++
++import os
++import sys
++from collections.abc import Sequence
++from typing import NoReturn
++
++from pylint.__pkginfo__ import __version__
++
++# pylint: disable=import-outside-toplevel
++
++
++def run_pylint(argv: Sequence[str] | None = None) -> None:
++    """Run pylint.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.lint import Run as PylintRun
++
++    try:
++        PylintRun(argv or sys.argv[1:])
++    except KeyboardInterrupt:
++        sys.exit(1)
++
++
++def run_epylint(argv: Sequence[str] | None = None) -> NoReturn:
++    """Run epylint.
++
++    argv can be a list of strings normally supplied as arguments on the command line
++    """
++    from pylint.epylint import Run as EpylintRun
++
++    EpylintRun(argv)
++
++
++def run_pyreverse(argv: Sequence[str] | None = None) -> NoReturn:  # type: ignore[misc]
++    """Run pyreverse.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.pyreverse.main import Run as PyreverseRun
++
++    PyreverseRun(argv or sys.argv[1:])
++
++
++def run_symilar(argv: Sequence[str] | None = None) -> NoReturn:
++    """Run symilar.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.checkers.similar import Run as SimilarRun
++
++    SimilarRun(argv or sys.argv[1:])
++
++
++def modify_sys_path() -> None:
++    """Modify sys path for execution as Python module.
++
++    Strip out the current working directory from sys.path.
++    Having the working directory in `sys.path` means that `pylint` might
++    inadvertently import user code from modules having the same name as
++    stdlib or pylint's own modules.
++    CPython issue: https://bugs.python.org/issue33053
++
++    - Remove the first entry. This will always be either "" or the working directory
++    - Remove the working directory from the second and third entries
++      if PYTHONPATH includes a ":" at the beginning or the end.
++      https://github.com/PyCQA/pylint/issues/3636
++      Don't remove it if PYTHONPATH contains the cwd or '.' as the entry will
++      only be added once.
++    - Don't remove the working directory from the rest. It will be included
++      if pylint is installed in an editable configuration (as the last item).
++      https://github.com/PyCQA/pylint/issues/4161
++    """
++    sys.path.pop(0)
++    env_pythonpath = os.environ.get("PYTHONPATH", "")
++    cwd = os.getcwd()
++    if env_pythonpath.startswith(":") and env_pythonpath not in (f":{cwd}", ":."):
++        sys.path.pop(0)
++    elif env_pythonpath.endswith(":") and env_pythonpath not in (f"{cwd}:", ".:"):
++        sys.path.pop(1)
++
++
++version = __version__
++__all__ = ["__version__", "version", "modify_sys_path"]
++    except _UnrecognizedOptionError as exc:
++        # Print a user-friendly error message without traceback
++        print(f"pylint: error: unrecognized arguments: {,
++"exc.options}")
++        sys.exit(2)
+diff --git a/pylint/__init__.py.before_final_fix b/pylint/__init__.py.before_final_fix
+new file mode 100644
+index 00000000..476e6a6d
+--- /dev/null
++++ b/pylint/__init__.py.before_final_fix
+@@ -0,0 +1,93 @@
++# Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
++# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
++# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
++
++from __future__ import annotations
++
++import os
++import sys
++from collections.abc import Sequence
++from typing import NoReturn
++
++from pylint.__pkginfo__ import __version__
++
++# pylint: disable=import-outside-toplevel
++
++
++def run_pylint(argv: Sequence[str] | None = None) -> None:
++    from pylint.config.exceptions import _UnrecognizedOptionError
++    """Run pylint.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.lint import Run as PylintRun
++
++    try:
++        PylintRun(argv or sys.argv[1:])
++    except KeyboardInterrupt:
++        sys.exit(1)
++    except _UnrecognizedOptionError as exc:
++        # Print a user-friendly error message without traceback
++        print("pylint: error: unrecognized arguments: " + ", ".join(exc.options))
++        sys.exit(2)
++
++
++def run_epylint(argv: Sequence[str] | None = None) -> NoReturn:
++    """Run epylint.
++
++    argv can be a list of strings normally supplied as arguments on the command line
++    """
++    from pylint.epylint import Run as EpylintRun
++
++    EpylintRun(argv)
++
++
++def run_pyreverse(argv: Sequence[str] | None = None) -> NoReturn:  # type: ignore[misc]
++    """Run pyreverse.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.pyreverse.main import Run as PyreverseRun
++
++    PyreverseRun(argv or sys.argv[1:])
++
++
++def run_symilar(argv: Sequence[str] | None = None) -> NoReturn:
++    """Run symilar.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.checkers.similar import Run as SimilarRun
++
++    SimilarRun(argv or sys.argv[1:])
++
++
++def modify_sys_path() -> None:
++    """Modify sys path for execution as Python module.
++
++    Strip out the current working directory from sys.path.
++    Having the working directory in `sys.path` means that `pylint` might
++    inadvertently import user code from modules having the same name as
++    stdlib or pylint's own modules.
++    CPython issue: https://bugs.python.org/issue33053
++
++    - Remove the first entry. This will always be either "" or the working directory
++    - Remove the working directory from the second and third entries
++      if PYTHONPATH includes a ":" at the beginning or the end.
++      https://github.com/PyCQA/pylint/issues/3636
++      Don't remove it if PYTHONPATH contains the cwd or '.' as the entry will
++      only be added once.
++    - Don't remove the working directory from the rest. It will be included
++      if pylint is installed in an editable configuration (as the last item).
++      https://github.com/PyCQA/pylint/issues/4161
++    """
++    sys.path.pop(0)
++    env_pythonpath = os.environ.get("PYTHONPATH", "")
++    cwd = os.getcwd()
++    if env_pythonpath.startswith(":") and env_pythonpath not in (f":{cwd}", ":."):
++        sys.path.pop(0)
++    elif env_pythonpath.endswith(":") and env_pythonpath not in (f"{cwd}:", ".:"):
++        # Print a user-friendly error message without traceback
++        print(f"pylint: error: unrecognized arguments: {,
++"exc.options}")
++        sys.exit(2)
+diff --git a/temp_lines.txt b/temp_lines.txt
+new file mode 100644
+index 00000000..0df6af71
+--- /dev/null
++++ b/temp_lines.txt
+@@ -0,0 +1,5 @@
++    except _UnrecognizedOptionError as exc:
++        # Print a user-friendly error message without traceback
++        print(f"pylint: error: unrecognized arguments: {,
++"+ exc.options)}")
++        print("pylint: error: unrecognized arguments: " + ", ".join(exc.options))
+diff --git a/temp_run.py b/temp_run.py
+new file mode 100644
+index 00000000..5deb8c16
+--- /dev/null
++++ b/temp_run.py
+@@ -0,0 +1,16 @@
++def run_pylint(argv: Sequence[str] | None = None) -> None:
++    """Run pylint.
++
++    argv can be a sequence of strings normally supplied as arguments on the command line
++    """
++    from pylint.lint import Run as PylintRun
++    from pylint.config.exceptions import _UnrecognizedOptionError
++
++    try:
++        PylintRun(argv or sys.argv[1:])
++    except KeyboardInterrupt:
++        sys.exit(1)
++    except _UnrecognizedOptionError as exc:
++        # Print a user-friendly error message without traceback
++        print(f"pylint: error: unrecognized arguments: {', '.join(exc.options)}")
++        sys.exit(2)
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 00000000..283ea851
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,23 @@
++#!/usr/bin/env python3
++import subprocess
++import sys
++def test_unrecognized_option():
++    """Test that unrecognized option shows clean error without traceback"""
++    result = subprocess.run([
++        sys.executable, "-m", "pylint", "-Q"
++    ], capture_output=True, text=True)
++    print("Return code:", result.returncode)
++    print("STDOUT:")
++    print(result.stdout)
++    print("STDERR:")
++    print(result.stderr)
++    has_traceback = "Traceback" in result.stderr
++    print(f"Has traceback: {has_traceback}")
++    if has_traceback:
++        print("❌ FAIL: Still showing traceback")
++        return False
++    else:
++        print("✅ PASS: No traceback shown")
++    return True
++if __name__ == "__main__":
++    test_unrecognized_option()

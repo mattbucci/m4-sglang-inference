@@ -1,0 +1,15 @@
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index b657a35cf..5f9125183 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -131,9 +131,7 @@ __bibtex__ = r"""@Article{Hunter:2007,
+ 
+ 
+ def __getattr__(name):
+-    if name == "__version__":
+-        import setuptools_scm
+-        global __version__  # cache it.
++    version_info = tuple(map(int, __version__.split('.')))
+         # Only shell out to a git subprocess if really needed, and not on a
+         # shallow clone, such as those used by CI, as the latter would trigger
+         # a warning from setuptools_scm.

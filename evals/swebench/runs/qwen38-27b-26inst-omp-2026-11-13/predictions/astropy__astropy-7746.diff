@@ -1,0 +1,159 @@
+diff --git a/astropy/wcs/src/astropy_wcs.c b/astropy/wcs/src/astropy_wcs.c
+index 080598f7d..29913b81d 100644
+--- a/astropy/wcs/src/astropy_wcs.c
++++ b/astropy/wcs/src/astropy_wcs.c
+@@ -242,15 +242,19 @@ Wcs_all_pix2world(
+ 
+   /* Make the call */
+   Py_BEGIN_ALLOW_THREADS
+-  preoffset_array(pixcrd, origin);
+-  wcsprm_python2c(self->x.wcs);
+-  status = pipeline_all_pixel2world(&self->x,
+-                                    (unsigned int)PyArray_DIM(pixcrd, 0),
+-                                    (unsigned int)PyArray_DIM(pixcrd, 1),
+-                                    (double*)PyArray_DATA(pixcrd),
+-                                    (double*)PyArray_DATA(world));
+-  wcsprm_c2python(self->x.wcs);
+-  unoffset_array(pixcrd, origin);
++  if (PyArray_DIM(pixcrd, 0) == 0) {
++    status = 0;
++  } else {
++    preoffset_array(pixcrd, origin);
++    wcsprm_python2c(self->x.wcs);
++    status = pipeline_all_pixel2world(&self->x,
++                                      (unsigned int)PyArray_DIM(pixcrd, 0),
++                                      (unsigned int)PyArray_DIM(pixcrd, 1),
++                                      (double*)PyArray_DATA(pixcrd),
++                                      (double*)PyArray_DATA(world));
++    wcsprm_c2python(self->x.wcs);
++    unoffset_array(pixcrd, origin);
++  }
+   Py_END_ALLOW_THREADS
+   /* unoffset_array(world, origin); */
+ 
+diff --git a/astropy/wcs/src/wcslib_wrap.c b/astropy/wcs/src/wcslib_wrap.c
+index 1d7841ca1..f283539be 100644
+--- a/astropy/wcs/src/wcslib_wrap.c
++++ b/astropy/wcs/src/wcslib_wrap.c
+@@ -1262,31 +1262,35 @@ PyWcsprm_p2s(
+   Py_BEGIN_ALLOW_THREADS
+   ncoord = PyArray_DIM(pixcrd, 0);
+   nelem = PyArray_DIM(pixcrd, 1);
+-  preoffset_array(pixcrd, origin);
+-  wcsprm_python2c(&self->x);
+-  status = wcsp2s(
+-      &self->x,
+-      ncoord,
+-      nelem,
+-      (double*)PyArray_DATA(pixcrd),
+-      (double*)PyArray_DATA(imgcrd),
+-      (double*)PyArray_DATA(phi),
+-      (double*)PyArray_DATA(theta),
+-      (double*)PyArray_DATA(world),
+-      (int*)PyArray_DATA(stat));
+-  wcsprm_c2python(&self->x);
+-  unoffset_array(pixcrd, origin);
+-  /* unoffset_array(world, origin); */
+-  unoffset_array(imgcrd, origin);
+-  if (status == 8) {
+-    set_invalid_to_nan(
+-        ncoord, nelem, (double*)PyArray_DATA(imgcrd), (int*)PyArray_DATA(stat));
+-    set_invalid_to_nan(
+-        ncoord, 1, (double*)PyArray_DATA(phi), (int*)PyArray_DATA(stat));
+-    set_invalid_to_nan(
+-        ncoord, 1, (double*)PyArray_DATA(theta), (int*)PyArray_DATA(stat));
+-    set_invalid_to_nan(
+-        ncoord, nelem, (double*)PyArray_DATA(world), (int*)PyArray_DATA(stat));
++  if (ncoord == 0) {
++    status = 0;
++  } else {
++    preoffset_array(pixcrd, origin);
++    wcsprm_python2c(&self->x);
++    status = wcsp2s(
++        &self->x,
++        ncoord,
++        nelem,
++        (double*)PyArray_DATA(pixcrd),
++        (double*)PyArray_DATA(imgcrd),
++        (double*)PyArray_DATA(phi),
++        (double*)PyArray_DATA(theta),
++        (double*)PyArray_DATA(world),
++        (int*)PyArray_DATA(stat));
++    wcsprm_c2python(&self->x);
++    unoffset_array(pixcrd, origin);
++    /* unoffset_array(world, origin); */
++    unoffset_array(imgcrd, origin);
++    if (status == 8) {
++      set_invalid_to_nan(
++          ncoord, nelem, (double*)PyArray_DATA(imgcrd), (int*)PyArray_DATA(stat));
++      set_invalid_to_nan(
++          ncoord, 1, (double*)PyArray_DATA(phi), (int*)PyArray_DATA(stat));
++      set_invalid_to_nan(
++          ncoord, 1, (double*)PyArray_DATA(theta), (int*)PyArray_DATA(stat));
++      set_invalid_to_nan(
++          ncoord, nelem, (double*)PyArray_DATA(world), (int*)PyArray_DATA(stat));
++    }
+   }
+   Py_END_ALLOW_THREADS
+ 
+@@ -1405,31 +1409,35 @@ PyWcsprm_s2p(
+   Py_BEGIN_ALLOW_THREADS
+   ncoord = (int)PyArray_DIM(world, 0);
+   nelem = (int)PyArray_DIM(world, 1);
+-  /* preoffset_array(world, origin); */
+-  wcsprm_python2c(&self->x);
+-  status = wcss2p(
+-      &self->x,
+-      ncoord,
+-      nelem,
+-      (double*)PyArray_DATA(world),
+-      (double*)PyArray_DATA(phi),
+-      (double*)PyArray_DATA(theta),
+-      (double*)PyArray_DATA(imgcrd),
+-      (double*)PyArray_DATA(pixcrd),
+-      (int*)PyArray_DATA(stat));
+-  wcsprm_c2python(&self->x);
+-  /* unoffset_array(world, origin); */
+-  unoffset_array(pixcrd, origin);
+-  unoffset_array(imgcrd, origin);
+-  if (status == 9) {
+-    set_invalid_to_nan(
+-        ncoord, 1, (double*)PyArray_DATA(phi), (int*)PyArray_DATA(stat));
+-    set_invalid_to_nan(
+-        ncoord, 1, (double*)PyArray_DATA(theta), (int*)PyArray_DATA(stat));
+-    set_invalid_to_nan(
+-        ncoord, nelem, (double*)PyArray_DATA(imgcrd), (int*)PyArray_DATA(stat));
+-    set_invalid_to_nan(
+-        ncoord, nelem, (double*)PyArray_DATA(pixcrd), (int*)PyArray_DATA(stat));
++  if (ncoord == 0) {
++    status = 0;
++  } else {
++    /* preoffset_array(world, origin); */
++    wcsprm_python2c(&self->x);
++    status = wcss2p(
++        &self->x,
++        ncoord,
++        nelem,
++        (double*)PyArray_DATA(world),
++        (double*)PyArray_DATA(phi),
++        (double*)PyArray_DATA(theta),
++        (double*)PyArray_DATA(imgcrd),
++        (double*)PyArray_DATA(pixcrd),
++        (int*)PyArray_DATA(stat));
++    wcsprm_c2python(&self->x);
++    /* unoffset_array(world, origin); */
++    unoffset_array(pixcrd, origin);
++    unoffset_array(imgcrd, origin);
++    if (status == 9) {
++      set_invalid_to_nan(
++          ncoord, 1, (double*)PyArray_DATA(phi), (int*)PyArray_DATA(stat));
++      set_invalid_to_nan(
++          ncoord, 1, (double*)PyArray_DATA(theta), (int*)PyArray_DATA(stat));
++      set_invalid_to_nan(
++          ncoord, nelem, (double*)PyArray_DATA(imgcrd), (int*)PyArray_DATA(stat));
++      set_invalid_to_nan(
++          ncoord, nelem, (double*)PyArray_DATA(pixcrd), (int*)PyArray_DATA(stat));
++    }
+   }
+   Py_END_ALLOW_THREADS
+ 

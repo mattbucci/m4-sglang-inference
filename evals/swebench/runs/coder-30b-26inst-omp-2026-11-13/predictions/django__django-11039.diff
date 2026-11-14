@@ -1,0 +1,44 @@
+diff --git a/django/core/management/commands/sqlmigrate.py b/django/core/management/commands/sqlmigrate.py
+index f0b663222a..702675e667 100644
+--- a/django/core/management/commands/sqlmigrate.py
++++ b/django/core/management/commands/sqlmigrate.py
+@@ -55,8 +55,8 @@ class Command(BaseCommand):
+                 migration_name, app_label))
+         targets = [(app_label, migration.name)]
+ 
+-        # Show begin/end around output only for atomic migrations
+-        self.output_transaction = migration.atomic
++        # Show begin/end around output only for atomic migrations when the database supports rollback of DDL
++        self.output_transaction = migration.atomic and connection.features.can_rollback_ddl
+ 
+         # Make a plan that represents just the requested migrations and show SQL
+         # for it
+diff --git a/tests/migrations/test_commands.py b/tests/migrations/test_commands.py
+index 0e8fa9fdd1..60eb48d4be 100644
+--- a/tests/migrations/test_commands.py
++++ b/tests/migrations/test_commands.py
+@@ -743,8 +743,23 @@ class MigrateTests(MigrationTestBase):
+         with self.assertRaisesMessage(InconsistentMigrationHistory, msg):
+             call_command("migrate")
+         applied_migrations = recorder.applied_migrations()
+-        self.assertNotIn(("migrations", "0001_initial"), applied_migrations)
++    @override_settings(MIGRATION_MODULES={"migrations": "migrations.test_migrations"})
++    def test_sqlmigrate_with_non_rollback_ddl(self):
++        """
++        Transaction wrappers aren't shown when can_rollback_ddl is False,
++        even for atomic migrations.
++        """
++        # Mock connection.features.can_rollback_ddl to False
++        with mock.patch('django.db.connection.features.can_rollback_ddl', return_value=False):
++            out = io.StringIO()
++            call_command("sqlmigrate", "migrations", "0001", stdout=out)
++            output = out.getvalue().lower()
++            # Should not contain transaction statements
++            self.assertNotIn(connection.ops.start_transaction_sql().lower(), output)
++            self.assertNotIn(connection.ops.end_transaction_sql().lower(), output)
+ 
++    @override_settings(MIGRATION_MODULES={"migrations": "migrations.test_migrations_non_atomic"})
++    def test_sqlmigrate_for_non_atomic_migration(self):
+ 
+ class MakeMigrationsTests(MigrationTestBase):
+     """

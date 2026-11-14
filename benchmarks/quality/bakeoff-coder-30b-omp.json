@@ -1,0 +1,13 @@
+{
+  "key": "coder-30b-omp",
+  "label": "coder-30b, omp",
+  "preset": "coder-30b",
+  "scaffold": "omp",
+  "total_predictions": 26,
+  "non_empty": 25,
+  "resolved_local": 1,
+  "resolved_docker": null,
+  "wall_min": 147,
+  "source": "evals/swebench/runs/coder-30b-26inst-omp-2026-11-13",
+  "order": 1
+}

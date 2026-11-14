@@ -1,0 +1,13 @@
+{
+  "key": "nemotron-30b-omp",
+  "label": "nemotron-30b, omp",
+  "preset": "nemotron-30b",
+  "scaffold": "omp",
+  "total_predictions": 26,
+  "non_empty": 10,
+  "resolved_local": 1,
+  "resolved_docker": null,
+  "wall_min": 126,
+  "source": "evals/swebench/runs/nemotron-30b-26inst-omp-2026-11-13",
+  "order": 4
+}

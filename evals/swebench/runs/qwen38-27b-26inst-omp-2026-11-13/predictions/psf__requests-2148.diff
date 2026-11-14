@@ -1,0 +1,64 @@
+diff --git a/requests/exceptions.py b/requests/exceptions.py
+index a4ee9d6..214abd7 100644
+--- a/requests/exceptions.py
++++ b/requests/exceptions.py
+@@ -34,6 +34,12 @@ class HTTPError(RequestException):
+ class ConnectionError(RequestException):
+     """A Connection error occurred."""
+ 
++    def __init__(self, *args, **kwargs):
++        """Initialize ConnectionError with an optional
++        Request object in addition to the other parameters."""
++        request = kwargs.pop('request', None)
++        super(ConnectionError, self).__init__(request=request, *args, **kwargs)
++
+ 
+ class ProxyError(ConnectionError):
+     """A proxy error occurred."""
+@@ -46,6 +52,12 @@ class SSLError(ConnectionError):
+ class Timeout(RequestException):
+     """The request timed out."""
+ 
++    def __init__(self, *args, **kwargs):
++        """Initialize Timeout exception with an optional
++        Request object in addition to the other parameters."""
++        request = kwargs.pop('request', None)
++        super(Timeout, self).__init__(request=request, *args, **kwargs)
++
+ 
+ class URLRequired(RequestException):
+     """A valid URL is required to make a request."""
+diff --git a/requests/models.py b/requests/models.py
+index 0dc5556..8db5dd8 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -19,10 +19,10 @@ from .cookies import cookiejar_from_dict, get_cookie_header
+ from .packages.urllib3.fields import RequestField
+ from .packages.urllib3.filepost import encode_multipart_formdata
+ from .packages.urllib3.util import parse_url
+-from .packages.urllib3.exceptions import DecodeError
++from .packages.urllib3.exceptions import DecodeError, ProtocolError
+ from .exceptions import (
+     HTTPError, RequestException, MissingSchema, InvalidURL,
+-    ChunkedEncodingError, ContentDecodingError)
++    ChunkedEncodingError, ContentDecodingError, ConnectionError)
+ from .utils import (
+     guess_filename, get_auth_from_url, requote_uri,
+     stream_decode_response_unicode, to_key_val_list, parse_header_links,
+@@ -636,10 +636,14 @@ class Response(object):
+                 try:
+                     for chunk in self.raw.stream(chunk_size, decode_content=True):
+                         yield chunk
++                except ProtocolError as e:
++                    raise ConnectionError(e, request=self.request)
++                except OSError as e:
++                    raise ConnectionError(e, request=self.request)
+                 except IncompleteRead as e:
+-                    raise ChunkedEncodingError(e)
++                    raise ChunkedEncodingError(e, request=self.request)
+                 except DecodeError as e:
+-                    raise ContentDecodingError(e)
++                    raise ContentDecodingError(e, request=self.request)
+             except AttributeError:
+                 # Standard file-like object.
+                 while True:

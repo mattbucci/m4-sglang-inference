@@ -10,5 +10,5 @@
   "wall_min": null,
   "source": "evals/swebench/exports/qwen36-predictions.jsonl",
   "docker_source": "evals/swebench/exports/qwen36-docker-summary.json",
-  "order": 2
+  "order": 6
 }

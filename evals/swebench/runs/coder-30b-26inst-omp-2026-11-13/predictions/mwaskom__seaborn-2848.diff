@@ -1,0 +1,40 @@
+diff --git a/seaborn/axisgrid.py b/seaborn/axisgrid.py
+index 8526f44..e669c1b 100644
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1565,7 +1565,34 @@ class PairGrid(Grid):
+         else:
+             hue = data.get(self._hue_var)
+ 
+-        if "hue" not in kwargs:
++        # Fix: Only pass hue values that are in the hue_order to prevent
++        # errors when hue_order doesn't contain all values from the hue column
++        if "hue" not in kwargs and hue is not None:
++            # Create a filtered version of hue that only contains values in hue_order
++            # This prevents errors when some values in hue are not in hue_order
++            if self._hue_var is not None and self._hue_order is not None:
++                # Create a mask for values that are in the hue_order
++                mask = hue.isin(self._hue_order)
++                if not mask.all():
++                    # For functions that support hue, we need to make sure that
++                    # any hue values not in hue_order are filtered out or handled properly
++                    # Set non-matching values to None to avoid the isnan error
++                    filtered_hue = hue.copy()
++                    filtered_hue[~mask] = None
++                    kwargs.update({
++                        "hue": filtered_hue,
++                        "hue_order": self._hue_order,
++                        "palette": self._orig_palette,
++                    })
++                else:
++                    kwargs.update({
++                        "hue": hue, "hue_order": self._hue_order, "palette": self._orig_palette,
++                    })
++            else:
++                kwargs.update({
++                    "hue": hue, "hue_order": self._hue_order, "palette": self._orig_palette,
++                })
++        elif "hue" not in kwargs:
+             kwargs.update({
+                 "hue": hue, "hue_order": self._hue_order, "palette": self._orig_palette,
+             })

@@ -1,0 +1,20 @@
+diff --git a/sinc_patch.py b/sinc_patch.py
+new file mode 100644
+index 000000000..dbda103f8
+--- /dev/null
++++ b/sinc_patch.py
+@@ -0,0 +1,2 @@
++from sympy.functions import sinc
++from sympy import rewrite, simplify
+diff --git a/sympy/functions/elementary/trigonometric.py b/sympy/functions/elementary/trigonometric.py
+index b2a3f3d6a..574daf918 100644
+--- a/sympy/functions/elementary/trigonometric.py
++++ b/sympy/functions/elementary/trigonometric.py
+@@ -1,4 +1,6 @@
+-from __future__ import print_function, division
++from sympy.functions import sinc
++from sympy import rewrite, simplify
++from sympy import rewrite, simplify
+ 
+ from sympy.core.add import Add
+ from sympy.core.basic import sympify, cacheit

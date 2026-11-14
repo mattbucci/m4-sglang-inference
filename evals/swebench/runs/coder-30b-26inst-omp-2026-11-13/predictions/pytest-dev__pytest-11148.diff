@@ -1,0 +1,20 @@
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index e43310ef0..b2a1cfa96 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -521,9 +521,14 @@ def import_path(
+     if not path.exists():
+         raise ImportError(path)
+ 
+-    if mode is ImportMode.importlib:
+         module_name = module_name_from_path(path, root)
+ 
++        # Check if module is already loaded in sys.modules with the same file path
++        # This prevents duplicate modules when using importlib mode
++        for name, mod in sys.modules.items():
++            if name == module_name and hasattr(mod, '__file__') and mod.__file__ == str(path):
++                return mod
++
+         for meta_importer in sys.meta_path:
+             spec = meta_importer.find_spec(module_name, [str(path.parent)])
+             if spec is not None:

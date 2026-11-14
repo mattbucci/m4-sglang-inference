@@ -1,0 +1,84 @@
+diff --git a/astropy/io/ascii/qdp.py b/astropy/io/ascii/qdp.py
+index 83a4f004a..8b0390122 100644
+--- a/astropy/io/ascii/qdp.py
++++ b/astropy/io/ascii/qdp.py
+@@ -34,6 +34,8 @@ def _line_type(line, delimiter=None):
+     --------
+     >>> _line_type("READ SERR 3")
+     'command'
++    >>> _line_type("read terr 2 3")
++    'command'
+     >>> _line_type(" \\n    !some gibberish")
+     'comment'
+     >>> _line_type("   ")
+@@ -42,6 +44,8 @@ def _line_type(line, delimiter=None):
+     'data,1'
+     >>> _line_type(" 21345.45 1.53e-3 1e-3 .04 NO nan")
+     'data,6'
++    >>> _line_type(" 21345.45 1.53e-3 1e-3 .04 no NaN")
++    'data,6'
+     >>> _line_type(" 21345.45,1.53e-3,1e-3,.04,NO,nan", delimiter=',')
+     'data,6'
+     >>> _line_type(" 21345.45 ! a comment to disturb")
+@@ -50,6 +54,8 @@ def _line_type(line, delimiter=None):
+     'new'
+     >>> _line_type("NO,NO,NO,NO,NO", delimiter=',')
+     'new'
++    >>> _line_type("no, NO, no", delimiter=',')
++    'new'
+     >>> _line_type("N O N NOON OON O")
+     Traceback (most recent call last):
+         ...
+@@ -66,9 +72,9 @@ def _line_type(line, delimiter=None):
+     if delimiter is None:
+         sep = r"\s+"
+     _new_re = rf"NO({sep}NO)+"
+-    _data_re = rf"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*)"
++    _data_re = rf"({_decimal_re}|NO|nan)({sep}({_decimal_re}|NO|nan))*)"
+     _type_re = rf"^\s*((?P<command>{_command_re})|(?P<new>{_new_re})|(?P<data>{_data_re})?\s*(\!(?P<comment>.*))?\s*$"
+-    _line_type_re = re.compile(_type_re)
++    _line_type_re = re.compile(_type_re, re.IGNORECASE)
+     line = line.strip()
+     if not line:
+         return "comment"
+@@ -306,7 +312,7 @@ def _get_tables_from_qdp_file(qdp_file, input_colnames=None, delimiter=None):
+ 
+             values = []
+             for v in line.split(delimiter):
+-                if v == "NO":
++                if v.upper() == "NO":
+                     values.append(np.ma.masked)
+                 else:
+                     # Understand if number is int or float
+@@ -515,7 +521,12 @@ class QDPData(basic.BasicData):
+     """
+ 
+     splitter_class = QDPSplitter
+-    fill_values = [(core.masked, "NO")]
++    fill_values = [
++        (core.masked, "NO"),
++        (core.masked, "No"),
++        (core.masked, "nO"),
++        (core.masked, "no"),
++    ]
+     comment = "!"
+     write_comment = None
+ 
+@@ -544,6 +555,8 @@ class QDP(basic.Basic):
+     This file format can contain multiple tables, separated by a line full
+     of ``NO``s. Comments are exclamation marks, and missing values are single
+     ``NO`` entries. The delimiter is usually whitespace, more rarely a comma.
++    Commands and ``NO`` are not case-sensitive: e.g. ``read serr 1 2`` and
++    ``no`` are treated the same as ``READ SERR 1 2`` and ``NO``.
+     The QDP format differentiates between data and error columns. The table
+     above has commands::
+ 
+diff --git a/docs/changes/io.ascii/14365.bugfix.rst b/docs/changes/io.ascii/14365.bugfix.rst
+new file mode 100644
+index 000000000..ea6dd1e19
+--- /dev/null
++++ b/docs/changes/io.ascii/14365.bugfix.rst
+@@ -0,0 +1,3 @@
++``QDP`` reader no longer assumes that commands (``READ SERR``, ``READ TERR``)
++and missing-value entries (``NO``) in a QDP file must be upper case, which is
++consistent with the QDP specification, where these are case-insensitive.

@@ -74,11 +74,17 @@ qwen36 100 / 104 / 107 / 103 (205 at 8 with batched decode, see Presets).
 | Cell | Scaffold | Non-empty | Resolved | Wall |
 |------|----------|:---------:|:--------:|-----:|
 | **`qwen36`** | omp | 26/26 | local 4/26 | 81 min |
+| Qwen3.8-27B (`qwen36-27b`) | omp | 24/26 | **local 6/26** | 476 min |
+| `coder-30b` | omp | 25/26 | local 1/26 | 147 min |
+| `qwen3-moe` | omp | 11/26 | local 1/26 | 58 min |
+| `nemotron-30b` | omp | 10/26 | local 1/26 | 126 min |
+| `flint` (oQ8e, bash-only) | omp | 5/26 | local 0/26 | 13 h |
 | `qwen36` | opencode | 26/26 | local 5/26; **Docker 9/26 = 34.6 %** (21 scored) | 87 min |
 | Qwopus3.8-27B-Coder-Flash | opencode | 23/26 | awaits Docker scoring | 9–10 h |
 | Qwen3.8-27B | opencode | 22/26 | awaits Docker scoring | 9–10 h |
-| `flint` (oQ8e, bash-only) | omp | 5/26 | local 0/26 | 13 h |
 
+Qwen3.8-27B resolves the most on the local scorer at six times qwen36's wall (1800 s cap against
+900 s); the scorer cannot build 7–8 of the 26 environments, so local counts are a floor.
 One scaffold lane, omp 18.12.2 (the 3090's pin); harness variants are within noise, so the
 opencode cells stay comparable. The Docker score comes from the 3090 rig's harness. Sealed
 harness, per-cell notes and the model ranking: [docs/agentic.md](docs/agentic.md).

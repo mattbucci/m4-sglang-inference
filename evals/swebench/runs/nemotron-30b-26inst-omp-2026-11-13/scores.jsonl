@@ -1,0 +1,26 @@
+{"instance_id": "astropy__astropy-12907", "rollout_seconds": 303.1, "resolved": false, "patch_applied": false}
+{"instance_id": "astropy__astropy-14182", "rollout_seconds": 17.4, "resolved": false, "patch_applied": false}
+{"instance_id": "astropy__astropy-14365", "rollout_seconds": 371.7, "resolved": false, "patch_applied": false}
+{"instance_id": "astropy__astropy-14995", "rollout_seconds": 173.6, "resolved": false, "patch_applied": false}
+{"instance_id": "astropy__astropy-6938", "rollout_seconds": 17.1, "resolved": false, "patch_applied": false}
+{"instance_id": "astropy__astropy-7746", "rollout_seconds": 191.5, "resolved": false, "patch_applied": false}
+{"instance_id": "django__django-10914", "rollout_seconds": 219.7, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 1, "p2p_passed": 0, "p2p_total": 98, "score_seconds": 3.2}
+{"instance_id": "django__django-10924", "rollout_seconds": 247.2, "resolved": false, "patch_applied": false}
+{"instance_id": "django__django-11001", "rollout_seconds": 242.2, "resolved": false, "patch_applied": false}
+{"instance_id": "django__django-11019", "rollout_seconds": 76.8, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 16, "p2p_passed": 0, "p2p_total": 58, "score_seconds": 3.0}
+{"instance_id": "django__django-11039", "rollout_seconds": 108.0, "resolved": false, "patch_applied": false}
+{"instance_id": "matplotlib__matplotlib-18869", "rollout_seconds": 173.6, "resolved": false, "patch_applied": false}
+{"instance_id": "mwaskom__seaborn-2848", "rollout_seconds": 365.9, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 1, "p2p_passed": 50, "p2p_total": 50, "score_seconds": 15.4}
+{"instance_id": "pallets__flask-4045", "rollout_seconds": 164.8, "resolved": false, "patch_applied": false}
+{"instance_id": "psf__requests-1963", "rollout_seconds": 315.4, "resolved": false, "error": "install_fail"}
+{"instance_id": "psf__requests-2148", "rollout_seconds": 274.4, "resolved": false, "error": "install_fail"}
+{"instance_id": "pydata__xarray-3364", "rollout_seconds": 440.5, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 2, "p2p_passed": 33, "p2p_total": 110, "score_seconds": 5.5}
+{"instance_id": "pylint-dev__pylint-5859", "rollout_seconds": 411.8, "resolved": true, "patch_applied": true, "f2p_passed": 1, "f2p_total": 1, "p2p_passed": 10, "p2p_total": 10, "score_seconds": 3.2}
+{"instance_id": "pylint-dev__pylint-6506", "rollout_seconds": 284.5, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 2, "p2p_passed": 0, "p2p_total": 6, "score_seconds": 2.8}
+{"instance_id": "pytest-dev__pytest-11143", "rollout_seconds": 169.0, "resolved": false, "patch_applied": true, "f2p_passed": 0, "f2p_total": 1, "p2p_passed": 110, "p2p_total": 114, "score_seconds": 7.5}
+{"instance_id": "pytest-dev__pytest-11148", "rollout_seconds": 99.3, "resolved": false, "patch_applied": false}
+{"instance_id": "scikit-learn__scikit-learn-10297", "rollout_seconds": 804.3, "resolved": false, "error": "install_fail"}
+{"instance_id": "sphinx-doc__sphinx-10325", "rollout_seconds": 22.4, "resolved": false, "patch_applied": false}
+{"instance_id": "sphinx-doc__sphinx-10451", "rollout_seconds": 247.9, "resolved": false, "patch_applied": false}
+{"instance_id": "sympy__sympy-11400", "rollout_seconds": 904.6, "resolved": false, "patch_applied": false}
+{"instance_id": "sympy__sympy-11870", "rollout_seconds": 904.7, "resolved": false, "patch_applied": false}

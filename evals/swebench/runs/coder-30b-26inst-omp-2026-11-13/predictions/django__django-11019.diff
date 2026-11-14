@@ -1,0 +1,53 @@
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..2df741e848 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -70,11 +70,23 @@ class Media:
+ 
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        # Merge all js lists at once rather than sequentially to avoid
++        # introducing artificial ordering constraints that don't exist in
++        # the original media definitions
++        if not self._js_lists:
++            return []
++        # Filter out empty lists and merge all lists together
++        non_empty_lists = [lst for lst in self._js_lists if lst]
++        if not non_empty_lists:
++            return []
++        
++        # Merge all lists together in one operation instead of sequentially
++        # This avoids introducing artificial constraints between lists that
++        # didn't have dependencies in the original definitions
++        result = list(non_empty_lists[0])
++        for lst in non_empty_lists[1:]:
++            result = self.merge(result, lst)
++        return result
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))
+diff --git a/tests/forms_tests/tests/test_media.py b/tests/forms_tests/tests/test_media.py
+index 8cb484a15e..9f1596dbe5 100644
+--- a/tests/forms_tests/tests/test_media.py
++++ b/tests/forms_tests/tests/test_media.py
+@@ -571,3 +571,15 @@ class FormsMediaTestCase(SimpleTestCase):
+         # was never specified.
+         merged = widget3 + form1 + form2
+         self.assertEqual(merged._css, {'screen': ['a.css', 'b.css'], 'all': ['c.css']})
++
++    def test_merge_js_some_more(self):
++        widget1 = Media(js=['color-picker.js'])
++        widget2 = Media(js=['text-editor.js'])
++        widget3 = Media(js=['text-editor.js', 'text-editor-extras.js', 'color-picker.js'])
++
++        merged = widget1 + widget2 + widget3
++
++        # The correct order should be: text-editor.js, text-editor-extras.js, color-picker.js
++        # The previous implementation would incorrectly warn about order conflicts
++        # and produce a wrong order: text-editor-extras.js, color-picker.js, text-editor.js
++        self.assertEqual(merged._js, ['text-editor.js', 'text-editor-extras.js', 'color-picker.js'])

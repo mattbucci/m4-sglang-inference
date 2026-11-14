@@ -1,0 +1,35 @@
+diff --git a/sympy/functions/elementary/exponential.py b/sympy/functions/elementary/exponential.py
+index fbd80fc02..8697e824f 100644
+--- a/sympy/functions/elementary/exponential.py
++++ b/sympy/functions/elementary/exponential.py
+@@ -448,6 +448,12 @@ def _eval_rewrite_as_cos(self, arg):
+         I = S.ImaginaryUnit
+         return cos(I*arg) + I*cos(I*arg + S.Pi/2)
+ 
++    def _eval_rewrite_as_sinc(self, arg):
++        from sympy import sinc
++        I = S.ImaginaryUnit
++        # sinc(I*arg) == sin(arg)/arg, so exp(-2*I*arg) cancels to sin(arg)/arg.
++        return exp(-2*I*arg) * sinc(I*arg)
++
+     def _eval_rewrite_as_tanh(self, arg):
+         from sympy import tanh
+         return (1 + tanh(arg/2))/(1 - tanh(arg/2))
+diff --git a/sympy/functions/elementary/trigonometric.py b/sympy/functions/elementary/trigonometric.py
+index b2a3f3d6a..0e84b5af3 100644
+--- a/sympy/functions/elementary/trigonometric.py
++++ b/sympy/functions/elementary/trigonometric.py
+@@ -1819,6 +1819,13 @@ def _eval_rewrite_as_jn(self, arg):
+     def _eval_rewrite_as_sin(self, arg):
+         return sin(arg) / arg
+ 
++    def _eval_rewrite_as_exp(self, arg):
++        from sympy import exp
++        I = S.ImaginaryUnit
++        # exp(I*arg) - exp(-I*arg) == 2*I*sin(arg) for any arg, so this
++        # rewrite is valid without assumptions.
++        return (exp(I*arg) - exp(-I*arg)) / (2*I*arg)
++
+ 
+ ###############################################################################
+ ########################### TRIGONOMETRIC INVERSES ############################

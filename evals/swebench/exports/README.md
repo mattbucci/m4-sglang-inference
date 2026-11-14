@@ -23,6 +23,10 @@ predictions.jsonl    ────────►   score_docker.py --predictions
 
 ## Files
 
+- `{coder-30b,nemotron-30b,qwen3-moe,qwen38-27b}-omp-26inst-predictions.jsonl` — the same 26
+  instances under omp (`runs/<cell>-26inst-omp-2026-11-13/`): 25, 10, 11 and 24 non-empty
+  patches; local scorer 1, 1, 1 and 6 of 26; awaiting Docker scoring on the 3090.
+
 - `qwen36-p023-predictions.jsonl` — the same 26 instances rerun on
   SGLang v0.5.23 + patches 002–023 (`runs/qwen36-26inst-p023-2026-10-31/`):
   **26/26 non-empty patches**; awaiting Docker scoring on the 3090.
