@@ -1,22 +1,22 @@
 {
   "preset": "gemma4-31b",
-  "timestamp": "2026-05-18T00:16:25",
+  "timestamp": "2026-11-15T11:53:05",
   "probes": {
+    "defaults": {
+      "verdict": "STRONG",
+      "log": "<scratch>/gate-probe_defaults.log"
+    },
     "codegen": {
       "verdict": "STRONG",
-      "log": "/tmp/probe-trio-logs/gemma4-31b-codegen.log"
-    },
-    "thinking": {
-      "verdict": "THINKING VERIFIED",
-      "log": "/tmp/probe-trio-logs/gemma4-31b-thinking.log"
+      "log": "<scratch>/gate-probe_codegen.log"
     },
     "vision": {
       "verdict": "STRONG",
-      "log": "/tmp/probe-trio-logs/gemma4-31b-vision.log"
+      "log": "<scratch>/gate-probe_vision.log"
     },
-    "video": {
-      "verdict": "STRONG",
-      "log": "/tmp/probe-trio-logs/gemma4-31b-video.log"
+    "thinking": {
+      "verdict": "THINKING VERIFIED",
+      "log": "<scratch>/gate-probe_thinking.log"
     }
   }
 }

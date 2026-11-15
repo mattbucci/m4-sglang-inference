@@ -1,7 +1,7 @@
 # Apple Silicon Inference: SGLang + MLX on M4 Pro
 
 Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) with SGLang's
-native MLX backend: **SGLang v0.5.23** (`297e54f`) + 31 patches ([patches/README.md](patches/README.md)).
+native MLX backend: **SGLang v0.5.23** (`297e54f`) + 32 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
 than peak batch throughput. Known issues and open work are
@@ -114,7 +114,7 @@ Qwen3.8-27B, Qwopus3.8-27B-Coder-Flash, Qwen3.6-27B and Qwen3.5-9B-8bit chat tem
 ## Presets
 
 `[OK]` presets pass their gates (`validate_capabilities.py`, probe trio, chat-template check);
-`[WIP]` presets do not boot.
+`[WIP]` presets have not run them on this stack.
 
 | Preset | Model | Notes |
 |--------|-------|-------|
@@ -128,7 +128,8 @@ Qwen3.8-27B, Qwopus3.8-27B-Coder-Flash, Qwen3.6-27B and Qwen3.5-9B-8bit chat tem
 | `devstral` [OK] | Devstral 24B + image VLM | custom chat template (`scripts/devstral_chat_template.jinja`) |
 | `nemotron-30b` [OK] | NemotronH Mamba2+Attn+MoE | `nemotron_3` reasoning parser |
 | `flint` [OK] | Recursive Flint 40B-A2.5B coding-agent MoE | oQ8e default; `MODEL=RecursiveSI/flint-int4` decodes 56 % faster in 20 GB less, also oQ6e / oQ4e; [docs/flint.md](docs/flint.md) |
-| `gemma4`, `gemma4-31b` [WIP] | Gemma 4 26B MoE / 31B dense | boot failure: mlx-vlm Gemma 4 attention not recognised by the MLX attention contract |
+| `gemma4-31b` [OK] | Gemma 4 31B dense+VL (`gemma-4-31b-it-mxfp4`) | 4K context, radix cache off; validator 3/3, thinking VERIFIED, vision and codegen STRONG |
+| `gemma4` [WIP] | Gemma 4 26B MoE | shares the patch 042 attention path with `gemma4-31b`; gates not run |
 | `coder-next` | Qwen3-Coder-Next-80B | infeasible on 64 GB |
 | `smol-docling` | 256M VLM | smoke test only |
 
@@ -152,7 +153,7 @@ Receipts: `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`, `benchmarks/perf/2
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 31 patches + gates
+./scripts/setup.sh                          # conda env, SGLang v0.5.23, MLX deps, 32 patches + gates
 source scripts/common.sh                    # SGLANG_USE_MLX=1 and the MLX env; always before launching
 
 ./scripts/launch.sh qwen36                  # PRIMARY (any preset from the table above)
@@ -197,7 +198,7 @@ Python 3.12, ~200 GB disk for models. Reference rig: Mac mini (Mac16,11), M4 Pro
 
 | Component | Version |
 |-----------|---------|
-| SGLang | **v0.5.23** (`297e54f`) + 31 patches |
+| SGLang | **v0.5.23** (`297e54f`) + 32 patches |
 | MLX | 0.32.4 |
 | mlx-lm | git `736ab0d` (0.32.3.dev, carries the Flint model) |
 | mlx-vlm | 0.6.5 |
@@ -252,7 +253,7 @@ chat-template fixes: the 3090 pair (NVIDIA, AWQ_Marlin) and the R9700 pair (AMD 
 ## Repo map
 
 ```
-patches/                    # 31 numbered patches; see patches/README.md
+patches/                    # 32 numbered patches; see patches/README.md
 docs/                       # agentic, flint, long-context, performance-ceiling, quality
 experiments/                # Experiment specs (method, probes, dispositions)
 benchmarks/                 # Per-model JSON, regression baselines, dated receipts

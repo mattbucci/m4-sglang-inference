@@ -1,0 +1,169 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_contract.py
+@@ -12,6 +12,9 @@
+ # (``MlxModelRunner._attention_wrapper_batchable``), since the batched
+ # wrapper path calls ``inner.rope``.
+ ATTENTION_API_ATTRS = ("q_proj", "k_proj", "v_proj", "o_proj")
++# Gemma 4's full-attention layers (26B/31B, ``attention_k_eq_v``) take their
++# values from the key projection and carry no ``v_proj``.
++SHARED_KV_PROJECTION_ATTRS = ("q_proj", "k_proj", "o_proj")
+ # Any one of these satisfies the scale requirement (gpt_oss uses ``sm_scale``).
+ SCALE_ATTRS = ("scale", "sm_scale")
+ NUM_HEAD_ATTRS = ("n_heads", "num_heads", "num_attention_heads")
+@@ -63,9 +66,21 @@
+     return first_present_attr(module, SCALE_ATTRS)
+ 
+ 
++def shares_key_value_projection(module: Any) -> bool:
++    """True when the module's values are its raw key projection (no ``v_proj``)."""
++    return bool(getattr(module, "use_k_eq_v", False)) and not hasattr(
++        module, "v_proj"
++    )
++
++
+ def is_attention_module(module: Any) -> bool:
++    required = (
++        SHARED_KV_PROJECTION_ATTRS
++        if shares_key_value_projection(module)
++        else ATTENTION_API_ATTRS
++    )
+     return (
+-        all(hasattr(module, attr) for attr in ATTENTION_API_ATTRS)
++        all(hasattr(module, attr) for attr in required)
+         and any(hasattr(module, attr) for attr in SCALE_ATTRS)
+         and get_num_heads(module) is not None
+         and get_num_kv_heads(module) is not None
+@@ -87,9 +102,14 @@
+     """``(layer_types, window)`` from the container, else from its ``args``.
+ 
+     mlx-lm models keep their ``ModelArgs`` on ``args``; some (flint, ...)
+-    expose ``layer_types`` and the scalar window only there.
++    expose ``layer_types`` and the scalar window only there. mlx_vlm's
++    Gemma 4 text model keeps them on ``config``.
+     """
+-    for source in (container, getattr(container, "args", None)):
++    for source in (
++        container,
++        getattr(container, "args", None),
++        getattr(container, "config", None),
++    ):
+         if source is None:
+             continue
+         layer_types = getattr(source, "layer_types", None)
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.py
+@@ -19,6 +19,7 @@
+     get_head_dim,
+     get_num_heads,
+     get_num_kv_heads,
++    shares_key_value_projection,
+ )
+ from sglang.srt.hardware_backend.mlx.kv_cache.attention_kv_cache import (
+     ContiguousAttentionKVCache,
+@@ -247,6 +248,14 @@
+         object.__setattr__(self, "_head_dim", get_head_dim(inner))
+         object.__setattr__(self, "_has_q_norm", hasattr(inner, "q_norm"))
+         object.__setattr__(self, "_has_k_norm", hasattr(inner, "k_norm"))
++        # Gemma 4 (mlx_vlm): values pass through ``v_norm``; full-attention
++        # layers take them from the raw key projection (no ``v_proj``); and
++        # the layer unpacks ``(output, shared_kv, offset)`` from attention.
++        object.__setattr__(self, "_has_v_norm", hasattr(inner, "v_norm"))
++        object.__setattr__(self, "_k_eq_v", shares_key_value_projection(inner))
++        object.__setattr__(
++            self, "_returns_kv_tuple", hasattr(inner, "is_kv_shared_layer")
++        )
+         # Only pass sinks when the module has them: the kwarg requires a
+         # recent mlx and must not constrain models without sinks. gpt_oss
+         # names the learned per-head sink ``sinks``; flint ``softmax_offset``.
+@@ -292,7 +301,8 @@
+ 
+         q_proj_output = inner.q_proj(x)
+         keys = inner.k_proj(x)
+-        values = inner.v_proj(x)
++        # k_eq_v: the values are the key projection before ``k_norm``.
++        values = keys if self._k_eq_v else inner.v_proj(x)
+ 
+         head_dim = self._head_dim
+         if head_dim is None:
+@@ -320,6 +330,8 @@
+             queries = inner.q_norm(queries)
+         if self._has_k_norm:
+             keys = inner.k_norm(keys)
++        if self._has_v_norm:
++            values = inner.v_norm(values)
+ 
+         queries = queries.transpose(0, 2, 1, 3)
+         keys = keys.transpose(0, 2, 1, 3)
+@@ -395,7 +407,11 @@
+         output = output.transpose(0, 2, 1, 3).reshape(B, 1, -1)
+         if gate is not None:
+             output = output * mx.sigmoid(gate)
+-        return inner.o_proj(output)
++        output = inner.o_proj(output)
++        if self._returns_kv_tuple:
++            # No shared-KV layers on this path: the pair is not consumed.
++            return output, None, None
++        return output
+ 
+     def _mrope_decode(
+         self,
+diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
+@@ -1058,24 +1058,37 @@
+                 dtype = mx.float32
+         return n_kv_heads, head_dim, dtype
+ 
++    def _pooled_attention_layer_indices(self) -> tuple[int, ...]:
++        """Layers whose KV occupies the shared pool: the full-attention ones.
++
++        An all-sliding-window model has no pool; every attention layer then
++        stands in, purely to size the scheduler's token budget.
++        """
++        return tuple(
++            self._cache_layout.full_attention_layer_indices
++            or self._cache_layout.attention_layer_indices
++        )
++
+     def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
+-        """Return the uniform KV config shared by every attention layer.
++        """Return the uniform KV config shared by the pooled attention layers.
+ 
+-        Sizes the shared pool and the AOT kernels; sliding-window layers
+-        must match the same shape because they share the decode kernels.
++        Sizes the shared pool and the AOT kernels. Sliding-window layers keep
++        per-request windowed caches shaped by their own projections, so they
++        may differ (Gemma 4: 16 heads x 256 sliding, 4 heads x 512 full).
+         """
+         if self._cache_layout.num_attention_layers == 0:
+             raise RuntimeError(
+                 "Cannot determine attention config: no attention module found"
+             )
+-        first_layer_idx = self._cache_layout.first_attention_layer_index
++        pooled = self._pooled_attention_layer_indices()
++        first_layer_idx = pooled[0]
+         first_config = self._attention_kv_config_for_layer(first_layer_idx)
+-        for layer_idx in self._cache_layout.attention_layer_indices[1:]:
++        for layer_idx in pooled[1:]:
+             config = self._attention_kv_config_for_layer(layer_idx)
+             if config != first_config:
+                 raise NotImplementedError(
+                     "MLX attention KV caching requires uniform softmax-attention "
+-                    "KV shape across layers. "
++                    "KV shape across the pooled (full-attention) layers. "
+                     f"Layer {first_layer_idx} has {first_config}, "
+                     f"but layer {layer_idx} has {config}. "
+                     "Heterogeneous attention KV needs per-layer pools."
+@@ -1125,7 +1138,9 @@
+         """Build model-level set of optional registered AOT kernels."""
+         if self._cache_layout.num_attention_layers == 0:
+             return MlxAOTKernelSet()
+-        layer_idx = self._cache_layout.first_attention_layer_index
++        # The kernels run on pooled layers only (the wrapper takes the AOT
++        # path when a layer has no window), so sample one of those.
++        layer_idx = self._pooled_attention_layer_indices()[0]
+         sample_attn = getattr(
+             self._cache_layout.layers[layer_idx],
+             self._cache_layout.attention_attr(layer_idx),
