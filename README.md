@@ -4,10 +4,9 @@ Long-context LLM inference on an Apple M4 Pro Mac mini (64 GB unified memory) wi
 native MLX backend: **SGLang v0.5.23** (`297e54f`) + 31 patches ([patches/README.md](patches/README.md)).
 The target workload is single-user agentic coding at long context (tool-call-heavy multi-turn
 sessions over 10K–100K-token codebase prefixes), where decode speed at depth matters more
-than peak batch throughput. Known issues are
-[GitHub issues](https://github.com/mattbucci/m4-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue)
-with the `known-issue` label; experiment specs and open work live in
-[experiments/README.md](experiments/README.md).
+than peak batch throughput. Known issues and open work are
+[GitHub issues](https://github.com/mattbucci/m4-sglang-inference/issues), labelled by type (`known-issue`, `bug`, `enhancement`), `area:` and
+priority (`P1`–`P3`); experiment specs are in [experiments/](experiments/README.md).
 
 ## Results
 
@@ -80,8 +79,8 @@ qwen36 100 / 104 / 107 / 103 (205 at 8 with batched decode, see Presets).
 | `nemotron-30b` | omp | 10/26 | local 1/26 | 126 min |
 | `flint` (oQ8e, bash-only) | omp | 5/26 | local 0/26 | 13 h |
 | `qwen36` | opencode | 26/26 | local 5/26; **Docker 9/26 = 34.6 %** (21 scored) | 87 min |
-| Qwopus3.8-27B-Coder-Flash | opencode | 23/26 | awaits Docker scoring | 9–10 h |
-| Qwen3.8-27B | opencode | 22/26 | awaits Docker scoring | 9–10 h |
+| Qwopus3.8-27B-Coder-Flash | opencode | 23/26 | unscored | 9–10 h |
+| Qwen3.8-27B | opencode | 22/26 | unscored | 9–10 h |
 
 Qwen3.8-27B resolves the most on the local scorer at six times qwen36's wall (1800 s cap against
 900 s); the scorer cannot build 7–8 of the 26 environments, so local counts are a floor.
@@ -255,7 +254,7 @@ chat-template fixes: the 3090 pair (NVIDIA, AWQ_Marlin) and the R9700 pair (AMD 
 ```
 patches/                    # 31 numbered patches; see patches/README.md
 docs/                       # agentic, flint, long-context, performance-ceiling, quality
-experiments/                # Experiment specs and the open queue
+experiments/                # Experiment specs (method, probes, dispositions)
 benchmarks/                 # Per-model JSON, regression baselines, dated receipts
   quality/                  #   MMLU / HumanEval / needle / probe-trio verdicts / fidelity
   <slug>/                   #   throughput + long-context sweeps

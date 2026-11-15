@@ -211,10 +211,9 @@ patches 030–032 take a further 1.2–1.35 ms off each step on qwen36 (95.9 /
 
 ## Known gaps
 
-- **gemma4 / gemma4-31b** — upstream `_attention_kv_config_for_layer` raises
-  `NotImplementedError("...does not support sliding-window attention yet...")`
-  at runner construction, so these raise at boot. Sliding-window support is an
-  upstream feature gap; needs per-layer/window-aware pools.
+Tracked as [GitHub issues](https://github.com/mattbucci/m4-sglang-inference/issues); the one patch-level gap is `gemma4` / `gemma4-31b`
+(issue #5): `_attention_kv_config_for_layer` raises `NotImplementedError` for sliding-window
+attention at runner construction, so both presets fail at boot.
 
 ## Apply / sanity check
 

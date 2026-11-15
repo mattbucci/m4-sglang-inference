@@ -171,4 +171,4 @@ prefill (`benchmarks/perf/2026-11-10/flint/VERDICT.md`).
 
 ## Model support
 
-See [README.md](README.md) for current model status and benchmarks; known issues are GitHub issues with the `known-issue` label.
+See [README.md](README.md) for current model status and benchmarks; known issues and open work are GitHub issues.

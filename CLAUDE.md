@@ -13,8 +13,7 @@ Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache
 (`no_buffer` strategy; hits and cold runs are each deterministic, and a hit
 differs from a cold run only as much as two cold runs on different chunk sizes
 do — chunk-grid bf16 noise); patch 028 keeps the overlap decode loop on.
-`gemma4*` is blocked at boot
-(mlx-vlm Gemma 4 attention is not recognised by the MLX attention contract).
+`gemma4*` is blocked at boot (issue #5).
 
 ## Documentation
 
@@ -28,7 +27,7 @@ do — chunk-grid bf16 noise); patch 028 keeps the overlap decode loop on.
 ## Key Commands
 ```bash
 scripts/setup.sh                  # conda env, SGLang v0.5.23, MLX deps, apply 31 patches
-# Presets — [OK] = gate-validated; [WIP] = blocked, see patches/README.md
+# Presets — [OK] = gate-validated; [WIP] = blocked at boot, issue #5
 scripts/launch.sh qwen36          # [OK]  Qwen3.6-35B-A3B MoE+DeltaNet+VL (primary agentic)
 scripts/launch.sh coder-30b       # [OK]  Qwen3-Coder-30B-A3B-DWQ MoE
 scripts/launch.sh qwen3-32b       # [OK]  Qwen3-32B-DWQ Dense
@@ -40,8 +39,8 @@ scripts/launch.sh flint           # [OK]  Recursive Flint 40B-A2.5B MoE coding a
 scripts/launch.sh qwen35-9b-8bit  # [OK]  Qwen3.5-9B 8-bit (codegen/vision/video STRONG, validator 3/3; thinking always on)
 scripts/launch.sh qwen36-27b      # [OK]  Qwen3.6-27B Dense+DeltaNet+VL (codegen/vision/video STRONG, thinking VERIFIED; thinking always on)
 MODEL=mlx-community/Qwen3.8-27B-4bit scripts/launch.sh qwen36-27b   # [OK]  Qwen3.8-27B Dense+DeltaNet+VL (validator 4/4, thinking/vision/codegen gates pass; thinking always on)
-scripts/launch.sh gemma4          # [WIP] Gemma 4 26B MoE (boot: mlx-vlm attention not recognised)
-scripts/launch.sh gemma4-31b      # [WIP] Gemma 4 31B Dense (same model class as gemma4)
+scripts/launch.sh gemma4          # [WIP] Gemma 4 26B MoE
+scripts/launch.sh gemma4-31b      # [WIP] Gemma 4 31B Dense
 # coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
 
 # Capability gates (run AFTER server is up on PORT 23334)
@@ -72,7 +71,7 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 ```
 
 ## Documentation Style
-- **CI `docs-check` enforces these rules** (`.github/actions/docs-check/`, shared by all three rig repos): README skeleton and size, CLAUDE.md size, no dates or status markers. Open work and known issues are GitHub issues, not README sections. Run `python3 .github/actions/docs-check/docs_check.py --root .` before committing docs.
+- **CI `docs-check` enforces these rules** (`.github/actions/docs-check/`, shared by all three rig repos): README skeleton and size, CLAUDE.md size, no dates or status markers. Open work and known issues are GitHub issues (type `known-issue`/`bug`/`enhancement`, an `area:` label, `P1`–`P3`), never README or CLAUDE.md sections; file new ones there. Run `python3 .github/actions/docs-check/docs_check.py --root .` before committing docs.
 - **All .md docs describe CURRENT state only.** No datestamps in prose, no
   audit/verification markers (🅷, ⓡ), no "DONE"/strikethrough/"NEW" status
   markers, no "original"/"previous"/"post-rebase" framing, no was-vs-now
@@ -92,8 +91,8 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
   config, or the preset's `SAMPLING_FALLBACK` (patch 041) when it ships none;
   with neither it decodes at temperature 1.0 untruncated (token soup on
   `qwen3-32b`). Validate every Qwen-family model with
-  `validate_capabilities.py` before publishing numbers — the 3090 confirmed
-  Qwen3.x can enter `</think>` repetition loops at temperature=0, so
+  `validate_capabilities.py` before publishing numbers — Qwen3.x
+  can enter `</think>` repetition loops at temperature=0, so
   thinking workloads should use model-recommended sampling.
 - **MLX-format models required** — AWQ/GPTQ models from other platforms won't work; use `mlx_lm.convert` or `mlx-community/` builds
 - **Always use full-size models for evals + benchmarks** — never substitute a smaller
@@ -123,7 +122,7 @@ bash   scripts/bench/bench_256k_all.sh            # 256K single-user context swe
 
 ## Optimization Target
 - **Primary:** single-user **256K context** (decode tok/s, TPOT). Measure at long context
-  first. Met: 256K validated, 6/6 recall at 245K, 45 tok/s true decode at 130K.
+  first. 256K is validated: 6/6 recall at 245K, 45 tok/s true decode at 130K.
 - **Secondary:** multi-user throughput; never sacrifice single-user latency for batch wins.
 - **Tertiary (most productive workload):** single-user agentic coding at 8-32K per turn.
   qwen36 is the validated recommendation (SWE-bench Lite engagement 26/26; official
