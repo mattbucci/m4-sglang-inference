@@ -4,12 +4,14 @@
 Gemma 4 (26B/31B) mixes two kinds of attention layer. The sliding-window ones
 have 16 KV heads of 256 and their own value projection; the full-attention
 ones have 4 KV heads of 512 and take their values from the key projection
-(``attention_k_eq_v``), so they carry no ``v_proj``. Covers the four things the
+(``attention_k_eq_v``), so they carry no ``v_proj``. Covers the five things the
 patch changes: the contract accepts a layer without ``v_proj`` only when it
 declares the shared projection; the per-layer window map is read from the
 container's ``config``; the uniform-KV-shape check spans the pooled
-(full-attention) layers only; and the batched-decode wrapper records the
-Gemma-specific value handling at patch time. CPU only, no checkpoint.
+(full-attention) layers only; the KV dtype of an mxfp4 checkpoint, whose scales
+are uint8 exponents, comes from the module's float parameters; and the
+batched-decode wrapper records the Gemma-specific value handling at patch time.
+CPU only, no checkpoint.
 
     python scripts/eval/test_gemma4_shared_kv_unit.py
 """
@@ -137,6 +139,39 @@ try:
     check(False, "two shapes among the pooled layers are refused")
 except NotImplementedError:
     check(True, "two shapes among the pooled layers are refused")
+
+# --- the KV dtype of an mxfp4 checkpoint -----------------------------------------
+
+
+class Mxfp4Attention(nn.Module):
+    """k_proj quantized mxfp4 (uint32 weight, uint8 scales), bf16 norm weights."""
+
+    def __init__(self, norm_dtype):
+        super().__init__()
+        self.n_heads, self.n_kv_heads, self.head_dim, self.scale = 4, 2, 8, 1.0
+        self.k_proj = nn.QuantizedLinear.from_linear(nn.Linear(HIDDEN, 16, bias=False), mode="mxfp4")
+        if norm_dtype is not None:
+            self.k_norm = nn.RMSNorm(8)
+            self.k_norm.weight = self.k_norm.weight.astype(norm_dtype)
+
+
+def kv_dtype(attn):
+    fake = types.SimpleNamespace()
+    fake._cache_layout = types.SimpleNamespace(layers=[None], window_size=lambda i: None)
+    fake._attention_module_for_layer = lambda i: attn
+    fake._module_float_dtype = MlxModelRunner._module_float_dtype
+    return MlxModelRunner._attention_kv_config_for_layer(fake, 0)[2]
+
+
+mxfp4 = Mxfp4Attention(mx.bfloat16)
+check(mxfp4.k_proj.weight.dtype == mx.uint32 and mxfp4.k_proj.scales.dtype == mx.uint8,
+      "an mxfp4 projection has integer weights and uint8 scales, so neither names the compute dtype")
+check(kv_dtype(mxfp4) == mx.bfloat16, "the KV dtype then follows the module's float parameters (bf16 norm weights)")
+check(kv_dtype(Mxfp4Attention(None)) == mx.float32, "with no float parameter to read it stays float32")
+affine = PlainAttention()
+affine.k_proj = nn.QuantizedLinear.from_linear(nn.Linear(HIDDEN, 16, bias=False), bits=4)
+affine.k_proj.scales = affine.k_proj.scales.astype(mx.bfloat16)
+check(kv_dtype(affine) == mx.bfloat16, "an affine-quantized projection still takes it from its float scales")
 
 # --- what the wrapper records at patch time --------------------------------------
 w_full, w_sliding, w_plain = (

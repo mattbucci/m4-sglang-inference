@@ -112,10 +112,29 @@ diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/attention_wrapper.p
 diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sglang/srt/hardware_backend/mlx/model_runner.py
 --- a/python/sglang/srt/hardware_backend/mlx/model_runner.py
 +++ b/python/sglang/srt/hardware_backend/mlx/model_runner.py
-@@ -1058,24 +1058,37 @@
-                 dtype = mx.float32
+@@ -1055,27 +1055,51 @@
+             if scales is not None and scales.dtype in _MLX_KV_FLOAT_DTYPES:
+                 dtype = scales.dtype
+             else:
+-                dtype = mx.float32
++                # mxfp4 scales are uint8 exponents and say nothing about the
++                # compute dtype; the projection's output follows its input,
++                # which follows the module's float parameters (norm weights).
++                dtype = self._module_float_dtype(sample_attn) or mx.float32
          return n_kv_heads, head_dim, dtype
  
+-    def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
+-        """Return the uniform KV config shared by every attention layer.
++    @staticmethod
++    def _module_float_dtype(module: Any) -> mx.Dtype | None:
++        """The dtype of the module's first floating-point parameter, if any."""
++        for _, value in tree_flatten(module.parameters()):
++            if getattr(value, "dtype", None) in _MLX_KV_FLOAT_DTYPES:
++                return value.dtype
++        return None
+ 
+-        Sizes the shared pool and the AOT kernels; sliding-window layers
+-        must match the same shape because they share the decode kernels.
 +    def _pooled_attention_layer_indices(self) -> tuple[int, ...]:
 +        """Layers whose KV occupies the shared pool: the full-attention ones.
 +
@@ -127,12 +146,9 @@ diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sgl
 +            or self._cache_layout.attention_layer_indices
 +        )
 +
-     def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
--        """Return the uniform KV config shared by every attention layer.
++    def _get_attn_config(self) -> tuple[int, int, mx.Dtype]:
 +        """Return the uniform KV config shared by the pooled attention layers.
- 
--        Sizes the shared pool and the AOT kernels; sliding-window layers
--        must match the same shape because they share the decode kernels.
++
 +        Sizes the shared pool and the AOT kernels. Sliding-window layers keep
 +        per-request windowed caches shaped by their own projections, so they
 +        may differ (Gemma 4: 16 heads x 256 sliding, 4 heads x 512 full).
@@ -156,7 +172,7 @@ diff --git a/python/sglang/srt/hardware_backend/mlx/model_runner.py b/python/sgl
                      f"Layer {first_layer_idx} has {first_config}, "
                      f"but layer {layer_idx} has {config}. "
                      "Heterogeneous attention KV needs per-layer pools."
-@@ -1125,7 +1138,9 @@
+@@ -1125,7 +1149,9 @@
          """Build model-level set of optional registered AOT kernels."""
          if self._cache_layout.num_attention_layers == 0:
              return MlxAOTKernelSet()

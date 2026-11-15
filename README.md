@@ -128,7 +128,7 @@ Qwen3.8-27B, Qwopus3.8-27B-Coder-Flash, Qwen3.6-27B and Qwen3.5-9B-8bit chat tem
 | `devstral` [OK] | Devstral 24B + image VLM | custom chat template (`scripts/devstral_chat_template.jinja`) |
 | `nemotron-30b` [OK] | NemotronH Mamba2+Attn+MoE | `nemotron_3` reasoning parser |
 | `flint` [OK] | Recursive Flint 40B-A2.5B coding-agent MoE | oQ8e default; `MODEL=RecursiveSI/flint-int4` decodes 56 % faster in 20 GB less, also oQ6e / oQ4e; [docs/flint.md](docs/flint.md) |
-| `gemma4-31b` [OK] | Gemma 4 31B dense+VL (`gemma-4-31b-it-mxfp4`) | 4K context, radix cache off; validator 3/3, thinking VERIFIED, vision and codegen STRONG |
+| `gemma4-31b` [OK] | Gemma 4 31B dense+VL (`gemma-4-31b-it-mxfp4`) | 32K context, radix cache on; cold read about 85 tok/s, a follow-up turn on a cached 17K prefix in 5 s; validator 3/3, thinking VERIFIED, vision and codegen STRONG |
 | `gemma4` [WIP] | Gemma 4 26B MoE | shares the patch 042 attention path with `gemma4-31b`; gates not run |
 | `coder-next` | Qwen3-Coder-Next-80B | infeasible on 64 GB |
 | `smol-docling` | 256M VLM | smoke test only |

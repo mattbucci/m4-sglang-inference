@@ -56,6 +56,7 @@ and the ladder set, and the cache-clear switch leaves the output identical. Rece
 | MoE+DeltaNet (Qwen3.6-35B-A3B) | 17 GB | full-attention layers only | yes (256K validated) |
 | Flint 40B-A2.5B (oQ8e) | 42 GB | 7.5 GB (14 full layers, 4 KV heads) | 32K preset validated; deeper runs need headroom measured per depth |
 | Dense+VL (Devstral, Qwen3.5-27B) | 14–15 GB | 42 GB | no; the dense attention ceiling applies first |
+| Gemma 4 31B (mxfp4) | 16 GB | 21.5 GB (10 full layers, 4 KV heads × 512; the 50 sliding layers hold 0.8 GB at any depth) | 32K preset validated; the limit is time, not memory: a cold read runs at about 85 tok/s (51 min for 256K) and a prefill chunk holds 32 heads × chunk × context attention scores (about 17 GB at 256K with 1024-token chunks) |
 | Dense (Qwen3-32B) | 18 GB | 66 GB | no |
 
 **MoE wins at long context.** Each decode token reads the model weights and the whole KV

@@ -13,7 +13,7 @@ Hybrid (DeltaNet/Mamba2) presets and `flint` run with the radix cache
 (`no_buffer` strategy; hits and cold runs are each deterministic, and a hit
 differs from a cold run only as much as two cold runs on different chunk sizes
 do — chunk-grid bf16 noise); patch 028 keeps the overlap decode loop on.
-`gemma4-31b` passes its gates on patch 042; `gemma4` (26B MoE) has not run them.
+`gemma4-31b` passes its gates on patch 042; `gemma4` (26B MoE) has not run them
 
 ## Documentation
 
@@ -40,7 +40,7 @@ scripts/launch.sh qwen35-9b-8bit  # [OK]  Qwen3.5-9B 8-bit (codegen/vision/video
 scripts/launch.sh qwen36-27b      # [OK]  Qwen3.6-27B Dense+DeltaNet+VL (codegen/vision/video STRONG, thinking VERIFIED; thinking always on)
 MODEL=mlx-community/Qwen3.8-27B-4bit scripts/launch.sh qwen36-27b   # [OK]  Qwen3.8-27B Dense+DeltaNet+VL (validator 4/4, thinking/vision/codegen gates pass; thinking always on)
 scripts/launch.sh gemma4          # [WIP] Gemma 4 26B MoE
-scripts/launch.sh gemma4-31b      # [OK]  Gemma 4 31B Dense+VL (4K context, radix off)
+scripts/launch.sh gemma4-31b      # [OK]  Gemma 4 31B Dense+VL (32K, 85 tok/s cold read)
 # coder-next is infeasible on 64 GB; smol-docling is a VLM smoke test only.
 
 # Capability gates (run AFTER server is up on PORT 23334)

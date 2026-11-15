@@ -15,7 +15,7 @@
 #   coder-30b      Qwen3-Coder-30B MoE 4-bit (32K, best throughput)
 #   coder-next     Qwen3-Coder-Next-80B MoE 4-bit (8K, largest model)
 #   gemma4         Gemma 4 26B MoE 4-bit (4K)
-#   gemma4-31b     Gemma 4 31B 4-bit (4K)
+#   gemma4-31b     Gemma 4 31B 4-bit (32K)
 #   qwen35         Qwen3.5-27B DeltaNet 4-bit (32K)
 #   qwen35-9b-8bit Qwen3.5-9B DeltaNet 8-bit (32K, smaller+higher-precision)
 #   qwen36         Qwen3.6-35B-A3B-4bit MoE+DeltaNet+VL (sister-team flagship)
@@ -167,12 +167,20 @@ apply_preset() {
             # --reasoning-parser gemma4 — see gemma4 preset comment for why.
             # --tool-call-parser gemma4 — see gemma4 preset comment for why.
             MODEL="${MODEL:-mlx-community/gemma-4-31b-it-mxfp4}"
-            CTX=4096; MAX_RUNNING=4; CHUNKED=2048
+            # 32K context, radix cache on. A cold read runs at ~85 tok/s
+            # (17K tokens in 196 s), and a follow-up turn on the same prefix
+            # returns in 5 s with the same greedy text as a cold run. The pool
+            # holds the 10 full-attention layers only (4 KV heads x 512, bf16:
+            # 82 KB per token); patch 042 sizes it from those layers, which is
+            # what the radix cache needed on this model. 1024-token chunks: a
+            # prefill chunk holds 32 heads x chunk x context attention scores.
+            # The pool is capped at CTX * MAX_RUNNING tokens so it does not
+            # fill MEM_FRAC beside another loaded preset.
+            CTX=32768; MAX_RUNNING=2; CHUNKED=1024
+            MAX_TOTAL_FROM_CTX=1
             REASONING="--reasoning-parser gemma4"
-            # --disable-radix-cache REQUIRED — same heterogeneous-attention bug
-            # as gemma4 (50 sliding @ (16,256) + 10 full @ (4,512)).
             # --enable-multimodal — see gemma4 preset comment.
-            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --disable-radix-cache --tool-call-parser gemma4"
+            EXTRA_ARGS="$EXTRA_ARGS --enable-multimodal --tool-call-parser gemma4"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
