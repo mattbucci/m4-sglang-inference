@@ -67,10 +67,17 @@ DEFAULT_REPOS = [
 
 
 def _hf_token() -> str | None:
-    p = os.path.expanduser("~/.secrets/hf_token")
-    if os.path.exists(p):
-        return open(p).read().strip()
-    return os.environ.get("HF_TOKEN")
+    """HF_TOKEN if set, else the token in OpenBao (secret/admin/hf-token) via bao-secret."""
+    if os.environ.get("HF_TOKEN"):
+        return os.environ["HF_TOKEN"]
+    bao = os.path.expanduser("~/.local/bin/bao-secret")
+    if not os.path.exists(bao):
+        return None
+    try:
+        import subprocess
+        return subprocess.check_output([bao, "get", "admin/hf-token", "token"], text=True, timeout=15).strip() or None
+    except Exception:
+        return None
 
 
 def _get(url: str, *, range_header: str | None = None) -> bytes:

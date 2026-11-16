@@ -45,9 +45,9 @@ setup_mlx_env() {
     # cross-checks every call against a full encode.
     export SGLANG_INCREMENTAL_TOKENIZE="${SGLANG_INCREMENTAL_TOKENIZE:-1}"
 
-    # HuggingFace token (for model downloads)
-    if [ -f "$HOME/.secrets/hf-token" ]; then
-        export HF_TOKEN="$(cat "$HOME/.secrets/hf-token")"
+    # HuggingFace token (for model downloads), from OpenBao (secret/admin/hf-token)
+    if [ -z "${HF_TOKEN:-}" ] && [ -x "$HOME/.local/bin/bao-secret" ]; then
+        HF_TOKEN="$("$HOME/.local/bin/bao-secret" get admin/hf-token token 2>/dev/null)" && export HF_TOKEN || unset HF_TOKEN
     fi
 
     # Silence warnings
